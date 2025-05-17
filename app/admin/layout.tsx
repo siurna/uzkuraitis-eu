@@ -13,8 +13,28 @@ export default function AdminLayout({ children }) {
   const [password, setPassword] = useState("")
   const [authError, setAuthError] = useState("")
   const [loading, setLoading] = useState(true)
+  const [adminPassword, setAdminPassword] = useState("👀👀👀") // Default password
   const pathname = usePathname()
   const router = useRouter()
+
+  // Fetch admin password
+  useEffect(() => {
+    const fetchAdminPassword = async () => {
+      try {
+        const response = await fetch("/api/admin-settings")
+        if (response.ok) {
+          const data = await response.json()
+          if (data.adminPassword) {
+            setAdminPassword(data.adminPassword)
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching admin password:", error)
+      }
+    }
+
+    fetchAdminPassword()
+  }, [])
 
   useEffect(() => {
     // Check if already authenticated in localStorage
@@ -25,8 +45,8 @@ export default function AdminLayout({ children }) {
 
   const handleLogin = (e) => {
     e.preventDefault()
-    // Use the emoji password
-    if (password === "👀👀👀") {
+    // Use the admin password from the database
+    if (password === adminPassword) {
       setAuthenticated(true)
       setAuthError("")
       // Store authentication in localStorage

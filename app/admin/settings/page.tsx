@@ -17,7 +17,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Loader2, Save, Download } from "lucide-react"
+import { Loader2, Save, Download, Eye, EyeOff } from "lucide-react"
 import { countries } from "@/lib/countries"
 
 type ResultsState = {
@@ -39,6 +39,16 @@ export default function SettingsPage() {
   const [resetVotesError, setResetVotesError] = useState("")
   const [resettingVotes, setResettingVotes] = useState(false)
   const [downloading, setDownloading] = useState(false)
+
+  // Admin settings
+  const [showAdminButton, setShowAdminButton] = useState(true)
+  const [updatingAdminSettings, setUpdatingAdminSettings] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [passwordError, setPasswordError] = useState("")
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
 
   // Final results state
   const [results, setResults] = useState<ResultsState>({
@@ -65,6 +75,13 @@ export default function SettingsPage() {
           if (resultsData.results) {
             setResults(resultsData.results)
           }
+        }
+
+        // Fetch admin settings
+        const adminSettingsResponse = await fetch("/api/admin-settings")
+        if (adminSettingsResponse.ok) {
+          const adminSettingsData = await adminSettingsResponse.json()
+          setShowAdminButton(adminSettingsData.showAdminButton)
         }
       } catch (error) {
         console.error("Error fetching data:", error)
@@ -114,6 +131,101 @@ export default function SettingsPage() {
       })
     } finally {
       setUpdatingVotingStatus(false)
+    }
+  }
+
+  const handleToggleAdminButton = async () => {
+    setUpdatingAdminSettings(true)
+
+    try {
+      const response = await fetch("/api/admin-settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          showAdminButton: !showAdminButton,
+          currentPassword: "👀👀👀",
+        }),
+      })
+
+      if (response.ok) {
+        setShowAdminButton(!showAdminButton)
+        toast({
+          title: "Success",
+          description: `Admin button has been ${!showAdminButton ? "shown" : "hidden"}`,
+        })
+      } else {
+        const errorData = await response.json()
+        toast({
+          title: "Error",
+          description: errorData.error || "Failed to update admin button visibility",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong",
+        variant: "destructive",
+      })
+    } finally {
+      setUpdatingAdminSettings(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    // Reset error
+    setPasswordError("")
+
+    // Validate inputs
+    if (!currentPassword) {
+      setPasswordError("Current password is required")
+      return
+    }
+
+    if (!newPassword) {
+      setPasswordError("New password is required")
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match")
+      return
+    }
+
+    setUpdatingAdminSettings(true)
+
+    try {
+      const response = await fetch("/api/admin-settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          adminPassword: newPassword,
+          currentPassword,
+        }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Admin password has been updated",
+        })
+
+        // Clear form
+        setCurrentPassword("")
+        setNewPassword("")
+        setConfirmPassword("")
+      } else {
+        const errorData = await response.json()
+        setPasswordError(errorData.error || "Failed to update admin password")
+      }
+    } catch (error) {
+      setPasswordError("Something went wrong")
+    } finally {
+      setUpdatingAdminSettings(false)
     }
   }
 
@@ -477,6 +589,116 @@ export default function SettingsPage() {
       <h1 className="text-3xl font-bold italic font-title mb-8">Settings</h1>
 
       <div className="space-y-8">
+        {/* Admin Settings */}
+        <div className="p-6 rounded-lg bg-black/60 border border-pink-600/20">
+          <h2 className="text-xl font-bold font-title mb-4">Admin Settings</h2>
+
+          {/* Admin Button Toggle */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <Label htmlFor="admin-button-toggle" className="text-lg">
+                {showAdminButton ? "Admin button is visible" : "Admin button is hidden"}
+              </Label>
+              <p className="text-gray-400 text-sm mt-1">
+                {showAdminButton
+                  ? "The invisible admin button is shown in the top right corner of the home page"
+                  : "The admin button is completely hidden from the home page"}
+              </p>
+            </div>
+
+            <div className="flex items-center">
+              <Switch
+                id="admin-button-toggle"
+                checked={showAdminButton}
+                onCheckedChange={handleToggleAdminButton}
+                disabled={updatingAdminSettings}
+              />
+              {updatingAdminSettings && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
+            </div>
+          </div>
+
+          {/* Admin Password Change */}
+          <div className="pt-4 border-t border-pink-600/20">
+            <h3 className="text-lg font-semibold mb-4 font-title">Change Admin Password</h3>
+
+            <div className="space-y-4">
+              {/* Current Password */}
+              <div className="space-y-2">
+                <Label htmlFor="current-password">Current Password</Label>
+                <div className="relative">
+                  <Input
+                    id="current-password"
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="bg-black/60 border-pink-600/30 pr-10"
+                    placeholder="Enter current password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  >
+                    {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* New Password */}
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="new-password"
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="bg-black/60 border-pink-600/30 pr-10"
+                    placeholder="Enter new password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                  >
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm Password */}
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirm New Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="bg-black/60 border-pink-600/30"
+                  placeholder="Confirm new password"
+                />
+              </div>
+
+              {passwordError && <p className="text-red-500 text-sm">{passwordError}</p>}
+
+              <Button
+                onClick={handleChangePassword}
+                disabled={updatingAdminSettings}
+                className="bg-gradient-to-r from-pink-600 to-cyan-500 text-white"
+              >
+                {updatingAdminSettings ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Change Password"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+
         {/* Voting Status Control */}
         <div className="p-6 rounded-lg bg-black/60 border border-pink-600/20">
           <h2 className="text-xl font-bold font-title mb-4">Voting Status</h2>

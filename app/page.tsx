@@ -32,6 +32,7 @@ export default function Home() {
   const [hasVoted, setHasVoted] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const [votingEnabled, setVotingEnabled] = useState(true)
+  const [showAdminButton, setShowAdminButton] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Function to fetch scores
@@ -76,6 +77,23 @@ export default function Home() {
       setLoading(false)
       setRefreshing(false)
     }
+  }, [])
+
+  // Fetch admin settings
+  useEffect(() => {
+    const fetchAdminSettings = async () => {
+      try {
+        const response = await fetch("/api/admin-settings")
+        if (response.ok) {
+          const data = await response.json()
+          setShowAdminButton(data.showAdminButton)
+        }
+      } catch (error) {
+        console.error("Error fetching admin settings:", error)
+      }
+    }
+
+    fetchAdminSettings()
   }, [])
 
   // Check if user has voted
@@ -274,11 +292,13 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col pb-24">
       {/* Invisible admin button in top right corner */}
-      <div className="fixed top-0 right-0 z-50">
-        <Link href="/admin">
-          <div className="w-16 h-16 opacity-0" aria-hidden="true"></div>
-        </Link>
-      </div>
+      {showAdminButton && (
+        <div className="fixed top-0 right-0 z-50">
+          <Link href="/admin">
+            <div className="w-16 h-16 opacity-0" aria-hidden="true"></div>
+          </Link>
+        </div>
+      )}
       <div className="w-full flex justify-center">
         <Image
           src="/images/eurovision-2025-logo.png"
