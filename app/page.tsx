@@ -382,7 +382,7 @@ export default function Home() {
             {voters.length > 0 && (
               <div className="mt-8 text-center">
                 <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-cyan-400 to-red-500 text-center font-title mb-4">
-                  Votes Casted
+                  Votes Cast
                 </h3>
                 <div className="flex flex-wrap gap-3 justify-center">
                   {voters.map((voter, index) => {
