@@ -34,6 +34,10 @@ export default function SettingsPage() {
   const [resetError, setResetError] = useState("")
   const [resetTop10DialogOpen, setResetTop10DialogOpen] = useState(false)
   const [resettingTop10, setResettingTop10] = useState(false)
+  const [resetVotesDialogOpen, setResetVotesDialogOpen] = useState(false)
+  const [resetVotesPassword, setResetVotesPassword] = useState("")
+  const [resetVotesError, setResetVotesError] = useState("")
+  const [resettingVotes, setResettingVotes] = useState(false)
 
   // Final results state
   const [results, setResults] = useState<ResultsState>({
@@ -156,6 +160,55 @@ export default function SettingsPage() {
         description: "Something went wrong",
         variant: "destructive",
       })
+    }
+  }
+
+  const handleResetVotes = async () => {
+    if (resetVotesPassword !== "👀👀👀") {
+      setResetVotesError("Incorrect password")
+      return
+    }
+
+    setResettingVotes(true)
+
+    try {
+      const response = await fetch("/api/reset-votes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          password: resetVotesPassword,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "All votes have been reset while keeping the Top 10 intact",
+        })
+        setResetVotesDialogOpen(false)
+        setResetVotesPassword("")
+        setResetVotesError("")
+      } else {
+        console.error("Reset votes error:", data.error)
+        toast({
+          title: "Error",
+          description: data.error || "Failed to reset votes",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Reset votes error:", error)
+      toast({
+        title: "Error",
+        description: "Something went wrong",
+        variant: "destructive",
+      })
+    } finally {
+      setResettingVotes(false)
     }
   }
 
@@ -564,6 +617,72 @@ export default function SettingsPage() {
                   </Button>
                   <Button variant="destructive" onClick={handleReset}>
                     Reset All Votes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        {/* Reset Votes Only */}
+        <div className="p-6 rounded-lg bg-black/60 border border-pink-600/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold font-title mb-2">Reset Votes Only</h2>
+              <p className="text-gray-400 text-sm">
+                This will delete all votes while keeping the Top 10 and final results intact. This action cannot be
+                undone.
+              </p>
+            </div>
+
+            <Dialog open={resetVotesDialogOpen} onOpenChange={setResetVotesDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="border-pink-600/30 text-pink-400 hover:bg-pink-950/20">
+                  Reset Votes Only
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-black border border-pink-600/30 text-white">
+                <DialogHeader>
+                  <DialogTitle className="font-title">Reset Votes Only</DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    This will delete all votes while keeping the Top 10 and final results intact. This action cannot be
+                    undone.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-2">
+                  <Label htmlFor="resetVotesPassword">Enter password to confirm</Label>
+                  <Input
+                    id="resetVotesPassword"
+                    type="text"
+                    value={resetVotesPassword}
+                    onChange={(e) => setResetVotesPassword(e.target.value)}
+                    className="bg-black/60 border-pink-600/50"
+                    placeholder="Enter admin password"
+                  />
+                  {resetVotesError && <p className="text-red-500 text-sm">{resetVotesError}</p>}
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setResetVotesDialogOpen(false)
+                      setResetVotesPassword("")
+                      setResetVotesError("")
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={handleResetVotes} disabled={resettingVotes}>
+                    {resettingVotes ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Resetting...
+                      </>
+                    ) : (
+                      "Reset Votes Only"
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Loader2, ChevronDown, ChevronUp, RefreshCw, Share2, Beer } from "lucide-react"
+import { Loader2, ChevronDown, ChevronUp, RefreshCw, Share2 } from "lucide-react"
 import { countries } from "@/lib/countries"
 
 type CountryScore = {
@@ -407,40 +407,6 @@ export default function Home() {
                 </div>
               </div>
             )}
-
-            {/* Donation section - improved version with constrained width */}
-            <div className="mt-10 p-6 rounded-lg bg-black/40 border border-pink-600/20">
-              <div className="flex items-center justify-center gap-2 mb-3">
-                <Beer className="h-6 w-6 text-amber-400" />
-                <h3 className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 font-title">
-                  Buy a beer for #Užkuraitis!
-                </h3>
-              </div>
-
-              <p className="text-gray-300 text-sm text-center mb-4 max-w-md mx-auto">
-                Help keep the party going! Your contribution supports hosting, translations, and future events.
-              </p>
-
-              <div className="flex justify-center gap-4">
-                <a
-                  href="https://revolut.me/r/n8iQRICN2k"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="donation-button-outline revolut-outline"
-                >
-                  Revolut
-                </a>
-
-                <a
-                  href="https://www.swedbank.lt/pay?id=mz498ai9dggc"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="donation-button-outline swedbank-outline"
-                >
-                  Swedbank
-                </a>
-              </div>
-            </div>
           </div>
         </div>
       </div>
