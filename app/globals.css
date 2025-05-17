@@ -1,0 +1,530 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 3.9%;
+  --primary: 328 73% 59%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 0 0% 96.1%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 0 0% 96.1%;
+  --muted-foreground: 0 0% 45.1%;
+  --accent: 0 0% 96.1%;
+  --accent-foreground: 0 0% 9%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 89.8%;
+  --input: 0 0% 89.8%;
+  --ring: 328 73% 59%;
+  --radius: 0.5rem;
+
+  /* Eurovision 2025 colors */
+  --eurovision-pink: 328 73% 59%;
+  --eurovision-cyan: 180 100% 50%;
+  --eurovision-red: 0 100% 50%;
+  --eurovision-purple: 280 100% 50%;
+}
+
+.dark {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 98%;
+  --card: 0 0% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 328 73% 59%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 0 0% 14.9%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 0 0% 14.9%;
+  --muted-foreground: 0 0% 63.9%;
+  --accent: 0 0% 14.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 14.9%;
+  --input: 0 0% 14.9%;
+  --ring: 328 73% 59%;
+}
+
+body {
+  background: url("/images/heart-pattern.png"), black;
+  background-size: cover;
+  color: white;
+  -webkit-tap-highlight-color: rgba(255, 0, 153, 0.3); /* iOS tap highlight color */
+}
+
+/* Font classes */
+.font-score {
+  font-family: ivypresto-text, serif;
+  font-weight: 700;
+  font-style: italic;
+}
+
+.font-title {
+  font-family: ivypresto-text, serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.font-empty {
+  font-family: ivypresto-text, serif;
+  font-weight: 100;
+  font-style: italic;
+}
+
+.eurovision-dropdown {
+  background-color: rgba(0, 0, 0, 0.8);
+  border: 1px solid #ff0099;
+}
+
+.eurovision-dropdown:focus {
+  border-color: #ff0099;
+  box-shadow: 0 0 0 2px rgba(255, 0, 153, 0.3);
+}
+
+.eurovision-card {
+  background-color: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 0, 153, 0.3);
+}
+
+/* Prevent text selection */
+.select-none {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Glow effect for newly added countries */
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.8), 0 0 30px rgba(255, 0, 153, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+  }
+}
+
+.glow-effect {
+  animation: glow 1.5s ease-in-out;
+}
+
+/* Flying country animation */
+.flying-country {
+  display: flex;
+  align-items: center;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(to right, #ff0099, #00e5ff, #ff0000);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Stronger glowing button animation for "Cast your vote" */
+@keyframes cast-pulse {
+  0% {
+    box-shadow: 0 0 5px rgba(255, 0, 153, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 0, 153, 0.9), 0 0 30px rgba(0, 255, 255, 0.7);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(255, 0, 153, 0.5);
+  }
+}
+
+/* Subtler glowing button animation for "Update your vote" */
+@keyframes update-pulse {
+  0% {
+    box-shadow: 0 0 3px rgba(255, 0, 153, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(255, 0, 153, 0.6), 0 0 15px rgba(0, 255, 255, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 3px rgba(255, 0, 153, 0.4);
+  }
+}
+
+.cast-pulse-button {
+  animation: cast-pulse 2s infinite ease-in-out;
+}
+
+.update-pulse-button {
+  animation: update-pulse 3s infinite ease-in-out;
+}
+
+/* Keep the original subtle-glow for other elements */
+.glow-button {
+  animation: subtle-glow 3s infinite ease-in-out;
+}
+
+/* iOS specific styles */
+.ios-touch-highlight:active {
+  background-color: rgba(255, 0, 153, 0.2) !important;
+  border-color: rgba(255, 0, 153, 0.6) !important;
+}
+
+/* Fix iOS button styling */
+a[href="#"] {
+  -webkit-appearance: none;
+  appearance: none;
+  text-decoration: none;
+  display: block;
+}
+
+/* Fix iOS form submissions */
+form {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Fix iOS input styling */
+input {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 0.5rem;
+}
+
+/* Fix iOS button styling */
+button {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 0.5rem;
+}
+
+/* iOS touch interaction styles */
+@media (pointer: coarse) {
+  .touch-highlight {
+    transition: background-color 0.2s ease;
+  }
+
+  .touch-highlight:active {
+    background-color: rgba(255, 0, 153, 0.3);
+  }
+}
+
+/* Score update animation */
+@keyframes score-update {
+  0% {
+    background-color: rgba(255, 0, 153, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.score-updated {
+  animation: score-update 2s ease-out;
+}
+
+/* Country list animations */
+.country-list-container {
+  transition: max-height 0.5s ease-in-out;
+  overflow: hidden;
+}
+
+.expanding {
+  max-height: 2000px;
+  transition: max-height 0.5s ease-in-out;
+  overflow: hidden;
+}
+
+.collapsing {
+  max-height: 400px;
+  transition: max-height 0.5s ease-in-out;
+  overflow: hidden;
+}
+
+/* Country item animation */
+.country-item {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* Remove the hover effect */
+/* .country-item:hover {
+  transform: translateX(5px);
+} */
+
+/* Country list expand animation */
+.country-list-expanding .country-item {
+  animation: slide-in-right 0.3s forwards;
+  animation-delay: calc(var(--index) * 0.05s);
+  opacity: 0;
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Prevent page scrolling when dragging */
+.no-scroll-touch {
+  touch-action: none;
+}
+
+/* Drag and drop styles */
+[draggable] {
+  cursor: grab;
+}
+
+[draggable]:active {
+  cursor: grabbing;
+}
+
+/* Touch drag image */
+.touch-drag-image {
+  opacity: 0.9;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Drop target highlight */
+.drop-target-highlight {
+  background-color: rgba(0, 255, 255, 0.1);
+  border-color: rgba(0, 255, 255, 0.8) !important;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
+/* Delete area animation */
+@keyframes pulse-red {
+  0% {
+    background-color: rgba(185, 28, 28, 0.7);
+  }
+  50% {
+    background-color: rgba(220, 38, 38, 0.8);
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.5);
+  }
+  100% {
+    background-color: rgba(185, 28, 28, 0.7);
+  }
+}
+
+/* Make the delete area slide in more visibly */
+@keyframes slide-in {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.delete-area {
+  transform-origin: bottom;
+  animation: slide-in 0.3s ease-out forwards;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Enhanced country effect */
+.enhanced-country {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.8), 0 0 30px rgba(255, 0, 153, 0.6);
+  z-index: 5;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Heartbeat animation */
+@keyframes heartbeat {
+  0% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.2);
+  }
+  30% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.15);
+  }
+  60% {
+    transform: scale(1);
+  }
+}
+
+.heartbeat {
+  animation: heartbeat 1s ease-in-out;
+}
+
+/* Updated voter badge styling */
+.voter-badge {
+  background: linear-gradient(to right, #ff0099, #00e5ff);
+  color: white;
+  border-radius: 9999px;
+  padding: 0.375rem 1rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.voter-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Donation buttons */
+.donation-button {
+  display: block;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  color: white;
+  z-index: 1;
+}
+
+.donation-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  transition: all 0.5s ease;
+}
+
+.donation-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 14px rgba(0, 0, 0, 0.2);
+}
+
+.donation-button:active {
+  transform: translateY(0);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.revolut-button {
+  background: linear-gradient(135deg, #0666eb, #0044cc);
+  border: 1px solid rgba(0, 102, 235, 0.5);
+}
+
+.revolut-button:hover {
+  background: linear-gradient(135deg, #0555c4, #003db8);
+}
+
+.revolut-button::before {
+  background: linear-gradient(135deg, #0044cc, #0666eb);
+  opacity: 0;
+}
+
+.revolut-button:hover::before {
+  opacity: 1;
+}
+
+.swedbank-button {
+  background: linear-gradient(135deg, #ff7e00, #e56e00);
+  border: 1px solid rgba(255, 126, 0, 0.5);
+}
+
+.swedbank-button:hover {
+  background: linear-gradient(135deg, #e56e00, #ff7e00);
+}
+
+.swedbank-button::before {
+  background: linear-gradient(135deg, #e56e00, #ff7e00);
+  opacity: 0;
+}
+
+.swedbank-button:hover::before {
+  opacity: 1;
+}
+
+/* Donation button outline style */
+.donation-button-outline {
+  display: inline-block;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  border: 1px solid;
+}
+
+.donation-button-outline:hover {
+  transform: translateY(-1px);
+}
+
+.donation-button-outline:active {
+  transform: translateY(0);
+}
+
+.revolut-outline {
+  border-color: rgba(0, 102, 235, 0.4);
+  color: #0666eb;
+}
+
+.revolut-outline:hover {
+  background-color: rgba(0, 102, 235, 0.1);
+  border-color: rgba(0, 102, 235, 0.6);
+}
+
+.swedbank-outline {
+  border-color: rgba(255, 126, 0, 0.4);
+  color: #ff7e00;
+}
+
+.swedbank-outline:hover {
+  background-color: rgba(255, 126, 0, 0.1);
+  border-color: rgba(255, 126, 0, 0.6);
+}
+
+/* Add this new animation for the iOS widget-like shake effect */
+@keyframes ios-widget-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px) rotate(-2deg);
+  }
+  40% {
+    transform: translateX(4px) rotate(2deg);
+  }
+  60% {
+    transform: translateX(-4px) rotate(-1deg);
+  }
+  80% {
+    transform: translateX(4px) rotate(1deg);
+  }
+}
+
+.ios-widget-shake {
+  animation: ios-widget-shake 0.6s ease-in-out;
+}
+
+/* Add this to the existing CSS file */
+.drag-font {
+  font-family: ivypresto-text, serif;
+  font-weight: 700;
+  font-style: italic;
+}
