@@ -17,7 +17,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Loader2, Save } from "lucide-react"
+import { Loader2, Save, Download } from "lucide-react"
 import { countries } from "@/lib/countries"
 
 type ResultsState = {
@@ -38,6 +38,7 @@ export default function SettingsPage() {
   const [resetVotesPassword, setResetVotesPassword] = useState("")
   const [resetVotesError, setResetVotesError] = useState("")
   const [resettingVotes, setResettingVotes] = useState(false)
+  const [downloading, setDownloading] = useState(false)
 
   // Final results state
   const [results, setResults] = useState<ResultsState>({
@@ -407,6 +408,57 @@ export default function SettingsPage() {
     }
   }
 
+  // Handle CSV export
+  const handleExportCSV = async () => {
+    setDownloading(true)
+    try {
+      // Fetch the CSV data
+      const response = await fetch("/api/export-csv")
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      // Get the CSV content
+      const csvContent = await response.text()
+
+      // Create a Blob with the CSV content
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" })
+
+      // Create a URL for the Blob
+      const url = window.URL.createObjectURL(blob)
+
+      // Create a link element
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `eurovision-data-${new Date().toISOString().split("T")[0]}.csv`
+
+      // Append the link to the body
+      document.body.appendChild(link)
+
+      // Click the link to trigger the download
+      link.click()
+
+      // Clean up
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(link)
+
+      toast({
+        title: "Success",
+        description: "CSV file downloaded successfully",
+      })
+    } catch (error) {
+      console.error("Error exporting CSV:", error)
+      toast({
+        title: "Error",
+        description: "Failed to export CSV. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   // Get country details by code
   const getCountry = (code) => {
     return countries.find((c) => c.code === code)
@@ -687,6 +739,28 @@ export default function SettingsPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+          </div>
+        </div>
+
+        {/* Export CSV */}
+        <div className="p-6 rounded-lg bg-black/60 border border-pink-600/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold font-title mb-2">Export Data</h2>
+              <p className="text-gray-400 text-sm">
+                Download a CSV file containing all votes, predictions, and scores.
+              </p>
+            </div>
+
+            <Button
+              variant="outline"
+              className="text-cyan-400 border-cyan-600/30 hover:bg-cyan-950/20 flex items-center gap-2"
+              onClick={handleExportCSV}
+              disabled={downloading}
+            >
+              {downloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Export CSV
+            </Button>
           </div>
         </div>
       </div>
