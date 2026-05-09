@@ -40,9 +40,9 @@ export function PresenceBar({ code, name }: { code: string; name: string }) {
     <header className="sticky top-0 z-30 backdrop-blur-md bg-dark-blue-900/70 border-b border-white/5">
       <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center justify-between gap-3">
         <Link
-          href="/"
+          href="/?leave=1"
           className="flex items-center gap-2 text-white/60 hover:text-white transition"
-          aria-label="Back to room picker"
+          aria-label="Leave room"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>

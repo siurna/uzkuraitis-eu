@@ -8,37 +8,19 @@ import {
   readAdminSession,
 } from "@/lib/admin/session";
 
-// Phase 1 of passkey enrollment. Authorization model:
-//   - If NO credentials exist yet → caller must present ADMIN_BOOTSTRAP_SECRET
-//     in the Authorization header. (Bootstrap.)
-//   - If credentials already exist → caller must already be authed (i.e. they
-//     signed in with an existing passkey first), so they can register a backup
-//     device.
+// Phase 1 of passkey enrollment. Authorization model (TOFU — trust on first
+// use):
+//   - If NO credentials exist yet → the next caller gets to enroll, no
+//     secret required. Lock down /admin/login behind something like Vercel
+//     Password Protection if you're worried about a window.
+//   - If credentials already exist → caller must already be authed (i.e.
+//     they signed in with an existing passkey first). This is the
+//     "add a backup device" flow from /admin/settings.
 export async function POST(request: Request) {
   const existing = await db.select({ id: adminCredentials.id }).from(adminCredentials);
-
   const session = await readAdminSession();
 
-  if (existing.length === 0) {
-    const expected = process.env.ADMIN_BOOTSTRAP_SECRET;
-    if (!expected) {
-      return NextResponse.json(
-        {
-          error:
-            "Admin not bootstrapped and ADMIN_BOOTSTRAP_SECRET is not set on the server.",
-        },
-        { status: 503 },
-      );
-    }
-    const auth = request.headers.get("authorization") ?? "";
-    const provided = auth.replace(/^Bearer\s+/i, "");
-    if (provided !== expected) {
-      return NextResponse.json(
-        { error: "Invalid bootstrap secret" },
-        { status: 401 },
-      );
-    }
-  } else if (!session.authed) {
+  if (existing.length > 0 && !session.authed) {
     return NextResponse.json(
       { error: "Sign in with an existing passkey first." },
       { status: 401 },

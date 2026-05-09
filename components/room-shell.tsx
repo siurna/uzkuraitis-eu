@@ -1,9 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import { RoomProvider } from "@/lib/liveblocks";
 import { Standings } from "@/components/standings";
 import { FloatingReactionsLayer } from "@/components/floating-reactions";
 import { PresenceBar } from "@/components/presence-bar";
+
+const LAST_ROOM_KEY = "uzk_last_room";
 
 export function RoomShell({
   code,
@@ -14,6 +17,12 @@ export function RoomShell({
   name: string;
   votingEnabled: boolean;
 }) {
+  // Persist the current room so the gate can auto-restore it after a phone
+  // sleep, tab restore, or PWA reopen. Cleared by RoomGate when ?leave=1.
+  useEffect(() => {
+    localStorage.setItem(LAST_ROOM_KEY, code);
+  }, [code]);
+
   return (
     <RoomProvider
       id={`room:${code}`}

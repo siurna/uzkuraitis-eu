@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createRoom } from "@/lib/rooms";
+import { isAdminAuthed } from "@/lib/admin/session";
 
 const CreateRoomSchema = z.object({
   name: z.string().trim().min(1).max(60).optional(),
 });
 
 export async function POST(request: Request) {
+  if (!(await isAdminAuthed())) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();

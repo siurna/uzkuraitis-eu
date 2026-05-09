@@ -49,10 +49,8 @@ export default async function AdminSettingsPage() {
             </code>
           </li>
           <li className="flex justify-between gap-2">
-            <span>Bootstrap secret</span>
-            <code className="text-white/40">
-              {process.env.ADMIN_BOOTSTRAP_SECRET ? "set (rotate me!)" : "unset"}
-            </code>
+            <span>Auth model</span>
+            <code className="text-white/40">passkey (TOFU)</code>
           </li>
         </ul>
       </section>
