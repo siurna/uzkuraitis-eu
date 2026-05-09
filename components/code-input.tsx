@@ -135,10 +135,9 @@ export function CodeInput({
             "focus:outline-none focus:bg-flamingo/15",
             // Filled cell stays slightly lit even when not focused.
             char && "bg-flamingo/8",
-            // Glyph styling — leading-none + flex-equivalent vertical
-            // centering via the input's own line-box is good enough at
-            // these aspect-ratios.
-            "text-center font-display uppercase tabular-nums leading-none",
+            // Singing Sans has top-heavy metrics — a small pt nudge sits
+            // the cap-height visually centered in the cell.
+            "text-center font-display uppercase tabular-nums leading-none pt-1",
             "text-3xl sm:text-4xl text-white caret-flamingo",
           )}
         />

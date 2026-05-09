@@ -13,10 +13,10 @@ export function HeartbeatBackdrop() {
       className="pointer-events-none fixed inset-0 -z-10 flex items-center justify-center overflow-hidden"
     >
       <motion.div
-        initial={{ scale: 1, opacity: 0.55 }}
+        initial={{ scale: 1, opacity: 0.18 }}
         animate={{
           scale: [1, 1.07, 1, 1.05, 1],
-          opacity: [0.45, 0.6, 0.45, 0.55, 0.45],
+          opacity: [0.15, 0.22, 0.15, 0.2, 0.15],
         }}
         transition={{
           duration: 1.2,
@@ -26,7 +26,7 @@ export function HeartbeatBackdrop() {
           ease: "easeInOut",
         }}
         className="relative aspect-square w-[120vmin]"
-        style={{ filter: "blur(6px) saturate(1.1)" }}
+        style={{ filter: "blur(10px) saturate(0.85)" }}
       >
         <Image
           src="/images/70-heart@2x.webp"
