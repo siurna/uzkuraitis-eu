@@ -6,10 +6,14 @@ import { nanoid } from "nanoid";
 
 // Accept either the official LIVEBLOCKS_SECRET_KEY (current name) or
 // LIVEBLOCKS_PRIVATE_KEY (legacy / dashboard label). Either is the sk_… key.
-const liveblocksSecret =
-  process.env.LIVEBLOCKS_SECRET_KEY ?? process.env.LIVEBLOCKS_PRIVATE_KEY ?? "";
-
-const liveblocks = new Liveblocks({ secret: liveblocksSecret });
+// Lazy init so `next build`'s page-data collection pass (which runs without
+// env vars) doesn't choke on the SDK's strict secret-prefix check.
+function getLiveblocks(): Liveblocks | null {
+  const secret =
+    process.env.LIVEBLOCKS_SECRET_KEY ?? process.env.LIVEBLOCKS_PRIVATE_KEY;
+  if (!secret || !secret.startsWith("sk_")) return null;
+  return new Liveblocks({ secret });
+}
 
 const PRESENCE_PALETTE = [
   "#ff4fb5", "#7ce0d8", "#f7c948", "#7dd3fc",
@@ -23,11 +27,12 @@ function colorForId(id: string): string {
 }
 
 export async function POST(request: Request) {
-  if (!liveblocksSecret) {
+  const liveblocks = getLiveblocks();
+  if (!liveblocks) {
     return NextResponse.json(
       {
         error:
-          "Liveblocks is not configured. Set LIVEBLOCKS_SECRET_KEY (or LIVEBLOCKS_PRIVATE_KEY).",
+          "Liveblocks is not configured. Set LIVEBLOCKS_SECRET_KEY (or LIVEBLOCKS_PRIVATE_KEY) to your sk_… key.",
       },
       { status: 503 },
     );

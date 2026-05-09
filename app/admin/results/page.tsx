@@ -2,6 +2,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { rooms, votes, voters } from "@/lib/db/schema";
 import { countries } from "@/lib/countries";
+import { Flag } from "@/components/flag";
 
 async function loadResults() {
   const list = await db
@@ -57,7 +58,7 @@ export default async function AdminResultsPage() {
                       className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/[0.03]"
                     >
                       <span className="w-6 text-white/40 tabular-nums">{i + 1}</span>
-                      <span className="text-base">{c?.flag ?? "🏳️"}</span>
+                      <Flag code={row.countryCode} size="sm" />
                       <span className="flex-1 truncate">{c?.name ?? row.countryCode}</span>
                       <span className="font-display text-flamingo tabular-nums">
                         {row.total}

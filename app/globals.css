@@ -13,7 +13,6 @@
  */
 
 @import "tailwindcss";
-@plugin "tw-animate-css";
 
 @font-face {
   font-family: "Singing Sans";
@@ -109,8 +108,10 @@
     background:
       radial-gradient(ellipse at top, oklch(28% 0.12 290 / 0.6), transparent 60%),
       radial-gradient(ellipse at bottom, oklch(40% 0.18 336 / 0.35), transparent 70%),
+      url("/images/participant-backdrop.webp") center/cover no-repeat,
       var(--color-dark-blue-900);
     background-attachment: fixed;
+    background-blend-mode: screen, screen, multiply;
     color: var(--color-foreground);
     -webkit-tap-highlight-color: oklch(70% 0.27 336 / 0.3);
   }

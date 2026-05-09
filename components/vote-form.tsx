@@ -28,6 +28,7 @@ import { ArrowLeft, GripVertical, X, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { countries, getCountry } from "@/lib/countries";
+import { Flag } from "@/components/flag";
 
 const POINT_VALUES = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1] as const;
 type Points = (typeof POINT_VALUES)[number];
@@ -235,7 +236,7 @@ export function VoteForm({
                                bg-white/5 hover:bg-white/10 disabled:opacity-40
                                text-left transition"
                   >
-                    <span className="text-xl shrink-0">{c.flag}</span>
+                    <Flag code={c.code} size="sm" />
                     <span className="truncate text-sm">{c.name}</span>
                   </button>
                 </li>
@@ -317,7 +318,7 @@ function BallotSlot({
 
       {country ? (
         <>
-          <span className="text-2xl">{country.flag}</span>
+          <Flag code={country.code} size="md" />
           <div className="flex-1 min-w-0">
             <p className="font-display truncate">{country.name}</p>
             <p className="text-xs text-white/55 truncate">

@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { countries, getCountry } from "@/lib/countries";
 import { useEventListener } from "@/lib/liveblocks";
+import { Flag } from "@/components/flag";
 
 type ScoreRow = {
   code: string;
@@ -155,7 +156,7 @@ export function Standings({
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm
                              bg-gradient-to-r from-flamingo/30 to-turquoise/20 border border-white/10"
                 >
-                  {top && <span className="text-base leading-none">{top.flag}</span>}
+                  {top && <Flag code={top.code} size="sm" />}
                   {v.name}
                 </span>
               );
@@ -212,7 +213,7 @@ function CountryRow({
       >
         {index + 1}
       </div>
-      <span className="text-3xl shrink-0" aria-hidden>{score.flag}</span>
+      <Flag code={score.code} size="row" alt={`${score.name} flag`} />
       <div className="flex-1 min-w-0">
         <p className="font-display text-lg truncate">{score.name}</p>
         {detail && (detail.artist || detail.song) && (
