@@ -129,7 +129,11 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
               <Button
                 type="submit"
                 disabled={pending || code.length < 6}
-                className="h-12 w-full text-base font-display"
+                className="h-12 w-full font-display text-[19px] pt-[10px]
+                           bg-gradient-to-r from-gold via-flamingo to-purple
+                           text-white shadow-glow-pink
+                           hover:opacity-95 disabled:opacity-40
+                           disabled:bg-none disabled:bg-white/10"
               >
                 {pending ? "Checking…" : "Enter room"}
               </Button>
