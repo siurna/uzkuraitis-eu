@@ -35,8 +35,18 @@ export async function readAdminSession(): Promise<IronSession<AdminSession>> {
 }
 
 export async function isAdminAuthed(): Promise<boolean> {
-  const session = await readAdminSession();
-  return session.authed === true;
+  // Don't crash the entire admin tree if ADMIN_SESSION_SECRET is missing —
+  // treat it as "not authed" so /admin/login is still reachable and the
+  // session error surfaces in a place where the operator can fix it.
+  try {
+    const session = await readAdminSession();
+    return session.authed === true;
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[admin] session read failed:", err);
+    }
+    return false;
+  }
 }
 
 export const ADMIN_RP_NAME = "Užkuraitis admin";

@@ -106,16 +106,16 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="w-full max-w-md flex flex-col items-center gap-10"
+            className="w-full max-w-sm flex flex-col items-center gap-8"
           >
-            <Logo2026 className="w-full max-w-xs" />
+            <Logo2026 className="w-full max-w-[14rem]" />
 
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 submit(code);
               }}
-              className="glass-card w-full rounded-2xl p-6 sm:p-8 flex flex-col items-center gap-6"
+              className="glass-card w-full rounded-2xl p-5 flex flex-col gap-4"
             >
               <CodeInput
                 value={code}
@@ -127,7 +127,7 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
               <Button
                 type="submit"
                 disabled={pending || code.length < 6}
-                className="h-14 w-full text-lg font-display"
+                className="h-12 w-full text-base font-display"
               >
                 {pending ? "Checking…" : "Enter room"}
               </Button>
