@@ -125,7 +125,11 @@ export function CodeInput({
           className={cn(
             "h-16 w-12 sm:h-20 sm:w-16 rounded-xl border bg-black/30",
             "text-center font-display uppercase tabular-nums",
-            "text-4xl sm:text-5xl text-white caret-flamingo",
+            // Match line-height to box height so the character sits dead-
+            // center instead of floating to the baseline (Singing Sans has
+            // generous metrics). pb is a small optical nudge for the cap.
+            "text-4xl sm:text-5xl leading-[64px] sm:leading-[80px]",
+            "text-white caret-flamingo align-middle pb-0",
             "border-white/15 focus:border-flamingo focus:outline-none",
             "focus:ring-2 focus:ring-flamingo/40 transition",
             "disabled:opacity-40",

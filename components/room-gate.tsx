@@ -115,7 +115,7 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
                 e.preventDefault();
                 submit(code);
               }}
-              className="w-full flex flex-col gap-6"
+              className="glass-card w-full rounded-2xl p-6 sm:p-8 flex flex-col items-center gap-6"
             >
               <CodeInput
                 value={code}
@@ -127,7 +127,7 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
               <Button
                 type="submit"
                 disabled={pending || code.length < 6}
-                className="h-14 text-lg font-display"
+                className="h-14 w-full text-lg font-display"
               >
                 {pending ? "Checking…" : "Enter room"}
               </Button>
