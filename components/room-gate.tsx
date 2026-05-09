@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { isValidRoomCode, normalizeRoomCode } from "@/lib/rooms";
 import { Button } from "@/components/ui/button";
@@ -57,33 +58,40 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
         <Logo2026 className="w-full max-w-xs" />
 
         <div className="glass-card w-full rounded-xl p-6 sm:p-8 flex flex-col gap-6">
-          <div className="flex items-center justify-center gap-2 rounded-full bg-black/30 p-1 text-sm">
-            <button
-              type="button"
-              onClick={() => setMode("join")}
-              className={`flex-1 rounded-full py-2 transition ${
-                mode === "join"
-                  ? "bg-flamingo text-white shadow-glow-pink"
-                  : "text-white/70 hover:text-white"
-              }`}
-            >
-              Join a room
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("create")}
-              className={`flex-1 rounded-full py-2 transition ${
-                mode === "create"
-                  ? "bg-flamingo text-white shadow-glow-pink"
-                  : "text-white/70 hover:text-white"
-              }`}
-            >
-              Create new
-            </button>
+          <div className="relative flex items-center justify-center gap-1 rounded-full bg-black/30 p-1 text-sm">
+            {(["join", "create"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={`relative flex-1 rounded-full py-2 z-10 transition ${
+                  mode === m ? "text-white" : "text-white/70 hover:text-white"
+                }`}
+              >
+                {mode === m && (
+                  <motion.span
+                    layoutId="gate-tab-pill"
+                    className="absolute inset-0 rounded-full bg-flamingo shadow-glow-pink"
+                    style={{ zIndex: -1 }}
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                {m === "join" ? "Join a room" : "Create new"}
+              </button>
+            ))}
           </div>
 
+          <AnimatePresence mode="wait" initial={false}>
           {mode === "join" ? (
-            <form onSubmit={handleJoin} className="flex flex-col gap-4">
+            <motion.form
+              key="join"
+              onSubmit={handleJoin}
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 16 }}
+              transition={{ duration: 0.18 }}
+              className="flex flex-col gap-4"
+            >
               <label className="text-sm font-medium text-white/80">
                 Room code
                 <Input
@@ -112,9 +120,17 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
                 Got a link with <code>?room=ABC123</code>? It'll bring you
                 straight in.
               </p>
-            </form>
+            </motion.form>
           ) : (
-            <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            <motion.form
+              key="create"
+              onSubmit={handleCreate}
+              initial={{ opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.18 }}
+              className="flex flex-col gap-4"
+            >
               <label className="text-sm font-medium text-white/80">
                 Party name
                 <Input
@@ -135,8 +151,9 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
               <p className="text-xs text-center text-white/50">
                 You'll get a 6-character code to share with friends.
               </p>
-            </form>
+            </motion.form>
           )}
+          </AnimatePresence>
         </div>
 
         <p className="text-xs text-white/40 font-display tracking-widest uppercase">

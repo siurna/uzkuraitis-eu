@@ -13,9 +13,9 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-  type DragStartEvent,
   closestCenter,
 } from "@dnd-kit/core";
+import { motion, AnimatePresence } from "motion/react";
 import {
   SortableContext,
   arrayMove,
@@ -316,29 +316,44 @@ function BallotSlot({
         {slot.points}
       </div>
 
-      {country ? (
-        <>
-          <Flag code={country.code} size="md" />
-          <div className="flex-1 min-w-0">
-            <p className="font-display truncate">{country.name}</p>
-            <p className="text-xs text-white/55 truncate">
-              {country.artist} — <span className="italic">{country.song}</span>
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClear}
-            className="text-white/40 hover:text-error transition"
-            aria-label="Clear slot"
+      <AnimatePresence mode="wait" initial={false}>
+        {country ? (
+          <motion.div
+            key={`filled-${country.code}`}
+            initial={{ opacity: 0, x: 12, scale: 0.85 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -12, scale: 0.85 }}
+            transition={{ type: "spring", stiffness: 480, damping: 28 }}
+            className="flex flex-1 items-center gap-3 min-w-0"
           >
-            <X className="h-4 w-4" />
-          </button>
-        </>
-      ) : (
-        <p className="flex-1 text-sm text-white/40 italic">
-          Tap a country below or drag here
-        </p>
-      )}
+            <Flag code={country.code} size="md" />
+            <div className="flex-1 min-w-0">
+              <p className="font-display truncate">{country.name}</p>
+              <p className="text-xs text-white/55 truncate">
+                {country.artist} — <span className="italic">{country.song}</span>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClear}
+              className="text-white/40 hover:text-error transition"
+              aria-label="Clear slot"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </motion.div>
+        ) : (
+          <motion.p
+            key="empty"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 text-sm text-white/40 italic"
+          >
+            Tap a country below or drag here
+          </motion.p>
+        )}
+      </AnimatePresence>
     </li>
   );
 }

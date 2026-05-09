@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "motion/react";
 import { Share2, Users, ArrowLeft } from "lucide-react";
 import { useOthers, useSelf } from "@/lib/liveblocks";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Logo2026 } from "@/components/logo-2026";
 
 export function PresenceBar({ code, name }: { code: string; name: string }) {
   const others = useOthers();
@@ -74,28 +74,35 @@ export function PresenceBar({ code, name }: { code: string; name: string }) {
 
       {others.length > 0 && (
         <div className="container mx-auto max-w-3xl px-4 pb-3 flex items-center gap-2 overflow-x-auto">
-          {[self, ...others].filter(Boolean).map((u) => {
-            const info = u!.info;
-            const initial =
-              info?.name?.trim()?.charAt(0).toUpperCase() ?? "?";
-            return (
-              <div
-                key={u!.connectionId}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/5 text-xs whitespace-nowrap"
-                title={info?.name ?? "Guest"}
-              >
-                <span
-                  className="h-5 w-5 rounded-full flex items-center justify-center text-[11px] font-semibold"
-                  style={{ background: info?.color ?? "#7ce0d8" }}
+          <AnimatePresence initial={false} mode="popLayout">
+            {[self, ...others].filter(Boolean).map((u) => {
+              const info = u!.info;
+              const initial =
+                info?.name?.trim()?.charAt(0).toUpperCase() ?? "?";
+              return (
+                <motion.div
+                  key={u!.connectionId}
+                  layout
+                  initial={{ opacity: 0, scale: 0.4 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.4 }}
+                  transition={{ type: "spring", stiffness: 380, damping: 22 }}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/5 text-xs whitespace-nowrap"
+                  title={info?.name ?? "Guest"}
                 >
-                  {initial}
-                </span>
-                <span className="text-white/70 max-w-24 truncate">
-                  {info?.name ?? "Guest"}
-                </span>
-              </div>
-            );
-          })}
+                  <span
+                    className="h-5 w-5 rounded-full flex items-center justify-center text-[11px] font-semibold"
+                    style={{ background: info?.color ?? "#7ce0d8" }}
+                  >
+                    {initial}
+                  </span>
+                  <span className="text-white/70 max-w-24 truncate">
+                    {info?.name ?? "Guest"}
+                  </span>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       )}
 

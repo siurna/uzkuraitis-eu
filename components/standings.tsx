@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, Loader2, RefreshCw } from "lucide-react";
+import { motion, AnimatePresence, LayoutGroup } from "motion/react";
+import { ChevronDown, ChevronUp, Loader2, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { countries, getCountry } from "@/lib/countries";
 import { useEventListener } from "@/lib/liveblocks";
@@ -42,6 +43,11 @@ export function Standings({
   const [showAll, setShowAll] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
 
+  // Track previous rank per country so we can flash a "+3 / -2" badge when a
+  // row changes position. The set is bounded by the visible country count.
+  const prevRanks = useRef<Map<string, number>>(new Map());
+  const [rankDeltas, setRankDeltas] = useState<Record<string, number>>({});
+
   const fetchScores = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -60,17 +66,10 @@ export function Standings({
     fetchScores();
   }, [fetchScores]);
 
-  // Liveblocks broadcasts a "scores changed" hint after a vote is submitted.
-  // We refetch on that hint instead of polling.
   useEventListener(({ event }) => {
-    if ((event as { type?: string }).type === "country") {
-      // reactions don't change scores; ignore
-      return;
-    }
+    if ((event as { type?: string }).type === "country") return;
   });
 
-  // Light polling fallback (every 30s — still better than the old 10s firehose)
-  // since real-time score sync goes through the Liveblocks "scores" event.
   useEffect(() => {
     const id = setInterval(fetchScores, 30000);
     return () => clearInterval(id);
@@ -96,6 +95,23 @@ export function Standings({
 
   const visible = showAll ? allWithZero : scores.slice(0, 5);
 
+  // Compute rank deltas every time the visible set updates. Positive delta =
+  // moved up (was 5th, now 2nd → +3). Show the indicator for ~2.4s.
+  useEffect(() => {
+    const deltas: Record<string, number> = {};
+    visible.forEach((row, i) => {
+      const prev = prevRanks.current.get(row.code);
+      if (prev !== undefined && prev !== i) deltas[row.code] = prev - i;
+    });
+    if (Object.keys(deltas).length > 0) {
+      setRankDeltas(deltas);
+      const t = setTimeout(() => setRankDeltas({}), 2400);
+      visible.forEach((row, i) => prevRanks.current.set(row.code, i));
+      return () => clearTimeout(t);
+    }
+    visible.forEach((row, i) => prevRanks.current.set(row.code, i));
+  }, [visible]);
+
   return (
     <main className="container mx-auto max-w-3xl px-4 py-6 flex-1 flex flex-col gap-8">
       <section className="flex flex-col gap-4">
@@ -118,15 +134,28 @@ export function Standings({
             <Loader2 className="h-10 w-10 animate-spin text-flamingo" />
           </div>
         ) : visible.length === 0 ? (
-          <div className="glass-card rounded-xl p-8 text-center text-white/60 font-display">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-card rounded-xl p-8 text-center text-white/60 font-display"
+          >
             No votes yet — be the first.
-          </div>
+          </motion.div>
         ) : (
-          <ol className="flex flex-col gap-2 country-list-container">
-            {visible.map((s, i) => (
-              <CountryRow key={s.code} score={s} index={i} />
-            ))}
-          </ol>
+          <LayoutGroup>
+            <motion.ol layout className="flex flex-col gap-2">
+              <AnimatePresence initial={false}>
+                {visible.map((s, i) => (
+                  <CountryRow
+                    key={s.code}
+                    score={s}
+                    index={i}
+                    delta={rankDeltas[s.code]}
+                  />
+                ))}
+              </AnimatePresence>
+            </motion.ol>
+          </LayoutGroup>
         )}
 
         {scores.length > 0 && (
@@ -148,19 +177,26 @@ export function Standings({
         <section className="flex flex-col gap-3">
           <h3 className="text-2xl font-display gradient-text">Votes cast</h3>
           <div className="flex flex-wrap gap-2 justify-center">
-            {voters.map((v) => {
-              const top = v.votes["12"] ? getCountry(v.votes["12"]) : null;
-              return (
-                <span
-                  key={v.id}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm
-                             bg-gradient-to-r from-flamingo/30 to-turquoise/20 border border-white/10"
-                >
-                  {top && <Flag code={top.code} size="sm" />}
-                  {v.name}
-                </span>
-              );
-            })}
+            <AnimatePresence initial={false}>
+              {voters.map((v) => {
+                const top = v.votes["12"] ? getCountry(v.votes["12"]) : null;
+                return (
+                  <motion.span
+                    key={v.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.6 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 24 }}
+                    className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full text-sm
+                               bg-gradient-to-r from-flamingo/30 to-turquoise/20 border border-white/10"
+                  >
+                    {top && <Flag code={top.code} size="sm" />}
+                    {v.name}
+                  </motion.span>
+                );
+              })}
+            </AnimatePresence>
           </div>
         </section>
       )}
@@ -191,9 +227,11 @@ export function Standings({
 function CountryRow({
   score,
   index,
+  delta,
 }: {
   score: ScoreRow;
   index: number;
+  delta?: number;
 }) {
   const detail = getCountry(score.code);
   const badge = (() => {
@@ -204,15 +242,24 @@ function CountryRow({
   })();
 
   return (
-    <li
-      className="glass-card rounded-xl p-3 flex items-center gap-3 country-item"
-      style={{ ["--index" as string]: index }}
+    <motion.li
+      layout
+      layoutId={`row-${score.code}`}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={{
+        layout: { type: "spring", stiffness: 320, damping: 30 },
+        opacity: { duration: 0.25 },
+      }}
+      className="relative glass-card rounded-xl p-3 flex items-center gap-3"
     >
-      <div
+      <motion.div
+        layout="position"
         className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center font-display text-base ${badge}`}
       >
         {index + 1}
-      </div>
+      </motion.div>
       <Flag code={score.code} size="row" alt={`${score.name} flag`} />
       <div className="flex-1 min-w-0">
         <p className="font-display text-lg truncate">{score.name}</p>
@@ -223,11 +270,47 @@ function CountryRow({
         )}
       </div>
       <div className="text-right">
-        <p className="font-display text-2xl text-flamingo tabular-nums leading-none">
-          {score.totalPoints}
-        </p>
+        <ScoreNumber value={score.totalPoints} />
         <p className="text-[10px] uppercase tracking-widest text-white/40">pts</p>
       </div>
-    </li>
+
+      <AnimatePresence>
+        {delta !== undefined && delta !== 0 && (
+          <motion.span
+            key="delta"
+            initial={{ opacity: 0, scale: 0.4, y: 0 }}
+            animate={{ opacity: 1, scale: 1, y: -28 }}
+            exit={{ opacity: 0, y: -48 }}
+            transition={{ type: "spring", stiffness: 320, damping: 22 }}
+            className={`absolute -top-1 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full
+                        text-xs font-display tabular-nums shadow-lg
+                        ${delta > 0 ? "bg-success text-black" : "bg-error text-white"}`}
+          >
+            {delta > 0 ? (
+              <TrendingUp className="h-3 w-3" />
+            ) : (
+              <TrendingDown className="h-3 w-3" />
+            )}
+            {delta > 0 ? `+${delta}` : delta}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </motion.li>
+  );
+}
+
+// Animated tabular score that springs when the value changes (the points
+// counter incrementing as juries give their 12s — Eurovision-broadcast feel).
+function ScoreNumber({ value }: { value: number }) {
+  return (
+    <motion.p
+      key={value}
+      initial={{ scale: 1.4, color: "oklch(78.49% 0.135563 189.949)" }}
+      animate={{ scale: 1, color: "oklch(70.55% 0.2725 336.19)" }}
+      transition={{ type: "spring", stiffness: 360, damping: 18, color: { duration: 0.6 } }}
+      className="font-display text-2xl tabular-nums leading-none origin-right"
+    >
+      {value}
+    </motion.p>
   );
 }
