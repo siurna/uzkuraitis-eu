@@ -137,15 +137,27 @@
   color: transparent;
 }
 
+/* Frosted-glass card with a soft brand-coloured wash, an inset top
+   highlight, and a low ambient drop shadow. Subtle on dark backgrounds —
+   you should feel it, not see it. */
 .glass-card {
-  background: linear-gradient(
-    180deg,
-    oklch(25% 0.06 264 / 0.6),
-    oklch(18% 0.08 264 / 0.55)
-  );
+  position: relative;
+  background:
+    linear-gradient(
+      155deg,
+      oklch(70% 0.27 336 / 0.06) 0%,
+      oklch(28% 0.08 264 / 0.55) 35%,
+      oklch(18% 0.08 264 / 0.6) 65%,
+      oklch(78% 0.13 189 / 0.05) 100%
+    );
   border: 1px solid var(--color-card-border);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  box-shadow:
+    0 1px 0 0 oklch(100% 0 0 / 0.06) inset,
+    0 -1px 0 0 oklch(0% 0 0 / 0.2) inset,
+    0 8px 24px -10px oklch(0% 0 0 / 0.5),
+    0 24px 60px -30px oklch(70% 0.27 336 / 0.25);
 }
 
 .glow-pink {
