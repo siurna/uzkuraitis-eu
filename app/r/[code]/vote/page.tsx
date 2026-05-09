@@ -17,15 +17,21 @@ export default async function VotePage({ params }: { params: RouteParams }) {
             Voting is closed
           </p>
           <p className="text-white/60 text-sm">
-            The host has paused voting in <strong>{room.name}</strong>. Hang
-            tight — the standings page is still live.
+            The host has paused voting in <strong>{room.name}</strong>. The
+            standings page is still live.
           </p>
         </div>
       </main>
     );
   }
 
-  return <VoteForm roomCode={room.code} roomName={room.name} />;
+  return (
+    <VoteForm
+      roomCode={room.code}
+      roomName={room.name}
+      homeCountryCode={room.homeCountryCode}
+    />
+  );
 }
 
 export const dynamic = "force-dynamic";

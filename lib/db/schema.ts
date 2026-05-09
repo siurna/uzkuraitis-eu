@@ -20,6 +20,9 @@ export const rooms = pgTable(
     code: text("code").notNull().unique(),
     name: text("name").notNull(),
     votingEnabled: boolean("voting_enabled").notNull().default(true),
+    // ISO 3166-1 alpha-2 lowercase. Used to ask voters where they think
+    // this country will finish, scored separately from the top-10 ballot.
+    homeCountryCode: text("home_country_code").notNull().default("lt"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -41,6 +44,10 @@ export const voters = pgTable(
       .references(() => rooms.id, { onDelete: "cascade" }),
     sessionId: text("session_id").notNull(),
     name: text("name").notNull(),
+    // Predicted final placement for this room's home country (e.g. "where
+    // will Lithuania finish?"). Range 1..N where N is the number of
+    // finalists. Nullable: voters who skip this still cast their ballot.
+    homeCountryPrediction: integer("home_country_prediction"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -103,6 +110,17 @@ export const roomSettings = pgTable(
   },
   (t) => [primaryKey({ columns: [t.roomId, t.key] })],
 );
+
+// The official Eurovision result, entered by an admin once the show is
+// over. One row per finalist, placement is 1..N. Global because the show
+// only happens once; rooms reference this same table to score their voters.
+export const officialResults = pgTable("official_results", {
+  countryCode: text("country_code").primaryKey(),
+  placement: integer("placement").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 export const roomsRelations = relations(rooms, ({ many }) => ({
   voters: many(voters),

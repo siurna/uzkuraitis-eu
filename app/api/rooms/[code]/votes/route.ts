@@ -19,6 +19,9 @@ const VotesSchema = z.object({
       ) as Record<(typeof POINT_KEYS)[number], z.ZodString>,
     )
     .strict(),
+  // Home-country placement prediction (e.g. "Lithuania finishes 7th").
+  // Optional, but required for full scoring once results are entered.
+  homePrediction: z.number().int().min(1).max(50).nullable().optional(),
 });
 
 type RouteCtx = { params: Promise<{ code: string }> };
@@ -51,7 +54,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     );
   }
 
-  const { name, sessionId, votes: ballot } = parsed.data;
+  const { name, sessionId, votes: ballot, homePrediction } = parsed.data;
 
   // Cross-check countries actually exist + no dupes.
   const validCodes = new Set(countries.map((c) => c.code));
@@ -72,13 +75,23 @@ export async function POST(request: Request, { params }: RouteCtx) {
     used.add(code);
   }
 
-  // Upsert voter on (room_id, session_id).
+  // Upsert voter on (room_id, session_id). Same call also persists the
+  // home-country prediction so it's saved alongside the ballot.
   const [voter] = await db
     .insert(voters)
-    .values({ roomId: room.id, sessionId, name })
+    .values({
+      roomId: room.id,
+      sessionId,
+      name,
+      homeCountryPrediction: homePrediction ?? null,
+    })
     .onConflictDoUpdate({
       target: [voters.roomId, voters.sessionId],
-      set: { name, updatedAt: sql`now()` },
+      set: {
+        name,
+        homeCountryPrediction: homePrediction ?? null,
+        updatedAt: sql`now()`,
+      },
     })
     .returning();
 

@@ -164,6 +164,19 @@
   box-shadow: var(--shadow-glow-pink);
 }
 
+/* Horizontal sweep gradient used as the per-row tint on list entries
+   (standings rows, ballot slots, voter cards). Subtle blue->purple->pink
+   wash, sourced from the design system. */
+.list-entry-gradient {
+  background: linear-gradient(
+    90deg,
+    #0334de66 16.83%,
+    #7a33d800 40.87%,
+    #af33d50a 60.1%,
+    #f0f6 98.56%
+  );
+}
+
 .bg-radial-fade {
   background:
     radial-gradient(

@@ -45,8 +45,12 @@ export type ReactionEvent =
   | { type: "country"; emoji: string; countryCode: string };
 
 export type ScoresUpdatedEvent = { type: "scores:updated" };
+export type LeaderboardUpdatedEvent = { type: "leaderboard:updated" };
 
-export type RoomEvent = ReactionEvent | ScoresUpdatedEvent;
+export type RoomEvent =
+  | ReactionEvent
+  | ScoresUpdatedEvent
+  | LeaderboardUpdatedEvent;
 
 export const {
   RoomProvider,

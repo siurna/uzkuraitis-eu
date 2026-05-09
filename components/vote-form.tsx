@@ -38,22 +38,28 @@ type Slot = {
 };
 
 const STORAGE_KEY = (code: string) => `uzk_ballot_${code}`;
+const PREDICTION_KEY = (code: string) => `uzk_home_${code}`;
 const SESSION_KEY = "uzk_session";
 const NAME_KEY = "uzk_name";
 
 export function VoteForm({
   roomCode,
   roomName,
+  homeCountryCode,
 }: {
   roomCode: string;
   roomName: string;
+  homeCountryCode: string;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [slots, setSlots] = useState<Slot[]>(
     POINT_VALUES.map((p) => ({ points: p, countryCode: null })),
   );
+  const [homePrediction, setHomePrediction] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+
+  const homeCountry = getCountry(homeCountryCode);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -61,7 +67,7 @@ export function VoteForm({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  // Restore session id + previous ballot on mount.
+  // Restore session id + previous ballot + previous prediction on mount.
   useEffect(() => {
     if (!localStorage.getItem(SESSION_KEY)) {
       localStorage.setItem(SESSION_KEY, `s_${nanoid(16)}`);
@@ -73,15 +79,25 @@ export function VoteForm({
         const parsed = JSON.parse(stored) as Slot[];
         if (Array.isArray(parsed) && parsed.length === 10) setSlots(parsed);
       } catch {
-        // ignore
+        /* ignore corrupt draft */
       }
     }
+    const storedPrediction = localStorage.getItem(PREDICTION_KEY(roomCode));
+    if (storedPrediction) setHomePrediction(storedPrediction);
   }, [roomCode]);
 
-  // Persist ballot drafts so a tap into another tab doesn't lose progress.
+  // Persist drafts so a tap into another tab doesn't lose progress.
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY(roomCode), JSON.stringify(slots));
   }, [slots, roomCode]);
+
+  useEffect(() => {
+    if (homePrediction) {
+      localStorage.setItem(PREDICTION_KEY(roomCode), homePrediction);
+    } else {
+      localStorage.removeItem(PREDICTION_KEY(roomCode));
+    }
+  }, [homePrediction, roomCode]);
 
   const usedCountryCodes = useMemo(
     () => new Set(slots.map((s) => s.countryCode).filter(Boolean) as string[]),
@@ -133,7 +149,7 @@ export function VoteForm({
       return;
     }
     if (!allFilled) {
-      toast.error(`Fill all 10 slots — ${10 - filledCount} to go.`);
+      toast.error(`Fill all 10 slots, ${10 - filledCount} to go.`);
       return;
     }
     setSubmitting(true);
@@ -143,6 +159,9 @@ export function VoteForm({
       const ballot = Object.fromEntries(
         slots.map((s) => [String(s.points), s.countryCode!]),
       );
+      const trimmedPrediction = homePrediction.trim();
+      const predictionInt =
+        trimmedPrediction === "" ? null : Number(trimmedPrediction);
       const res = await fetch(`/api/rooms/${roomCode}/votes`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -150,6 +169,10 @@ export function VoteForm({
           name: name.trim(),
           sessionId,
           votes: ballot,
+          homePrediction:
+            predictionInt && Number.isFinite(predictionInt)
+              ? predictionInt
+              : null,
         }),
       });
       if (!res.ok) {
@@ -208,6 +231,41 @@ export function VoteForm({
             </SortableContext>
           </DndContext>
         </section>
+
+        {homeCountry && (
+          <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <Flag code={homeCountry.code} size="lg" />
+              <div className="flex-1 min-w-0">
+                <h2 className="font-display text-xl gradient-text">
+                  Where will {homeCountry.name} finish?
+                </h2>
+                <p className="text-xs text-white/50">
+                  Closer guesses score more. Exact = 10, off by 1 = 7,
+                  off by 2 = 5, off by 3 to 5 = 3, off by 6 to 10 = 1.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={countries.length}
+                placeholder="?"
+                value={homePrediction}
+                onChange={(e) => setHomePrediction(e.target.value)}
+                className="h-14 w-20 rounded-xl border border-white/15 bg-black/30
+                           text-center font-display text-3xl tabular-nums text-white
+                           caret-flamingo focus:border-flamingo focus:outline-none
+                           focus:ring-2 focus:ring-flamingo/40 transition"
+              />
+              <span className="text-sm text-white/40">
+                / {countries.length} finalists
+              </span>
+            </div>
+          </section>
+        )}
 
         <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
           <h2 className="font-display text-xl gradient-text">
@@ -291,7 +349,7 @@ function BallotSlot({
         transition,
         opacity: isDragging ? 0.7 : 1,
       }}
-      className={`flex items-center gap-3 rounded-xl border ${tone} p-3`}
+      className={`list-entry-gradient flex items-center gap-3 rounded-xl border ${tone} p-3`}
     >
       <button
         type="button"

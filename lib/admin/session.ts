@@ -51,12 +51,20 @@ export async function isAdminAuthed(): Promise<boolean> {
 
 export const ADMIN_RP_NAME = "Eurovision 2026 admin";
 
+// WebAuthn binds passkeys to a relying-party ID (the hostname). Vercel
+// preview deploys generate unique hostnames per deploy, so falling back
+// to the request hostname means every redeploy invalidates every passkey.
+//
+// Set WEBAUTHN_RP_ID + WEBAUTHN_ORIGIN to your stable domain (e.g. a
+// custom domain pointed at this project, or the production .vercel.app
+// URL if you're staying on previews) and the passkeys persist across
+// deploys.
 export function getRpId(request: Request): string {
-  const url = new URL(request.url);
-  return url.hostname;
+  if (process.env.WEBAUTHN_RP_ID) return process.env.WEBAUTHN_RP_ID;
+  return new URL(request.url).hostname;
 }
 
 export function getOrigin(request: Request): string {
-  const url = new URL(request.url);
-  return url.origin;
+  if (process.env.WEBAUTHN_ORIGIN) return process.env.WEBAUTHN_ORIGIN;
+  return new URL(request.url).origin;
 }
