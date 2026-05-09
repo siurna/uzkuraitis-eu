@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Trophy, Settings, Vote, LogOut } from "lucide-react";
+import { Trophy, Settings, Vote, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -26,10 +26,12 @@ export function AdminNav() {
   return (
     <header className="sticky top-0 z-30 bg-dark-blue-900/85 backdrop-blur-md border-b border-white/5">
       <div className="container mx-auto max-w-5xl px-4 h-14 flex items-center gap-4">
-        <Link href="/" className="text-white/60 hover:text-white">
-          <Home className="h-5 w-5" />
+        <Link
+          href="/admin"
+          className="font-display text-lg gradient-text shrink-0"
+        >
+          Backstage
         </Link>
-        <span className="font-display text-lg">Admin</span>
         <nav className="ml-auto flex items-center gap-1">
           {navItems.map(({ path, label, icon: Icon }) => {
             const active = pathname === path;
@@ -53,6 +55,7 @@ export function AdminNav() {
             size="sm"
             onClick={logout}
             className="text-white/60"
+            aria-label="Log out"
           >
             <LogOut className="h-4 w-4" />
           </Button>

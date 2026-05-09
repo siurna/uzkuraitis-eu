@@ -37,13 +37,16 @@ export type UserMeta = {
   };
 };
 
-// One-shot reactions broadcast to everyone in the room. Both the floating
-// emoji bar and the per-country counter button push these events.
+// One-shot reactions + state-change hints broadcast to everyone in the room.
+// Reactions originate on clients, scores:updated is sent by the server-side
+// vote handler so clients refetch without polling.
 export type ReactionEvent =
   | { type: "floating"; emoji: string; x: number; y: number }
   | { type: "country"; emoji: string; countryCode: string };
 
-export type RoomEvent = ReactionEvent;
+export type ScoresUpdatedEvent = { type: "scores:updated" };
+
+export type RoomEvent = ReactionEvent | ScoresUpdatedEvent;
 
 export const {
   RoomProvider,

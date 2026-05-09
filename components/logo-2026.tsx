@@ -1,36 +1,67 @@
+"use client";
+
 import Image from "next/image";
+import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
-// Official Eurovision 2026 70-year wordmark, scraped from
-// eurovision.com/static/images/. WebP, served at @4x for crisp HiDPI.
-// The "United by music" ribbon below is the official ubm.svg asset.
+// Official Eurovision 2026 70-year wordmark + UBM ribbon, scraped from
+// eurovision.com/static/images/. The whole stack fades in on mount with a
+// staggered reveal so the gate doesn't pop into existence.
 export function Logo2026({ className }: { className?: string }) {
   return (
-    <div
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={{
+        hidden: {},
+        visible: { transition: { staggerChildren: 0.18, delayChildren: 0.05 } },
+      }}
       className={cn(
         "flex flex-col items-center text-center select-none gap-3",
         className,
       )}
     >
-      <Image
-        src="/images/70-logo@2x.webp"
-        alt="Eurovision Song Contest"
-        width={420}
-        height={140}
-        priority
-        className="w-full max-w-[280px] h-auto drop-shadow-[0_0_24px_rgba(124,224,216,0.25)]"
-      />
-      <Image
-        src="/images/ubm.svg"
-        alt="United by music"
-        width={120}
-        height={32}
-        className="opacity-80"
-      />
-      <p className="text-xs uppercase tracking-[0.4em] text-white/50 font-display">
+      <motion.div
+        variants={{
+          hidden: { opacity: 0, y: 12, scale: 0.92 },
+          visible: { opacity: 1, y: 0, scale: 1 },
+        }}
+        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <Image
+          src="/images/70-logo@2x.webp"
+          alt="Eurovision Song Contest"
+          width={420}
+          height={140}
+          priority
+          className="w-full max-w-[280px] h-auto drop-shadow-[0_0_24px_rgba(124,224,216,0.25)]"
+        />
+      </motion.div>
+      <motion.div
+        variants={{
+          hidden: { opacity: 0, y: 8 },
+          visible: { opacity: 0.85, y: 0 },
+        }}
+        transition={{ duration: 0.6 }}
+      >
+        <Image
+          src="/images/ubm.svg"
+          alt="United by music"
+          width={120}
+          height={32}
+        />
+      </motion.div>
+      <motion.p
+        variants={{
+          hidden: { opacity: 0 },
+          visible: { opacity: 0.5 },
+        }}
+        transition={{ duration: 0.6 }}
+        className="text-xs uppercase tracking-[0.4em] text-white font-display"
+      >
         Vienna 2026
-      </p>
-    </div>
+      </motion.p>
+    </motion.div>
   );
 }
 

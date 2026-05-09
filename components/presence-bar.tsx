@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
-import { Share2, Users, ArrowLeft } from "lucide-react";
+import { Share2, Users } from "lucide-react";
 import { useOthers, useSelf } from "@/lib/liveblocks";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -18,8 +17,8 @@ export function PresenceBar({ code, name }: { code: string; name: string }) {
   const share = async () => {
     const url = `${window.location.origin}/?room=${code}`;
     const payload = {
-      title: `${name} · Eurovision 2026`,
-      text: `Join my Eurovision room — code ${code}`,
+      title: `${name}, Eurovision 2026`,
+      text: `Join my Eurovision room, code ${code}`,
       url,
     };
     if (navigator.share) {
@@ -27,7 +26,7 @@ export function PresenceBar({ code, name }: { code: string; name: string }) {
         await navigator.share(payload);
         return;
       } catch {
-        // user cancelled — fall through to clipboard
+        /* user cancelled, fall through to clipboard */
       }
     }
     await navigator.clipboard.writeText(url);
@@ -39,14 +38,6 @@ export function PresenceBar({ code, name }: { code: string; name: string }) {
   return (
     <header className="sticky top-0 z-30 backdrop-blur-md bg-dark-blue-900/70 border-b border-white/5">
       <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center justify-between gap-3">
-        <Link
-          href="/?leave=1"
-          className="flex items-center gap-2 text-white/60 hover:text-white transition"
-          aria-label="Leave room"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2">
             <p className="font-display text-lg truncate">{name}</p>
@@ -106,7 +97,6 @@ export function PresenceBar({ code, name }: { code: string; name: string }) {
         </div>
       )}
 
-      {/* hidden visual reference — copied state still announces success */}
       <span aria-live="polite" className="sr-only">
         {copied ? "Link copied" : ""}
       </span>

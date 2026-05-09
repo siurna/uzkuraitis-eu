@@ -5,6 +5,7 @@ import { RoomProvider } from "@/lib/liveblocks";
 import { Standings } from "@/components/standings";
 import { FloatingReactionsLayer } from "@/components/floating-reactions";
 import { PresenceBar } from "@/components/presence-bar";
+import { NameGate } from "@/components/name-gate";
 
 const LAST_ROOM_KEY = "uzk_last_room";
 
@@ -28,11 +29,13 @@ export function RoomShell({
       id={`room:${code}`}
       initialPresence={{ name: null, emoji: null, hoveredCountry: null }}
     >
-      <div className="min-h-screen flex flex-col pb-32">
-        <PresenceBar code={code} name={name} />
-        <Standings code={code} votingEnabled={votingEnabled} />
-        <FloatingReactionsLayer code={code} />
-      </div>
+      <NameGate>
+        <div className="min-h-screen flex flex-col pb-32">
+          <PresenceBar code={code} name={name} />
+          <Standings code={code} votingEnabled={votingEnabled} />
+          <FloatingReactionsLayer code={code} />
+        </div>
+      </NameGate>
     </RoomProvider>
   );
 }

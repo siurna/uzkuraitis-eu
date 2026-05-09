@@ -3,7 +3,13 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, LayoutGroup } from "motion/react";
-import { ChevronDown, ChevronUp, Loader2, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { countries, getCountry } from "@/lib/countries";
 import { useEventListener } from "@/lib/liveblocks";
@@ -39,41 +45,39 @@ export function Standings({
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [voters, setVoters] = useState<VoterRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
 
-  // Track previous rank per country so we can flash a "+3 / -2" badge when a
-  // row changes position. The set is bounded by the visible country count.
   const prevRanks = useRef<Map<string, number>>(new Map());
   const [rankDeltas, setRankDeltas] = useState<Record<string, number>>({});
 
   const fetchScores = useCallback(async () => {
-    setRefreshing(true);
     try {
-      const res = await fetch(`/api/rooms/${code}/scores`, { cache: "no-store" });
+      const res = await fetch(`/api/rooms/${code}/scores`, {
+        cache: "no-store",
+      });
       if (!res.ok) return;
       const data = (await res.json()) as ScoresResponse;
       setScores(data.scores);
       setVoters(data.voters);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, [code]);
 
+  // Initial load.
   useEffect(() => {
     fetchScores();
   }, [fetchScores]);
 
+  // Liveblocks-driven updates: the votes API broadcasts "scores:updated"
+  // after a successful submit, every connected client refetches once.
+  // No polling.
   useEventListener(({ event }) => {
-    if ((event as { type?: string }).type === "country") return;
+    if ((event as { type?: string }).type === "scores:updated") {
+      fetchScores();
+    }
   });
-
-  useEffect(() => {
-    const id = setInterval(fetchScores, 30000);
-    return () => clearInterval(id);
-  }, [fetchScores]);
 
   useEffect(() => {
     const stored = localStorage.getItem(`uzk_voted_${code}`);
@@ -83,20 +87,28 @@ export function Standings({
   const allWithZero = (() => {
     const map = new Map(scores.map((s) => [s.code, s]));
     return countries
-      .map((c) => map.get(c.code) ?? {
-        code: c.code, name: c.name, flag: c.flag,
-        totalPoints: 0, points12: 0, points10: 0,
-      })
+      .map((c) =>
+        map.get(c.code) ?? {
+          code: c.code,
+          name: c.name,
+          flag: c.flag,
+          totalPoints: 0,
+          points12: 0,
+          points10: 0,
+        },
+      )
       .sort((a, b) => {
-        if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
-        return (getCountry(a.code)?.order ?? 999) - (getCountry(b.code)?.order ?? 999);
+        if (b.totalPoints !== a.totalPoints)
+          return b.totalPoints - a.totalPoints;
+        return (
+          (getCountry(a.code)?.order ?? 999) -
+          (getCountry(b.code)?.order ?? 999)
+        );
       });
   })();
 
   const visible = showAll ? allWithZero : scores.slice(0, 5);
 
-  // Compute rank deltas every time the visible set updates. Positive delta =
-  // moved up (was 5th, now 2nd → +3). Show the indicator for ~2.4s.
   useEffect(() => {
     const deltas: Record<string, number> = {};
     visible.forEach((row, i) => {
@@ -115,20 +127,6 @@ export function Standings({
   return (
     <main className="container mx-auto max-w-3xl px-4 py-6 flex-1 flex flex-col gap-8">
       <section className="flex flex-col gap-4">
-        <div className="flex items-end justify-between gap-4">
-          <h2 className="text-3xl sm:text-4xl font-display gradient-text">
-            Standings
-          </h2>
-          <button
-            onClick={fetchScores}
-            disabled={refreshing}
-            aria-label="Refresh scores"
-            className="text-white/40 hover:text-white transition"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-          </button>
-        </div>
-
         {loading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="h-10 w-10 animate-spin text-flamingo" />
@@ -139,7 +137,7 @@ export function Standings({
             animate={{ opacity: 1, y: 0 }}
             className="glass-card rounded-xl p-8 text-center text-white/60 font-display"
           >
-            No votes yet — be the first.
+            No votes yet, be the first.
           </motion.div>
         ) : (
           <LayoutGroup>
@@ -165,9 +163,14 @@ export function Standings({
             className="mt-1 text-flamingo hover:text-flamingo/80 font-display"
           >
             {showAll ? (
-              <><ChevronUp className="h-4 w-4 mr-2" /> Top 5 only</>
+              <>
+                <ChevronUp className="h-4 w-4 mr-2" /> Top 5 only
+              </>
             ) : (
-              <><ChevronDown className="h-4 w-4 mr-2" /> Show all {countries.length}</>
+              <>
+                <ChevronDown className="h-4 w-4 mr-2" /> Show all{" "}
+                {countries.length}
+              </>
             )}
           </Button>
         )}
@@ -187,7 +190,11 @@ export function Standings({
                     initial={{ opacity: 0, scale: 0.6 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.6 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 24 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 400,
+                      damping: 24,
+                    }}
                     className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full text-sm
                                bg-gradient-to-r from-flamingo/30 to-turquoise/20 border border-white/10"
                   >
@@ -207,8 +214,8 @@ export function Standings({
             <Button
               disabled={!votingEnabled}
               className={`w-full h-14 text-lg font-display
-                bg-gradient-to-r from-flamingo via-fuchsia to-turquoise
-                hover:opacity-90 disabled:opacity-40
+                bg-gradient-to-r from-gold via-flamingo to-purple
+                hover:opacity-95 disabled:opacity-40
                 ${hasVoted ? "update-pulse-button" : "cast-pulse-button"}`}
             >
               {!votingEnabled
@@ -265,13 +272,15 @@ function CountryRow({
         <p className="font-display text-lg truncate">{score.name}</p>
         {detail && (detail.artist || detail.song) && (
           <p className="text-xs text-white/55 truncate">
-            {detail.artist} — <span className="italic">{detail.song}</span>
+            {detail.artist}, <span className="italic">{detail.song}</span>
           </p>
         )}
       </div>
       <div className="text-right">
         <ScoreNumber value={score.totalPoints} />
-        <p className="text-[10px] uppercase tracking-widest text-white/40">pts</p>
+        <p className="text-[10px] uppercase tracking-widest text-white/40">
+          pts
+        </p>
       </div>
 
       <AnimatePresence>
@@ -299,15 +308,18 @@ function CountryRow({
   );
 }
 
-// Animated tabular score that springs when the value changes (the points
-// counter incrementing as juries give their 12s — Eurovision-broadcast feel).
 function ScoreNumber({ value }: { value: number }) {
   return (
     <motion.p
       key={value}
       initial={{ scale: 1.4, color: "oklch(78.49% 0.135563 189.949)" }}
       animate={{ scale: 1, color: "oklch(70.55% 0.2725 336.19)" }}
-      transition={{ type: "spring", stiffness: 360, damping: 18, color: { duration: 0.6 } }}
+      transition={{
+        type: "spring",
+        stiffness: 360,
+        damping: 18,
+        color: { duration: 0.6 },
+      }}
       className="font-display text-2xl tabular-nums leading-none origin-right"
     >
       {value}

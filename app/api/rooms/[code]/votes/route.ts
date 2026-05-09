@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { voters, votes } from "@/lib/db/schema";
 import { findRoomByCode, touchRoom } from "@/lib/rooms";
 import { countries } from "@/lib/countries";
+import { broadcastToRoom } from "@/lib/liveblocks-server";
 
 const POINT_KEYS = ["12", "10", "8", "7", "6", "5", "4", "3", "2", "1"] as const;
 
@@ -92,6 +93,10 @@ export async function POST(request: Request, { params }: RouteCtx) {
   );
 
   await touchRoom(room.id);
+
+  // Push a realtime hint so every connected client refetches their
+  // scoreboard immediately. No polling needed.
+  await broadcastToRoom(room.code, { type: "scores:updated" });
 
   return NextResponse.json({ ok: true, voterId: voter.id });
 }

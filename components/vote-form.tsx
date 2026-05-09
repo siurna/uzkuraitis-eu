@@ -24,9 +24,8 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowLeft, GripVertical, X, Send } from "lucide-react";
+import { GripVertical, X, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { countries, getCountry } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 
@@ -173,15 +172,12 @@ export function VoteForm({
         <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center gap-3">
           <Link
             href={`/r/${roomCode}`}
-            className="text-white/60 hover:text-white"
+            className="flex-1 min-w-0 text-left hover:opacity-80 transition"
             aria-label="Back to standings"
           >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div className="flex-1 min-w-0">
             <p className="font-display text-lg truncate">Cast your vote</p>
             <p className="text-xs text-white/50 truncate">{roomName}</p>
-          </div>
+          </Link>
           <span className="text-xs px-2 py-1 rounded-full bg-white/5 tabular-nums">
             {filledCount}/10
           </span>
@@ -189,16 +185,8 @@ export function VoteForm({
       </header>
 
       <div className="container mx-auto max-w-3xl px-4 py-6 flex flex-col gap-8">
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value.slice(0, 40))}
-          placeholder="Your name"
-          className="h-12 text-base"
-          autoComplete="given-name"
-        />
-
-        <section className="flex flex-col gap-3">
-          <h2 className="font-display text-xl">Your top 10</h2>
+        <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
+          <h2 className="font-display text-xl gradient-text">Your top 10</h2>
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -221,8 +209,10 @@ export function VoteForm({
           </DndContext>
         </section>
 
-        <section className="flex flex-col gap-3">
-          <h2 className="font-display text-xl">Remaining countries</h2>
+        <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
+          <h2 className="font-display text-xl gradient-text">
+            Remaining countries
+          </h2>
           <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {remaining.map((c) => {
               const nextSlot = slots.find((s) => !s.countryCode);
@@ -257,8 +247,9 @@ export function VoteForm({
             onClick={submit}
             disabled={submitting || !allFilled || !name.trim()}
             className="w-full h-14 text-lg font-display
-                       bg-gradient-to-r from-flamingo via-fuchsia to-turquoise
-                       disabled:opacity-40"
+                       bg-gradient-to-r from-gold via-flamingo to-purple
+                       text-white shadow-glow-pink
+                       disabled:opacity-40 disabled:bg-none disabled:bg-white/10"
           >
             {submitting ? "Submitting…" : (
               <>

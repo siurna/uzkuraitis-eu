@@ -9,19 +9,15 @@ export const metadata: Metadata = {
     template: "Eurovision 2026",
   },
   description:
-    "Cast your votes and watch live with friends. United by music — Vienna 2026.",
+    "Cast your votes and watch live with friends. United by music, Vienna 2026.",
   applicationName: "Eurovision 2026",
   openGraph: {
     title: "Eurovision 2026",
     description:
-      "Live voting & reactions for the 70th Eurovision Song Contest.",
+      "Live voting and reactions for the 70th Eurovision Song Contest.",
     type: "website",
   },
-  icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-    ],
-  },
+  // Favicon is auto-bound by app/icon.svg (Next metadata file convention).
 };
 
 export const viewport: Viewport = {
