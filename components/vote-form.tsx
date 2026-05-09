@@ -26,8 +26,11 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, X, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { countries, getCountry } from "@/lib/countries";
 import { Flag } from "@/components/flag";
+import { BonusBetsForm } from "@/components/bonus-bets-form";
+import type { Bets } from "@/lib/scoring";
 
 const POINT_VALUES = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1] as const;
 type Points = (typeof POINT_VALUES)[number];
@@ -39,6 +42,7 @@ type Slot = {
 
 const STORAGE_KEY = (code: string) => `uzk_ballot_${code}`;
 const PREDICTION_KEY = (code: string) => `uzk_home_${code}`;
+const BETS_KEY = (code: string) => `uzk_bets_${code}`;
 const SESSION_KEY = "uzk_session";
 const NAME_KEY = "uzk_name";
 
@@ -57,7 +61,9 @@ export function VoteForm({
     POINT_VALUES.map((p) => ({ points: p, countryCode: null })),
   );
   const [homePrediction, setHomePrediction] = useState<string>("");
+  const [bets, setBets] = useState<Bets>({});
   const [submitting, setSubmitting] = useState(false);
+  const [tab, setTab] = useState<"ballot" | "bets">("ballot");
 
   const homeCountry = getCountry(homeCountryCode);
 
@@ -84,6 +90,14 @@ export function VoteForm({
     }
     const storedPrediction = localStorage.getItem(PREDICTION_KEY(roomCode));
     if (storedPrediction) setHomePrediction(storedPrediction);
+    const storedBets = localStorage.getItem(BETS_KEY(roomCode));
+    if (storedBets) {
+      try {
+        setBets(JSON.parse(storedBets) as Bets);
+      } catch {
+        /* ignore corrupt bet draft */
+      }
+    }
   }, [roomCode]);
 
   // Persist drafts so a tap into another tab doesn't lose progress.
@@ -98,6 +112,10 @@ export function VoteForm({
       localStorage.removeItem(PREDICTION_KEY(roomCode));
     }
   }, [homePrediction, roomCode]);
+
+  useEffect(() => {
+    localStorage.setItem(BETS_KEY(roomCode), JSON.stringify(bets));
+  }, [bets, roomCode]);
 
   const usedCountryCodes = useMemo(
     () => new Set(slots.map((s) => s.countryCode).filter(Boolean) as string[]),
@@ -173,6 +191,7 @@ export function VoteForm({
             predictionInt && Number.isFinite(predictionInt)
               ? predictionInt
               : null,
+          bets,
         }),
       });
       if (!res.ok) {
@@ -207,96 +226,124 @@ export function VoteForm({
         </div>
       </header>
 
-      <div className="container mx-auto max-w-3xl px-4 py-6 flex flex-col gap-8">
-        <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
-          <h2 className="font-display text-xl gradient-text">Your top 10</h2>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={onDragEnd}
-          >
-            <SortableContext
-              items={slots.map((s) => `slot-${s.points}`)}
-              strategy={rectSortingStrategy}
-            >
-              <ul className="flex flex-col gap-2">
-                {slots.map((slot) => (
-                  <BallotSlot
-                    key={slot.points}
-                    slot={slot}
-                    onClear={() => clearSlot(slot.points)}
-                  />
-                ))}
+      <div className="container mx-auto max-w-3xl px-4 py-6 flex flex-col gap-6">
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as "ballot" | "bets")}
+          className="flex flex-col gap-4"
+        >
+          <TabsList className="self-center">
+            <TabsTrigger value="ballot">Top 10 ballot</TabsTrigger>
+            <TabsTrigger value="bets">Bonus bets</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="ballot" className="flex flex-col gap-6 mt-0">
+            <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
+              <h2 className="font-display text-xl gradient-text">Your top 10</h2>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={onDragEnd}
+              >
+                <SortableContext
+                  items={slots.map((s) => `slot-${s.points}`)}
+                  strategy={rectSortingStrategy}
+                >
+                  <ul className="flex flex-col gap-2">
+                    {slots.map((slot) => (
+                      <BallotSlot
+                        key={slot.points}
+                        slot={slot}
+                        onClear={() => clearSlot(slot.points)}
+                      />
+                    ))}
+                  </ul>
+                </SortableContext>
+              </DndContext>
+            </section>
+
+            <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
+              <h2 className="font-display text-xl gradient-text">
+                Remaining countries
+              </h2>
+              <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {remaining.map((c) => {
+                  const nextSlot = slots.find((s) => !s.countryCode);
+                  return (
+                    <li key={c.code}>
+                      <button
+                        type="button"
+                        disabled={!nextSlot}
+                        onClick={() =>
+                          nextSlot && assign(nextSlot.points, c.code)
+                        }
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg
+                                   bg-white/5 hover:bg-white/10 disabled:opacity-40
+                                   text-left transition"
+                      >
+                        <Flag code={c.code} size="sm" />
+                        <span className="truncate text-sm">{c.name}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+                {remaining.length === 0 && (
+                  <li className="col-span-full text-center text-white/50 text-sm py-6">
+                    All assigned. Drag the rows above to reorder.
+                  </li>
+                )}
               </ul>
-            </SortableContext>
-          </DndContext>
-        </section>
+            </section>
+          </TabsContent>
 
-        {homeCountry && (
-          <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <Flag code={homeCountry.code} size="lg" />
-              <div className="flex-1 min-w-0">
-                <h2 className="font-display text-xl gradient-text">
-                  Where will {homeCountry.name} finish?
-                </h2>
-                <p className="text-xs text-white/50">
-                  Closer guesses score more. Exact = 10, off by 1 = 7,
-                  off by 2 = 5, off by 3 to 5 = 3, off by 6 to 10 = 1.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={countries.length}
-                placeholder="?"
-                value={homePrediction}
-                onChange={(e) => setHomePrediction(e.target.value)}
-                className="h-14 w-20 rounded-xl border border-white/15 bg-black/30
-                           text-center font-display text-3xl tabular-nums text-white
-                           caret-flamingo focus:border-flamingo focus:outline-none
-                           focus:ring-2 focus:ring-flamingo/40 transition"
-              />
-              <span className="text-sm text-white/40">
-                / {countries.length} finalists
-              </span>
-            </div>
-          </section>
-        )}
-
-        <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
-          <h2 className="font-display text-xl gradient-text">
-            Remaining countries
-          </h2>
-          <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {remaining.map((c) => {
-              const nextSlot = slots.find((s) => !s.countryCode);
-              return (
-                <li key={c.code}>
-                  <button
-                    type="button"
-                    disabled={!nextSlot}
-                    onClick={() => nextSlot && assign(nextSlot.points, c.code)}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg
-                               bg-white/5 hover:bg-white/10 disabled:opacity-40
-                               text-left transition"
-                  >
-                    <Flag code={c.code} size="sm" />
-                    <span className="truncate text-sm">{c.name}</span>
-                  </button>
-                </li>
-              );
-            })}
-            {remaining.length === 0 && (
-              <li className="col-span-full text-center text-white/50 text-sm py-6">
-                All assigned. Drag the rows above to reorder.
-              </li>
+          <TabsContent value="bets" className="flex flex-col gap-4 mt-0">
+            {homeCountry && (
+              <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <Flag code={homeCountry.code} size="lg" />
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-display text-xl gradient-text">
+                      {homeCountry.name} placement
+                    </h2>
+                    <p className="text-xs text-white/50">
+                      Exact 10, off-by-1 7, off-by-2 5, off-by-3 to 5 3,
+                      off-by-6 to 10 1, beyond 0.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={countries.length}
+                    placeholder="?"
+                    value={homePrediction}
+                    onChange={(e) => setHomePrediction(e.target.value)}
+                    className="h-14 w-20 rounded-xl border border-white/15 bg-black/30
+                               text-center font-display text-3xl tabular-nums text-white
+                               caret-flamingo focus:border-flamingo focus:outline-none
+                               focus:ring-2 focus:ring-flamingo/40 transition"
+                  />
+                  <span className="text-sm text-white/40">
+                    / {countries.length} finalists
+                  </span>
+                </div>
+              </section>
             )}
-          </ul>
-        </section>
+
+            <BonusBetsForm
+              homeCountryCode={homeCountryCode}
+              bets={bets}
+              onChange={setBets}
+            />
+
+            <p className="text-xs text-white/40 text-center pt-1">
+              Skip any bet you don&apos;t want to take. Skipped = 0 pts
+              for that bet.
+            </p>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-dark-blue-900/85 backdrop-blur-md border-t border-white/5 py-3">

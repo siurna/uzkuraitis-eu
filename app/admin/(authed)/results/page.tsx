@@ -1,9 +1,10 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { rooms, votes, voters, officialResults } from "@/lib/db/schema";
+import { rooms, votes, voters, officialResults, officialFacts } from "@/lib/db/schema";
 import { getCountry } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 import { AdminOfficialResults } from "@/components/admin-official-results";
+import { AdminOfficialFacts } from "@/components/admin-official-facts";
 
 async function loadPerRoomTotals() {
   const list = await db
@@ -29,9 +30,10 @@ async function loadPerRoomTotals() {
 }
 
 export default async function AdminResultsPage() {
-  const [perRoom, official] = await Promise.all([
+  const [perRoom, official, facts] = await Promise.all([
     loadPerRoomTotals(),
     db.select().from(officialResults),
+    db.select().from(officialFacts),
   ]);
 
   return (
@@ -43,6 +45,10 @@ export default async function AdminResultsPage() {
           placement: o.placement,
           countryCode: o.countryCode,
         }))}
+      />
+
+      <AdminOfficialFacts
+        initial={Object.fromEntries(facts.map((f) => [f.key, f.value]))}
       />
 
       <section className="flex flex-col gap-4">

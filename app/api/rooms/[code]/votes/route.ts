@@ -20,8 +20,24 @@ const VotesSchema = z.object({
     )
     .strict(),
   // Home-country placement prediction (e.g. "Lithuania finishes 7th").
-  // Optional, but required for full scoring once results are entered.
   homePrediction: z.number().int().min(1).max(50).nullable().optional(),
+  // Side bets, all optional, all nullable.
+  bets: z
+    .object({
+      woodenSpoon: z.string().min(2).max(4).nullable().optional(),
+      lt12To: z.string().min(2).max(4).nullable().optional(),
+      highestBig5: z.string().min(2).max(4).nullable().optional(),
+      juryWinner: z.string().min(2).max(4).nullable().optional(),
+      televoteWinner: z.string().min(2).max(4).nullable().optional(),
+      nulTelevote: z.string().min(2).max(4).nullable().optional(),
+      sameWinners: z.boolean().nullable().optional(),
+      ltTop10: z.boolean().nullable().optional(),
+      ltTop5: z.boolean().nullable().optional(),
+      hostTop3: z.boolean().nullable().optional(),
+      winnerSolo: z.boolean().nullable().optional(),
+    })
+    .optional()
+    .default({}),
 });
 
 type RouteCtx = { params: Promise<{ code: string }> };
@@ -54,7 +70,13 @@ export async function POST(request: Request, { params }: RouteCtx) {
     );
   }
 
-  const { name, sessionId, votes: ballot, homePrediction } = parsed.data;
+  const {
+    name,
+    sessionId,
+    votes: ballot,
+    homePrediction,
+    bets,
+  } = parsed.data;
 
   // Cross-check countries actually exist + no dupes.
   const validCodes = new Set(countries.map((c) => c.code));
@@ -75,23 +97,32 @@ export async function POST(request: Request, { params }: RouteCtx) {
     used.add(code);
   }
 
-  // Upsert voter on (room_id, session_id). Same call also persists the
-  // home-country prediction so it's saved alongside the ballot.
+  // Upsert voter on (room_id, session_id). Same call persists the home
+  // prediction + every side bet so the whole prediction state is saved
+  // atomically alongside the ballot.
+  const voterValues = {
+    roomId: room.id,
+    sessionId,
+    name,
+    homeCountryPrediction: homePrediction ?? null,
+    betWoodenSpoon: bets.woodenSpoon ?? null,
+    betLt12To: bets.lt12To ?? null,
+    betHighestBig5: bets.highestBig5 ?? null,
+    betJuryWinner: bets.juryWinner ?? null,
+    betTelevoteWinner: bets.televoteWinner ?? null,
+    betNulTelevote: bets.nulTelevote ?? null,
+    betSameWinners: bets.sameWinners ?? null,
+    betLtTop10: bets.ltTop10 ?? null,
+    betLtTop5: bets.ltTop5 ?? null,
+    betHostTop3: bets.hostTop3 ?? null,
+    betWinnerSolo: bets.winnerSolo ?? null,
+  } as const;
   const [voter] = await db
     .insert(voters)
-    .values({
-      roomId: room.id,
-      sessionId,
-      name,
-      homeCountryPrediction: homePrediction ?? null,
-    })
+    .values(voterValues)
     .onConflictDoUpdate({
       target: [voters.roomId, voters.sessionId],
-      set: {
-        name,
-        homeCountryPrediction: homePrediction ?? null,
-        updatedAt: sql`now()`,
-      },
+      set: { ...voterValues, updatedAt: sql`now()` },
     })
     .returning();
 

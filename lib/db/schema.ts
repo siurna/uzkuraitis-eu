@@ -48,6 +48,20 @@ export const voters = pgTable(
     // will Lithuania finish?"). Range 1..N where N is the number of
     // finalists. Nullable: voters who skip this still cast their ballot.
     homeCountryPrediction: integer("home_country_prediction"),
+    // --- Side bets ("bonus predictions"). All optional. ---
+    // Country picks (ISO 3166-1 alpha-2 lowercase, or 'NONE' for nul-points).
+    betWoodenSpoon: text("bet_wooden_spoon"),
+    betLt12To: text("bet_lt_12_to"),
+    betHighestBig5: text("bet_highest_big5"),
+    betJuryWinner: text("bet_jury_winner"),
+    betTelevoteWinner: text("bet_televote_winner"),
+    betNulTelevote: text("bet_nul_televote"),
+    // Yes/no flags.
+    betSameWinners: boolean("bet_same_winners"),
+    betLtTop10: boolean("bet_lt_top10"),
+    betLtTop5: boolean("bet_lt_top5"),
+    betHostTop3: boolean("bet_host_top3"),
+    betWinnerSolo: boolean("bet_winner_solo"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -117,6 +131,17 @@ export const roomSettings = pgTable(
 export const officialResults = pgTable("official_results", {
   countryCode: text("country_code").primaryKey(),
   placement: integer("placement").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// Generic key-value bag for "facts" the admin enters (jury winner,
+// televote winner, nul-points country, etc.) used to score side bets
+// against. Extending the bet menu later doesn't require a new column.
+export const officialFacts = pgTable("official_facts", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

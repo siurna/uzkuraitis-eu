@@ -13,6 +13,7 @@ type Row = {
   homePrediction: number | null;
   topTen: number;
   home: number;
+  betsTotal: number;
   total: number;
 };
 
@@ -108,11 +109,9 @@ export function Leaderboard({ code }: { code: string }) {
               <div className="flex-1 min-w-0">
                 <p className="font-display truncate">{row.name}</p>
                 <p className="text-xs text-white/55">
-                  {row.topTen} from ballot
-                  {row.home > 0 && <> + {row.home} from {home?.name ?? "home"} guess</>}
-                  {row.homePrediction != null && (
-                    <> (guessed {row.homePrediction})</>
-                  )}
+                  {row.topTen} ballot
+                  {row.home > 0 && <> + {row.home} {home?.name ?? "home"}</>}
+                  {row.betsTotal > 0 && <> + {row.betsTotal} bonuses</>}
                 </p>
               </div>
               <div className="text-right">
