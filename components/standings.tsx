@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { countries, getCountry } from "@/lib/countries";
 import { useEventListener } from "@/lib/liveblocks";
 import { Flag } from "@/components/flag";
+import { Leaderboard } from "@/components/leaderboard";
 
 type ScoreRow = {
   code: string;
@@ -175,6 +176,8 @@ export function Standings({
           </Button>
         )}
       </section>
+
+      <Leaderboard code={code} />
 
       {voters.length > 0 && (
         <section className="flex flex-col gap-3">
