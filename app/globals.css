@@ -152,6 +152,16 @@
   box-shadow: var(--shadow-glow-pink);
 }
 
+.bg-radial-fade {
+  background:
+    radial-gradient(
+      ellipse at center,
+      transparent 0%,
+      transparent 30%,
+      var(--color-dark-blue-900) 75%
+    );
+}
+
 /* ---- animations ------------------------------------------------------- */
 
 @keyframes pulse-glow {

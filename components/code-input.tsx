@@ -12,8 +12,9 @@ const LENGTH = 6;
 // Same alphabet as lib/rooms.ts — no 0/O/1/I/L confusion.
 const ALPHABET = /^[2-9A-HJ-NP-Z]$/;
 
-// Six-cell OTP-style input for the room code. Auto-advances on entry,
-// rolls back on backspace, accepts a 6-char paste into any cell.
+// Six-cell OTP-style input rendered as a single conjoined pill — one outer
+// rounded border, dashed dividers between cells, no gaps. Each cell is its
+// own focusable <input>; cursor moves between them automatically.
 export function CodeInput({
   value,
   onChange,
@@ -55,10 +56,8 @@ export function CodeInput({
       e.preventDefault();
       const current = cells[index];
       if (current) {
-        // delete just this cell, stay focused
         onChange(value.slice(0, index) + value.slice(index + 1));
       } else if (index > 0) {
-        // jump back and clear the previous cell
         onChange(value.slice(0, index - 1) + value.slice(index));
         refs.current[index - 1]?.focus();
       }
@@ -93,11 +92,14 @@ export function CodeInput({
 
   return (
     <div
+      role="group"
+      aria-label="Room code"
       className={cn(
-        // Six equal cells that share the available width, square-ish, no
-        // dead space on the sides. Container itself is full-width so the
-        // cells line up with the submit button below.
-        "grid w-full grid-cols-6 gap-2",
+        // One pill, six segments. focus-within glows the whole thing.
+        "grid w-full grid-cols-6 items-stretch overflow-hidden rounded-2xl",
+        "border border-white/15 bg-black/30 transition",
+        "focus-within:border-flamingo focus-within:shadow-glow-pink",
+        disabled && "opacity-40 pointer-events-none",
         className,
       )}
     >
@@ -113,7 +115,7 @@ export function CodeInput({
           autoComplete={i === 0 ? "one-time-code" : "off"}
           spellCheck={false}
           disabled={disabled}
-          aria-label={`Room code character ${i + 1} of ${LENGTH}`}
+          aria-label={`Character ${i + 1} of ${LENGTH}`}
           maxLength={1}
           value={char}
           onChange={() => {
@@ -124,19 +126,20 @@ export function CodeInput({
           onPaste={handlePaste}
           onFocus={(e) => e.target.select()}
           className={cn(
-            // Auto-sized to the grid column with a square footprint, so
-            // they always look balanced regardless of screen width.
-            "aspect-square w-full min-w-0 p-0",
-            "rounded-xl border bg-black/30",
-            // Singing Sans has generous upper metrics — leading-none +
-            // flex-style centering via line-height stops the glyphs
-            // floating against the top of the cell.
+            // Square cell, no individual border-radius (the outer pill
+            // handles rounded corners).
+            "aspect-square w-full min-w-0 p-0 bg-transparent",
+            // Dashed vertical divider between cells, none after the last.
+            i > 0 && "border-l border-dashed border-white/10",
+            // Focused cell gets a soft fill so you know which one's live.
+            "focus:outline-none focus:bg-flamingo/15",
+            // Filled cell stays slightly lit even when not focused.
+            char && "bg-flamingo/8",
+            // Glyph styling — leading-none + flex-equivalent vertical
+            // centering via the input's own line-box is good enough at
+            // these aspect-ratios.
             "text-center font-display uppercase tabular-nums leading-none",
             "text-3xl sm:text-4xl text-white caret-flamingo",
-            "border-white/15 focus:border-flamingo focus:outline-none",
-            "focus:ring-2 focus:ring-flamingo/40 transition",
-            "disabled:opacity-40",
-            char && "border-flamingo/60 bg-flamingo/10 shadow-glow-pink",
           )}
         />
       ))}

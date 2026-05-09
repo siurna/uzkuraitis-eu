@@ -10,6 +10,7 @@ import {
 } from "@/lib/admin/session";
 
 export async function POST(request: Request) {
+ try {
   const session = await readAdminSession();
   if (!session.challenge || session.challengeKind !== "login") {
     return NextResponse.json(
@@ -71,4 +72,12 @@ export async function POST(request: Request) {
   await session.save();
 
   return NextResponse.json({ ok: true });
+ } catch (err) {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error("[admin/login/finish]", err);
+  return NextResponse.json(
+    { error: `Login failed: ${message}` },
+    { status: 500 },
+  );
+ }
 }

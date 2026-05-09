@@ -49,7 +49,7 @@ export async function isAdminAuthed(): Promise<boolean> {
   }
 }
 
-export const ADMIN_RP_NAME = "Užkuraitis admin";
+export const ADMIN_RP_NAME = "Eurovision 2026 admin";
 
 export function getRpId(request: Request): string {
   const url = new URL(request.url);

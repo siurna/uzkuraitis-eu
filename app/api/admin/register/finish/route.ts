@@ -15,6 +15,7 @@ const Body = z.object({
 });
 
 export async function POST(request: Request) {
+ try {
   const session = await readAdminSession();
   if (
     !session.challenge ||
@@ -64,4 +65,12 @@ export async function POST(request: Request) {
   await session.save();
 
   return NextResponse.json({ ok: true });
+ } catch (err) {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error("[admin/register/finish]", err);
+  return NextResponse.json(
+    { error: `Enrollment failed: ${message}` },
+    { status: 500 },
+  );
+ }
 }

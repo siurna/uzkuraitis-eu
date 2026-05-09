@@ -4,12 +4,15 @@ import "./globals.css";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "Užkuraitis · Eurovision 2026 Vienna",
+  title: {
+    default: "Eurovision 2026",
+    template: "Eurovision 2026",
+  },
   description:
     "Cast your votes and watch live with friends. United by music — Vienna 2026.",
-  applicationName: "Užkuraitis 2026",
+  applicationName: "Eurovision 2026",
   openGraph: {
-    title: "Užkuraitis · Eurovision 2026 Vienna",
+    title: "Eurovision 2026",
     description:
       "Live voting & reactions for the 70th Eurovision Song Contest.",
     type: "website",

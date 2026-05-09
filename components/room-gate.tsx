@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { isValidRoomCode, normalizeRoomCode } from "@/lib/rooms";
 import { Button } from "@/components/ui/button";
 import { CodeInput } from "@/components/code-input";
-import { Logo2026 } from "@/components/logo-2026";
+import { HeartbeatBackdrop } from "@/components/heartbeat-backdrop";
 
 const LAST_ROOM_KEY = "uzk_last_room";
 
@@ -84,7 +84,8 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
+    <main className="relative min-h-screen flex flex-col items-center justify-center px-4 py-12">
+      <HeartbeatBackdrop />
       <AnimatePresence mode="wait">
         {rehydrating ? (
           <motion.div
@@ -106,9 +107,11 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="w-full max-w-sm flex flex-col items-center gap-8"
+            className="w-full max-w-sm flex flex-col items-center gap-6"
           >
-            <Logo2026 className="w-full max-w-[14rem]" />
+            <p className="text-xs uppercase tracking-[0.45em] text-white/60 font-display">
+              Eurovision 2026 · Vienna
+            </p>
 
             <form
               onSubmit={(e) => {
