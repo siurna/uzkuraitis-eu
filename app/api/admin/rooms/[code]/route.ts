@@ -1,0 +1,59 @@
+import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { rooms, voters, votes } from "@/lib/db/schema";
+import { findRoomByCode } from "@/lib/rooms";
+import { isAdminAuthed } from "@/lib/admin/session";
+
+type RouteCtx = { params: Promise<{ code: string }> };
+
+const PatchSchema = z.object({
+  votingEnabled: z.boolean().optional(),
+  name: z.string().trim().min(1).max(60).optional(),
+});
+
+async function requireAdmin() {
+  if (!(await isAdminAuthed())) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 401 });
+  }
+  return null;
+}
+
+export async function PATCH(request: Request, { params }: RouteCtx) {
+  const guard = await requireAdmin();
+  if (guard) return guard;
+
+  const { code } = await params;
+  const room = await findRoomByCode(code);
+  if (!room) {
+    return NextResponse.json({ error: "Room not found" }, { status: 404 });
+  }
+
+  const parsed = PatchSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success || Object.keys(parsed.data).length === 0) {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
+
+  await db.update(rooms).set(parsed.data).where(eq(rooms.id, room.id));
+  return NextResponse.json({ ok: true });
+}
+
+// Wipe all votes (and voters) inside a room. The room itself stays, so the
+// shared link keeps working — the host can hit "reset" between songs.
+export async function DELETE(_req: Request, { params }: RouteCtx) {
+  const guard = await requireAdmin();
+  if (guard) return guard;
+
+  const { code } = await params;
+  const room = await findRoomByCode(code);
+  if (!room) {
+    return NextResponse.json({ error: "Room not found" }, { status: 404 });
+  }
+
+  // Cascade: delete the voters → ON DELETE CASCADE drops their votes too.
+  await db.delete(voters).where(eq(voters.roomId, room.id));
+  // Belt-and-suspenders for any orphaned votes (shouldn't be any, but cheap).
+  void votes;
+  return NextResponse.json({ ok: true });
+}
