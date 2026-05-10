@@ -198,21 +198,19 @@
   );
 }
 
-/* Make a list-entry card feel pressable: subtle lift + brightening glow
-   on hover, settle on press. Apply via class to interactive rows only;
-   non-clickable cards stay still. */
+/* Make a list-entry card feel pressable: subtle lift + brightening
+   glow on hover, settle on press. Inherits the glass-card border —
+   does NOT override its colour to avoid loud per-row outlines. */
 .list-card-hover {
-  transition: transform 0.18s ease, box-shadow 0.25s ease,
-              border-color 0.25s ease;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.25s ease;
 }
 .list-card-hover:hover {
   transform: translateY(-1px);
-  border-color: oklch(70% 0.27 336 / 0.45);
   box-shadow:
     0 1px 0 0 oklch(100% 0 0 / 0.08) inset,
     0 -1px 0 0 oklch(0% 0 0 / 0.2) inset,
     0 12px 32px -10px oklch(0% 0 0 / 0.55),
-    0 0 0 1px oklch(70% 0.27 336 / 0.15),
     var(--shadow-glow-pink);
 }
 .list-card-hover:active {

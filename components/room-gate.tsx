@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { isValidRoomCode, normalizeRoomCode } from "@/lib/rooms";
+import { useLang, t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { CodeInput } from "@/components/code-input";
 import { HeartbeatBackdrop } from "@/components/heartbeat-backdrop";
@@ -17,6 +18,7 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isLeaving = searchParams.get("leave") === "1";
+  const lang = useLang();
 
   const [code, setCode] = useState(prefilled);
   const [pending, startTransition] = useTransition();
@@ -70,13 +72,13 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
   const submit = (next: string) => {
     const normalized = normalizeRoomCode(next);
     if (!isValidRoomCode(normalized)) {
-      toast.error("Room codes are 6 characters (A–Z, 2–9).");
+      toast.error(t(lang, "bad_format"));
       return;
     }
     startTransition(async () => {
       const res = await fetch(`/api/rooms/${normalized}`, { cache: "no-store" });
       if (!res.ok) {
-        toast.error("No room with that code.");
+        toast.error(t(lang, "bad_code"));
         return;
       }
       localStorage.setItem(LAST_ROOM_KEY, normalized);
@@ -98,7 +100,7 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
           >
             <Loader2 className="h-6 w-6 animate-spin text-flamingo" />
             <p className="text-xs uppercase tracking-[0.3em] font-display">
-              Reconnecting…
+              {t(lang, "reconnecting")}
             </p>
           </motion.div>
         ) : (
@@ -135,7 +137,7 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
                            hover:opacity-95 disabled:opacity-40
                            disabled:bg-none disabled:bg-white/10"
               >
-                {pending ? "Checking…" : "Enter room"}
+                {pending ? t(lang, "checking") : t(lang, "enter_room")}
               </Button>
             </form>
           </motion.div>

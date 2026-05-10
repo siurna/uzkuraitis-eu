@@ -109,18 +109,26 @@ export function HoneycombPresence() {
                 }}
               >
                 <div
-                  className="h-full w-full overflow-hidden ring-1 ring-white/20 shadow-md"
+                  className="relative h-full w-full overflow-hidden ring-1 ring-white/20 shadow-md"
                   style={{
                     clipPath:
                       "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
                   }}
                 >
                   {avatar ? (
-                    <Flag
-                      code={avatar.country}
-                      size="md"
-                      className="h-full w-full rounded-none"
-                    />
+                    // Stretch the flag to fill the hex tile cleanly. The
+                    // shared <Flag/> component sizes to a fixed aspect via
+                    // explicit width/height attrs, so we wrap it in a
+                    // 100%/100% container with object-cover to force a
+                    // proper crop into the hex shape.
+                    <span className="absolute inset-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/flags/${avatar.country}.svg`}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    </span>
                   ) : (
                     <div
                       className="h-full w-full grid place-items-center font-semibold text-white text-sm"

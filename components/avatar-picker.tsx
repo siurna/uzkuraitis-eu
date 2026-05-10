@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import { Flag } from "@/components/flag";
 import { AVATARS, getAvatar, type Avatar } from "@/lib/avatars";
+import { useLang, t } from "@/lib/i18n";
 
 // Pick-an-avatar grid + a selection summary panel below it. Tile size
 // bumped from the previous tiny grid; people kept missing it. Selected
@@ -15,19 +16,18 @@ export function AvatarPicker({
   onChange: (id: string | null) => void;
 }) {
   const selected = getAvatar(value);
+  const lang = useLang();
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-white/60">
-          Pick an avatar (optional)
-        </p>
+        <p className="text-xs text-white/60">{t(lang, "pick_avatar")}</p>
         {value && (
           <button
             type="button"
             onClick={() => onChange(null)}
             className="text-xs text-white/40 hover:text-white/70 transition"
           >
-            Clear
+            {t(lang, "clear")}
           </button>
         )}
       </div>

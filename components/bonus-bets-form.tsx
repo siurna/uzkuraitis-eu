@@ -7,6 +7,7 @@ import { Flag } from "@/components/flag";
 import { CountryDrawer } from "@/components/country-drawer";
 import { countries, getCountry } from "@/lib/countries";
 import { BIG_5, HOST_COUNTRY, type Bets } from "@/lib/scoring";
+import { useLang, t, fmt } from "@/lib/i18n";
 
 const NONE_TOKEN = "NONE";
 
@@ -25,6 +26,9 @@ export function BonusBetsForm({
 }) {
   const home = getCountry(homeCountryCode);
   const host = getCountry(HOST_COUNTRY);
+  const lang = useLang();
+  const homeName = home?.name ?? "Home";
+  const hostName = host?.name ?? "Host";
 
   // Track which row's drawer is open via a discriminated key.
   const [drawerKey, setDrawerKey] = useState<keyof Bets | null>(null);
@@ -35,8 +39,8 @@ export function BonusBetsForm({
   return (
     <div className="flex flex-col gap-3">
       <CountryRow
-        label="Wooden spoon"
-        sub="Who finishes last? Exact +5, off-by-1 +2."
+        label={t(lang, "bet_wooden_spoon")}
+        sub={t(lang, "bet_wooden_spoon_sub")}
         max={5}
         value={bets.woodenSpoon ?? null}
         onOpen={() => setDrawerKey("woodenSpoon")}
@@ -44,8 +48,8 @@ export function BonusBetsForm({
 
       {home && (
         <CountryRow
-          label={`12 from ${home.name} to`}
-          sub={`Where does ${home.name} give its 12 points? Exact +5.`}
+          label={fmt(t(lang, "bet_lt_12_to"), { home: homeName })}
+          sub={fmt(t(lang, "bet_lt_12_to_sub"), { home: homeName })}
           max={5}
           value={bets.lt12To ?? null}
           onOpen={() => setDrawerKey("lt12To")}
@@ -53,40 +57,40 @@ export function BonusBetsForm({
       )}
 
       <CountryRow
-        label="Highest-placed Big 5"
-        sub="UK, Germany, France, Italy, or Spain — which finishes best? +3."
+        label={t(lang, "bet_big5")}
+        sub={t(lang, "bet_big5_sub")}
         max={3}
         value={bets.highestBig5 ?? null}
         onOpen={() => setDrawerKey("highestBig5")}
       />
 
       <CountryRow
-        label="Jury winner"
-        sub="The country that wins the jury vote. Exact +5."
+        label={t(lang, "bet_jury_winner")}
+        sub={t(lang, "bet_jury_winner_sub")}
         max={5}
         value={bets.juryWinner ?? null}
         onOpen={() => setDrawerKey("juryWinner")}
       />
 
       <CountryRow
-        label="Televote winner"
-        sub="The country that wins the public televote. Exact +5."
+        label={t(lang, "bet_televote_winner")}
+        sub={t(lang, "bet_televote_winner_sub")}
         max={5}
         value={bets.televoteWinner ?? null}
         onOpen={() => setDrawerKey("televoteWinner")}
       />
 
       <MultiCountryRow
-        label="Nul points (televote)"
-        sub="Pick any countries you think get zero from the public, or 'No country' if you think nobody scores zero. +4 per correct guess, capped at +12."
+        label={t(lang, "bet_nul")}
+        sub={t(lang, "bet_nul_sub")}
         value={bets.nulTelevote ?? []}
         onOpen={() => setDrawerKey("nulTelevote")}
       />
 
       {home && (
         <NumberRow
-          label={`${home.name} total points`}
-          sub="How many total points (jury + public) will Lithuania end up with? Closer = more points: exact +10, ±5 +7, ±15 +5, ±30 +3, ±60 +1."
+          label={fmt(t(lang, "bet_lt_total"), { home: homeName })}
+          sub={fmt(t(lang, "bet_lt_total_sub"), { home: homeName })}
           max={10}
           value={bets.ltTotalPoints ?? null}
           onChange={(v) => set("ltTotalPoints", v)}
@@ -94,33 +98,36 @@ export function BonusBetsForm({
       )}
 
       <YesNoRow
-        label="Same winner?"
-        sub="Does the same country win both jury and televote? Y/N +2."
+        label={t(lang, "bet_same_winner")}
+        sub={t(lang, "bet_same_winner_sub")}
         max={2}
         value={bets.sameWinners ?? null}
         onChange={(v) => set("sameWinners", v)}
+        lang={lang}
       />
 
       <YesNoRow
-        label={`${host?.name ?? "Host"} top 3?`}
-        sub={`Will the host country (${host?.name ?? "AT"}) finish in the top 3? Y/N +3.`}
+        label={fmt(t(lang, "bet_host_top3"), { host: hostName })}
+        sub={fmt(t(lang, "bet_host_top3_sub"), { host: hostName })}
         max={3}
         value={bets.hostTop3 ?? null}
         onChange={(v) => set("hostTop3", v)}
+        lang={lang}
       />
 
       <YesNoRow
-        label="Solo winner?"
-        sub="Will the winner be a solo act (vs duo / group)? Y/N +2."
+        label={t(lang, "bet_solo_winner")}
+        sub={t(lang, "bet_solo_winner_sub")}
         max={2}
         value={bets.winnerSolo ?? null}
         onChange={(v) => set("winnerSolo", v)}
+        lang={lang}
       />
 
       {/* Drawers: only one mounted at a time. */}
       <CountryDrawer
-        title="Wooden spoon"
-        sub="Pick the country you think will finish last. Exact +5, off-by-1 +2."
+        title={t(lang, "bet_wooden_spoon")}
+        sub={t(lang, "bet_wooden_spoon_sub")}
         open={drawerKey === "woodenSpoon"}
         onClose={() => setDrawerKey(null)}
         selected={bets.woodenSpoon ? [bets.woodenSpoon] : []}
@@ -221,13 +228,16 @@ function HeaderText({
   sub: string;
   max?: number;
 }) {
+  // No useLang here: this lives inside a button so re-using parent's
+  // lang would be cleaner, but the "max +N" label is so short and
+  // numeric that the same string works in both languages.
   return (
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2 flex-wrap">
         <p className="font-display">{label}</p>
         {max != null && (
           <span className="text-[10px] uppercase tracking-widest text-flamingo">
-            max +{max}
+            +{max}
           </span>
         )}
       </div>
@@ -330,12 +340,14 @@ function YesNoRow({
   max,
   value,
   onChange,
+  lang,
 }: {
   label: string;
   sub: string;
   max?: number;
   value: boolean | null;
   onChange: (v: boolean | null) => void;
+  lang: "en" | "lt";
 }) {
   return (
     <RowFrame asButton={false}>
@@ -346,6 +358,10 @@ function YesNoRow({
             (opt === "yes" && value === true) ||
             (opt === "no" && value === false) ||
             (opt === "skip" && value === null);
+          const optLabel =
+            opt === "yes" ? t(lang, "yes_short")
+              : opt === "no" ? t(lang, "no_short")
+                : t(lang, "skip_short");
           return (
             <button
               key={opt}
@@ -359,7 +375,7 @@ function YesNoRow({
                   : "text-white/60 hover:text-white"
               }`}
             >
-              {opt === "skip" ? "—" : opt}
+              {optLabel}
             </button>
           );
         })}
