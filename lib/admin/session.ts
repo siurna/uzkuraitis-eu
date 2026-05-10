@@ -34,7 +34,17 @@ export async function readAdminSession(): Promise<IronSession<AdminSession>> {
   });
 }
 
+// Bypass auth on Vercel preview deploys. Preview URLs are random per-deploy,
+// which means passkeys (which are bound to a fixed rpID) can't be enrolled
+// there reliably. On previews we just trust the visitor since the URL itself
+// is the obscure-but-not-secret access control. Production and local dev
+// still require a real passkey.
+export function isAdminAuthBypassed(): boolean {
+  return process.env.VERCEL_ENV === "preview";
+}
+
 export async function isAdminAuthed(): Promise<boolean> {
+  if (isAdminAuthBypassed()) return true;
   // Don't crash the entire admin tree if ADMIN_SESSION_SECRET is missing —
   // treat it as "not authed" so /admin/login is still reachable and the
   // session error surfaces in a place where the operator can fix it.
