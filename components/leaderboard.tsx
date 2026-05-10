@@ -7,6 +7,7 @@ import { useEventListener } from "@/lib/liveblocks";
 import { getCountry } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 import type { BetBreakdown } from "@/lib/scoring";
+import { useLang, t } from "@/lib/i18n";
 
 type Row = {
   voterId: string;
@@ -38,6 +39,7 @@ export function Leaderboard({ code }: { code: string }) {
   const [data, setData] = useState<Response | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const lang = useLang();
 
   const fetchLeaderboard = useCallback(async () => {
     try {
@@ -77,11 +79,11 @@ export function Leaderboard({ code }: { code: string }) {
     <section className="flex flex-col gap-3">
       <header className="flex items-center gap-2">
         <Trophy className="h-5 w-5 text-gold" />
-        <h3 className="text-2xl font-display gradient-text">Leaderboard</h3>
+        <h3 className="text-2xl font-display gradient-text">{t(lang, "leaderboard")}</h3>
         {home && homeCountryOfficialPlacement != null && (
           <span className="ml-auto text-xs text-white/50 inline-flex items-center gap-1.5">
             <Flag code={home.code} size="sm" />
-            finished {homeCountryOfficialPlacement}
+            {t(lang, "finished")} {homeCountryOfficialPlacement}
           </span>
         )}
       </header>
@@ -125,11 +127,11 @@ export function Leaderboard({ code }: { code: string }) {
                   <div className="flex-1 min-w-0">
                     <p className="font-display truncate">{row.name}</p>
                     <p className="text-xs text-white/55 truncate">
-                      {row.topTen} ballot
+                      {row.topTen} {t(lang, "ballot_label")}
                       {row.home > 0 && (
                         <> + {row.home} {home?.name ?? "home"}</>
                       )}
-                      {row.betsTotal > 0 && <> + {row.betsTotal} bonuses</>}
+                      {row.betsTotal > 0 && <> + {row.betsTotal} {t(lang, "bonuses_label")}</>}
                     </p>
                   </div>
                   <div className="text-right">
@@ -166,7 +168,7 @@ export function Leaderboard({ code }: { code: string }) {
                       transition={{ duration: 0.22, ease: "easeOut" }}
                       className="overflow-hidden border-t border-white/5"
                     >
-                      <Breakdown row={row} home={home?.name ?? null} />
+                      <Breakdown row={row} home={home?.name ?? null} lang={lang} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -183,9 +185,11 @@ export function Leaderboard({ code }: { code: string }) {
 function Breakdown({
   row,
   home,
+  lang,
 }: {
   row: Row;
   home: string | null;
+  lang: "en" | "lt";
 }) {
   const lines: { label: string; pts: number }[] = [
     { label: "Top 10 ballot", pts: row.topTen },
@@ -221,7 +225,7 @@ function Breakdown({
         </li>
       ))}
       <li className="flex items-center justify-between pt-2 mt-1 border-t border-white/5">
-        <span className="font-display">Total</span>
+        <span className="font-display">{t(lang, "breakdown_total")}</span>
         <span className="font-display text-flamingo tabular-nums">
           {row.total}
         </span>

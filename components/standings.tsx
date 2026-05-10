@@ -16,6 +16,7 @@ import { useEventListener } from "@/lib/liveblocks";
 import { Flag } from "@/components/flag";
 import { Leaderboard } from "@/components/leaderboard";
 import { useRoomLive } from "@/components/room-shell";
+import { useLang, t } from "@/lib/i18n";
 
 type ScoreRow = {
   code: string;
@@ -40,6 +41,7 @@ type ScoresResponse = {
 export function Standings() {
   // Live room props (votingEnabled flips when admin toggles).
   const { code, votingEnabled } = useRoomLive();
+  const lang = useLang();
 
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [voters, setVoters] = useState<VoterRow[]>([]);
@@ -175,7 +177,7 @@ export function Standings() {
             animate={{ opacity: 1, y: 0 }}
             className="glass-card rounded-xl p-8 text-center text-white/60 font-display"
           >
-            No votes yet, be the first.
+            {t(lang, "no_votes_yet")}
           </motion.div>
         ) : (
           // LayoutGroup so rank-changes animate cleanly across rows.
@@ -214,11 +216,11 @@ export function Standings() {
           >
             {showAll ? (
               <>
-                <ChevronUp className="h-4 w-4 mr-2" /> Top 5 only
+                <ChevronUp className="h-4 w-4 mr-2" /> {t(lang, "show_top_5")}
               </>
             ) : (
               <>
-                <ChevronDown className="h-4 w-4 mr-2" /> Show all{" "}
+                <ChevronDown className="h-4 w-4 mr-2" /> {t(lang, "show_all")}{" "}
                 {countries.length}
               </>
             )}
@@ -230,7 +232,7 @@ export function Standings() {
 
       {voters.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h3 className="text-2xl font-display gradient-text">Votes cast</h3>
+          <h3 className="text-2xl font-display gradient-text">{t(lang, "votes_cast")}</h3>
           <div className="flex flex-wrap gap-2 justify-center">
             <AnimatePresence initial={false}>
               {voters.map((v) => {
@@ -288,10 +290,10 @@ export function Standings() {
                     <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
                   </span>
                   <span className="text-[11px] uppercase tracking-widest">
-                    Live
+                    {t(lang, "live")}
                   </span>
                 </span>
-                {hasVoted ? "Update your vote" : "Cast your vote"}
+                {hasVoted ? t(lang, "update_vote") : t(lang, "cast_vote")}
               </Button>
             </Link>
           </motion.div>

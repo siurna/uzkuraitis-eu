@@ -32,6 +32,7 @@ import { Flag } from "@/components/flag";
 import { BonusBetsForm } from "@/components/bonus-bets-form";
 import { CountryDrawer } from "@/components/country-drawer";
 import type { Bets } from "@/lib/scoring";
+import { useLang, t } from "@/lib/i18n";
 
 const POINT_VALUES = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1] as const;
 type Points = (typeof POINT_VALUES)[number];
@@ -71,6 +72,7 @@ export function VoteForm({
   const [pulsingPoints, setPulsingPoints] = useState<Points | null>(null);
 
   const homeCountry = getCountry(homeCountryCode);
+  const lang = useLang();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -182,11 +184,11 @@ export function VoteForm({
 
   const submit = async () => {
     if (!name.trim()) {
-      toast.error("Add your name first.");
+      toast.error(t(lang, "add_name_first"));
       return;
     }
     if (!allFilled) {
-      toast.error(`Fill all 10 slots, ${10 - filledCount} to go.`);
+      toast.error(t(lang, "fill_n_more", 10 - filledCount));
       return;
     }
     setSubmitting(true);
@@ -215,10 +217,10 @@ export function VoteForm({
       });
       if (!res.ok) {
         const { error } = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(error ?? "Couldn't submit vote.");
+        throw new Error(error ?? t(lang, "couldnt_submit"));
       }
       localStorage.setItem(`uzk_voted_${roomCode}`, "1");
-      toast.success("Vote in. Long live music!");
+      toast.success(t(lang, "voted_toast"));
       router.push(`/r/${roomCode}`);
     } catch (err) {
       toast.error((err as Error).message);
@@ -236,7 +238,7 @@ export function VoteForm({
             className="flex-1 min-w-0 text-left hover:opacity-80 transition"
             aria-label="Back to standings"
           >
-            <p className="font-display text-lg truncate">Cast your vote</p>
+            <p className="font-display text-lg truncate">{t(lang, "cast_your_vote")}</p>
             <p className="text-xs text-white/50 truncate">{roomName}</p>
           </Link>
           {/* Tabs live in the header on every screen so they stay in reach
@@ -248,11 +250,11 @@ export function VoteForm({
             <TabsList className="h-9">
               <TabsTrigger value="ballot" className="px-3 py-1 text-xs">
                 <ListOrdered className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Ballot</span>
+                <span className="hidden sm:inline">{t(lang, "tab_ballot")}</span>
               </TabsTrigger>
               <TabsTrigger value="bets" className="px-3 py-1 text-xs">
                 <Sparkles className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Bets</span>
+                <span className="hidden sm:inline">{t(lang, "tab_bets")}</span>
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -269,10 +271,10 @@ export function VoteForm({
             <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
               <div className="flex items-baseline justify-between gap-3">
                 <h2 className="font-display text-xl gradient-text">
-                  Your top 10
+                  {t(lang, "your_top_10")}
                 </h2>
                 <p className="text-xs text-white/40">
-                  Tap a slot to pick, drag to reorder.
+                  {t(lang, "drag_hint")}
                 </p>
               </div>
               <DndContext
@@ -361,12 +363,12 @@ export function VoteForm({
                      text-white shadow-glow-pink
                      disabled:opacity-40 disabled:bg-none disabled:bg-white/10"
         >
-          {submitting ? "Submitting…" : (
+          {submitting ? t(lang, "submitting") : (
             <>
               <Send className="h-4 w-4 mr-2" />
               {allFilled
-                ? "Submit my 12 points"
-                : `Pick ${10 - filledCount} more`}
+                ? t(lang, "submit_12")
+                : t(lang, "pick_n_more", 10 - filledCount)}
             </>
           )}
         </Button>
@@ -425,6 +427,23 @@ function BallotSlot({
   onClear: () => void;
   onPick: () => void;
   pulsing: boolean;
+}) {
+  const lang = useLang();
+  return <BallotSlotInner slot={slot} onClear={onClear} onPick={onPick} pulsing={pulsing} lang={lang} />;
+}
+
+function BallotSlotInner({
+  slot,
+  onClear,
+  onPick,
+  pulsing,
+  lang,
+}: {
+  slot: Slot;
+  onClear: () => void;
+  onPick: () => void;
+  pulsing: boolean;
+  lang: "en" | "lt";
 }) {
   const id = `slot-${slot.points}`;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -528,7 +547,7 @@ function BallotSlot({
               exit={{ opacity: 0 }}
               className="flex-1 text-sm text-white/40 italic"
             >
-              Tap to pick
+              {t(lang, "tap_to_pick")}
             </motion.p>
           )}
         </AnimatePresence>
