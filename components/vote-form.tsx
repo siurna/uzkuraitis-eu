@@ -16,6 +16,7 @@ import {
   closestCenter,
 } from "@dnd-kit/core";
 import { motion, AnimatePresence } from "motion/react";
+import { createPortal } from "react-dom";
 import {
   SortableContext,
   arrayMove,
@@ -68,6 +69,16 @@ export function VoteForm({
   const [pickingPoints, setPickingPoints] = useState<Points | null>(null);
   // Slot that just got filled, gets a one-shot heartbeat pulse.
   const [pulsingPoints, setPulsingPoints] = useState<Points | null>(null);
+  // One-shot heart particle that flies from screen centre into the
+  // freshly-filled slot's heart spot. Spawned after assign().
+  const [flyingHeart, setFlyingHeart] = useState<{
+    id: number;
+    code: string;
+    fromX: number;
+    fromY: number;
+    toX: number;
+    toY: number;
+  } | null>(null);
 
   const homeCountry = getCountry(homeCountryCode);
   const lang = useLang();
@@ -153,12 +164,33 @@ export function VoteForm({
             : s,
       ),
     );
-    // Heartbeat pops AFTER the picker drawer's slide-down (~0.28s) so
-    // the user actually sees the freshly-filled slot pulse instead of
-    // it firing while the drawer is still on top of the row.
+    // Wait for the picker drawer to slide down (~0.28s), then:
+    //  1. spawn a heart that flies from screen centre into the slot's
+    //     heart spot (data-slot-target=<points> selector),
+    //  2. as the heart lands, kick off the slot's heartbeat pulse.
     window.setTimeout(() => {
-      setPulsingPoints(points);
-      window.setTimeout(() => setPulsingPoints(null), 1100);
+      if (typeof document !== "undefined") {
+        const target = document.querySelector(
+          `[data-slot-target="${points}"]`,
+        );
+        if (target) {
+          const rect = target.getBoundingClientRect();
+          setFlyingHeart({
+            id: Date.now(),
+            code,
+            fromX: window.innerWidth / 2,
+            fromY: window.innerHeight / 2,
+            toX: rect.left + rect.width / 2,
+            toY: rect.top + rect.height / 2,
+          });
+        }
+      }
+      // Pulse + clear the flying heart shortly after it lands.
+      window.setTimeout(() => {
+        setPulsingPoints(points);
+        window.setTimeout(() => setPulsingPoints(null), 1100);
+      }, 520);
+      window.setTimeout(() => setFlyingHeart(null), 700);
     }, 320);
   };
 
@@ -237,9 +269,27 @@ export function VoteForm({
         <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center gap-3">
           <Link
             href={`/r/${roomCode}`}
-            className="flex-1 min-w-0 text-left hover:opacity-80 transition"
+            className="flex-1 min-w-0 text-left hover:opacity-80 transition flex items-center gap-2.5"
             aria-label="Back to standings"
           >
+            <motion.div
+              animate={{ scale: [1, 1.18, 1, 1.1, 1] }}
+              transition={{
+                duration: 1.1,
+                times: [0, 0.18, 0.36, 0.5, 1],
+                repeat: Infinity,
+                repeatDelay: 0.5,
+                ease: "easeInOut",
+              }}
+              className="origin-center shrink-0"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/70-heart-sm.webp"
+                alt=""
+                className="h-7 w-7 object-contain"
+              />
+            </motion.div>
             <p className="font-display text-lg truncate">{t(lang, "cast_your_vote")}</p>
           </Link>
           {/* Tabs live in the header on every screen so they stay in reach
@@ -424,7 +474,56 @@ export function VoteForm({
           })
           .map((c) => c.code)}
       />
+
+      <FlyingHeartToSlot heart={flyingHeart} />
     </main>
+  );
+}
+
+// A single heart-flag chip portaled to body that arcs from screen
+// centre into the slot's heart spot. Uses framer's keyframe array
+// for a soft drop-and-settle motion (over-shoot then settle).
+function FlyingHeartToSlot({
+  heart,
+}: {
+  heart: { id: number; code: string; fromX: number; fromY: number; toX: number; toY: number } | null;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(
+    <AnimatePresence>
+      {heart && (
+        <motion.div
+          key={heart.id}
+          initial={{
+            left: heart.fromX - 28,
+            top: heart.fromY - 28,
+            opacity: 0,
+            scale: 0.4,
+            rotate: 0,
+          }}
+          animate={{
+            left: [heart.fromX - 28, heart.toX - 18],
+            top: [heart.fromY - 28, heart.toY - 18],
+            opacity: [0, 1, 1, 0],
+            scale: [0.4, 1.4, 1, 0.4],
+            rotate: [0, -8, 4, 0],
+          }}
+          transition={{
+            duration: 0.62,
+            ease: [0.34, 1.2, 0.64, 1],
+            opacity: { times: [0, 0.18, 0.7, 1] },
+            scale: { times: [0, 0.35, 0.7, 1] },
+          }}
+          className="fixed h-14 w-14 z-[70] pointer-events-none
+                     drop-shadow-[0_8px_24px_rgba(255,46,222,0.55)]"
+        >
+          <Flag code={heart.code} size="xl" className="h-full w-full" />
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
   );
 }
 
@@ -506,6 +605,7 @@ function BallotSlotInner({
           {country ? (
             <motion.span
               key={`flag-${country.code}`}
+              data-slot-target={slot.points}
               initial={{ opacity: 0, scale: 0.7 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.7 }}
@@ -515,7 +615,25 @@ function BallotSlotInner({
               <Flag code={country.code} size="md" />
             </motion.span>
           ) : (
-            <span className="shrink-0 h-6 w-8 rounded-[3px] bg-white/5 border border-dashed border-white/15" />
+            // Dotted heart placeholder — outline-only SVG that matches
+            // the .heart clip used everywhere else, so the empty slot
+            // already looks like a country chip waiting to be filled.
+            <span
+              data-slot-target={slot.points}
+              className="shrink-0 inline-flex items-center justify-center h-9 w-9"
+              aria-hidden
+            >
+              <svg viewBox="0 0 32 32" className="h-9 w-9 text-white/30">
+                <path
+                  d="M16 28 C16 28, 3 19, 3 11 C3 6.5, 6.5 4, 10 4 C12.8 4, 15 6, 16 8.5 C17 6, 19.2 4, 22 4 C25.5 4, 29 6.5, 29 11 C29 19, 16 28, 16 28 Z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeDasharray="2.5 2.5"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
           )}
         </AnimatePresence>
       </div>

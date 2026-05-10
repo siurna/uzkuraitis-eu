@@ -33,6 +33,9 @@ const messages = {
     clear:             "Clear",
     next:              "Next",
     back:              "Back",
+    leave_room:        "Leave room",
+    link_copied:       "Link copied",
+    couldnt_copy:      "Couldn't copy link",
 
     // RoomGate (entrance code screen)
     enter_room_code:   "Enter room code",
@@ -137,6 +140,9 @@ const messages = {
     clear:             "Išvalyti",
     next:              "Toliau",
     back:              "Atgal",
+    leave_room:        "Palikti kambarį",
+    link_copied:       "Nuoroda nukopijuota",
+    couldnt_copy:      "Nepavyko nukopijuoti",
 
     enter_room_code:   "Įvesk kambario kodą",
     enter_room:        "Įeiti",
