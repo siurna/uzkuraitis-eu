@@ -42,7 +42,7 @@ export default async function AdminRoomsPage() {
     <div className="flex flex-col gap-6">
       <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl gradient-text">Rooms</h1>
+          <h1 className="font-display text-3xl gradient-text heading-rise">Rooms</h1>
           <p className="text-sm text-white/50 mt-1">
             {list.length} {list.length === 1 ? "room" : "rooms"} on this
             installation.
@@ -60,7 +60,7 @@ export default async function AdminRoomsPage() {
           list.map((r) => (
             <div
               key={r.id}
-              className="glass-card rounded-xl p-4 flex items-center gap-3"
+              className="glass-card list-card-hover rounded-xl p-4 flex items-center gap-3"
             >
               <Link
                 href={`/admin/rooms/${r.code}`}

@@ -266,11 +266,27 @@ export function VoteForm({
               <h2 className="font-display text-xl gradient-text">
                 Remaining countries
               </h2>
-              <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <motion.ul
+                className="grid grid-cols-2 sm:grid-cols-3 gap-2"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: {},
+                  visible: { transition: { staggerChildren: 0.018 } },
+                }}
+              >
                 {remaining.map((c) => {
                   const nextSlot = slots.find((s) => !s.countryCode);
                   return (
-                    <li key={c.code}>
+                    <motion.li
+                      key={c.code}
+                      layout
+                      variants={{
+                        hidden: { opacity: 0, y: 6 },
+                        visible: { opacity: 1, y: 0 },
+                      }}
+                      transition={{ duration: 0.22, ease: "easeOut" }}
+                    >
                       <button
                         type="button"
                         disabled={!nextSlot}
@@ -278,13 +294,18 @@ export function VoteForm({
                           nextSlot && assign(nextSlot.points, c.code)
                         }
                         className="w-full flex items-center gap-2 px-3 py-2 rounded-lg
-                                   bg-white/5 hover:bg-white/10 disabled:opacity-40
-                                   text-left transition"
+                                   bg-white/5 hover:bg-flamingo/15 hover:border-flamingo/40
+                                   border border-transparent
+                                   disabled:opacity-40 disabled:hover:bg-white/5
+                                   disabled:hover:border-transparent
+                                   text-left transition transform-gpu duration-150
+                                   hover:-translate-y-px active:translate-y-0
+                                   active:scale-[0.97]"
                       >
                         <Flag code={c.code} size="sm" />
                         <span className="truncate text-sm">{c.name}</span>
                       </button>
-                    </li>
+                    </motion.li>
                   );
                 })}
                 {remaining.length === 0 && (
@@ -292,7 +313,7 @@ export function VoteForm({
                     All assigned. Drag the rows above to reorder.
                   </li>
                 )}
-              </ul>
+              </motion.ul>
             </section>
           </TabsContent>
 

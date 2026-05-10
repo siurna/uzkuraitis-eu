@@ -91,7 +91,7 @@ export function Leaderboard({ code }: { code: string }) {
               transition={{
                 layout: { type: "spring", stiffness: 320, damping: 30 },
               }}
-              className="list-entry-gradient glass-card rounded-xl p-3 flex items-center gap-3"
+              className="list-entry-gradient list-card-hover glass-card rounded-xl p-3 flex items-center gap-3"
             >
               <div
                 className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center font-display text-base ${
