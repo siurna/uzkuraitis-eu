@@ -418,12 +418,17 @@ function BallotSlot({
     useSortable({ id });
 
   const country = slot.countryCode ? getCountry(slot.countryCode) : null;
-  const tone =
+  // The 12/10/8 slots get a coloured points badge instead of a tinted
+  // border so the row borders stay consistent with the rest of the app
+  // (one design system, fewer competing border colours).
+  const pointsColor =
     slot.points === 12
-      ? "border-gold/60 bg-gold/10"
+      ? "text-gold"
       : slot.points === 10
-        ? "border-flamingo/60 bg-flamingo/10"
-        : "border-white/10 bg-white/5";
+        ? "text-flamingo"
+        : slot.points === 8
+          ? "text-orange"
+          : "text-flamingo/80";
 
   return (
     <li
@@ -433,7 +438,7 @@ function BallotSlot({
         transition,
         opacity: isDragging ? 0.7 : 1,
       }}
-      className={`list-entry-gradient flex items-stretch rounded-xl border ${tone}`}
+      className="list-entry-gradient glass-card flex items-stretch rounded-xl"
     >
       <button
         type="button"
@@ -455,7 +460,7 @@ function BallotSlot({
           country ? `Change ${slot.points} pts pick` : `Pick ${slot.points} pts country`
         }
       >
-        <div className="w-10 text-center font-display text-2xl text-flamingo tabular-nums shrink-0">
+        <div className={`w-10 text-center font-display text-2xl ${pointsColor} tabular-nums shrink-0`}>
           {slot.points}
         </div>
 
