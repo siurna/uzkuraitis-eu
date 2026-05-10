@@ -216,9 +216,11 @@
 }
 
 /* Glass surface, intentionally cool + quiet. Hairline white-low border,
-   restrained drop shadow, no inset bevels, no flamingo glow. */
+   restrained drop shadow, no inset bevels, no flamingo glow.
+   No `position` here — that fights Tailwind's positioning utilities
+   (the bottom-sheet uses `fixed` and we want that to win). Callers
+   that need a positioning context should add `relative` themselves. */
 .glass-card {
-  position: relative;
   background:
     linear-gradient(
       180deg,
