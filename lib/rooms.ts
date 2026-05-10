@@ -8,8 +8,11 @@ import { rooms, type Room } from "./db/schema";
 const ROOM_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 const generateCode = customAlphabet(ROOM_CODE_ALPHABET, 6);
 
+// Match the alphabet letter-for-letter so the validator can't accept a
+// character the generator would never produce (the previous A-HJ-NP-Z
+// range silently allowed L, which the generator excludes).
 export function isValidRoomCode(code: string): boolean {
-  return /^[2-9A-HJ-NP-Z]{6}$/.test(code);
+  return /^[2-9ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/.test(code);
 }
 
 export function normalizeRoomCode(code: string): string {

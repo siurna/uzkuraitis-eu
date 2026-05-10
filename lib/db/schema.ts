@@ -55,11 +55,12 @@ export const voters = pgTable(
     betHighestBig5: text("bet_highest_big5"),
     betJuryWinner: text("bet_jury_winner"),
     betTelevoteWinner: text("bet_televote_winner"),
-    betNulTelevote: text("bet_nul_televote"),
+    // Nul-points televote: voter can pick MULTIPLE country guesses, plus
+    // an optional "NONE" sentinel for "no country gets zero". Stored as a
+    // Postgres text[] array.
+    betNulTelevote: text("bet_nul_televote").array(),
     // Yes/no flags.
     betSameWinners: boolean("bet_same_winners"),
-    betLtTop10: boolean("bet_lt_top10"),
-    betLtTop5: boolean("bet_lt_top5"),
     betHostTop3: boolean("bet_host_top3"),
     betWinnerSolo: boolean("bet_winner_solo"),
     createdAt: timestamp("created_at", { withTimezone: true })

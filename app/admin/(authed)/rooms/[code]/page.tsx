@@ -107,7 +107,7 @@ export default async function AdminRoomDetailPage({
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
-            <h1 className="font-display text-3xl gradient-text truncate">
+            <h1 className="font-display text-3xl gradient-text truncate heading-rise">
               {room.name}
             </h1>
             <code className="text-xs text-white/50 tracking-[0.3em] font-display">

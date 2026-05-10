@@ -15,7 +15,7 @@ export default async function AdminSettingsPage() {
   return (
     <div className="flex flex-col gap-8">
       <header>
-        <h1 className="font-display text-3xl gradient-text">Settings</h1>
+        <h1 className="font-display text-3xl gradient-text heading-rise">Settings</h1>
         <p className="text-sm text-white/50 mt-1">
           Passkeys and environment.
         </p>

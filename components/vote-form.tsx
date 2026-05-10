@@ -24,12 +24,13 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X, Send } from "lucide-react";
+import { GripVertical, X, Send, ListOrdered, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { countries, getCountry } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 import { BonusBetsForm } from "@/components/bonus-bets-form";
+import { CountryDrawer } from "@/components/country-drawer";
 import type { Bets } from "@/lib/scoring";
 
 const POINT_VALUES = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1] as const;
@@ -64,6 +65,10 @@ export function VoteForm({
   const [bets, setBets] = useState<Bets>({});
   const [submitting, setSubmitting] = useState(false);
   const [tab, setTab] = useState<"ballot" | "bets">("ballot");
+  // Which ballot slot is currently being edited via the country drawer.
+  const [pickingPoints, setPickingPoints] = useState<Points | null>(null);
+  // Slot that just got filled, gets a one-shot heartbeat pulse.
+  const [pulsingPoints, setPulsingPoints] = useState<Points | null>(null);
 
   const homeCountry = getCountry(homeCountryCode);
 
@@ -122,8 +127,6 @@ export function VoteForm({
     [slots],
   );
 
-  const remaining = countries.filter((c) => !usedCountryCodes.has(c.code));
-
   const filledCount = slots.filter((s) => s.countryCode).length;
   const allFilled = filledCount === 10;
 
@@ -137,6 +140,9 @@ export function VoteForm({
             : s,
       ),
     );
+    // Trigger one-shot heartbeat on the freshly-filled slot.
+    setPulsingPoints(points);
+    window.setTimeout(() => setPulsingPoints(null), 900);
   };
 
   const clearSlot = (points: Points) => {
@@ -220,9 +226,23 @@ export function VoteForm({
             <p className="font-display text-lg truncate">Cast your vote</p>
             <p className="text-xs text-white/50 truncate">{roomName}</p>
           </Link>
-          <span className="text-xs px-2 py-1 rounded-full bg-white/5 tabular-nums">
-            {filledCount}/10
-          </span>
+          {/* Tabs live in the header on every screen so they stay in reach
+              when you scroll past the long ballot. */}
+          <Tabs
+            value={tab}
+            onValueChange={(v) => setTab(v as "ballot" | "bets")}
+          >
+            <TabsList className="h-9">
+              <TabsTrigger value="ballot" className="px-3 py-1 text-xs">
+                <ListOrdered className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Ballot</span>
+              </TabsTrigger>
+              <TabsTrigger value="bets" className="px-3 py-1 text-xs">
+                <Sparkles className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Bets</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </header>
 
@@ -232,14 +252,16 @@ export function VoteForm({
           onValueChange={(v) => setTab(v as "ballot" | "bets")}
           className="flex flex-col gap-4"
         >
-          <TabsList className="self-center">
-            <TabsTrigger value="ballot">Top 10 ballot</TabsTrigger>
-            <TabsTrigger value="bets">Bonus bets</TabsTrigger>
-          </TabsList>
-
           <TabsContent value="ballot" className="flex flex-col gap-6 mt-0">
             <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
-              <h2 className="font-display text-xl gradient-text">Your top 10</h2>
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="font-display text-xl gradient-text">
+                  Your top 10
+                </h2>
+                <p className="text-xs text-white/40">
+                  Tap a slot to pick, drag to reorder.
+                </p>
+              </div>
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -255,44 +277,13 @@ export function VoteForm({
                         key={slot.points}
                         slot={slot}
                         onClear={() => clearSlot(slot.points)}
+                        onPick={() => setPickingPoints(slot.points)}
+                        pulsing={pulsingPoints === slot.points}
                       />
                     ))}
                   </ul>
                 </SortableContext>
               </DndContext>
-            </section>
-
-            <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
-              <h2 className="font-display text-xl gradient-text">
-                Remaining countries
-              </h2>
-              <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {remaining.map((c) => {
-                  const nextSlot = slots.find((s) => !s.countryCode);
-                  return (
-                    <li key={c.code}>
-                      <button
-                        type="button"
-                        disabled={!nextSlot}
-                        onClick={() =>
-                          nextSlot && assign(nextSlot.points, c.code)
-                        }
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg
-                                   bg-white/5 hover:bg-white/10 disabled:opacity-40
-                                   text-left transition"
-                      >
-                        <Flag code={c.code} size="sm" />
-                        <span className="truncate text-sm">{c.name}</span>
-                      </button>
-                    </li>
-                  );
-                })}
-                {remaining.length === 0 && (
-                  <li className="col-span-full text-center text-white/50 text-sm py-6">
-                    All assigned. Drag the rows above to reorder.
-                  </li>
-                )}
-              </ul>
             </section>
           </TabsContent>
 
@@ -359,12 +350,54 @@ export function VoteForm({
             {submitting ? "Submitting…" : (
               <>
                 <Send className="h-4 w-4 mr-2" />
-                Submit my 12 points
+                {allFilled
+                  ? "Submit my 12 points"
+                  : `Pick ${10 - filledCount} more`}
               </>
             )}
           </Button>
         </div>
       </div>
+
+      {/* Country picker for the ballot. The "options" list excludes
+          countries already used elsewhere on the ballot, except for
+          the country currently in the slot being edited (so swap is
+          a no-op tap if you change your mind). */}
+      <CountryDrawer
+        title={
+          pickingPoints != null
+            ? `Pick the country for ${pickingPoints} points`
+            : ""
+        }
+        sub="Tap to assign. Changes auto-swap if the country is already in another slot."
+        open={pickingPoints != null}
+        onClose={() => setPickingPoints(null)}
+        selected={
+          pickingPoints != null
+            ? [
+                slots.find((s) => s.points === pickingPoints)?.countryCode ??
+                  "",
+              ].filter(Boolean)
+            : []
+        }
+        onPick={(v) => {
+          if (typeof v === "string" && pickingPoints != null) {
+            assign(pickingPoints, v);
+          }
+          setPickingPoints(null);
+        }}
+        options={countries
+          .filter((c) => {
+            if (
+              pickingPoints != null &&
+              slots.find((s) => s.points === pickingPoints)?.countryCode ===
+                c.code
+            )
+              return true;
+            return !usedCountryCodes.has(c.code);
+          })
+          .map((c) => c.code)}
+      />
     </main>
   );
 }
@@ -372,9 +405,13 @@ export function VoteForm({
 function BallotSlot({
   slot,
   onClear,
+  onPick,
+  pulsing,
 }: {
   slot: Slot;
   onClear: () => void;
+  onPick: () => void;
+  pulsing: boolean;
 }) {
   const id = `slot-${slot.points}`;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -396,60 +433,82 @@ function BallotSlot({
         transition,
         opacity: isDragging ? 0.7 : 1,
       }}
-      className={`list-entry-gradient flex items-center gap-3 rounded-xl border ${tone} p-3`}
+      className={`list-entry-gradient flex items-stretch rounded-xl border ${tone}`}
     >
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="text-white/40 hover:text-white/80 cursor-grab active:cursor-grabbing touch-none"
+        className="text-white/40 hover:text-white/80 cursor-grab active:cursor-grabbing touch-none px-2"
         aria-label="Drag to reorder"
       >
         <GripVertical className="h-5 w-5" />
       </button>
 
-      <div className="w-12 text-center font-display text-2xl text-flamingo tabular-nums">
-        {slot.points}
-      </div>
+      <button
+        type="button"
+        onClick={onPick}
+        className="flex flex-1 items-center gap-3 p-3 min-w-0 text-left
+                   transition transform-gpu duration-150
+                   hover:bg-white/[0.04] active:scale-[0.99]"
+        aria-label={
+          country ? `Change ${slot.points} pts pick` : `Pick ${slot.points} pts country`
+        }
+      >
+        <div className="w-10 text-center font-display text-2xl text-flamingo tabular-nums shrink-0">
+          {slot.points}
+        </div>
 
-      <AnimatePresence mode="wait" initial={false}>
-        {country ? (
-          <motion.div
-            key={`filled-${country.code}`}
-            initial={{ opacity: 0, x: 12, scale: 0.85 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: -12, scale: 0.85 }}
-            transition={{ type: "spring", stiffness: 480, damping: 28 }}
-            className="flex flex-1 items-center gap-3 min-w-0"
-          >
-            <Flag code={country.code} size="md" />
-            <div className="flex-1 min-w-0">
-              <p className="font-display truncate">{country.name}</p>
-              <p className="text-xs text-white/55 truncate">
-                {country.artist} — <span className="italic">{country.song}</span>
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClear}
-              className="text-white/40 hover:text-error transition"
-              aria-label="Clear slot"
+        <AnimatePresence mode="wait" initial={false}>
+          {country ? (
+            <motion.div
+              key={`filled-${country.code}`}
+              initial={{ opacity: 0, x: 12, scale: 0.85 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: -12, scale: 0.85 }}
+              transition={{ type: "spring", stiffness: 480, damping: 28 }}
+              className="flex flex-1 items-center gap-3 min-w-0"
             >
-              <X className="h-4 w-4" />
-            </button>
-          </motion.div>
-        ) : (
-          <motion.p
-            key="empty"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex-1 text-sm text-white/40 italic"
-          >
-            Tap a country below or drag here
-          </motion.p>
-        )}
-      </AnimatePresence>
+              <span className={pulsing ? "heartbeat inline-block" : "inline-block"}>
+                <Flag code={country.code} size="md" />
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="font-display truncate leading-tight">
+                  {country.name}
+                </p>
+                {/* Singer + song on separate lines, both truncated. */}
+                <p className="text-xs text-white/55 truncate leading-tight">
+                  {country.artist}
+                </p>
+                <p className="text-xs text-white/45 italic truncate leading-tight">
+                  {country.song}
+                </p>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.p
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex-1 text-sm text-white/40 italic"
+            >
+              Tap to pick
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </button>
+
+      {country && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-white/40 hover:text-error transition px-3"
+          aria-label="Clear slot"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
     </li>
   );
 }

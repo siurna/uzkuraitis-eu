@@ -29,10 +29,10 @@ const VotesSchema = z.object({
       highestBig5: z.string().min(2).max(4).nullable().optional(),
       juryWinner: z.string().min(2).max(4).nullable().optional(),
       televoteWinner: z.string().min(2).max(4).nullable().optional(),
-      nulTelevote: z.string().min(2).max(4).nullable().optional(),
+      // Multi-select: 0..N country codes (or NONE_TOKEN). Capped at the
+      // number of finalists to keep payloads sane.
+      nulTelevote: z.array(z.string().min(2).max(4)).max(50).nullable().optional(),
       sameWinners: z.boolean().nullable().optional(),
-      ltTop10: z.boolean().nullable().optional(),
-      ltTop5: z.boolean().nullable().optional(),
       hostTop3: z.boolean().nullable().optional(),
       winnerSolo: z.boolean().nullable().optional(),
     })
@@ -112,8 +112,6 @@ export async function POST(request: Request, { params }: RouteCtx) {
     betTelevoteWinner: bets.televoteWinner ?? null,
     betNulTelevote: bets.nulTelevote ?? null,
     betSameWinners: bets.sameWinners ?? null,
-    betLtTop10: bets.ltTop10 ?? null,
-    betLtTop5: bets.ltTop5 ?? null,
     betHostTop3: bets.hostTop3 ?? null,
     betWinnerSolo: bets.winnerSolo ?? null,
   } as const;

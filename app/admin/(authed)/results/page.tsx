@@ -38,7 +38,7 @@ export default async function AdminResultsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="font-display text-3xl gradient-text">Results</h1>
+      <h1 className="font-display text-3xl gradient-text heading-rise">Results</h1>
 
       <AdminOfficialResults
         initial={official.map((o) => ({

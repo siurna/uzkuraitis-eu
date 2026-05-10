@@ -32,7 +32,7 @@ export default async function AdminLayout({
               <strong className="font-display">Preview mode</strong>: admin
               auth is bypassed because this is a Vercel preview deploy. Anyone
               with this URL can use admin tools. The passkey gate is only
-              active on production (uzkuraitis.eu) and localhost.
+              active on production and localhost.
             </p>
           </div>
         </div>

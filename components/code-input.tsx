@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 const LENGTH = 6;
 // Same alphabet as lib/rooms.ts — no 0/O/1/I/L confusion.
-const ALPHABET = /^[2-9A-HJ-NP-Z]$/;
+const ALPHABET = /^[2-9ABCDEFGHJKMNPQRSTUVWXYZ]$/;
 
 // Six-cell OTP-style input rendered as a single conjoined pill — one outer
 // rounded border, dashed dividers between cells, no gaps. Each cell is its
@@ -38,7 +38,7 @@ export function CodeInput({
   }, [autoFocus]);
 
   const setAt = (index: number, char: string) => {
-    const sanitized = char.toUpperCase().replace(/[^2-9A-HJ-NP-Z]/g, "").slice(0, 1);
+    const sanitized = char.toUpperCase().replace(/[^2-9ABCDEFGHJKMNPQRSTUVWXYZ]/g, "").slice(0, 1);
     if (!sanitized) return;
     const next = (value + " ".repeat(LENGTH))
       .slice(0, LENGTH)
@@ -81,7 +81,7 @@ export function CodeInput({
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
     const pasted = e.clipboardData.getData("text").toUpperCase();
-    const filtered = pasted.replace(/[^2-9A-HJ-NP-Z]/g, "").slice(0, LENGTH);
+    const filtered = pasted.replace(/[^2-9ABCDEFGHJKMNPQRSTUVWXYZ]/g, "").slice(0, LENGTH);
     if (!filtered) return;
     e.preventDefault();
     onChange(filtered);
@@ -116,11 +116,30 @@ export function CodeInput({
           spellCheck={false}
           disabled={disabled}
           aria-label={`Character ${i + 1} of ${LENGTH}`}
-          maxLength={1}
+          // No maxLength: we want browsers to deliver the full pasted
+          // string (iOS SMS autofill, Android suggestion strip, password
+          // managers) so we can spread it across cells. We trim down to
+          // 1 char ourselves below.
           value={char}
-          onChange={() => {
-            const last = refs.current[i]?.value ?? "";
-            if (last) setAt(i, last);
+          onChange={(e) => {
+            const raw = e.target.value;
+            if (!raw) return;
+            // Multi-char input (paste / autofill / IME): spread across
+            // cells starting from this one.
+            if (raw.length > 1) {
+              const filtered = raw
+                .toUpperCase()
+                .replace(/[^2-9ABCDEFGHJKMNPQRSTUVWXYZ]/g, "")
+                .slice(0, LENGTH - i);
+              if (!filtered) return;
+              const next = (value.slice(0, i) + filtered).slice(0, LENGTH);
+              onChange(next);
+              const focusIdx = Math.min(i + filtered.length, LENGTH - 1);
+              refs.current[focusIdx]?.focus();
+              if (next.length === LENGTH) onComplete?.(next);
+            } else {
+              setAt(i, raw);
+            }
           }}
           onKeyDown={handleKey(i)}
           onPaste={handlePaste}

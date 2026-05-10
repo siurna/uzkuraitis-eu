@@ -63,8 +63,6 @@ export async function GET(_req: Request, { params }: RouteCtx) {
       betTelevoteWinner: voters.betTelevoteWinner,
       betNulTelevote: voters.betNulTelevote,
       betSameWinners: voters.betSameWinners,
-      betLtTop10: voters.betLtTop10,
-      betLtTop5: voters.betLtTop5,
       betHostTop3: voters.betHostTop3,
       betWinnerSolo: voters.betWinnerSolo,
     })
@@ -99,8 +97,6 @@ export async function GET(_req: Request, { params }: RouteCtx) {
         televoteWinner: v.betTelevoteWinner,
         nulTelevote: v.betNulTelevote,
         sameWinners: v.betSameWinners,
-        ltTop10: v.betLtTop10,
-        ltTop5: v.betLtTop5,
         hostTop3: v.betHostTop3,
         winnerSolo: v.betWinnerSolo,
       };

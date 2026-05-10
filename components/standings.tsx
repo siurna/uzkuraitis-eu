@@ -262,7 +262,7 @@ function CountryRow({
         layout: { type: "spring", stiffness: 320, damping: 30 },
         opacity: { duration: 0.25 },
       }}
-      className="relative list-entry-gradient glass-card rounded-xl p-3 flex items-center gap-3"
+      className="relative list-entry-gradient list-card-hover glass-card rounded-xl p-3 flex items-center gap-3"
     >
       <motion.div
         layout="position"
