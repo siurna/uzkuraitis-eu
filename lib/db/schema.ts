@@ -218,6 +218,57 @@ export const votesRelations = relations(votes, ({ one }) => ({
   voter: one(voters, { fields: [votes.voterId], references: [voters.id] }),
 }));
 
+// Chat messages. Persistent so users see history when they re-open the
+// room. `kind` discriminates plain text from special cards (GIF, bingo
+// strike, future system messages). `meta` is a free-form jsonb bag so
+// adding new kinds doesn't need a migration.
+export type ChatMessageKind = "text" | "gif" | "bingo_strike";
+
+export const chatMessages = pgTable(
+  "chat_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    sessionId: text("session_id").notNull(),
+    name: text("name").notNull(),
+    avatarId: text("avatar_id"),
+    kind: text("kind").$type<ChatMessageKind>().notNull().default("text"),
+    body: text("body"),
+    gifUrl: text("gif_url"),
+    replyTo: uuid("reply_to"),
+    meta: jsonb("meta").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("chat_room_created_idx").on(t.roomId, t.createdAt),
+  ],
+);
+
+// One row per (message, session, emoji). Lets the same user react with
+// multiple emojis on the same message but not the same emoji twice.
+export const chatReactions = pgTable(
+  "chat_reactions",
+  {
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => chatMessages.id, { onDelete: "cascade" }),
+    sessionId: text("session_id").notNull(),
+    name: text("name").notNull(),
+    emoji: text("emoji").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.messageId, t.sessionId, t.emoji] }),
+    index("chat_react_msg_idx").on(t.messageId),
+  ],
+);
+
 // Web Push subscriptions. One row per (room, session, endpoint) so a
 // voter can opt into notifications from multiple rooms; deleting a
 // row unsubscribes that subscription. `prefs` is a jsonb bag of bool

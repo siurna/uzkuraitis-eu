@@ -83,11 +83,14 @@ const messages = {
     tab_bingo:         "Bingo",
     tab_vote:          "Vote",
 
-    // Coming-soon placeholders
-    chat_coming:       "Chat is on the way",
-    chat_coming_sub:   "Live messaging with reactions, replies, and GIFs lands in a moment.",
-    bingo_coming:      "Bingo card incoming",
-    bingo_coming_sub:  "A 5×5 grid of Eurovision tropes. Cross them off as the night unfolds.",
+    // Chat
+    chat_empty:        "No messages yet. Say hi 👋",
+    chat_placeholder:  "Message the room…",
+    chat_send:         "Send",
+    chat_send_failed:  "Couldn't send your message.",
+    chat_reply:        "Reply",
+    chat_delete:       "Delete",
+    chat_card:         "card",
 
     // Now-playing strip
     now_playing:       "On stage",
@@ -227,10 +230,13 @@ const messages = {
     tab_bingo:         "Bingo",
     tab_vote:          "Balsuok",
 
-    chat_coming:       "Pokalbiai jau netoli",
-    chat_coming_sub:   "Realaus laiko žinutės su reakcijomis, atsakymais ir GIF-ais — tuoj tuoj.",
-    bingo_coming:      "Bingo kortelė tuoj bus",
-    bingo_coming_sub:  "5×5 laukelių su klasikiniais Eurovizijos štampais. Bus ką žymėti.",
+    chat_empty:        "Dar nieks nieko nerašė. Sveikink pirmas 👋",
+    chat_placeholder:  "Rašyk kambariui…",
+    chat_send:         "Siųsti",
+    chat_send_failed:  "Nepavyko išsiųsti žinutės.",
+    chat_reply:        "Atsakyti",
+    chat_delete:       "Ištrinti",
+    chat_card:         "kortelė",
 
     now_playing:       "Scenoje",
     now_playing_idle:  "Laukiama kitos šalies…",

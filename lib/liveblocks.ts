@@ -86,6 +86,11 @@ export type BingoStrikeEvent = {
   trope: string;     // the trope string (already localised by sender)
   bingo?: boolean;   // true when the strike completed a row/col/diag
 };
+// Chat: server fans these out after a successful write. Body intention-
+// ally minimal — clients refetch the message slice they need.
+export type ChatNewEvent = { type: "chat:new"; id: string };
+export type ChatReactEvent = { type: "chat:react"; id: string };
+export type ChatDeleteEvent = { type: "chat:delete"; id: string };
 
 export type RoomEvent =
   | ReactionEmojiEvent
@@ -94,7 +99,10 @@ export type RoomEvent =
   | LeaderboardUpdatedEvent
   | RoomUpdatedEvent
   | NowPlayingChangeEvent
-  | BingoStrikeEvent;
+  | BingoStrikeEvent
+  | ChatNewEvent
+  | ChatReactEvent
+  | ChatDeleteEvent;
 
 export const {
   RoomProvider,

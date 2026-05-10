@@ -20,6 +20,7 @@ import { useLang, t } from "@/lib/i18n";
 
 const SESSION_KEY = "uzk_session";
 const NAME_KEY = "uzk_name";
+const AVATAR_KEY = "uzk_avatar";
 
 // Per-room striked tropes (set of trope indices) persist in localStorage
 // so strikes survive reloads. Card itself is deterministic from the
@@ -111,14 +112,33 @@ export function BingoCard() {
         if (isStriking) {
           next.add(tropeIdx);
           const bingoNow = isBingo(card, next);
+          const trope = getTrope(tropeIdx, lang);
           // Broadcast each strike (not un-strike — uncrossing isn't
           // a moment worth telling the room about).
           broadcast({
             type: "bingo:strike",
             by: name || "Someone",
-            trope: getTrope(tropeIdx, lang),
+            trope,
             bingo: bingoNow,
           });
+          // Drop a card-style message into the chat so the thread
+          // carries the moment. Only winning strikes by default —
+          // every single cross would spam the channel.
+          if (bingoNow) {
+            const session = localStorage.getItem(SESSION_KEY) ?? "";
+            const avatarId = localStorage.getItem(AVATAR_KEY);
+            fetch(`/api/rooms/${code}/chat`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                session,
+                name: name || "Anon",
+                avatarId,
+                kind: "bingo_strike",
+                meta: { trope, bingo: true },
+              }),
+            }).catch(() => {});
+          }
           if (bingoNow && !didBingo) {
             setDidBingo(true);
             toast.success(t(lang, "bingo_you_did_it"));
@@ -129,7 +149,7 @@ export function BingoCard() {
         return next;
       });
     },
-    [card, broadcast, name, lang, didBingo],
+    [card, broadcast, name, lang, didBingo, code],
   );
 
   const reset = () => {
