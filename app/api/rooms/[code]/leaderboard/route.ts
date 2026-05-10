@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import {
   officialResults,
   officialFacts,
+  roomResults,
+  roomFacts,
   voters,
   votes,
 } from "@/lib/db/schema";
@@ -29,18 +31,37 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
 
-  const [officialRows, factRows] = await Promise.all([
+  // Per-room overrides take precedence; if the room has any rows we use
+  // those exclusively. Otherwise fall back to the global official tables.
+  const [
+    officialRows,
+    factRows,
+    roomResultRows,
+    roomFactRows,
+  ] = await Promise.all([
     db.select().from(officialResults),
     db.select().from(officialFacts),
+    db.select().from(roomResults).where(eq(roomResults.roomId, room.id)),
+    db.select().from(roomFacts).where(eq(roomFacts.roomId, room.id)),
   ]);
 
-  const placements: OfficialPlacements = Object.fromEntries(
-    officialRows.map((r) => [r.countryCode, r.placement]),
-  );
-  const facts: OfficialFacts = Object.fromEntries(
-    factRows.map((r) => [r.key, r.value]),
-  );
-  const hasResults = officialRows.length > 0 || factRows.length > 0;
+  const placements: OfficialPlacements =
+    roomResultRows.length > 0
+      ? Object.fromEntries(
+          roomResultRows.map((r) => [r.countryCode, r.placement]),
+        )
+      : Object.fromEntries(
+          officialRows.map((r) => [r.countryCode, r.placement]),
+        );
+  const facts: OfficialFacts =
+    roomFactRows.length > 0
+      ? Object.fromEntries(roomFactRows.map((r) => [r.key, r.value]))
+      : Object.fromEntries(factRows.map((r) => [r.key, r.value]));
+  const hasResults =
+    roomResultRows.length > 0 ||
+    roomFactRows.length > 0 ||
+    officialRows.length > 0 ||
+    factRows.length > 0;
 
   if (!hasResults) {
     return NextResponse.json({

@@ -49,8 +49,12 @@ const FACTS: FactInput[] = [
 
 export function AdminOfficialFacts({
   initial,
+  endpoint = "/api/admin/official-facts",
+  headers,
 }: {
   initial: Record<string, string>;
+  endpoint?: string;
+  headers?: Record<string, string>;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<Record<string, string>>(initial);
@@ -66,9 +70,9 @@ export function AdminOfficialFacts({
       payload[f.key] = draft[f.key] && draft[f.key] !== "" ? draft[f.key] : null;
     }
     start(async () => {
-      const res = await fetch("/api/admin/official-facts", {
+      const res = await fetch(endpoint, {
         method: "PUT",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(headers ?? {}) },
         body: JSON.stringify({ facts: payload }),
       });
       if (!res.ok) {

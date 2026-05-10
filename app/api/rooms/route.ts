@@ -32,5 +32,9 @@ export async function POST(request: Request) {
     id: room.id,
     code: room.code,
     name: room.name,
+    // The host who creates the room gets the per-room admin token so they
+    // can use the share-link admin flow (no global passkey needed). Only
+    // the global admin (already authed above) sees this in the response.
+    adminToken: room.adminToken,
   });
 }
