@@ -80,6 +80,12 @@ export type NowPlayingChangeEvent = {
   type: "now-playing:change";
   countryCode: string | null;
 };
+export type BingoStrikeEvent = {
+  type: "bingo:strike";
+  by: string;        // voter name
+  trope: string;     // the trope string (already localised by sender)
+  bingo?: boolean;   // true when the strike completed a row/col/diag
+};
 
 export type RoomEvent =
   | ReactionEmojiEvent
@@ -87,7 +93,8 @@ export type RoomEvent =
   | ScoresUpdatedEvent
   | LeaderboardUpdatedEvent
   | RoomUpdatedEvent
-  | NowPlayingChangeEvent;
+  | NowPlayingChangeEvent
+  | BingoStrikeEvent;
 
 export const {
   RoomProvider,

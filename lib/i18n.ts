@@ -95,6 +95,14 @@ const messages = {
     now_playing_admin: "Now playing",
     now_playing_clear: "Off stage",
 
+    // Bingo
+    bingo_title:       "Eurovision bingo",
+    bingo_free:        "FREE",
+    bingo_reset:       "Reset",
+    bingo_won:         "BINGO!",
+    bingo_you_did_it:  "You got bingo! 🎉",
+    bingo_footer:      "Tap a square as it happens on stage. Five in a row wins.",
+
     // Bonus bets — labels + descriptions
     bet_lt_placement:  "{home} placement",
     bet_lt_placement_sub:
@@ -212,6 +220,13 @@ const messages = {
     now_playing_idle:  "Laukiama kitos šalies…",
     now_playing_admin: "Dabar scenoje",
     now_playing_clear: "Niekas",
+
+    bingo_title:       "Eurovizijos bingo",
+    bingo_free:        "LAISVA",
+    bingo_reset:       "Iš naujo",
+    bingo_won:         "BINGO!",
+    bingo_you_did_it:  "Surinkai bingo! 🎉",
+    bingo_footer:      "Bakstelėk laukelį, kai įvyksta scenoje. Penki iš eilės — laimi.",
 
     bet_lt_placement:  "{home} vieta",
     bet_lt_placement_sub:
