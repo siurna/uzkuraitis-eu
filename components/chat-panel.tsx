@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useEventListener } from "@/lib/liveblocks";
 import { useRoomLive } from "@/components/room-shell";
 import { getAvatar } from "@/lib/avatars";
+import { GifPicker } from "@/components/gif-picker";
 import { useLang, t } from "@/lib/i18n";
 
 const SESSION_KEY = "uzk_session";
@@ -54,6 +55,7 @@ export function ChatPanel() {
   const [body, setBody] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [holding, setHolding] = useState<string | null>(null);
+  const [gifOpen, setGifOpen] = useState(false);
 
   const sessionRef = useRef<string>("");
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -164,6 +166,26 @@ export function ChatPanel() {
     );
   };
 
+  const sendGif = async (gifUrl: string) => {
+    const session = sessionRef.current;
+    const name = localStorage.getItem(NAME_KEY) ?? "Anon";
+    const avatarId = localStorage.getItem(AVATAR_KEY);
+    const reply = replyTo?.id ?? null;
+    setReplyTo(null);
+    await fetch(`/api/rooms/${code}/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        session,
+        name,
+        avatarId,
+        kind: "gif",
+        gifUrl,
+        replyTo: reply,
+      }),
+    });
+  };
+
   // Lookup table for reply previews.
   const byId = useMemo(() => {
     const m = new Map<string, Message>();
@@ -257,12 +279,11 @@ export function ChatPanel() {
           />
           <button
             type="button"
-            disabled
-            title="GIFs (coming with Klipy)"
+            onClick={() => setGifOpen(true)}
             className="h-11 w-11 rounded-full grid place-items-center
                        bg-white/[0.04] ring-1 ring-white/10
-                       text-white/30 cursor-not-allowed"
-            aria-label="GIFs"
+                       text-white/70 hover:bg-white/[0.08] hover:text-white transition"
+            aria-label={t(lang, "gif_pick")}
           >
             <ImageIcon className="h-4 w-4" />
           </button>
@@ -278,6 +299,12 @@ export function ChatPanel() {
           </button>
         </form>
       </div>
+
+      <GifPicker
+        open={gifOpen}
+        onClose={() => setGifOpen(false)}
+        onPick={(url) => sendGif(url)}
+      />
     </main>
   );
 }

@@ -91,6 +91,10 @@ const messages = {
     chat_reply:        "Reply",
     chat_delete:       "Delete",
     chat_card:         "card",
+    gif_pick:          "Pick a GIF",
+    gif_search:        "Search GIFs",
+    gif_hint:          "Try \"omg\", \"yes\", \"fire\"…",
+    gif_empty:         "No GIFs found.",
 
     // Now-playing strip
     now_playing:       "On stage",
@@ -237,6 +241,10 @@ const messages = {
     chat_reply:        "Atsakyti",
     chat_delete:       "Ištrinti",
     chat_card:         "kortelė",
+    gif_pick:          "Pasirink GIF",
+    gif_search:        "Ieškoti GIF",
+    gif_hint:          "Bandyk „omg“, „taip“, „fire“…",
+    gif_empty:         "Nieko nerasta.",
 
     now_playing:       "Scenoje",
     now_playing_idle:  "Laukiama kitos šalies…",

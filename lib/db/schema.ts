@@ -269,6 +269,17 @@ export const chatReactions = pgTable(
   ],
 );
 
+// GIF search cache. Klipy's free tier is enough for a busy room but
+// repeated identical searches still cost a quota burn; the cache key
+// is the lowercased query, TTL handled in the API route (24h).
+export const gifCache = pgTable("gif_cache", {
+  q: text("q").primaryKey(),
+  results: jsonb("results").notNull(),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 // Web Push subscriptions. One row per (room, session, endpoint) so a
 // voter can opt into notifications from multiple rooms; deleting a
 // row unsubscribes that subscription. `prefs` is a jsonb bag of bool
