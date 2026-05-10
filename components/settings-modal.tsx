@@ -264,11 +264,7 @@ export function SettingsModal({
         }
       >
         <div className="min-h-[55dvh]">
-          <AvatarPicker
-            value={avatar}
-            onChange={setAvatar}
-            pulseSelected
-          />
+          <AvatarPicker value={avatar} onChange={setAvatar} />
         </div>
       </BottomSheet>
     </>

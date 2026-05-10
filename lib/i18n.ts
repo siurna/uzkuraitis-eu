@@ -6,7 +6,9 @@
 // reads from t() and switches the moment the user picks a language.
 
 export type Language = "en" | "lt";
-export const LANGUAGES: Language[] = ["en", "lt"];
+// Lithuanian first — this is the default language for the app and the
+// picker should reflect that order.
+export const LANGUAGES: Language[] = ["lt", "en"];
 // Display name for each language, in its own language so the picker
 // reads naturally regardless of which mode the user is currently in.
 export const LANGUAGE_NAMES: Record<Language, string> = {
@@ -203,7 +205,7 @@ const messages = {
   },
   lt: {
     // NameGate / SettingsModal
-    welcome:           "Sveiki",
+    welcome:           "Labas!",
     name_prompt:       "Kaip tave vadinsim šitame kambary?",
     your_name:         "Tavo vardas",
     join_party:        "Prisijungti",

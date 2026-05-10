@@ -69,6 +69,30 @@ export const AVATARS: Avatar[] = [
   { id: "katarsis-2025",        artist: "Katarsis",              country: "lt", year: 2025, song: "Tavo Akys", photo: "/avatars/katarsis-2025.jpg", focal: { x: 50, y: 30 } },
 ];
 
+// Synthesised entries for every artist in this year's grand final.
+// Photos live at /public/participants/<code>.<ext> (scraped from
+// eurovision.com). Sourced from lib/countries.ts so the artist + song
+// stay in lockstep with the standings/voting data.
+import { countries } from "./countries";
+import { participantPhoto } from "./participants";
+
+const YEAR_2026_AVATARS: Avatar[] = countries
+  .filter((c) => c.artist && c.artist !== "TBD")
+  .map((c) => ({
+    id: `${c.code}-2026`,
+    artist: c.artist,
+    country: c.code,
+    year: 2026,
+    song: c.song,
+    photo: participantPhoto(c.code) ?? undefined,
+    focal: { x: 50, y: 30 },
+  }));
+
+// Prepend so this year's artists land at the top of the picker grid
+// — the contest in front of you matters more than every iconic past
+// act combined. Mutates AVATARS once at module load.
+AVATARS.unshift(...YEAR_2026_AVATARS);
+
 export function getAvatar(id: string | null | undefined): Avatar | null {
   if (!id) return null;
   return AVATARS.find((a) => a.id === id) ?? null;

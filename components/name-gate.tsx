@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import Image from "next/image";
 import { useUpdateMyPresence } from "@/lib/liveblocks";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { AvatarPicker } from "@/components/avatar-picker";
+import { HeartFlag } from "@/components/flag";
 import { getAvatar } from "@/lib/avatars";
 import {
   LANGUAGES,
@@ -22,13 +22,12 @@ const NAME_KEY = "uzk_name";
 const AVATAR_KEY = "uzk_avatar";
 
 // Two-step welcome gate:
-//   step 1 — name + language.
-//   step 2 — avatar.
-// Both steps share a min-h on the body so the sheet stays the same
-// height across steps (no awkward grow-on-Next animation).
-// Footer carries the step dots + Back/Next/Join — and on step 2,
-// also a static "your name + heart" identity strip so the picked
-// face has somewhere to belong while it pulses up in the grid.
+//   step 1 — name + language. Drawer stays compact (auto-height).
+//   step 2 — avatar grid. Drawer expands to ~78dvh so the grid scrolls.
+//
+// On step 2 we render a sticky "selected artist" card just above the
+// footer so the picked face stays visible while the user scrolls the
+// grid. No avatar pulse — the check pip + outline are enough.
 export function NameGate({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [name, setName] = useState("");
@@ -107,23 +106,6 @@ export function NameGate({ children }: { children: React.ReactNode }) {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            {/* On step 2 the footer doubles as a static identity strip
-                — heart-mark + your name — anchoring the picked face
-                while it pulses in the grid above. */}
-            {step === 2 && draftName ? (
-              <div className="flex-1 min-w-0 flex items-center gap-2">
-                <Image
-                  src="/images/70-heart-sm.webp"
-                  alt=""
-                  width={28}
-                  height={28}
-                  className="h-7 w-7 object-contain shrink-0"
-                />
-                <p className="font-display text-sm truncate">{draftName}</p>
-              </div>
-            ) : (
-              <div className="flex-1" />
-            )}
             <StepDots current={step} total={2} />
             <div className="flex-1" />
             {step === 1 ? (
@@ -153,66 +135,64 @@ export function NameGate({ children }: { children: React.ReactNode }) {
           </div>
         }
       >
-        {/* min-h keeps the sheet a consistent height across both
-            steps — no awkward grow animation when advancing to the
-            avatar grid. */}
-        <div className="min-h-[58dvh] flex flex-col">
-          {step === 1 ? (
-            <form
-              id="name-gate-step1"
-              onSubmit={advance}
-              className="flex flex-col gap-5 pt-4"
-            >
-              <Input
-                autoFocus
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value.slice(0, 40))}
-                placeholder={t(lang, "your_name")}
-                className="heartbeat-focus h-14 text-center text-2xl rounded-xl
-                           border border-white/15 bg-black/30 placeholder:text-white/30"
-                maxLength={40}
-              />
-              <div className="flex items-center justify-center gap-1 rounded-full bg-black/30 p-1 self-center">
-                {LANGUAGES.map((code) => (
-                  <button
-                    key={code}
-                    type="button"
-                    onClick={() => setLang(code)}
-                    className={`px-4 py-1.5 rounded-full text-xs font-display transition ${
-                      lang === code
-                        ? "bg-white text-dark-blue"
-                        : "text-white/60 hover:text-white"
-                    }`}
-                  >
-                    {LANGUAGE_NAMES[code]}
-                  </button>
-                ))}
-              </div>
-            </form>
-          ) : (
-            <div className="flex-1 flex flex-col gap-3">
-              <AvatarPicker
-                value={draftAvatar}
-                onChange={setDraftAvatar}
-                pulseSelected
-              />
-              {/* Quiet caption: artist + year + song for the picked
-                  face. Sits below the grid so the eye lands on the
-                  heartbeat first. */}
-              {draftAvatarObj && (
-                <p className="text-xs text-white/55 text-center px-3 pt-1">
-                  <span className="font-display text-white/80">
-                    {draftAvatarObj.artist}
-                  </span>
-                  {" · "}
-                  {draftAvatarObj.year}
-                  {" · "}
-                  <span className="italic">{draftAvatarObj.song}</span>
-                </p>
-              )}
+        {step === 1 ? (
+          // Compact — sheet auto-sizes to content. No min-h.
+          <form
+            id="name-gate-step1"
+            onSubmit={advance}
+            className="flex flex-col gap-5 pt-2"
+          >
+            <Input
+              autoFocus
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value.slice(0, 40))}
+              placeholder={t(lang, "your_name")}
+              className="heartbeat-focus h-14 text-center text-[20px] font-bold
+                         rounded-xl border border-white/15 bg-black/30
+                         placeholder:text-white/30 placeholder:font-normal"
+              maxLength={40}
+            />
+            <div className="flex items-center justify-center gap-1 rounded-full bg-black/30 p-1 self-center">
+              {LANGUAGES.map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setLang(code)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-display transition ${
+                    lang === code
+                      ? "bg-white text-dark-blue"
+                      : "text-white/60 hover:text-white"
+                  }`}
+                >
+                  {LANGUAGE_NAMES[code]}
+                </button>
+              ))}
             </div>
-          )}
-        </div>
+          </form>
+        ) : (
+          // Step 2 expands the sheet; grid scrolls inside the existing
+          // overflow container, the selected-card sticks to the bottom.
+          <div className="flex flex-col gap-3 min-h-[60dvh] pb-2">
+            <AvatarPicker value={draftAvatar} onChange={setDraftAvatar} />
+            {draftAvatarObj && (
+              <div
+                className="sticky bottom-0 -mx-5 px-5 pt-2 pb-1
+                           bg-gradient-to-t from-dark-blue-900 via-dark-blue-900/95 to-dark-blue-900/0"
+              >
+                <div className="glass-card rounded-2xl px-4 py-3 flex items-center gap-3">
+                  <HeartFlag code={draftAvatarObj.country} size="md" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display truncate">{draftAvatarObj.artist}</p>
+                    <p className="text-xs text-white/55 truncate">
+                      {draftAvatarObj.year} ·{" "}
+                      <span className="italic">{draftAvatarObj.song}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </BottomSheet>
     </>
   );
