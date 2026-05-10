@@ -1,39 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Share2 } from "lucide-react";
+import { Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import { useRoomLive } from "@/components/room-shell";
+import { SettingsModal } from "@/components/settings-modal";
 
-// Header bar with the room name + code + share button. Avatars used to
-// live in here too; they've moved to <HoneycombPresence/> in the lower
-// right of the screen so the header stays uncluttered no matter how
-// many people join.
+// Header bar: room name + code + settings cog. The cog used to be a
+// share button; share is now one of the actions inside the settings
+// sheet (alongside name / avatar / language editing) so the header
+// stays minimal and uncrowded as the room fills up.
 export function PresenceBar() {
   const { code, name } = useRoomLive();
-  const [copied, setCopied] = useState(false);
-
-  const share = async () => {
-    const url = `${window.location.origin}/?room=${code}`;
-    const payload = {
-      title: `${name}, Eurovision 2026`,
-      text: `Join my Eurovision room, code ${code}`,
-      url,
-    };
-    if (navigator.share) {
-      try {
-        await navigator.share(payload);
-        return;
-      } catch {
-        /* user cancelled, fall through to clipboard */
-      }
-    }
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    toast.success("Link copied!");
-    setTimeout(() => setCopied(false), 1500);
-  };
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const shareUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/?room=${code}`
+      : "";
 
   return (
     <header className="sticky top-0 z-30 backdrop-blur-md bg-dark-blue-900/70 border-b border-white/5">
@@ -50,16 +33,19 @@ export function PresenceBar() {
         <Button
           size="sm"
           variant="ghost"
-          onClick={share}
-          aria-label="Share room link"
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Settings"
           className="rounded-full"
         >
-          <Share2 className="h-4 w-4" />
+          <SettingsIcon className="h-4 w-4" />
         </Button>
       </div>
-      <span aria-live="polite" className="sr-only">
-        {copied ? "Link copied" : ""}
-      </span>
+
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        shareUrl={shareUrl}
+      />
     </header>
   );
 }

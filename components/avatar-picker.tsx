@@ -1,14 +1,12 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { Flag } from "@/components/flag";
-import { AVATARS, type Avatar } from "@/lib/avatars";
+import { AVATARS, getAvatar, type Avatar } from "@/lib/avatars";
 
-// 5x8 (or so) grid of iconic Eurovision artists. Each tile renders the
-// country flag plus a year subscript so cards stay readable at thumb-size
-// without bundling 40 photo-rights-encumbered headshots. The chosen tile
-// gets a flamingo glow ring so it's unambiguously selected.
-
+// Pick-an-avatar grid + a selection summary panel below it. Tile size
+// bumped from the previous tiny grid; people kept missing it. Selected
+// tile glows pink, scales up, and the panel below names the artist.
 export function AvatarPicker({
   value,
   onChange,
@@ -16,8 +14,9 @@ export function AvatarPicker({
   value: string | null;
   onChange: (id: string | null) => void;
 }) {
+  const selected = getAvatar(value);
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-white/60">
           Pick an avatar (optional)
@@ -32,7 +31,7 @@ export function AvatarPicker({
           </button>
         )}
       </div>
-      <ul className="grid grid-cols-5 sm:grid-cols-8 gap-1.5 max-h-44 overflow-y-auto pr-1">
+      <ul className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-72 overflow-y-auto pr-1">
         {AVATARS.map((a) => (
           <Tile
             key={a.id}
@@ -42,6 +41,32 @@ export function AvatarPicker({
           />
         ))}
       </ul>
+
+      {/* Selection summary: the artist's name + country + year + song.
+          Slides in / out so it's clear what was picked. */}
+      <AnimatePresence initial={false}>
+        {selected && (
+          <motion.div
+            key={selected.id}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18 }}
+            className="overflow-hidden"
+          >
+            <div className="list-entry-gradient glass-card rounded-xl px-4 py-3 flex items-center gap-3">
+              <Flag code={selected.country} size="lg" />
+              <div className="flex-1 min-w-0">
+                <p className="font-display truncate">{selected.artist}</p>
+                <p className="text-xs text-white/55 truncate">
+                  {selected.country.toUpperCase()} · {selected.year} ·{" "}
+                  <span className="italic">{selected.song}</span>
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -63,20 +88,33 @@ function Tile({
         onClick={onPick}
         title={`${avatar.artist} · ${avatar.country.toUpperCase()} ${avatar.year}`}
         aria-label={`${avatar.artist}, ${avatar.country.toUpperCase()} ${avatar.year}`}
-        className={`relative aspect-square w-full rounded-lg overflow-hidden
+        className={`relative aspect-square w-full rounded-xl overflow-hidden
                     transition transform-gpu duration-150
-                    ${selected
-                      ? "ring-2 ring-flamingo shadow-glow-pink scale-[1.04]"
-                      : "ring-1 ring-white/10 hover:ring-white/30 hover:scale-[1.02]"}`}
+                    ${
+                      selected
+                        ? "ring-2 ring-flamingo shadow-glow-pink scale-[1.06]"
+                        : "ring-1 ring-white/10 hover:ring-white/30 hover:scale-[1.03]"
+                    }`}
       >
-        <Flag
-          code={avatar.country}
-          size="md"
-          className="absolute inset-0 h-full w-full rounded-none"
-        />
+        {avatar.photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={avatar.photo}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <Flag
+            code={avatar.country}
+            size="md"
+            className="absolute inset-0 h-full w-full rounded-none"
+          />
+        )}
         <span
-          className="absolute bottom-0 right-0 text-[9px] font-display tabular-nums
-                     bg-black/65 px-1 leading-tight rounded-tl-md"
+          className="absolute bottom-0 inset-x-0 px-1.5 py-0.5 text-[10px]
+                     font-display tabular-nums text-white text-right
+                     bg-gradient-to-t from-black/85 via-black/40 to-transparent"
         >
           &apos;{avatar.year.toString().slice(2)}
         </span>
