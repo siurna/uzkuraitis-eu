@@ -28,7 +28,7 @@ import { X, Send, ListOrdered, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { countries, getCountry } from "@/lib/countries";
-import { Flag } from "@/components/flag";
+import { Flag, HeartOutline } from "@/components/flag";
 import { BonusBetsForm } from "@/components/bonus-bets-form";
 import { CountryDrawer } from "@/components/country-drawer";
 import type { Bets } from "@/lib/scoring";
@@ -154,43 +154,55 @@ export function VoteForm({
   }, [allFilled]);
 
   const assign = (points: Points, code: string) => {
+    // Clear the country from any OTHER slot it might be in
+    // immediately — but the destination slot stays empty (showing the
+    // dashed-heart placeholder) until the flying heart lands. This
+    // makes the fly-in feel like "the country gets placed", not
+    // "the country was already there and a heart came later".
     setSlots((prev) =>
       prev.map((s) =>
-        s.points === points
-          ? { ...s, countryCode: code }
-          : s.countryCode === code
-            ? { ...s, countryCode: null }
-            : s,
+        s.points !== points && s.countryCode === code
+          ? { ...s, countryCode: null }
+          : s,
       ),
     );
-    // Wait for the picker drawer to slide down (~0.28s), then:
-    //  1. spawn a heart that flies from screen centre into the slot's
-    //     heart spot (data-slot-target=<points> selector),
-    //  2. as the heart lands, kick off the slot's heartbeat pulse.
+    // Wait one frame for the drawer's slide-down to begin, then:
+    //   1. spawn the flying heart from screen-centre → slot's heart spot.
+    //   2. as the heart lands (~480ms), drop the country into the slot
+    //      AND kick off its heartbeat pulse.
     window.setTimeout(() => {
-      if (typeof document !== "undefined") {
-        const target = document.querySelector(
-          `[data-slot-target="${points}"]`,
+      if (typeof document === "undefined") return;
+      const target = document.querySelector(
+        `[data-slot-target="${points}"]`,
+      );
+      if (!target) {
+        // Couldn't measure — just fill the slot directly.
+        setSlots((prev) =>
+          prev.map((s) => (s.points === points ? { ...s, countryCode: code } : s)),
         );
-        if (target) {
-          const rect = target.getBoundingClientRect();
-          setFlyingHeart({
-            id: Date.now(),
-            code,
-            fromX: window.innerWidth / 2,
-            fromY: window.innerHeight / 2,
-            toX: rect.left + rect.width / 2,
-            toY: rect.top + rect.height / 2,
-          });
-        }
+        return;
       }
-      // Pulse + clear the flying heart shortly after it lands.
+      const rect = target.getBoundingClientRect();
+      setFlyingHeart({
+        id: Date.now(),
+        code,
+        fromX: window.innerWidth / 2,
+        fromY: window.innerHeight / 2,
+        toX: rect.left + rect.width / 2,
+        toY: rect.top + rect.height / 2,
+      });
+      // Heart lands ~480ms in (62% of the 0.62s flight). Fill the slot
+      // + pulse on landing so the country materialising reads as the
+      // heart "becoming" the flag.
       window.setTimeout(() => {
+        setSlots((prev) =>
+          prev.map((s) => (s.points === points ? { ...s, countryCode: code } : s)),
+        );
         setPulsingPoints(points);
         window.setTimeout(() => setPulsingPoints(null), 1100);
-      }, 520);
+      }, 460);
       window.setTimeout(() => setFlyingHeart(null), 700);
-    }, 320);
+    }, 280);
   };
 
   const clearSlot = (points: Points) => {
@@ -562,13 +574,14 @@ function BallotSlotInner({
       }}
       // min-h pre-allocates the picked-state height so the row doesn't
       // jump taller the moment a country is chosen.
-      // Quiet tile to match the bonus-bets + standings rows. The
-      // points-color on the left already differentiates 12 / 10 / 8.
-      // min-h pre-allocates the picked-state height so the row doesn't
-      // jump taller the moment a country is chosen.
-      className="flex items-stretch rounded-2xl min-h-[4.5rem]
+      // Whole row reads as one hover surface — including the drag
+      // handle on the left. Used to be split (handle had no hover bg,
+      // text button had its own) which made the right side flash and
+      // the left stay quiet. min-h pre-allocates the picked-state
+      // height so the row doesn't jump on first pick.
+      className="group flex items-stretch rounded-2xl min-h-[4.5rem]
                  bg-white/[0.04] ring-1 ring-white/8
-                 hover:bg-white/[0.06] hover:ring-white/15 transition"
+                 hover:bg-white/[0.07] hover:ring-white/18 transition"
     >
       {/* Drag handle = the points-number + flag block on the left.
           @dnd-kit listeners attach here so the whole left side feels
@@ -601,24 +614,15 @@ function BallotSlotInner({
               <Flag code={country.code} size="md" />
             </motion.span>
           ) : (
-            // Dotted heart placeholder — outline-only SVG that matches
-            // the .heart clip used everywhere else, so the empty slot
-            // already looks like a country chip waiting to be filled.
+            // Dashed heart placeholder — exact same shape as the
+            // heart-clipped flag SVGs in /public/flags so the empty
+            // slot reads as "heart-flag waiting to be filled".
             <span
               data-slot-target={slot.points}
-              className="shrink-0 inline-flex items-center justify-center h-9 w-9"
+              className="shrink-0 inline-flex items-center justify-center text-white/35"
               aria-hidden
             >
-              <svg viewBox="0 0 32 32" className="h-9 w-9 text-white/30">
-                <path
-                  d="M16 28 C16 28, 3 19, 3 11 C3 6.5, 6.5 4, 10 4 C12.8 4, 15 6, 16 8.5 C17 6, 19.2 4, 22 4 C25.5 4, 29 6.5, 29 11 C29 19, 16 28, 16 28 Z"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeDasharray="2.5 2.5"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <HeartOutline size={36} />
             </span>
           )}
         </AnimatePresence>
@@ -629,7 +633,7 @@ function BallotSlotInner({
         onClick={onPick}
         className="flex flex-1 items-center gap-3 px-1 py-3 min-w-0 text-left
                    transition transform-gpu duration-150
-                   hover:bg-white/[0.04] active:scale-[0.99]"
+                   active:scale-[0.99]"
         aria-label={
           country
             ? `Change ${slot.points} pts pick`

@@ -84,6 +84,39 @@ export function HeartFlag({
   );
 }
 
+// Heart-shape outline matching the path that's already clipping every
+// /flags/<code>.svg in /public. Used as a "no country picked yet"
+// placeholder so empty ballot slots read as heart-flag-shaped, not as
+// a generic dashed rectangle.
+export function HeartOutline({
+  className,
+  dashed = true,
+  size = 36,
+}: {
+  className?: string;
+  dashed?: boolean;
+  size?: number;
+}) {
+  return (
+    <svg
+      viewBox="0 0 127.18 131.2"
+      className={cn("shrink-0", className)}
+      width={size}
+      height={size}
+      aria-hidden
+    >
+      <path
+        d="m60.21 125.93 1.08-7.62c1.52-10.7 12.57-22.93 23.25-34.75 12.83-14.2 26.1-28.88 26.1-43.67 0-12.87-7.06-25.85-22.84-25.85-9.69 0-21.52 5.66-28.6 17.86l-.58 1.04c-1.06 1.96-2 4.08-2.79 6.36-2.88-7.27-8.85-11.67-16.14-11.67-11.15 0-23 10.62-23 30.3 0 24.61 14.38 37.12 25.94 47.17 5.7 4.96 10.62 9.24 13.14 14.13l3.93 7.63.51-.94Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={4}
+        strokeDasharray={dashed ? "6 6" : undefined}
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 // Inline metadata pill (artist / song). Glassy translucent capsule
 // with optional leading icon, sits next to <HeartFlag/> in lists.
 export function MetaPill({
