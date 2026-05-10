@@ -31,7 +31,9 @@ const VotesSchema = z.object({
       televoteWinner: z.string().min(2).max(4).nullable().optional(),
       // Multi-select: 0..N country codes (or NONE_TOKEN). Capped at the
       // number of finalists to keep payloads sane.
-      nulTelevote: z.array(z.string().min(2).max(4)).max(50).nullable().optional(),
+      // Cap at 5 picks: matches lib/scoring.ts NUL_TELEVOTE_MAX_PICKS so
+      // a player can't carpet-bomb every country to guarantee a top score.
+      nulTelevote: z.array(z.string().min(2).max(4)).max(5).nullable().optional(),
       sameWinners: z.boolean().nullable().optional(),
       hostTop3: z.boolean().nullable().optional(),
       winnerSolo: z.boolean().nullable().optional(),

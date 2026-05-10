@@ -155,10 +155,9 @@
     -webkit-tap-highlight-color: oklch(70% 0.27 336 / 0.25);
   }
 
-  /* Body backdrop. Single quiet warm wash from upper-right; the
-     participant-backdrop image lives underneath at low opacity for
-     a paper-poster texture. No flamingo bloom, no neon. Fixed to the
-     viewport so it never stretches with content. */
+  /* Body backdrop, restored to the loud purple+flamingo bloom over
+     the participant texture. Fixed to the viewport so it never
+     stretches with content. */
   html::before {
     content: "";
     position: fixed;
@@ -166,15 +165,11 @@
     z-index: -2;
     pointer-events: none;
     background:
-      radial-gradient(
-        ellipse at 90% 0%,
-        oklch(48% 0.21 290 / 0.18),
-        transparent 55%
-      ),
+      radial-gradient(ellipse at top, oklch(28% 0.12 290 / 0.6), transparent 60%),
+      radial-gradient(ellipse at bottom, oklch(40% 0.18 336 / 0.35), transparent 70%),
       url("/images/participant-backdrop.webp") center/cover no-repeat,
       var(--color-dark-blue-900);
-    background-blend-mode: screen, multiply;
-    filter: saturate(0.55) brightness(0.5);
+    background-blend-mode: screen, screen, multiply;
   }
 
   h1, h2, h3, .font-display {
