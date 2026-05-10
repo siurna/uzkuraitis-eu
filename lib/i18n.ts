@@ -119,6 +119,10 @@ const messages = {
     reveal_solo:      "Solo winner",
     reveal_total:     "Your final score",
 
+    // Social share
+    share_picks:        "Share my TOP10",
+    share_picks_caption: "Cast my Eurovision 2026 TOP10",
+
     // Now-playing strip
     now_playing:       "On stage",
     now_playing_idle:  "Waiting for the next country…",
@@ -289,6 +293,9 @@ const messages = {
     reveal_host:      "Šeimininkai TOP3",
     reveal_solo:      "Solo nugalėtojas",
     reveal_total:     "Galutinis rezultatas",
+
+    share_picks:        "Pasidalink savo TOP10",
+    share_picks_caption: "Mano Eurovizijos 2026 TOP10",
 
     now_playing:       "Scenoje",
     now_playing_idle:  "Laukiama kitos šalies…",

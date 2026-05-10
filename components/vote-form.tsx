@@ -253,7 +253,11 @@ export function VoteForm({
         const { error } = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(error ?? t(lang, "couldnt_submit"));
       }
+      const data = (await res.json().catch(() => ({}))) as { voterId?: string };
       localStorage.setItem(`uzk_voted_${roomCode}`, "1");
+      if (data.voterId) {
+        localStorage.setItem(`uzk_voter_${roomCode}`, data.voterId);
+      }
       toast.success(t(lang, "voted_toast"));
       router.push(`/r/${roomCode}`);
     } catch (err) {
