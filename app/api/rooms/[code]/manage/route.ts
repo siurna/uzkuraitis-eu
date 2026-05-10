@@ -23,6 +23,7 @@ type RouteCtx = { params: Promise<{ code: string }> };
 const PatchSchema = z.object({
   name: z.string().trim().min(1).max(60).optional(),
   votingEnabled: z.boolean().optional(),
+  tallyEnabled: z.boolean().optional(),
   homeCountryCode: z.string().length(2).optional(),
   code: z.string().min(6).max(6).optional(),
 });
@@ -46,6 +47,7 @@ export async function GET(req: Request, { params }: RouteCtx) {
       code: room.code,
       name: room.name,
       votingEnabled: room.votingEnabled,
+      tallyEnabled: room.tallyEnabled,
       homeCountryCode: room.homeCountryCode,
     },
   });

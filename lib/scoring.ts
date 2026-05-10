@@ -104,13 +104,12 @@ export type Bets = {
   highestBig5?: string | null;
   juryWinner?: string | null;
   televoteWinner?: string | null;
-  // Multiple guesses allowed: voter picks any number of countries they
-  // think will get nul points from the public, with NONE_TOKEN for "no
-  // country gets zero". Each correct guess scores; cap below.
   nulTelevote?: string[] | null;
   sameWinners?: boolean | null;
   hostTop3?: boolean | null;
   winnerSolo?: boolean | null;
+  /** Voter's guess for the home country's final total points (0..1000). */
+  ltTotalPoints?: number | null;
 };
 
 export type BetBreakdown = {
@@ -123,6 +122,7 @@ export type BetBreakdown = {
   sameWinners: number;
   hostTop3: number;
   winnerSolo: number;
+  ltTotalPoints: number;
 };
 
 // Per-correct-guess pts on the multi-select nul televote bet, capped at
@@ -225,6 +225,32 @@ export function scoreBets(input: {
     if (bets.winnerSolo === winnerSolo) winnerSoloPts = 2;
   }
 
+  // LT total points: closeness-based scoring. Reads the official total
+  // from facts.lt_total_points (admin enters as a number string).
+  //   exact      +10
+  //   off-by-5   +7
+  //   off-by-15  +5
+  //   off-by-30  +3
+  //   off-by-60  +1
+  //   beyond     +0
+  let ltTotalPts = 0;
+  const officialLtTotalRaw = facts.lt_total_points;
+  if (
+    bets.ltTotalPoints != null &&
+    officialLtTotalRaw != null &&
+    officialLtTotalRaw !== ""
+  ) {
+    const officialN = Number(officialLtTotalRaw);
+    if (Number.isFinite(officialN)) {
+      const diff = Math.abs(bets.ltTotalPoints - officialN);
+      if (diff === 0) ltTotalPts = 10;
+      else if (diff <= 5) ltTotalPts = 7;
+      else if (diff <= 15) ltTotalPts = 5;
+      else if (diff <= 30) ltTotalPts = 3;
+      else if (diff <= 60) ltTotalPts = 1;
+    }
+  }
+
   return {
     woodenSpoon,
     lt12To,
@@ -235,6 +261,7 @@ export function scoreBets(input: {
     sameWinners,
     hostTop3,
     winnerSolo: winnerSoloPts,
+    ltTotalPoints: ltTotalPts,
   };
 }
 
@@ -248,7 +275,8 @@ export function totalBetPoints(b: BetBreakdown): number {
     b.nulTelevote +
     b.sameWinners +
     b.hostTop3 +
-    b.winnerSolo
+    b.winnerSolo +
+    b.ltTotalPoints
   );
 }
 

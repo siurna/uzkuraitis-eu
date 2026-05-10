@@ -35,6 +35,7 @@ const VotesSchema = z.object({
       sameWinners: z.boolean().nullable().optional(),
       hostTop3: z.boolean().nullable().optional(),
       winnerSolo: z.boolean().nullable().optional(),
+      ltTotalPoints: z.number().int().min(0).max(1000).nullable().optional(),
     })
     .optional()
     .default({}),
@@ -114,6 +115,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     betSameWinners: bets.sameWinners ?? null,
     betHostTop3: bets.hostTop3 ?? null,
     betWinnerSolo: bets.winnerSolo ?? null,
+    betLtTotalPoints: bets.ltTotalPoints ?? null,
   } as const;
   const [voter] = await db
     .insert(voters)

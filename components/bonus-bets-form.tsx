@@ -83,6 +83,16 @@ export function BonusBetsForm({
         onOpen={() => setDrawerKey("nulTelevote")}
       />
 
+      {home && (
+        <NumberRow
+          label={`${home.name} total points`}
+          sub="How many total points (jury + public) will Lithuania end up with? Closer = more points: exact +10, ±5 +7, ±15 +5, ±30 +3, ±60 +1."
+          max={10}
+          value={bets.ltTotalPoints ?? null}
+          onChange={(v) => set("ltTotalPoints", v)}
+        />
+      )}
+
       <YesNoRow
         label="Same winner?"
         sub="Does the same country win both jury and televote? Y/N +2."
@@ -354,6 +364,48 @@ function YesNoRow({
           );
         })}
       </div>
+    </RowFrame>
+  );
+}
+
+function NumberRow({
+  label,
+  sub,
+  max,
+  value,
+  onChange,
+}: {
+  label: string;
+  sub: string;
+  max?: number;
+  value: number | null;
+  onChange: (v: number | null) => void;
+}) {
+  return (
+    <RowFrame asButton={false}>
+      <HeaderText label={label} sub={sub} max={max} />
+      <input
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={1000}
+        value={value ?? ""}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === "") {
+            onChange(null);
+            return;
+          }
+          const n = Number(v);
+          if (!Number.isFinite(n)) return;
+          onChange(Math.max(0, Math.min(1000, Math.round(n))));
+        }}
+        placeholder="?"
+        className="h-12 w-20 shrink-0 rounded-md border border-white/15 bg-black/30
+                   text-center font-display text-2xl tabular-nums text-white
+                   caret-flamingo focus:border-flamingo focus:outline-none
+                   focus:ring-2 focus:ring-flamingo/40 transition"
+      />
     </RowFrame>
   );
 }
