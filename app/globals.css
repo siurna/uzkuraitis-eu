@@ -155,9 +155,11 @@
     -webkit-tap-highlight-color: oklch(70% 0.27 336 / 0.25);
   }
 
-  /* Body backdrop, restored to the loud purple-top + flamingo-bottom
-     bloom over the participant texture. Fixed to the viewport so it
-     never stretches with content. */
+  /* Body backdrop. The participant-backdrop is grey wavy stripes; if
+     we multiply it onto dark-blue we lose all the texture, then the
+     blooms wash out what's left. Soft-light keeps the curves visible
+     as subtle highlights/shadows over the brand bloom. Bloom alpha
+     dialled down so the texture isn't drowned. */
   html::before {
     content: "";
     position: fixed;
@@ -165,11 +167,11 @@
     z-index: -2;
     pointer-events: none;
     background:
-      radial-gradient(ellipse at top, oklch(28% 0.12 290 / 0.6), transparent 60%),
-      radial-gradient(ellipse at bottom, oklch(40% 0.18 336 / 0.35), transparent 70%),
-      url("/images/participant-backdrop.webp") center/cover no-repeat,
+      radial-gradient(ellipse at top, oklch(28% 0.12 290 / 0.32), transparent 65%),
+      radial-gradient(ellipse at bottom, oklch(40% 0.18 336 / 0.22), transparent 70%),
+      url("/images/participant-backdrop@2x.webp") center/cover no-repeat,
       var(--color-dark-blue-900);
-    background-blend-mode: screen, screen, multiply;
+    background-blend-mode: screen, screen, soft-light;
   }
 
   h1, h2, h3, .font-display {
