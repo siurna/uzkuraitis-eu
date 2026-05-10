@@ -50,11 +50,16 @@ export type ReactionEvent =
 
 export type ScoresUpdatedEvent = { type: "scores:updated" };
 export type LeaderboardUpdatedEvent = { type: "leaderboard:updated" };
+// Room properties (votingEnabled / tallyEnabled / name) changed; clients
+// should refetch /api/rooms/[code] so e.g. the standings page hides the
+// vote CTA the moment the host flips voting closed.
+export type RoomUpdatedEvent = { type: "room:updated" };
 
 export type RoomEvent =
   | ReactionEvent
   | ScoresUpdatedEvent
-  | LeaderboardUpdatedEvent;
+  | LeaderboardUpdatedEvent
+  | RoomUpdatedEvent;
 
 export const {
   RoomProvider,

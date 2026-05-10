@@ -1,20 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { Share2, Users } from "lucide-react";
-import { useOthers, useSelf } from "@/lib/liveblocks";
+import { Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Flag } from "@/components/flag";
-import { getAvatar } from "@/lib/avatars";
 import { toast } from "sonner";
+import { useRoomLive } from "@/components/room-shell";
 
-export function PresenceBar({ code, name }: { code: string; name: string }) {
-  const others = useOthers();
-  const self = useSelf();
+// Header bar with the room name + code + share button. Avatars used to
+// live in here too; they've moved to <HoneycombPresence/> in the lower
+// right of the screen so the header stays uncluttered no matter how
+// many people join.
+export function PresenceBar() {
+  const { code, name } = useRoomLive();
   const [copied, setCopied] = useState(false);
-
-  const total = others.length + (self ? 1 : 0);
 
   const share = async () => {
     const url = `${window.location.origin}/?room=${code}`;
@@ -49,11 +47,6 @@ export function PresenceBar({ code, name }: { code: string; name: string }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/5 text-xs">
-          <Users className="h-3 w-3 text-turquoise" />
-          <span className="text-white/80 tabular-nums">{total}</span>
-        </div>
-
         <Button
           size="sm"
           variant="ghost"
@@ -64,59 +57,6 @@ export function PresenceBar({ code, name }: { code: string; name: string }) {
           <Share2 className="h-4 w-4" />
         </Button>
       </div>
-
-      {others.length > 0 && (
-        <div className="container mx-auto max-w-3xl px-4 pb-3 flex items-center gap-2 overflow-x-auto">
-          <AnimatePresence initial={false} mode="popLayout">
-            {[self, ...others].filter(Boolean).map((u) => {
-              const info = u!.info;
-              // Presence-set name overrides the auth-time userInfo name so
-              // the chip updates live the moment someone hits "Join the
-              // party" without a reconnect.
-              const liveName = u!.presence?.name ?? info?.name ?? "Guest";
-              const initial =
-                liveName.trim().charAt(0).toUpperCase() || "?";
-              const avatarId = u!.presence?.avatar ?? null;
-              const avatar = getAvatar(avatarId);
-              return (
-                <motion.div
-                  key={u!.connectionId}
-                  layout
-                  initial={{ opacity: 0, scale: 0.4 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.4 }}
-                  transition={{ type: "spring", stiffness: 380, damping: 22 }}
-                  className="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full bg-white/5 text-xs whitespace-nowrap"
-                  title={
-                    avatar
-                      ? `${liveName} · ${avatar.artist} (${avatar.country.toUpperCase()} ${avatar.year})`
-                      : liveName
-                  }
-                >
-                  {avatar ? (
-                    <Flag
-                      code={avatar.country}
-                      size="sm"
-                      className="h-5 w-5 rounded-full ring-1 ring-white/20 object-cover"
-                    />
-                  ) : (
-                    <span
-                      className="h-5 w-5 rounded-full flex items-center justify-center text-[11px] font-semibold"
-                      style={{ background: info?.color ?? "#7ce0d8" }}
-                    >
-                      {initial}
-                    </span>
-                  )}
-                  <span className="text-white/70 max-w-24 truncate">
-                    {liveName}
-                  </span>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-      )}
-
       <span aria-live="polite" className="sr-only">
         {copied ? "Link copied" : ""}
       </span>
