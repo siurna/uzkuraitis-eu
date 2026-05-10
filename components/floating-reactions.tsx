@@ -98,13 +98,16 @@ export function FloatingReactionsLayer({ code }: { code: string }) {
         </AnimatePresence>
       </div>
 
-      <div className="fixed bottom-20 left-0 right-0 z-30 flex justify-center pointer-events-none px-2">
+      {/* Reactions bar. Lives slightly higher than the page bottom so it
+          reads as a floating utility, not a footer. Bigger taps targets
+          (h-12) and explicit max-w-fit so it never crashes into the edge. */}
+      <div className="fixed bottom-6 left-0 right-0 z-30 flex justify-center pointer-events-none px-2">
         <motion.div
           initial={{ y: 80, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ type: "spring", stiffness: 280, damping: 28, delay: 0.3 }}
-          className="pointer-events-auto glass-card rounded-full px-1.5 py-1 flex gap-0
-                     shadow-glow-pink max-w-[calc(100vw-1rem)]"
+          className="pointer-events-auto glass-card rounded-full px-2 py-1.5 flex gap-1
+                     shadow-glow-pink max-w-[calc(100vw-1.5rem)]"
         >
           {EMOJIS.map((e) => (
             <motion.button
@@ -114,11 +117,11 @@ export function FloatingReactionsLayer({ code }: { code: string }) {
               whileHover={{ scale: 1.15, y: -2 }}
               whileTap={{ scale: 0.85 }}
               transition={{ type: "spring", stiffness: 500, damping: 18 }}
-              className="h-9 w-9 sm:h-10 sm:w-10 shrink-0 grid place-items-center rounded-full
-                         hover:bg-white/10 text-xl sm:text-2xl leading-none"
+              className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 grid place-items-center rounded-full
+                         hover:bg-white/10"
               aria-label={`React with ${e}`}
             >
-              <span className="leading-none">{e}</span>
+              <span className="leading-none text-2xl sm:text-3xl">{e}</span>
             </motion.button>
           ))}
         </motion.div>

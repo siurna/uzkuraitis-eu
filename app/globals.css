@@ -104,16 +104,37 @@
   html {
     font-family: var(--font-sans);
   }
+  /* Tailwind v4 dropped the default cursor:pointer on buttons + role=button.
+     Bring it back globally. Disabled buttons keep cursor:not-allowed. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  label[for],
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+  /* Body background is FIXED to the viewport, not the document, so it
+     never stretches or scrolls with content height. Decoupling via
+     html-level positioning on long pages. */
   body {
+    background-color: var(--color-dark-blue-900);
+    color: var(--color-foreground);
+    -webkit-tap-highlight-color: oklch(70% 0.27 336 / 0.3);
+  }
+  /* The decorative gradient + backdrop img live on a fixed pseudo-layer
+     attached to <html> so they're guaranteed independent of body height. */
+  html::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
     background:
       radial-gradient(ellipse at top, oklch(28% 0.12 290 / 0.6), transparent 60%),
       radial-gradient(ellipse at bottom, oklch(40% 0.18 336 / 0.35), transparent 70%),
       url("/images/participant-backdrop.webp") center/cover no-repeat,
       var(--color-dark-blue-900);
-    background-attachment: fixed;
     background-blend-mode: screen, screen, multiply;
-    color: var(--color-foreground);
-    -webkit-tap-highlight-color: oklch(70% 0.27 336 / 0.3);
   }
 
   /* Default headings get the display font. */
@@ -250,13 +271,20 @@
 
 .float-up { animation: float-up 1.6s ease-out forwards; }
 
+/* Two-beat thump like a real heart but gentler than the old version,
+   and CSS-driven so it's perfectly tied to the element's own paint
+   (the previous one was visibly out of sync with the row's transform). */
 @keyframes heartbeat {
-  0%, 60%, 100% { transform: scale(1); }
-  15%           { transform: scale(1.2); }
-  45%           { transform: scale(1.15); }
+  0%   { transform: scale(1);    }
+  20%  { transform: scale(1.08); }
+  35%  { transform: scale(0.99); }
+  55%  { transform: scale(1.05); }
+  100% { transform: scale(1);    }
 }
-
-.heartbeat { animation: heartbeat 1s ease-in-out; }
+.heartbeat {
+  animation: heartbeat 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+}
 
 @keyframes ios-widget-shake {
   0%,100% { transform: translateX(0); }

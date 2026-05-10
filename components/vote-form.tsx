@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
@@ -24,7 +24,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X, Send, ListOrdered, Sparkles } from "lucide-react";
+import { X, Send, ListOrdered, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { countries, getCountry } from "@/lib/countries";
@@ -130,6 +130,19 @@ export function VoteForm({
   const filledCount = slots.filter((s) => s.countryCode).length;
   const allFilled = filledCount === 10;
 
+  // The moment the user fills the 10th slot, slide them over to the
+  // Bonus bets tab so they don't accidentally submit without scoring
+  // any side bets. Only fires on the 9 -> 10 transition; subsequent
+  // edits stay where they are.
+  const wasFullRef = useRef(false);
+  useEffect(() => {
+    if (allFilled && !wasFullRef.current) {
+      wasFullRef.current = true;
+      setTab("bets");
+    }
+    if (!allFilled) wasFullRef.current = false;
+  }, [allFilled]);
+
   const assign = (points: Points, code: string) => {
     setSlots((prev) =>
       prev.map((s) =>
@@ -205,7 +218,7 @@ export function VoteForm({
         throw new Error(error ?? "Couldn't submit vote.");
       }
       localStorage.setItem(`uzk_voted_${roomCode}`, "1");
-      toast.success("Vote in. Tegyvuoja muzika!");
+      toast.success("Vote in. Long live music!");
       router.push(`/r/${roomCode}`);
     } catch (err) {
       toast.error((err as Error).message);
@@ -215,7 +228,7 @@ export function VoteForm({
   };
 
   return (
-    <main className="min-h-screen flex flex-col pb-32">
+    <main className="min-h-screen flex flex-col pb-12">
       <header className="sticky top-0 z-30 backdrop-blur-md bg-dark-blue-900/70 border-b border-white/5">
         <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center gap-3">
           <Link
@@ -337,26 +350,26 @@ export function VoteForm({
         </Tabs>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-20 bg-dark-blue-900/85 backdrop-blur-md border-t border-white/5 py-3">
-        <div className="container mx-auto max-w-3xl px-4">
-          <Button
-            onClick={submit}
-            disabled={submitting || !allFilled || !name.trim()}
-            className="w-full h-14 text-lg font-display
-                       bg-gradient-to-r from-gold via-flamingo to-purple
-                       text-white shadow-glow-pink
-                       disabled:opacity-40 disabled:bg-none disabled:bg-white/10"
-          >
-            {submitting ? "Submitting…" : (
-              <>
-                <Send className="h-4 w-4 mr-2" />
-                {allFilled
-                  ? "Submit my 12 points"
-                  : `Pick ${10 - filledCount} more`}
-              </>
-            )}
-          </Button>
-        </div>
+      {/* Inline submit, no sticky footer container. Lives at the
+          natural end of the form so the page bg owns the chrome. */}
+      <div className="container mx-auto max-w-3xl px-4 pb-10">
+        <Button
+          onClick={submit}
+          disabled={submitting || !allFilled || !name.trim()}
+          className="w-full h-14 text-lg font-display
+                     bg-gradient-to-r from-gold via-flamingo to-purple
+                     text-white shadow-glow-pink
+                     disabled:opacity-40 disabled:bg-none disabled:bg-white/10"
+        >
+          {submitting ? "Submitting…" : (
+            <>
+              <Send className="h-4 w-4 mr-2" />
+              {allFilled
+                ? "Submit my 12 points"
+                : `Pick ${10 - filledCount} more`}
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Country picker for the ballot. The "options" list excludes
@@ -440,55 +453,72 @@ function BallotSlot({
       }}
       className="list-entry-gradient glass-card flex items-stretch rounded-xl"
     >
-      <button
-        type="button"
+      {/* Drag handle = the points-number + flag block on the left.
+          @dnd-kit listeners attach here so the whole left side feels
+          grabbable. The country text on the right is the tap-to-pick
+          surface; X on the far right clears. */}
+      <div
         {...attributes}
         {...listeners}
-        className="text-white/40 hover:text-white/80 cursor-grab active:cursor-grabbing touch-none px-2"
+        role="button"
         aria-label="Drag to reorder"
+        className="flex items-center gap-3 pl-3 pr-1 py-3 cursor-grab
+                   active:cursor-grabbing touch-none select-none"
       >
-        <GripVertical className="h-5 w-5" />
-      </button>
+        <span
+          className={`w-10 text-center font-display text-2xl ${pointsColor} tabular-nums shrink-0`}
+        >
+          {slot.points}
+        </span>
+        <AnimatePresence mode="wait" initial={false}>
+          {country ? (
+            <motion.span
+              key={`flag-${country.code}`}
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.7 }}
+              transition={{ type: "spring", stiffness: 480, damping: 28 }}
+              className={`shrink-0 ${pulsing ? "heartbeat inline-block" : "inline-block"}`}
+            >
+              <Flag code={country.code} size="md" />
+            </motion.span>
+          ) : (
+            <span className="shrink-0 h-6 w-8 rounded-[3px] bg-white/5 border border-dashed border-white/15" />
+          )}
+        </AnimatePresence>
+      </div>
 
       <button
         type="button"
         onClick={onPick}
-        className="flex flex-1 items-center gap-3 p-3 min-w-0 text-left
+        className="flex flex-1 items-center gap-3 px-1 py-3 min-w-0 text-left
                    transition transform-gpu duration-150
                    hover:bg-white/[0.04] active:scale-[0.99]"
         aria-label={
-          country ? `Change ${slot.points} pts pick` : `Pick ${slot.points} pts country`
+          country
+            ? `Change ${slot.points} pts pick`
+            : `Pick ${slot.points} pts country`
         }
       >
-        <div className={`w-10 text-center font-display text-2xl ${pointsColor} tabular-nums shrink-0`}>
-          {slot.points}
-        </div>
-
         <AnimatePresence mode="wait" initial={false}>
           {country ? (
             <motion.div
-              key={`filled-${country.code}`}
-              initial={{ opacity: 0, x: 12, scale: 0.85 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: -12, scale: 0.85 }}
-              transition={{ type: "spring", stiffness: 480, damping: 28 }}
-              className="flex flex-1 items-center gap-3 min-w-0"
+              key={`text-${country.code}`}
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.18 }}
+              className="flex-1 min-w-0"
             >
-              <span className={pulsing ? "heartbeat inline-block" : "inline-block"}>
-                <Flag code={country.code} size="md" />
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="font-display truncate leading-tight">
-                  {country.name}
-                </p>
-                {/* Singer + song on separate lines, both truncated. */}
-                <p className="text-xs text-white/55 truncate leading-tight">
-                  {country.artist}
-                </p>
-                <p className="text-xs text-white/45 italic truncate leading-tight">
-                  {country.song}
-                </p>
-              </div>
+              <p className="font-display truncate leading-tight">
+                {country.name}
+              </p>
+              <p className="text-xs text-white/55 truncate leading-tight">
+                {country.artist}
+              </p>
+              <p className="text-xs text-white/45 italic truncate leading-tight">
+                {country.song}
+              </p>
             </motion.div>
           ) : (
             <motion.p

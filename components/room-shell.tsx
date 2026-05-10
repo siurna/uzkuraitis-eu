@@ -30,7 +30,7 @@ export function RoomShell({
       initialPresence={{ name: null, avatar: null, emoji: null, hoveredCountry: null }}
     >
       <NameGate>
-        <div className="min-h-screen flex flex-col pb-32">
+        <div className="min-h-screen flex flex-col pb-24">
           <PresenceBar code={code} name={name} />
           <Standings code={code} votingEnabled={votingEnabled} />
           <FloatingReactionsLayer code={code} />
