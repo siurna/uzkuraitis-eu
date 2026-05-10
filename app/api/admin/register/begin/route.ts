@@ -8,14 +8,15 @@ import {
   readAdminSession,
 } from "@/lib/admin/session";
 
-// Phase 1 of passkey enrollment. Authorization model (TOFU — trust on first
-// use):
-//   - If NO credentials exist yet → the next caller gets to enroll, no
-//     secret required. Lock down /admin/login behind something like Vercel
-//     Password Protection if you're worried about a window.
-//   - If credentials already exist → caller must already be authed (i.e.
-//     they signed in with an existing passkey first). This is the
-//     "add a backup device" flow from /admin/settings.
+// Phase 1 of passkey enrollment. Authorization model:
+//   - If NO credentials exist yet → anyone may enroll (TOFU). The next
+//     visitor wins, hit the URL yourself first.
+//   - If credentials EXIST → caller must either:
+//       (a) already be authed (signed in with an existing passkey, then
+//           enrolling a backup device from /admin/settings), or
+//       (b) provide ADMIN_BOOTSTRAP_SECRET in the Authorization header.
+//           This is the recovery path for "I lost my phone / wiped my
+//           browser" so a passkey loss isn't an absolute lock-out.
 export async function POST(request: Request) {
   try {
     if (!process.env.ADMIN_SESSION_SECRET) {
@@ -34,10 +35,20 @@ export async function POST(request: Request) {
     const session = await readAdminSession();
 
     if (existing.length > 0 && !session.authed) {
-      return NextResponse.json(
-        { error: "Sign in with an existing passkey first." },
-        { status: 401 },
-      );
+      // Recovery path: accept ADMIN_BOOTSTRAP_SECRET in Authorization header.
+      const provided = (request.headers.get("authorization") ?? "")
+        .replace(/^Bearer\s+/i, "")
+        .trim();
+      const expected = process.env.ADMIN_BOOTSTRAP_SECRET ?? "";
+      if (!expected || !provided || provided !== expected) {
+        return NextResponse.json(
+          {
+            error:
+              "Sign in with an existing passkey first, or provide the admin recovery key.",
+          },
+          { status: 401 },
+        );
+      }
     }
 
     const userId = session.webauthnUserId ?? crypto.randomUUID();
