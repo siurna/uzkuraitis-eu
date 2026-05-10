@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,16 +9,19 @@ import { cn } from "@/lib/utils";
 // Bottom-sheet drawer, shared by NameGate, SettingsModal, CountryDrawer,
 // and anything else that wants the same iOS-style slide-up overlay.
 //
+// IMPORTANT: rendered via createPortal into document.body. Without that,
+// any ancestor with a CSS transform (e.g. the PageTransition motion.div
+// wrapping the whole app) becomes the containing block for our
+// position:fixed elements, and the sheet anchors to that wrapper
+// instead of the viewport — visually cutting off below the viewport
+// bottom on certain layouts.
+//
 // Layout decisions:
-//   - The sheet is `fixed bottom-0` directly (not flex-justify-end on a
-//     fixed inset-0 wrapper). The wrapper-flex pattern broke on iOS when
-//     the URL bar transitioned: the sheet briefly animated above the
-//     viewport because translateY% was being computed against an
-//     unstable parent height.
+//   - The sheet is `fixed bottom-0` directly. Backdrop is its own
+//     fixed element so the two animate independently and the sheet's
+//     transform stays predictable.
 //   - max-h: 92dvh (dynamic viewport height) so the sheet shrinks
 //     correctly on iOS Safari with the URL bar visible.
-//   - Backdrop is a separate fixed element so the two can animate
-//     independently and the sheet's transform stays predictable.
 //   - Centre column at max-w-md so it reads well on tablets/desktops.
 
 export function BottomSheet({
@@ -41,6 +45,9 @@ export function BottomSheet({
   dismissible?: boolean;
   contentClassName?: string;
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -56,7 +63,7 @@ export function BottomSheet({
     };
   }, [open, dismissible, onClose]);
 
-  return (
+  const sheet = (
     <AnimatePresence>
       {open && (
         <>
@@ -70,7 +77,7 @@ export function BottomSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-50 bg-dark-blue-900/70 backdrop-blur-sm
+            className="fixed inset-0 z-[60] bg-dark-blue-900/70 backdrop-blur-sm
                        disabled:cursor-default"
           />
           <motion.div
@@ -79,10 +86,9 @@ export function BottomSheet({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed bottom-0 inset-x-0 z-50 mx-auto w-full max-w-md
+            className="fixed bottom-0 inset-x-0 z-[60] mx-auto w-full max-w-md
                        glass-card rounded-t-3xl border-x-0 border-b-0
-                       max-h-[92dvh] flex flex-col
-                       pb-[env(safe-area-inset-bottom)]"
+                       max-h-[92dvh] flex flex-col"
           >
             {/* Drag handle. Decorative; swipe-to-dismiss isn't wired up
                 because backdrop tap is the canonical dismiss path and
@@ -131,7 +137,8 @@ export function BottomSheet({
             </div>
 
             {footer && (
-              <div className="px-5 py-3 border-t border-white/5 shrink-0 flex items-center gap-3">
+              <div className="px-5 py-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]
+                              border-t border-white/5 shrink-0 flex items-center gap-3">
                 {footer}
               </div>
             )}
@@ -140,4 +147,7 @@ export function BottomSheet({
       )}
     </AnimatePresence>
   );
+
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(sheet, document.body);
 }

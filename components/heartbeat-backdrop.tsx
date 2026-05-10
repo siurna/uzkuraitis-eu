@@ -3,9 +3,11 @@
 import Image from "next/image";
 import { motion } from "motion/react";
 
-// Decorative giant 70-year heart pulsing in the background. Sits below the
-// content (z-0), with a heavy blur and low opacity so it never fights the
-// foreground card. Animates a real heartbeat curve (two beats + rest).
+// Decorative giant 70-year heart pulsing behind the join screen. Sits
+// at z-0 (above the page bg, below the form content), with a soft
+// blur so the form on top is still legible but the heart is clearly
+// visible — not a ghost. Two-beat lub-dub matched to the .heartbeat
+// keyframes used elsewhere on the site.
 export function HeartbeatBackdrop() {
   return (
     <div
@@ -13,28 +15,28 @@ export function HeartbeatBackdrop() {
       className="pointer-events-none fixed inset-0 -z-10 flex items-center justify-center overflow-hidden"
     >
       <motion.div
-        initial={{ scale: 1, opacity: 0.18 }}
+        initial={{ scale: 1, opacity: 0.5 }}
         animate={{
-          scale: [1, 1.07, 1, 1.05, 1],
-          opacity: [0.15, 0.22, 0.15, 0.2, 0.15],
+          scale: [1, 1.18, 0.98, 1.12, 1, 1.16, 0.99, 1.08, 1],
+          opacity: [0.45, 0.6, 0.45, 0.55, 0.45, 0.58, 0.45, 0.5, 0.45],
         }}
         transition={{
-          duration: 1.2,
-          times: [0, 0.18, 0.36, 0.5, 1],
+          duration: 1.4,
+          times: [0, 0.1, 0.22, 0.32, 0.44, 0.56, 0.68, 0.78, 1],
           repeat: Infinity,
-          repeatDelay: 0.4,
-          ease: "easeInOut",
+          repeatDelay: 0.6,
+          ease: [0.45, 0, 0.55, 1],
         }}
-        className="relative aspect-square w-[120vmin]"
-        style={{ filter: "blur(10px) saturate(0.85)" }}
+        className="relative aspect-square w-[80vmin] sm:w-[70vmin]"
+        style={{ filter: "blur(2px) saturate(1.05)" }}
       >
         <Image
           src="/images/70-heart.webp"
           alt=""
           fill
           priority
-          sizes="120vmin"
-          className="object-contain"
+          sizes="80vmin"
+          className="object-contain drop-shadow-[0_0_60px_rgba(255,46,222,0.35)]"
         />
       </motion.div>
       {/* Inner glow + outer fade so it bleeds into the page background */}
