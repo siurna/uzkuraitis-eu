@@ -146,6 +146,9 @@ const messages = {
     bingo_won:         "BINGO!",
     bingo_you_did_it:  "You got bingo! 🎉",
     bingo_footer:      "Tap a square as it happens on stage. Five in a row wins.",
+    bingo_generate:    "New ticket",
+    bingo_ticket:      "Ticket",
+    bingo_remove_ticket: "Remove this ticket",
 
     // Notifications
     notifications:        "Notifications",
@@ -355,6 +358,9 @@ const messages = {
     bingo_won:         "BINGO!",
     bingo_you_did_it:  "Surinkai bingo! 🎉",
     bingo_footer:      "Bakstelėk laukelį, kai įvyksta scenoje. Penki iš eilės — laimi.",
+    bingo_generate:    "Nauja kortelė",
+    bingo_ticket:      "Kortelė",
+    bingo_remove_ticket: "Pašalinti šią kortelę",
 
     notifications:        "Pranešimai",
     push_unsupported:     "Pranešimų ši naršyklė nepalaiko.",
