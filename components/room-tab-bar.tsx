@@ -13,19 +13,16 @@ import {
 import type { Route } from "next";
 import { useLang, t } from "@/lib/i18n";
 
-// Bottom-fixed nav on mobile. Apple-Watch-style circular icons with a
-// quiet selected state — active tab gets a coloured pill that
-// layoutId-animates between tabs. Tabs are real routes so deep links
-// + browser back work natively.
-//
-// hrefs are template-literal strings cast to Route — Next's typedRoutes
-// validates the prefix; the trailing dynamic segment is fine to
-// interpolate at runtime. The earlier UrlObject + params shape didn't
-// substitute and rendered "/r/[code]" literally in the address bar.
+// Bottom-fixed nav, mobile + desktop. Each tab is a real route so deep
+// links + browser back work. ESC brand palette (flamingo / turquoise
+// / purple / fuchsia) instead of iOS system colours — picks land on
+// our existing @theme tokens so they pick up the brand bloom backdrop
+// naturally. Icon + label so users don't have to guess.
 type TabDef = {
   href: (code: string) => Route;
-  label: (lang: "en" | "lt") => string;
+  labelKey: "tab_home" | "tab_chat" | "tab_bingo" | "tab_vote";
   Icon: React.ComponentType<LucideProps>;
+  /** Active-pill background colour. ESC palette tokens. */
   bg: string;
   match: (pathname: string, code: string) => boolean;
 };
@@ -33,30 +30,30 @@ type TabDef = {
 const TABS: TabDef[] = [
   {
     href: (code) => `/r/${code}` as Route,
-    label: (lang) => t(lang, "tab_home"),
+    labelKey: "tab_home",
     Icon: Home,
-    bg: "bg-[#0a84ff]",
+    bg: "bg-flamingo",
     match: (p, code) => p === `/r/${code}`,
   },
   {
     href: (code) => `/r/${code}/chat` as Route,
-    label: (lang) => t(lang, "tab_chat"),
+    labelKey: "tab_chat",
     Icon: MessageCircle,
-    bg: "bg-[#30d158]",
+    bg: "bg-turquoise",
     match: (p, code) => p.startsWith(`/r/${code}/chat`),
   },
   {
     href: (code) => `/r/${code}/bingo` as Route,
-    label: (lang) => t(lang, "tab_bingo"),
+    labelKey: "tab_bingo",
     Icon: Grid3x3,
-    bg: "bg-[#bf5af2]",
+    bg: "bg-purple",
     match: (p, code) => p.startsWith(`/r/${code}/bingo`),
   },
   {
     href: (code) => `/r/${code}/vote` as Route,
-    label: (lang) => t(lang, "tab_vote"),
+    labelKey: "tab_vote",
     Icon: Vote,
-    bg: "bg-[#ff2d55]",
+    bg: "bg-fuchsia",
     match: (p, code) => p.startsWith(`/r/${code}/vote`),
   },
 ];
@@ -68,27 +65,29 @@ export function RoomTabBar({ code }: { code: string }) {
     <nav
       className="fixed bottom-0 inset-x-0 z-40 px-3
                  pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2
-                 bg-gradient-to-t from-dark-blue-900 via-dark-blue-900/85 to-transparent"
+                 bg-gradient-to-t from-dark-blue-900 via-dark-blue-900/90 to-transparent"
     >
       <ul
-        className="mx-auto max-w-md flex items-center justify-around
-                   rounded-full bg-black/40 ring-1 ring-white/10 p-1.5 backdrop-blur-md"
+        className="mx-auto max-w-md flex items-stretch justify-around gap-1
+                   rounded-3xl bg-black/55 ring-1 ring-white/10 p-1.5 backdrop-blur-md"
       >
-        {TABS.map(({ href, label, Icon, bg, match }, i) => {
+        {TABS.map(({ href, labelKey, Icon, bg, match }, i) => {
           const active = match(pathname, code);
+          const label = t(lang, labelKey);
           return (
-            <li key={i}>
+            <li key={i} className="flex-1">
               <Link
                 href={href(code)}
-                aria-label={label(lang)}
+                aria-label={label}
                 aria-current={active ? "page" : undefined}
-                className="relative grid place-items-center h-11 w-11"
+                className="relative flex flex-col items-center justify-center gap-0.5
+                           py-1.5 rounded-2xl"
               >
                 {active && (
                   <motion.span
                     layoutId="tab-pill"
-                    className={`absolute inset-0 rounded-full ${bg}
-                                shadow-[0_4px_14px_-4px_rgba(0,0,0,0.55)]`}
+                    className={`absolute inset-0 rounded-2xl ${bg}
+                                shadow-[0_6px_18px_-6px_rgba(0,0,0,0.55)]`}
                     transition={{ type: "spring", stiffness: 380, damping: 32 }}
                   />
                 )}
@@ -98,6 +97,12 @@ export function RoomTabBar({ code }: { code: string }) {
                   }`}
                   strokeWidth={active ? 2.4 : 2}
                 />
+                <span
+                  className={`relative text-[10px] font-display tracking-wide leading-none
+                              transition ${active ? "text-white" : "text-white/55"}`}
+                >
+                  {label}
+                </span>
               </Link>
             </li>
           );

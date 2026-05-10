@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useMemo, createContext, useContext } from "react";
-import { Mic, Music, ExternalLink } from "lucide-react";
+import { useState, useMemo, createContext, useContext } from "react";
+import { Mic, Music } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { HeartFlag } from "@/components/flag";
 import { getCountry } from "@/lib/countries";
@@ -63,15 +63,6 @@ function CountryDeepDiveSheet({
   const country = code ? getCountry(code) : null;
 
   // YouTube search URL — opens in a new tab. We don't deep-link to a
-  // specific video because per-country official video URLs aren't in
-  // the dataset; a search by "Eurovision 2026 {country} {artist} {song}"
-  // lands on the official channel result first ~95% of the time.
-  const youtubeUrl = useCallback((c: ReturnType<typeof getCountry>): string => {
-    if (!c) return "https://www.youtube.com";
-    const q = `Eurovision 2026 ${c.name} ${c.artist} ${c.song}`;
-    return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
-  }, []);
-
   return (
     <BottomSheet
       open={!!country}
@@ -123,21 +114,6 @@ function CountryDeepDiveSheet({
                  value={country.song}
                  italic />
           )}
-
-          <a
-            href={youtubeUrl(country)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between rounded-2xl px-4 py-3
-                       bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07]
-                       transition text-sm"
-          >
-            <span className="flex items-center gap-2">
-              <ExternalLink className="h-4 w-4 text-white/70" />
-              {t(lang, "deep_watch")}
-            </span>
-            <span className="text-xs text-white/40">YouTube</span>
-          </a>
         </div>
       )}
     </BottomSheet>

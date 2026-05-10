@@ -8,8 +8,6 @@ import {
   ChevronUp,
   Mic,
   Music,
-  TrendingUp,
-  TrendingDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { countries, getCountry } from "@/lib/countries";
@@ -59,9 +57,7 @@ export function Standings() {
     });
   }, []);
 
-  const prevRanks = useRef<Map<string, number>>(new Map());
   const prevScores = useRef<Map<string, number>>(new Map());
-  const [rankDeltas, setRankDeltas] = useState<Record<string, number>>({});
   // Per-country running queue of "+N" point pops, keyed by an ever-
   // incrementing id so multiple in-flight pops on the same country
   // can each animate independently.
@@ -128,17 +124,10 @@ export function Standings() {
 
   const visible = showAll ? allWithZero : scores.slice(0, 5);
 
+  // Point deltas: queue a fly-up "+N" pop for any country whose score
+  // changed since the previous render. Skip the first-ever render
+  // (prevScores empty) so we don't spam pops on initial load.
   useEffect(() => {
-    // Rank deltas (visible badge "+3" / "-2").
-    const deltas: Record<string, number> = {};
-    visible.forEach((row, i) => {
-      const prev = prevRanks.current.get(row.code);
-      if (prev !== undefined && prev !== i) deltas[row.code] = prev - i;
-    });
-
-    // Point deltas: queue a fly-up "+N" pop for any country whose score
-    // changed since the previous render. Skip the first-ever render
-    // (prevScores empty) so we don't spam pops on initial load.
     const hadPrev = prevScores.current.size > 0;
     if (hadPrev) {
       const pops: Array<{ id: number; code: string; delta: number }> = [];
@@ -152,24 +141,12 @@ export function Standings() {
       }
       if (pops.length > 0) {
         setPointPops((prev) => [...prev, ...pops]);
-        // Clean up after the animation finishes.
         const stale = pops.map((p) => p.id);
         setTimeout(() => {
           setPointPops((prev) => prev.filter((p) => !stale.includes(p.id)));
         }, 1700);
       }
     }
-
-    if (Object.keys(deltas).length > 0) {
-      setRankDeltas(deltas);
-      const t = setTimeout(() => setRankDeltas({}), 2400);
-      visible.forEach((row, i) => prevRanks.current.set(row.code, i));
-      visible.forEach((row) =>
-        prevScores.current.set(row.code, row.totalPoints),
-      );
-      return () => clearTimeout(t);
-    }
-    visible.forEach((row, i) => prevRanks.current.set(row.code, i));
     visible.forEach((row) =>
       prevScores.current.set(row.code, row.totalPoints),
     );
@@ -216,7 +193,6 @@ export function Standings() {
                     key={s.code}
                     score={s}
                     index={i}
-                    delta={rankDeltas[s.code]}
                     pops={pointPops.filter((p) => p.code === s.code)}
                   />
                 ))}
@@ -340,12 +316,10 @@ function NoVotesYet({
 function CountryRow({
   score,
   index,
-  delta,
   pops,
 }: {
   score: ScoreRow;
   index: number;
-  delta?: number;
   pops?: Array<{ id: number; code: string; delta: number }>;
 }) {
   const detail = getCountry(score.code);
@@ -411,28 +385,6 @@ function CountryRow({
       <div className="shrink-0">
         <ScoreNumber value={score.totalPoints} color={scoreColor} />
       </div>
-
-      <AnimatePresence>
-        {delta !== undefined && delta !== 0 && (
-          <motion.span
-            key="delta"
-            initial={{ opacity: 0, scale: 0.4, y: 0 }}
-            animate={{ opacity: 1, scale: 1, y: -28 }}
-            exit={{ opacity: 0, y: -48 }}
-            transition={{ type: "spring", stiffness: 320, damping: 22 }}
-            className={`absolute -top-1 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full
-                        text-xs font-display tabular-nums shadow-lg
-                        ${delta > 0 ? "bg-success text-black" : "bg-error text-white"}`}
-          >
-            {delta > 0 ? (
-              <TrendingUp className="h-3 w-3" />
-            ) : (
-              <TrendingDown className="h-3 w-3" />
-            )}
-            {delta > 0 ? `+${delta}` : delta}
-          </motion.span>
-        )}
-      </AnimatePresence>
 
       {/* Live "+N" point pops: each one floats up off the score number
           when somebody else's vote bumps this country's total. Fan
