@@ -23,6 +23,8 @@ const client = createClient({
 // durable scoreboard data lives in Neon, Liveblocks only carries ephemeral UX.
 export type Presence = {
   name: string | null;
+  /** Avatar id from lib/avatars.ts; null = use the colour+initial fallback. */
+  avatar: string | null;
   emoji: string | null;
   hoveredCountry: string | null;
 };
@@ -34,6 +36,8 @@ export type UserMeta = {
   info: {
     name: string;
     color: string;
+    /** Avatar id (lib/avatars.ts) used by the presence bar. */
+    avatar?: string;
   };
 };
 
