@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
 import { toast } from "sonner";
@@ -268,53 +267,30 @@ export function VoteForm({
   };
 
   return (
-    <main className="min-h-screen flex flex-col pb-12">
-      <header className="sticky top-0 z-30 backdrop-blur-md bg-dark-blue-900/70 border-b border-white/5">
-        <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center gap-3">
-          <Link
-            href={`/r/${roomCode}`}
-            className="flex-1 min-w-0 text-left hover:opacity-80 transition flex items-center gap-2.5"
-            aria-label="Back to standings"
-          >
-            <motion.div
-              animate={{ scale: [1, 1.18, 1, 1.1, 1] }}
-              transition={{
-                duration: 1.1,
-                times: [0, 0.18, 0.36, 0.5, 1],
-                repeat: Infinity,
-                repeatDelay: 0.5,
-                ease: "easeInOut",
-              }}
-              className="origin-center shrink-0"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/70-heart-sm.webp"
-                alt=""
-                className="h-7 w-7 object-contain"
-              />
-            </motion.div>
-            <p className="font-display text-lg truncate">{t(lang, "cast_your_vote")}</p>
-          </Link>
-          {/* Tabs live in the header on every screen so they stay in reach
-              when you scroll past the long ballot. */}
+    <main className="flex-1 flex flex-col pb-12">
+      {/* Ballot / Bets toggle. Sticky just below the global PresenceBar
+          so the user can flip context without scrolling all the way
+          back up. No standalone "Cast your vote" header — the global
+          header is the page chrome now. */}
+      <div className="sticky top-14 z-20 backdrop-blur-md bg-dark-blue-900/55 border-b border-white/5">
+        <div className="container mx-auto max-w-3xl px-4 py-2 flex justify-center">
           <Tabs
             value={tab}
             onValueChange={(v) => setTab(v as "ballot" | "bets")}
           >
             <TabsList className="h-9">
-              <TabsTrigger value="ballot" className="px-3 py-1 text-xs">
+              <TabsTrigger value="ballot" className="px-4 py-1 text-xs">
                 <ListOrdered className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t(lang, "tab_ballot")}</span>
+                {t(lang, "tab_ballot")}
               </TabsTrigger>
-              <TabsTrigger value="bets" className="px-3 py-1 text-xs">
+              <TabsTrigger value="bets" className="px-4 py-1 text-xs">
                 <Sparkles className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t(lang, "tab_bets")}</span>
+                {t(lang, "tab_bets")}
               </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
-      </header>
+      </div>
 
       <div className="container mx-auto max-w-3xl px-4 py-6 flex flex-col gap-6">
         <Tabs
