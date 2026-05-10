@@ -8,6 +8,7 @@ import { NameGate } from "@/components/name-gate";
 import { RoomTabBar } from "@/components/room-tab-bar";
 import { ParticleLayer } from "@/components/particle-layer";
 import { NowPlaying } from "@/components/now-playing";
+import { CountryDeepDiveProvider } from "@/components/country-deep-dive";
 
 const LAST_ROOM_KEY = "uzk_last_room";
 
@@ -60,13 +61,15 @@ export function RoomShell({
       <NameGate>
         <RoomLiveProvider initial={{ code, name, votingEnabled, homeCountryCode }}>
           <ParticleLayer>
-            <div className="min-h-screen flex flex-col pb-24">
-              <PresenceBar />
-              <NowPlaying />
-              {children}
-              <FloatingReactionsLayer code={code} hideBarOnMobile={false} />
-              <RoomTabBar code={code} />
-            </div>
+            <CountryDeepDiveProvider>
+              <div className="min-h-screen flex flex-col pb-24">
+                <PresenceBar />
+                <NowPlaying />
+                {children}
+                <FloatingReactionsLayer code={code} hideBarOnMobile={false} />
+                <RoomTabBar code={code} />
+              </div>
+            </CountryDeepDiveProvider>
           </ParticleLayer>
         </RoomLiveProvider>
       </NameGate>

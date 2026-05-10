@@ -96,6 +96,12 @@ const messages = {
     gif_hint:          "Try \"omg\", \"yes\", \"fire\"…",
     gif_empty:         "No GIFs found.",
 
+    // Country deep-dive
+    deep_artist:       "Artist",
+    deep_song:         "Song",
+    deep_order:        "in running order",
+    deep_watch:        "Watch the performance",
+
     // Now-playing strip
     now_playing:       "On stage",
     now_playing_idle:  "Waiting for the next country…",
@@ -245,6 +251,11 @@ const messages = {
     gif_search:        "Ieškoti GIF",
     gif_hint:          "Bandyk „omg“, „taip“, „fire“…",
     gif_empty:         "Nieko nerasta.",
+
+    deep_artist:       "Atlikėjas",
+    deep_song:         "Daina",
+    deep_order:        "vieta tvarkaraštyje",
+    deep_watch:        "Žiūrėti pasirodymą",
 
     now_playing:       "Scenoje",
     now_playing_idle:  "Laukiama kitos šalies…",

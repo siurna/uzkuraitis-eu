@@ -17,6 +17,7 @@ import { useEventListener } from "@/lib/liveblocks";
 import { HeartFlag, MetaPill } from "@/components/flag";
 import { Leaderboard } from "@/components/leaderboard";
 import { useRoomLive } from "@/components/room-shell";
+import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { useLang, t } from "@/lib/i18n";
 
 type ScoreRow = {
@@ -348,6 +349,7 @@ function CountryRow({
   pops?: Array<{ id: number; code: string; delta: number }>;
 }) {
   const detail = getCountry(score.code);
+  const deepDive = useCountryDeepDive();
   // Top-3 get a richer treatment: bigger row padding, gold/silver/bronze
   // ring + brand glow, and the score in the brand colour. Keeps the
   // ordered list semantic but lets the eye land on the podium fast.
@@ -376,7 +378,16 @@ function CountryRow({
         layout: { type: "spring", stiffness: 320, damping: 30 },
         opacity: { duration: 0.25 },
       }}
-      className={`relative list-card-hover glass-card rounded-2xl flex items-center gap-3
+      onClick={() => deepDive.open(score.code)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          deepDive.open(score.code);
+        }
+      }}
+      className={`relative list-card-hover glass-card rounded-2xl flex items-center gap-3 cursor-pointer
                   ${index < 3 ? "px-3.5 py-3.5" : "px-3 py-2.5"} ${podium}`}
     >
       <HeartFlag
