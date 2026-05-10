@@ -103,6 +103,22 @@ const messages = {
     bingo_you_did_it:  "You got bingo! 🎉",
     bingo_footer:      "Tap a square as it happens on stage. Five in a row wins.",
 
+    // Notifications
+    notifications:        "Notifications",
+    push_unsupported:     "Push notifications aren't supported on this device.",
+    push_blocked:         "Notifications are blocked in your browser settings.",
+    push_enable:          "Turn on notifications",
+    push_off:             "Off",
+    push_on:              "Notifications on",
+    push_disable:         "Turn off",
+    push_enabled:         "Notifications enabled",
+    push_denied:          "Permission denied",
+    push_chat_all:        "All chat messages",
+    push_chat_replies:    "Replies to my messages",
+    push_now_playing:     "Country changes on stage",
+    push_voting_state:    "Voting opens or closes",
+    push_results_tallied: "Results are tallied",
+
     // Bonus bets — labels + descriptions
     bet_lt_placement:  "{home} placement",
     bet_lt_placement_sub:
@@ -227,6 +243,21 @@ const messages = {
     bingo_won:         "BINGO!",
     bingo_you_did_it:  "Surinkai bingo! 🎉",
     bingo_footer:      "Bakstelėk laukelį, kai įvyksta scenoje. Penki iš eilės — laimi.",
+
+    notifications:        "Pranešimai",
+    push_unsupported:     "Pranešimų ši naršyklė nepalaiko.",
+    push_blocked:         "Pranešimai užblokuoti naršyklės nustatymuose.",
+    push_enable:          "Įjungti pranešimus",
+    push_off:             "Išjungta",
+    push_on:              "Pranešimai įjungti",
+    push_disable:         "Išjungti",
+    push_enabled:         "Pranešimai įjungti",
+    push_denied:          "Leidimas nesuteiktas",
+    push_chat_all:        "Visos pokalbių žinutės",
+    push_chat_replies:    "Atsakymai į mano žinutes",
+    push_now_playing:     "Šalis pasikeitė scenoje",
+    push_voting_state:    "Balsavimas atidarytas ar uždarytas",
+    push_results_tallied: "Suskaičiuoti rezultatai",
 
     bet_lt_placement:  "{home} vieta",
     bet_lt_placement_sub:

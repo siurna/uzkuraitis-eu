@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { AvatarPicker } from "@/components/avatar-picker";
+import { NotificationToggles } from "@/components/notification-toggles";
 import { getAvatar } from "@/lib/avatars";
 import {
   LANGUAGES,
@@ -199,6 +200,10 @@ export function SettingsModal({
               </div>
               <ChevronRight className="h-4 w-4 text-white/30 shrink-0" />
             </button>
+          </Section>
+
+          <Section label={t(lang, "notifications")}>
+            <NotificationToggles />
           </Section>
 
           <Section label="">

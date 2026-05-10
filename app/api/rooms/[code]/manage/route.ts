@@ -8,6 +8,8 @@ import {
   changeRoomCode,
 } from "@/lib/rooms";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { pushToRoom } from "@/lib/push";
+import { getCountry } from "@/lib/countries";
 
 // Per-room admin endpoint. All actions require an "X-Admin-Token" header
 // matching the room's stored token. The token is generated at room
@@ -102,6 +104,51 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
       type: "now-playing:change",
       countryCode: nextNowPlaying ?? null,
     });
+    // Push: anyone with nowPlaying=true gets a system-level nudge so
+    // they don't miss the country change when the app is backgrounded.
+    if (nextNowPlaying) {
+      const c = getCountry(nextNowPlaying);
+      pushToRoom(
+        room.id,
+        (prefs) => !!prefs.nowPlaying,
+        {
+          title: `${c?.name ?? nextNowPlaying.toUpperCase()} is on stage`,
+          body: c?.artist
+            ? `${c.artist}${c.song ? ` — ${c.song}` : ""}`
+            : "Tap to open the room",
+          url: `/r/${newCode}`,
+          tag: `now-playing:${newCode}`,
+        },
+      ).catch(() => {});
+    }
+  }
+  if (parsed.data.votingEnabled !== undefined) {
+    pushToRoom(
+      room.id,
+      (prefs) => !!prefs.votingState,
+      {
+        title: parsed.data.votingEnabled
+          ? "Voting is open"
+          : "Voting just closed",
+        body: parsed.data.votingEnabled
+          ? "Cast your TOP10 before the show kicks off."
+          : "Results coming in shortly.",
+        url: `/r/${newCode}/vote`,
+        tag: `voting:${newCode}`,
+      },
+    ).catch(() => {});
+  }
+  if (parsed.data.tallyEnabled === true) {
+    pushToRoom(
+      room.id,
+      (prefs) => !!prefs.resultsTallied,
+      {
+        title: "Results are tallied",
+        body: "Open the leaderboard to see how you did.",
+        url: `/r/${newCode}`,
+        tag: `results:${newCode}`,
+      },
+    ).catch(() => {});
   }
   return NextResponse.json({ ok: true, code: newCode });
 }

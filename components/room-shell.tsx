@@ -45,6 +45,11 @@ export function RoomShell({
 }) {
   useEffect(() => {
     localStorage.setItem(LAST_ROOM_KEY, code);
+    // Register the service worker for offline + push. Fire-and-forget;
+    // the SW never gets in the way of the page rendering.
+    if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
   }, [code]);
 
   return (

@@ -8,6 +8,7 @@ import {
   uuid,
   index,
   uniqueIndex,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -216,6 +217,45 @@ export const votersRelations = relations(voters, ({ one, many }) => ({
 export const votesRelations = relations(votes, ({ one }) => ({
   voter: one(voters, { fields: [votes.voterId], references: [voters.id] }),
 }));
+
+// Web Push subscriptions. One row per (room, session, endpoint) so a
+// voter can opt into notifications from multiple rooms; deleting a
+// row unsubscribes that subscription. `prefs` is a jsonb bag of bool
+// toggles — chatAll / chatReplies / nowPlaying / votingState /
+// resultsTallied — so adding categories doesn't need a migration.
+export type PushPrefs = {
+  chatAll?: boolean;
+  chatReplies?: boolean;
+  nowPlaying?: boolean;
+  votingState?: boolean;
+  resultsTallied?: boolean;
+};
+
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    sessionId: text("session_id").notNull(),
+    voterName: text("voter_name"),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    prefs: jsonb("prefs").$type<PushPrefs>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("push_subs_room_idx").on(t.roomId),
+    uniqueIndex("push_subs_endpoint_unique").on(t.roomId, t.endpoint),
+  ],
+);
 
 // WebAuthn / passkey credentials for the single admin user. Initial enrollment
 // is gated by the ADMIN_BOOTSTRAP_SECRET env var; once at least one credential
