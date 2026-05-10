@@ -10,51 +10,50 @@ import {
   Vote,
   type LucideProps,
 } from "lucide-react";
+import type { Route } from "next";
 import { useLang, t } from "@/lib/i18n";
 
-// LinkProps is generic over the route. We don't care which specific
-// route a TabDef points at — typedRoutes verifies each call site. Use
-// a structural shape that matches Next's `LinkProps["href"]`.
-type Href = React.ComponentProps<typeof Link>["href"];
-
-// Bottom-fixed nav on mobile, sticky-top on desktop. Apple-Watch-style
-// circular icons with a quiet selected state (white bg, dark-blue icon).
-// Tabs are routes so deep links + browser back work natively.
+// Bottom-fixed nav on mobile. Apple-Watch-style circular icons with a
+// quiet selected state — active tab gets a coloured pill that
+// layoutId-animates between tabs. Tabs are real routes so deep links
+// + browser back work natively.
+//
+// hrefs are template-literal strings cast to Route — Next's typedRoutes
+// validates the prefix; the trailing dynamic segment is fine to
+// interpolate at runtime. The earlier UrlObject + params shape didn't
+// substitute and rendered "/r/[code]" literally in the address bar.
 type TabDef = {
-  href: (code: string) => Href;
+  href: (code: string) => Route;
   label: (lang: "en" | "lt") => string;
   Icon: React.ComponentType<LucideProps>;
   bg: string;
   match: (pathname: string, code: string) => boolean;
 };
 
-// Typed-routes wants compile-time route strings; pathname includes the
-// resolved code so we can build static-typed hrefs by passing `code` as
-// a dynamic-segment param.
 const TABS: TabDef[] = [
   {
-    href: (code) => ({ pathname: "/r/[code]", params: { code } }),
+    href: (code) => `/r/${code}` as Route,
     label: (lang) => t(lang, "tab_home"),
     Icon: Home,
     bg: "bg-[#0a84ff]",
     match: (p, code) => p === `/r/${code}`,
   },
   {
-    href: (code) => ({ pathname: "/r/[code]/chat", params: { code } }),
+    href: (code) => `/r/${code}/chat` as Route,
     label: (lang) => t(lang, "tab_chat"),
     Icon: MessageCircle,
     bg: "bg-[#30d158]",
     match: (p, code) => p.startsWith(`/r/${code}/chat`),
   },
   {
-    href: (code) => ({ pathname: "/r/[code]/bingo", params: { code } }),
+    href: (code) => `/r/${code}/bingo` as Route,
     label: (lang) => t(lang, "tab_bingo"),
     Icon: Grid3x3,
     bg: "bg-[#bf5af2]",
     match: (p, code) => p.startsWith(`/r/${code}/bingo`),
   },
   {
-    href: (code) => ({ pathname: "/r/[code]/vote", params: { code } }),
+    href: (code) => `/r/${code}/vote` as Route,
     label: (lang) => t(lang, "tab_vote"),
     Icon: Vote,
     bg: "bg-[#ff2d55]",
