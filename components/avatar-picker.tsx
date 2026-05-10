@@ -106,6 +106,11 @@ function Tile({
             src={avatar.photo}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
+            style={{
+              objectPosition: avatar.focal
+                ? `${avatar.focal.x}% ${avatar.focal.y}%`
+                : "50% 30%",
+            }}
             loading="lazy"
           />
         ) : (

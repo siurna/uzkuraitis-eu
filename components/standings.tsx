@@ -285,9 +285,12 @@ export function Standings() {
                 reads as the brand's "Curved Line" leitmotif. No neon
                 glow, no pulse keyframes — the rainbow border + a small
                 fuchsia ping pip carry all the energy. */}
-            <Link href={`/r/${code}/vote`} className="block rainbow-border">
+            <Link
+              href={`/r/${code}/vote`}
+              className="block rainbow-border rounded-2xl"
+            >
               <Button
-                className="relative w-full h-14 text-lg font-display
+                className="relative w-full h-14 text-lg font-display rounded-2xl
                            bg-white text-dark-blue hover:bg-dark-blue-50"
               >
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5">

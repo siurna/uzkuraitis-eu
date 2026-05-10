@@ -29,7 +29,7 @@ export function HeartbeatBackdrop() {
         style={{ filter: "blur(10px) saturate(0.85)" }}
       >
         <Image
-          src="/images/70-heart@2x.webp"
+          src="/images/70-heart.webp"
           alt=""
           fill
           priority

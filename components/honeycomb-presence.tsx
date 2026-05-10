@@ -116,17 +116,25 @@ export function HoneycombPresence() {
                   }}
                 >
                   {avatar ? (
-                    // Stretch the flag to fill the hex tile cleanly. The
-                    // shared <Flag/> component sizes to a fixed aspect via
-                    // explicit width/height attrs, so we wrap it in a
-                    // 100%/100% container with object-cover to force a
-                    // proper crop into the hex shape.
+                    // Use the artist's press photo when available so the
+                    // honeycomb reads as a watch grid of faces; fall back
+                    // to the country flag for legacy avatars without a
+                    // photo on disk yet.
                     <span className="absolute inset-0">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={`/flags/${avatar.country}.svg`}
+                        src={avatar.photo ?? `/flags/${avatar.country}.svg`}
                         alt=""
                         className="absolute inset-0 h-full w-full object-cover"
+                        style={
+                          avatar.photo && avatar.focal
+                            ? {
+                                objectPosition: `${avatar.focal.x}% ${avatar.focal.y}%`,
+                              }
+                            : avatar.photo
+                              ? { objectPosition: "50% 30%" }
+                              : undefined
+                        }
                       />
                     </span>
                   ) : (

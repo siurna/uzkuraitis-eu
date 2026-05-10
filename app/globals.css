@@ -204,12 +204,12 @@
 }
 
 /* Signature 2px rainbow border. Drop this on any element to get the
-   ESC Curved-Line treatment as a clean stroke (not a glow). Matches
-   eurovision.com's `.rainbow-border` rule exactly via conic-mask
-   composite. */
+   ESC Curved-Line treatment as a clean stroke (not a glow). The host
+   sets its own border-radius (e.g. via `rounded-2xl`) and the pseudo
+   inherits it so the stroke and the inner content stay flush — no
+   corner gaps. */
 .rainbow-border {
   position: relative;
-  border-radius: var(--radius-xl);
 }
 .rainbow-border::before {
   content: "";

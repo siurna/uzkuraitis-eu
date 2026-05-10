@@ -121,7 +121,7 @@ export function BottomSheet({
 
             <div
               className={cn(
-                "overflow-y-auto px-5 pb-5 flex flex-col gap-4",
+                "flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-5 flex flex-col gap-4",
                 contentClassName,
               )}
             >

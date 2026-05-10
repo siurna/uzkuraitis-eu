@@ -15,6 +15,13 @@ export type Avatar = {
   song: string;
   /** Optional press-kit photo URL. Falls back to country flag if unset. */
   photo?: string;
+  /**
+   * Where the face sits in the photo, as percentages of the natural
+   * image size (0,0 = top-left, 50,50 = centre). Used as
+   * `object-position` so the square crop lands on the face. Defaults to
+   * `{ x: 50, y: 30 }` (top-centre) when unset.
+   */
+  focal?: { x: number; y: number };
 };
 
 export const AVATARS: Avatar[] = [
