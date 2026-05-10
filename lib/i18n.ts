@@ -7,6 +7,12 @@
 
 export type Language = "en" | "lt";
 export const LANGUAGES: Language[] = ["en", "lt"];
+// Display name for each language, in its own language so the picker
+// reads naturally regardless of which mode the user is currently in.
+export const LANGUAGE_NAMES: Record<Language, string> = {
+  en: "In English",
+  lt: "Lietuviškai",
+};
 export const LANG_STORAGE_KEY = "uzk_lang";
 
 export type MessageKey = keyof typeof messages.en;
@@ -37,7 +43,9 @@ const messages = {
     reconnecting:      "Reconnecting…",
 
     // Standings
-    no_votes_yet:      "No votes yet, be the first.",
+    no_votes_yet:      "Standings are quiet",
+    no_votes_sub:      "No one has voted yet. Be the first and the leaderboard fills up live as everyone joins in.",
+    be_the_first:      "Be the first",
     show_top_5:        "Top 5 only",
     show_all:          "Show all",
     votes_cast:        "Votes cast",
@@ -50,7 +58,7 @@ const messages = {
 
     // VoteForm
     cast_your_vote:    "Cast your vote",
-    your_top_10:       "Your top 10",
+    your_top_10:       "Your TOP10",
     tap_to_pick:       "Tap to pick",
     drag_hint:         "Tap a slot to pick, drag to reorder.",
     submit_12:         "Submit my 12 points",
@@ -140,7 +148,9 @@ const messages = {
     bad_format:        "Kodas — 6 simboliai (A–Z, 2–9).",
     reconnecting:      "Jungiamasi…",
 
-    no_votes_yet:      "Dar nėra balsų — būk pirmas.",
+    no_votes_yet:      "Lentelė tuščia",
+    no_votes_sub:      "Niekas dar nebalsavo. Bakstelėk žemiau ir lentelė užsipildys realiu laiku, kai prisijungs kiti.",
+    be_the_first:      "Būk pirmas",
     show_top_5:        "Tik TOP 5",
     show_all:          "Visi",
     votes_cast:        "Balsai",
@@ -152,7 +162,7 @@ const messages = {
     standings:         "Rezultatai",
 
     cast_your_vote:    "Balsavimas",
-    your_top_10:       "Tavo TOP 10",
+    your_top_10:       "Tavo TOP10",
     tap_to_pick:       "Bakstelėk pasirinkti",
     drag_hint:         "Bakstelėk vietą pasirinkti, vilk perstumti.",
     submit_12:         "Pateikti mano 12 taškų",
@@ -250,9 +260,12 @@ export function fmt(
 const LANG_CHANGE_EVENT = "uzk:lang-change";
 
 export function readLang(): Language {
-  if (typeof window === "undefined") return "en";
+  if (typeof window === "undefined") return "lt";
   const stored = window.localStorage.getItem(LANG_STORAGE_KEY);
-  return stored === "lt" ? "lt" : "en";
+  // LT is the default — this is a Lithuanian Eurovision party app
+  // first, EN is for the international guest. Stored "en" wins; any
+  // other value (including "lt" or absent) falls back to LT.
+  return stored === "en" ? "en" : "lt";
 }
 
 export function writeLang(lang: Language): void {
@@ -266,7 +279,7 @@ export function writeLang(lang: Language): void {
 import { useEffect, useState } from "react";
 
 export function useLang(): Language {
-  const [lang, setLang] = useState<Language>("en");
+  const [lang, setLang] = useState<Language>("lt");
   useEffect(() => {
     setLang(readLang());
     const onChange = () => setLang(readLang());

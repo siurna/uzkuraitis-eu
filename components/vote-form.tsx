@@ -153,9 +153,13 @@ export function VoteForm({
             : s,
       ),
     );
-    // Trigger one-shot heartbeat on the freshly-filled slot.
-    setPulsingPoints(points);
-    window.setTimeout(() => setPulsingPoints(null), 900);
+    // Heartbeat pops AFTER the picker drawer's slide-down (~0.28s) so
+    // the user actually sees the freshly-filled slot pulse instead of
+    // it firing while the drawer is still on top of the row.
+    window.setTimeout(() => {
+      setPulsingPoints(points);
+      window.setTimeout(() => setPulsingPoints(null), 1100);
+    }, 320);
   };
 
   const clearSlot = (points: Points) => {
@@ -264,8 +268,13 @@ export function VoteForm({
           onValueChange={(v) => setTab(v as "ballot" | "bets")}
           className="flex flex-col gap-4"
         >
-          <TabsContent value="ballot" className="flex flex-col gap-6 mt-0">
-            <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
+          <TabsContent value="ballot" className="flex flex-col gap-6 mt-0 outline-none">
+            <motion.section
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3"
+            >
               <div className="flex items-baseline justify-between gap-3">
                 <h2 className="font-display text-xl gradient-text">
                   {t(lang, "your_top_10")}
@@ -296,12 +305,17 @@ export function VoteForm({
                   </ul>
                 </SortableContext>
               </DndContext>
-            </section>
+            </motion.section>
           </TabsContent>
 
-          <TabsContent value="bets" className="flex flex-col gap-4 mt-0">
+          <TabsContent value="bets" className="flex flex-col gap-4 mt-0 outline-none">
             {homeCountry && (
-              <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
+              <motion.section
+                initial={{ opacity: 0, x: 16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3"
+              >
                 <div className="flex items-center gap-3">
                   <Flag code={homeCountry.code} size="lg" />
                   <div className="flex-1 min-w-0">
@@ -332,7 +346,7 @@ export function VoteForm({
                     / {countries.length} finalists
                   </span>
                 </div>
-              </section>
+              </motion.section>
             )}
 
             <BonusBetsForm
@@ -467,7 +481,9 @@ function BallotSlotInner({
         transition,
         opacity: isDragging ? 0.7 : 1,
       }}
-      className="list-entry-gradient glass-card flex items-stretch rounded-xl"
+      // min-h pre-allocates the picked-state height so the row doesn't
+      // jump taller the moment a country is chosen.
+      className="list-entry-gradient glass-card flex items-stretch rounded-xl min-h-[4.5rem]"
     >
       {/* Drag handle = the points-number + flag block on the left.
           @dnd-kit listeners attach here so the whole left side feels
@@ -531,9 +547,12 @@ function BallotSlotInner({
               </p>
               <p className="text-xs text-white/55 truncate leading-tight">
                 {country.artist}
-              </p>
-              <p className="text-xs text-white/45 italic truncate leading-tight">
-                {country.song}
+                {country.song && (
+                  <>
+                    {" · "}
+                    <span className="italic text-white/45">{country.song}</span>
+                  </>
+                )}
               </p>
             </motion.div>
           ) : (

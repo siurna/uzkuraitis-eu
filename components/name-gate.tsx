@@ -9,6 +9,7 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { AvatarPicker } from "@/components/avatar-picker";
 import {
   LANGUAGES,
+  LANGUAGE_NAMES,
   readLang,
   writeLang,
   t,
@@ -144,22 +145,19 @@ export function NameGate({ children }: { children: React.ReactNode }) {
               className="h-12 text-center text-base"
               maxLength={40}
             />
-            {/* Step indicator dots — quiet visual cue that there's a
-                second screen coming, so the user isn't surprised when
-                Next reveals the avatar grid. */}
             <div className="flex items-center justify-center gap-1 rounded-full bg-black/30 p-1 self-center">
               {LANGUAGES.map((code) => (
                 <button
                   key={code}
                   type="button"
                   onClick={() => setLang(code)}
-                  className={`px-4 py-1 rounded-full text-xs font-display uppercase tracking-widest transition ${
+                  className={`px-4 py-1.5 rounded-full text-xs font-display transition ${
                     lang === code
                       ? "bg-white text-dark-blue"
                       : "text-white/60 hover:text-white"
                   }`}
                 >
-                  {code}
+                  {LANGUAGE_NAMES[code]}
                 </button>
               ))}
             </div>

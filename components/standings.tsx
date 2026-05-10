@@ -6,7 +6,6 @@ import { motion, AnimatePresence, LayoutGroup } from "motion/react";
 import {
   ChevronDown,
   ChevronUp,
-  Loader2,
   Mic,
   Music,
   TrendingUp,
@@ -175,17 +174,23 @@ export function Standings() {
     <main className="container mx-auto max-w-3xl px-4 py-6 flex-1 flex flex-col gap-8">
       <section className="flex flex-col gap-4">
         {loading ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="h-10 w-10 animate-spin text-flamingo" />
-          </div>
+          // Skeleton rows match the real CountryRow shape so the layout
+          // doesn't jump when scores arrive. No spinner.
+          <ul className="flex flex-col gap-2">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <li
+                key={i}
+                className="glass-card rounded-2xl px-3 py-2.5 flex items-center gap-3 opacity-60"
+              >
+                <span className="h-9 w-9 rounded-full bg-white/8 animate-pulse" />
+                <span className="h-7 w-24 rounded-full bg-white/8 animate-pulse" />
+                <span className="flex-1" />
+                <span className="h-7 w-10 rounded-md bg-white/8 animate-pulse" />
+              </li>
+            ))}
+          </ul>
         ) : visible.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass-card rounded-xl p-8 text-center text-white/60 font-display"
-          >
-            {t(lang, "no_votes_yet")}
-          </motion.div>
+          <NoVotesYet code={code} votingEnabled={votingEnabled} lang={lang} hasVoted={hasVoted} />
         ) : (
           // LayoutGroup so rank-changes animate cleanly across rows.
           // AnimatePresence mode="popLayout" so expanding from 5 -> 35
@@ -271,6 +276,89 @@ export function Standings() {
         )}
       </AnimatePresence>
     </main>
+  );
+}
+
+function NoVotesYet({
+  code,
+  votingEnabled,
+  lang,
+  hasVoted,
+}: {
+  code: string;
+  votingEnabled: boolean;
+  lang: "en" | "lt";
+  hasVoted: boolean;
+}) {
+  // Three placeholder rows hint at the standings shape so the layout
+  // doesn't visually empty out before the first vote lands.
+  const placeholders = [0, 1, 2];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      className="flex flex-col gap-5 py-6"
+    >
+      <div className="flex flex-col items-center text-center gap-3">
+        <motion.div
+          animate={{ scale: [1, 1.18, 1, 1.1, 1] }}
+          transition={{
+            duration: 1.1,
+            times: [0, 0.18, 0.36, 0.5, 1],
+            repeat: Infinity,
+            repeatDelay: 0.5,
+            ease: "easeInOut",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/70-heart.webp"
+            alt=""
+            className="h-20 w-20 object-contain drop-shadow-[0_0_24px_rgba(255,46,222,0.35)]"
+          />
+        </motion.div>
+        <h3 className="font-display text-2xl text-white/90">
+          {t(lang, "no_votes_yet")}
+        </h3>
+        <p className="text-sm text-white/50 max-w-xs">
+          {t(lang, "no_votes_sub")}
+        </p>
+      </div>
+
+      {/* Ghost rows: hint at the standings shape so the page doesn't
+          look empty before the first vote lands. */}
+      <ul className="flex flex-col gap-2">
+        {placeholders.map((i) => (
+          <motion.li
+            key={i}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.15 + i * 0.08, duration: 0.4 }}
+            className="glass-card rounded-2xl px-3 py-2.5 flex items-center gap-3
+                       opacity-50"
+          >
+            <span className="h-9 w-9 rounded-full bg-white/8" />
+            <span className="h-7 flex-1 max-w-[8rem] rounded-full bg-white/8" />
+            <span className="h-6 w-8 rounded-md bg-white/8" />
+          </motion.li>
+        ))}
+      </ul>
+
+      {votingEnabled && (
+        <Link
+          href={`/r/${code}/vote`}
+          className="rainbow-border rounded-2xl mx-auto w-full max-w-xs"
+        >
+          <Button
+            className="w-full h-12 text-base font-display rounded-[14px]
+                       bg-white text-dark-blue hover:bg-dark-blue-50"
+          >
+            {hasVoted ? t(lang, "update_vote") : t(lang, "be_the_first")}
+          </Button>
+        </Link>
+      )}
+    </motion.div>
   );
 }
 

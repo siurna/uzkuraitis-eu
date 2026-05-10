@@ -31,8 +31,25 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
   // On mount: if there's no prefilled code from ?room= and the user didn't
   // explicitly tap "Leave", check for a remembered room and bounce them
   // back into it. This survives phone sleep, tab restore, app reopen, etc.
+  //
+  // BUT — if the user got here via the browser's back button (popstate
+  // navigation), don't auto-redirect, otherwise the back button is
+  // useless: it sends you to /, we re-redirect into the room you just
+  // backed out of, infinite loop. The Performance Navigation API's
+  // "back_forward" type is the cleanest signal for this.
   useEffect(() => {
     if (prefilled || isLeaving) {
+      setRehydrating(false);
+      return;
+    }
+    const navType = (
+      typeof performance !== "undefined"
+        ? (performance.getEntriesByType("navigation")[0] as
+            | PerformanceNavigationTiming
+            | undefined)?.type
+        : undefined
+    );
+    if (navType === "back_forward") {
       setRehydrating(false);
       return;
     }

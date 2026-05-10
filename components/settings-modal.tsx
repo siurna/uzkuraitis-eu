@@ -11,6 +11,7 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { AvatarPicker } from "@/components/avatar-picker";
 import {
   LANGUAGES,
+  LANGUAGE_NAMES,
   readLang,
   writeLang,
   t,
@@ -140,13 +141,13 @@ export function SettingsModal({
                 key={code}
                 type="button"
                 onClick={() => setLang(code)}
-                className={`px-4 py-1.5 rounded-full text-sm font-display uppercase tracking-widest transition ${
+                className={`px-4 py-1.5 rounded-full text-sm font-display transition ${
                   lang === code
                     ? "bg-white text-dark-blue"
                     : "text-white/60 hover:text-white"
                 }`}
               >
-                {code}
+                {LANGUAGE_NAMES[code]}
               </button>
             ))}
           </div>

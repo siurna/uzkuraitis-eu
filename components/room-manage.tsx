@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Copy, Check, Mic, Trophy } from "lucide-react";
+import { Copy, Check, Mic, Trophy, Eraser } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -33,6 +33,7 @@ export function RoomManage({
   const [tally, setTally] = useState(room.tallyEnabled);
   const [pending, start] = useTransition();
   const [copied, setCopied] = useState(false);
+  const [confirmClean, setConfirmClean] = useState(false);
 
   const headers = {
     "content-type": "application/json",
@@ -64,6 +65,22 @@ export function RoomManage({
     const next = !tally;
     setTally(next);
     patch({ tallyEnabled: next });
+  };
+
+  const cleanOut = () => {
+    start(async () => {
+      const res = await fetch(`/api/rooms/${room.code}/manage`, {
+        method: "DELETE",
+        headers,
+      });
+      if (!res.ok) {
+        toast.error("Couldn't clean out the room.");
+        return;
+      }
+      toast.success("Room cleaned out.");
+      setConfirmClean(false);
+      router.refresh();
+    });
   };
 
   const adminUrl =
@@ -117,29 +134,64 @@ export function RoomManage({
         />
       </div>
 
-      <section className="glass-card w-full max-w-md rounded-2xl p-4 flex flex-col gap-2">
-        <p className="text-xs text-white/45 leading-relaxed">
-          Bookmark this URL to manage the room any time. Sharing it gives
-          full admin to whoever has the link.
-        </p>
-        <div className="flex items-center gap-2 pt-1">
-          <code className="flex-1 truncate text-xs bg-black/30 rounded-md px-3 py-2 font-mono">
-            {adminUrl || "loading…"}
-          </code>
-          <Button size="sm" variant="outline" onClick={copy}>
-            {copied ? (
-              <>
-                <Check className="h-4 w-4 mr-1.5" />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4 mr-1.5" />
-                Copy
-              </>
-            )}
-          </Button>
-        </div>
+      <section className="glass-card w-full max-w-md rounded-2xl p-4 flex items-center gap-2">
+        <code className="flex-1 truncate text-xs bg-black/30 rounded-md px-3 py-2 font-mono">
+          {adminUrl || "loading…"}
+        </code>
+        <Button size="sm" variant="outline" onClick={copy}>
+          {copied ? (
+            <>
+              <Check className="h-4 w-4 mr-1.5" />
+              Copied
+            </>
+          ) : (
+            <>
+              <Copy className="h-4 w-4 mr-1.5" />
+              Copy
+            </>
+          )}
+        </Button>
+      </section>
+
+      {/* Clean out — wipes every voter + their ballots from this room
+          (room itself stays). Two-tap confirm so a fat finger doesn't
+          nuke an in-progress party. */}
+      <section className="w-full max-w-md flex flex-col gap-2">
+        {confirmClean ? (
+          <div className="flex items-center gap-2 rounded-2xl bg-error/10 ring-1 ring-error/30 px-4 py-3">
+            <p className="flex-1 text-sm text-white/85">
+              Kick everyone? Removes every voter and ballot.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setConfirmClean(false)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={cleanOut}
+              disabled={pending}
+              className="bg-error text-white hover:bg-error/90"
+            >
+              <Eraser className="h-4 w-4 mr-1.5" />
+              Yes, kick
+            </Button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmClean(true)}
+            className="flex items-center justify-center gap-2 rounded-2xl px-4 py-3
+                       bg-white/[0.03] ring-1 ring-white/10 hover:ring-error/40
+                       text-error/80 hover:text-error text-sm transition"
+          >
+            <Eraser className="h-4 w-4" />
+            Clean out room
+          </button>
+        )}
       </section>
     </main>
   );

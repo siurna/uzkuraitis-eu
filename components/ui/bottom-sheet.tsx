@@ -8,15 +8,16 @@ import { cn } from "@/lib/utils";
 // Bottom-sheet drawer, shared by NameGate, SettingsModal, CountryDrawer,
 // and anything else that wants the same iOS-style slide-up overlay.
 //
-// Behaviour:
-//   - Tap the backdrop to close (unless `dismissible={false}`).
-//   - Esc closes too.
-//   - Body scroll locked while the sheet is mounted.
-//   - Drag handle + optional close button + title row are part of the
-//     primitive so every sheet looks identical.
-//
-// Layout:
-//   - max-h: 92vh, scroll inside.
+// Layout decisions:
+//   - The sheet is `fixed bottom-0` directly (not flex-justify-end on a
+//     fixed inset-0 wrapper). The wrapper-flex pattern broke on iOS when
+//     the URL bar transitioned: the sheet briefly animated above the
+//     viewport because translateY% was being computed against an
+//     unstable parent height.
+//   - max-h: 92dvh (dynamic viewport height) so the sheet shrinks
+//     correctly on iOS Safari with the URL bar visible.
+//   - Backdrop is a separate fixed element so the two can animate
+//     independently and the sheet's transform stays predictable.
 //   - Centre column at max-w-md so it reads well on tablets/desktops.
 
 export function BottomSheet({
@@ -58,36 +59,35 @@ export function BottomSheet({
   return (
     <AnimatePresence>
       {open && (
-        <motion.div
-          key="bottom-sheet"
-          className="fixed inset-0 z-50 flex flex-col justify-end"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.18 }}
-        >
-          <button
+        <>
+          <motion.button
+            key="backdrop"
             type="button"
             aria-label="Close"
             onClick={dismissible ? onClose : undefined}
             disabled={!dismissible}
-            className="absolute inset-0 bg-dark-blue-900/70 backdrop-blur-sm
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-50 bg-dark-blue-900/70 backdrop-blur-sm
                        disabled:cursor-default"
           />
-
           <motion.div
+            key="sheet"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="relative mx-auto w-full max-w-md
+            className="fixed bottom-0 inset-x-0 z-50 mx-auto w-full max-w-md
                        glass-card rounded-t-3xl border-x-0 border-b-0
-                       max-h-[92vh] flex flex-col"
+                       max-h-[92dvh] flex flex-col
+                       pb-[env(safe-area-inset-bottom)]"
           >
-            {/* Drag handle. Decorative; actual swipe-down isn't wired
-                up because backdrop tap is the canonical dismiss path
-                and most browsers won't propagate touch swipes through
-                a position:fixed scrolling child correctly. */}
+            {/* Drag handle. Decorative; swipe-to-dismiss isn't wired up
+                because backdrop tap is the canonical dismiss path and
+                touch swipes inside a scrolling child don't bubble
+                reliably across browsers. */}
             <div className="flex justify-center pt-2 pb-1 shrink-0">
               <div className="h-1 w-10 rounded-full bg-white/20" />
             </div>
@@ -136,7 +136,7 @@ export function BottomSheet({
               </div>
             )}
           </motion.div>
-        </motion.div>
+        </>
       )}
     </AnimatePresence>
   );
