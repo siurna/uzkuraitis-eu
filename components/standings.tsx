@@ -50,7 +50,14 @@ export function Standings({
   const [hasVoted, setHasVoted] = useState(false);
 
   const prevRanks = useRef<Map<string, number>>(new Map());
+  const prevScores = useRef<Map<string, number>>(new Map());
   const [rankDeltas, setRankDeltas] = useState<Record<string, number>>({});
+  // Per-country running queue of "+N" point pops, keyed by an ever-
+  // incrementing id so multiple in-flight pops on the same country
+  // can each animate independently.
+  const [pointPops, setPointPops] = useState<
+    Array<{ id: number; code: string; delta: number }>
+  >([]);
 
   const fetchScores = useCallback(async () => {
     try {
@@ -111,18 +118,50 @@ export function Standings({
   const visible = showAll ? allWithZero : scores.slice(0, 5);
 
   useEffect(() => {
+    // Rank deltas (visible badge "+3" / "-2").
     const deltas: Record<string, number> = {};
     visible.forEach((row, i) => {
       const prev = prevRanks.current.get(row.code);
       if (prev !== undefined && prev !== i) deltas[row.code] = prev - i;
     });
+
+    // Point deltas: queue a fly-up "+N" pop for any country whose score
+    // changed since the previous render. Skip the first-ever render
+    // (prevScores empty) so we don't spam pops on initial load.
+    const hadPrev = prevScores.current.size > 0;
+    if (hadPrev) {
+      const pops: Array<{ id: number; code: string; delta: number }> = [];
+      let nextId = Date.now();
+      for (const row of visible) {
+        const prev = prevScores.current.get(row.code) ?? 0;
+        const diff = row.totalPoints - prev;
+        if (diff > 0) {
+          pops.push({ id: nextId++, code: row.code, delta: diff });
+        }
+      }
+      if (pops.length > 0) {
+        setPointPops((prev) => [...prev, ...pops]);
+        // Clean up after the animation finishes.
+        const stale = pops.map((p) => p.id);
+        setTimeout(() => {
+          setPointPops((prev) => prev.filter((p) => !stale.includes(p.id)));
+        }, 1700);
+      }
+    }
+
     if (Object.keys(deltas).length > 0) {
       setRankDeltas(deltas);
       const t = setTimeout(() => setRankDeltas({}), 2400);
       visible.forEach((row, i) => prevRanks.current.set(row.code, i));
+      visible.forEach((row) =>
+        prevScores.current.set(row.code, row.totalPoints),
+      );
       return () => clearTimeout(t);
     }
     visible.forEach((row, i) => prevRanks.current.set(row.code, i));
+    visible.forEach((row) =>
+      prevScores.current.set(row.code, row.totalPoints),
+    );
   }, [visible]);
 
   return (
@@ -150,6 +189,7 @@ export function Standings({
                     score={s}
                     index={i}
                     delta={rankDeltas[s.code]}
+                    pops={pointPops.filter((p) => p.code === s.code)}
                   />
                 ))}
               </AnimatePresence>
@@ -211,25 +251,23 @@ export function Standings({
         </section>
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 z-20 bg-dark-blue-900/85 backdrop-blur-md border-t border-white/5 py-3">
-        <div className="container mx-auto max-w-3xl px-4">
-          <Link href={`/r/${code}/vote`} className="block">
-            <Button
-              disabled={!votingEnabled}
-              className={`w-full h-14 text-lg font-display
-                bg-gradient-to-r from-gold via-flamingo to-purple
-                hover:opacity-95 disabled:opacity-40
-                ${hasVoted ? "update-pulse-button" : "cast-pulse-button"}`}
-            >
-              {!votingEnabled
-                ? "Voting closed"
-                : hasVoted
-                  ? "Update your vote"
-                  : "Cast your vote"}
-            </Button>
-          </Link>
-        </div>
-      </div>
+      {/* No sticky footer container; the vote CTA lives inline at the
+          end of the page so the page background owns the chrome. */}
+      <Link href={`/r/${code}/vote`} className="block">
+        <Button
+          disabled={!votingEnabled}
+          className={`w-full h-14 text-lg font-display
+            bg-gradient-to-r from-gold via-flamingo to-purple
+            hover:opacity-95 disabled:opacity-40
+            ${hasVoted ? "update-pulse-button" : "cast-pulse-button"}`}
+        >
+          {!votingEnabled
+            ? "Voting closed"
+            : hasVoted
+              ? "Update your vote"
+              : "Cast your vote"}
+        </Button>
+      </Link>
     </main>
   );
 }
@@ -238,10 +276,12 @@ function CountryRow({
   score,
   index,
   delta,
+  pops,
 }: {
   score: ScoreRow;
   index: number;
   delta?: number;
+  pops?: Array<{ id: number; code: string; delta: number }>;
 }) {
   const detail = getCountry(score.code);
   const badge = (() => {
@@ -307,6 +347,36 @@ function CountryRow({
           </motion.span>
         )}
       </AnimatePresence>
+
+      {/* Live "+N" point pops: each one floats up off the score number
+          when somebody else's vote bumps this country's total. Fan
+          out horizontally so simultaneous bumps don't stack on top. */}
+      <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+        <AnimatePresence>
+          {(pops ?? []).map((p, i) => (
+            <motion.span
+              key={p.id}
+              initial={{ opacity: 0, y: 0, scale: 0.6 }}
+              animate={{
+                opacity: [0, 1, 1, 0],
+                y: -56,
+                scale: 1.1,
+                x: (i - (pops!.length - 1) / 2) * 6,
+              }}
+              exit={{ opacity: 0 }}
+              transition={{
+                duration: 1.5,
+                ease: [0.2, 0.7, 0.3, 1],
+                opacity: { times: [0, 0.15, 0.7, 1] },
+              }}
+              className="absolute right-0 top-0 font-display text-lg tabular-nums
+                         text-gold drop-shadow-[0_0_6px_rgba(255,208,90,0.6)]"
+            >
+              +{p.delta}
+            </motion.span>
+          ))}
+        </AnimatePresence>
+      </div>
     </motion.li>
   );
 }
