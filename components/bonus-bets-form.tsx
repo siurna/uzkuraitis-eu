@@ -98,15 +98,6 @@ export function BonusBetsForm({
       )}
 
       <YesNoRow
-        label={t(lang, "bet_same_winner")}
-        sub={t(lang, "bet_same_winner_sub")}
-        max={2}
-        value={bets.sameWinners ?? null}
-        onChange={(v) => set("sameWinners", v)}
-        lang={lang}
-      />
-
-      <YesNoRow
         label={fmt(t(lang, "bet_host_top3"), { host: hostName })}
         sub={fmt(t(lang, "bet_host_top3_sub"), { host: hostName })}
         max={3}

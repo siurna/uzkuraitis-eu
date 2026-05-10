@@ -33,7 +33,6 @@ const VotesSchema = z.object({
       // (matches NUL_TELEVOTE_MAX_PICKS in lib/scoring.ts) so a voter
       // can't carpet-bomb every country to guarantee a top score.
       nulTelevote: z.array(z.string().min(2).max(4)).max(5).nullable().optional(),
-      sameWinners: z.boolean().nullable().optional(),
       hostTop3: z.boolean().nullable().optional(),
       winnerSolo: z.boolean().nullable().optional(),
       ltTotalPoints: z.number().int().min(0).max(1000).nullable().optional(),
@@ -113,7 +112,9 @@ export async function POST(request: Request, { params }: RouteCtx) {
     betJuryWinner: bets.juryWinner ?? null,
     betTelevoteWinner: bets.televoteWinner ?? null,
     betNulTelevote: bets.nulTelevote ?? null,
-    betSameWinners: bets.sameWinners ?? null,
+    // betSameWinners column is intentionally not written: the bet was
+    // removed (it duplicates jury+televote winner picks).
+    betSameWinners: null,
     betHostTop3: bets.hostTop3 ?? null,
     betWinnerSolo: bets.winnerSolo ?? null,
     betLtTotalPoints: bets.ltTotalPoints ?? null,

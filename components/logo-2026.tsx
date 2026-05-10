@@ -28,13 +28,18 @@ export function Logo2026({ className }: { className?: string }) {
         }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       >
+        {/* Native aspect of /images/70-logo@2x.webp is 1162×806
+            (≈1.44:1). The previous declaration (420×140 ≈ 3:1)
+            squashed the heart. Pass the real natural dims and let
+            CSS handle the responsive width. */}
         <Image
           src="/images/70-logo@2x.webp"
           alt="Eurovision Song Contest"
-          width={420}
-          height={140}
+          width={1162}
+          height={806}
           priority
-          className="w-full max-w-[280px] h-auto drop-shadow-[0_0_24px_rgba(124,224,216,0.25)]"
+          sizes="(min-width: 640px) 280px, 240px"
+          className="w-full max-w-[280px] h-auto object-contain drop-shadow-[0_0_24px_rgba(124,224,216,0.25)]"
         />
       </motion.div>
       <motion.div
@@ -65,7 +70,9 @@ export function Logo2026({ className }: { className?: string }) {
   );
 }
 
-// Compact version for nav bars / sticky headers.
+// Compact version for nav bars / sticky headers. The source webp is
+// natively square (40×40), so a fixed size + object-contain keeps the
+// heart from getting squished when callers pass non-square dimensions.
 export function HeartMark({ size = 24 }: { size?: number }) {
   return (
     <Image
@@ -73,7 +80,7 @@ export function HeartMark({ size = 24 }: { size?: number }) {
       alt=""
       width={size}
       height={size}
-      className="shrink-0"
+      className="shrink-0 object-contain"
     />
   );
 }

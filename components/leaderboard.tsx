@@ -201,7 +201,6 @@ function Breakdown({
     { label: "Jury winner", pts: row.bets.juryWinner },
     { label: "Televote winner", pts: row.bets.televoteWinner },
     { label: "Nul-points televote", pts: row.bets.nulTelevote },
-    { label: "Same winner (jury+tv)", pts: row.bets.sameWinners },
     { label: "Host top 3", pts: row.bets.hostTop3 },
     { label: "Solo winner", pts: row.bets.winnerSolo },
   ];

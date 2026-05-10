@@ -203,30 +203,16 @@
   border-radius: 999px;
 }
 
-/* Signature 2px rainbow border. Drop this on any element to get the
-   ESC Curved-Line treatment as a clean stroke (not a glow). The host
-   sets its own border-radius (e.g. via `rounded-2xl`) and the pseudo
-   inherits it so the stroke and the inner content stay flush — no
-   corner gaps. */
+/* Signature 2px rainbow border. Drop this on a wrapper element and
+   nest the actual content inside; the gradient is painted as the
+   wrapper's background and the 2px padding leaves a visible rainbow
+   ring around the inner content. The host sets its own border-radius
+   (e.g. via `rounded-2xl`) so corners stay flush — no mask hackery,
+   no stacking context bugs hiding the stroke behind the inner bg. */
 .rainbow-border {
-  position: relative;
-}
-.rainbow-border::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
   padding: var(--rainbow-thickness);
-  border-radius: inherit;
-  background: var(--rainbow-gradient);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-          mask-composite: exclude;
+  background-image: var(--rainbow-gradient);
+  display: block;
 }
 
 /* Glass surface, intentionally cool + quiet. Hairline white-low border,

@@ -121,7 +121,9 @@ export function BottomSheet({
 
             <div
               className={cn(
-                "flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-5 flex flex-col gap-4",
+                // pt-2 keeps focus rings on the first form field from
+                // getting clipped at the scroll viewport's top edge.
+                "flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pt-2 pb-5 flex flex-col gap-4",
                 contentClassName,
               )}
             >

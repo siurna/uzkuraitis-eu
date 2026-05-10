@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Share2, Check } from "lucide-react";
+import { Share2, Check, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useUpdateMyPresence } from "@/lib/liveblocks";
 import { Button } from "@/components/ui/button";
@@ -18,10 +19,12 @@ import {
 
 const NAME_KEY = "uzk_name";
 const AVATAR_KEY = "uzk_avatar";
+const LAST_ROOM_KEY = "uzk_last_room";
 
-// Bottom-sheet that lets the user re-edit their identity (name + avatar
-// + language) AND share the room link, in one place. Replaces the old
-// header share button.
+// Settings drawer: edit name / avatar / language, share the room
+// link, leave the room. Sectioned so the eye doesn't have to hunt for
+// a control, with consistent white-button styling matching the ESC
+// 2026 poster CTA.
 export function SettingsModal({
   open,
   onClose,
@@ -32,6 +35,7 @@ export function SettingsModal({
   shareUrl: string;
 }) {
   const updatePresence = useUpdateMyPresence();
+  const router = useRouter();
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [lang, setLang] = useState<Language>("en");
@@ -55,6 +59,7 @@ export function SettingsModal({
     if (avatar) localStorage.setItem(AVATAR_KEY, avatar);
     else localStorage.removeItem(AVATAR_KEY);
     writeLang(lang);
+    window.dispatchEvent(new Event("uzk:avatar-change"));
     updatePresence({ name: clean, avatar });
     toast.success(t(lang, "save"));
     onClose();
@@ -81,6 +86,11 @@ export function SettingsModal({
     }
   };
 
+  const leaveRoom = () => {
+    localStorage.removeItem(LAST_ROOM_KEY);
+    router.push("/?leave=1");
+  };
+
   return (
     <BottomSheet
       open={open}
@@ -92,7 +102,7 @@ export function SettingsModal({
             type="button"
             variant="ghost"
             onClick={onClose}
-            className="text-white/60"
+            className="text-white/70"
           >
             {t(lang, "cancel")}
           </Button>
@@ -101,7 +111,9 @@ export function SettingsModal({
             type="submit"
             form="settings-form"
             disabled={!name.trim()}
-            className="bg-white text-dark-blue hover:bg-dark-blue-50"
+            className="font-display rounded-2xl
+                       bg-white text-dark-blue hover:bg-dark-blue-50
+                       disabled:opacity-40"
           >
             {t(lang, "save")}
           </Button>
@@ -113,18 +125,16 @@ export function SettingsModal({
         onSubmit={save}
         className="flex flex-col gap-5"
       >
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span className="text-white/70">{t(lang, "your_name")}</span>
+        <Section label={t(lang, "your_name")}>
           <Input
             value={name}
             onChange={(e) => setName(e.target.value.slice(0, 40))}
             className="h-11"
             maxLength={40}
           />
-        </label>
+        </Section>
 
-        <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm text-white/70">{t(lang, "language")}</legend>
+        <Section label={t(lang, "language")}>
           <div className="inline-flex items-center gap-1 rounded-full bg-black/30 p-1 self-start">
             {LANGUAGES.map((code) => (
               <button
@@ -133,7 +143,7 @@ export function SettingsModal({
                 onClick={() => setLang(code)}
                 className={`px-4 py-1.5 rounded-full text-sm font-display uppercase tracking-widest transition ${
                   lang === code
-                    ? "bg-flamingo text-white shadow-glow-pink"
+                    ? "bg-white text-dark-blue"
                     : "text-white/60 hover:text-white"
                 }`}
               >
@@ -141,31 +151,64 @@ export function SettingsModal({
               </button>
             ))}
           </div>
-        </fieldset>
+        </Section>
 
-        <AvatarPicker value={avatar} onChange={setAvatar} />
+        <Section label={t(lang, "pick_avatar")}>
+          <AvatarPicker value={avatar} onChange={setAvatar} />
+        </Section>
 
-        <div className="border-t border-white/5 pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={share}
-          >
-            {copied ? (
-              <>
-                <Check className="h-4 w-4 mr-1.5" />
-                Copied
-              </>
-            ) : (
-              <>
-                <Share2 className="h-4 w-4 mr-1.5" />
-                {t(lang, "share_link")}
-              </>
-            )}
-          </Button>
-        </div>
+        <Section label="">
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={share}
+              className="flex items-center justify-between rounded-2xl px-4 py-3
+                         bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition"
+            >
+              <span className="flex items-center gap-2 text-sm">
+                {copied ? (
+                  <Check className="h-4 w-4 text-success" />
+                ) : (
+                  <Share2 className="h-4 w-4 text-white/70" />
+                )}
+                {copied ? "Copied" : t(lang, "share_link")}
+              </span>
+              <span className="text-xs text-white/40 truncate max-w-[12rem]">
+                {shareUrl.replace(/^https?:\/\//, "")}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={leaveRoom}
+              className="flex items-center gap-2 rounded-2xl px-4 py-3
+                         bg-white/5 ring-1 ring-white/10 hover:bg-white/10
+                         text-error/90 hover:text-error text-sm transition"
+            >
+              <LogOut className="h-4 w-4" />
+              Leave room
+            </button>
+          </div>
+        </Section>
       </form>
     </BottomSheet>
+  );
+}
+
+function Section({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-2">
+      {label && (
+        <h3 className="text-[11px] uppercase tracking-[0.2em] text-white/45 font-display">
+          {label}
+        </h3>
+      )}
+      {children}
+    </section>
   );
 }

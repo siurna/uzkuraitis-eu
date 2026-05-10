@@ -25,6 +25,8 @@ const messages = {
     save:              "Save",
     cancel:            "Cancel",
     clear:             "Clear",
+    next:              "Next",
+    back:              "Back",
 
     // RoomGate (entrance code screen)
     enter_room_code:   "Enter room code",
@@ -128,6 +130,8 @@ const messages = {
     save:              "Išsaugoti",
     cancel:            "Atšaukti",
     clear:             "Išvalyti",
+    next:              "Toliau",
+    back:              "Atgal",
 
     enter_room_code:   "Įvesk kambario kodą",
     enter_room:        "Įeiti",

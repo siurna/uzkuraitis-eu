@@ -7,13 +7,15 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Mic,
+  Music,
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { countries, getCountry } from "@/lib/countries";
 import { useEventListener } from "@/lib/liveblocks";
-import { Flag } from "@/components/flag";
+import { HeartFlag, MetaPill } from "@/components/flag";
 import { Leaderboard } from "@/components/leaderboard";
 import { useRoomLive } from "@/components/room-shell";
 import { useLang, t } from "@/lib/i18n";
@@ -235,42 +237,11 @@ export function Standings() {
 
       <Leaderboard code={code} />
 
-      {voters.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h3 className="text-2xl font-display gradient-text">{t(lang, "votes_cast")}</h3>
-          <div className="flex flex-wrap gap-2 justify-center">
-            <AnimatePresence initial={false}>
-              {voters.map((v) => {
-                const top = v.votes["12"] ? getCountry(v.votes["12"]) : null;
-                return (
-                  <motion.span
-                    key={v.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.6 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.6 }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 400,
-                      damping: 24,
-                    }}
-                    className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full text-sm
-                               bg-gradient-to-r from-flamingo/30 to-turquoise/20 border border-white/10"
-                  >
-                    {top && <Flag code={top.code} size="sm" />}
-                    {v.name}
-                  </motion.span>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-        </section>
-      )}
-
-      {/* Activity-style cast-vote CTA: ONLY rendered when voting is
-          open. When the admin closes voting, the button disappears
-          entirely (rather than rendering disabled), so the room reads
-          as "watching mode, react with emotions" by default. */}
+      {/* Activity-style cast-vote CTA. Hidden when the admin has closed
+          voting — the room then reads as "watching mode, react with
+          emojis". On mobile we render the CTA via a separate sticky
+          footer (see room-shell) so this inline copy only shows on
+          larger viewports. */}
       <AnimatePresence>
         {votingEnabled && (
           <motion.div
@@ -279,29 +250,16 @@ export function Standings() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.96 }}
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
+            className="hidden sm:block"
           >
-            {/* Hero CTA: ESC's filled poster button (white bg, dark-blue
-                text) wrapped in the signature 2px rainbow stroke so it
-                reads as the brand's "Curved Line" leitmotif. No neon
-                glow, no pulse keyframes — the rainbow border + a small
-                fuchsia ping pip carry all the energy. */}
             <Link
               href={`/r/${code}/vote`}
-              className="block rainbow-border rounded-2xl"
+              className="rainbow-border rounded-2xl"
             >
               <Button
-                className="relative w-full h-14 text-lg font-display rounded-2xl
+                className="w-full h-14 text-lg font-display rounded-[14px]
                            bg-white text-dark-blue hover:bg-dark-blue-50"
               >
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-fuchsia opacity-75 animate-ping" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-fuchsia" />
-                  </span>
-                  <span className="text-[11px] uppercase tracking-widest text-dark-blue/70">
-                    {t(lang, "live")}
-                  </span>
-                </span>
                 {hasVoted ? t(lang, "update_vote") : t(lang, "cast_vote")}
               </Button>
             </Link>
@@ -342,24 +300,29 @@ function CountryRow({
         layout: { type: "spring", stiffness: 320, damping: 30 },
         opacity: { duration: 0.25 },
       }}
-      className="relative list-entry-gradient list-card-hover glass-card rounded-xl p-3 flex items-center gap-3"
+      className="relative list-card-hover glass-card rounded-2xl px-3 py-2.5 flex items-center gap-3"
     >
       <motion.div
         layout="position"
-        className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center font-display text-base ${badge}`}
+        className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center font-display text-sm ${badge}`}
       >
         {index + 1}
       </motion.div>
-      <Flag code={score.code} size="row" alt={`${score.name} flag`} />
-      <div className="flex-1 min-w-0">
-        <p className="font-display text-lg truncate">{score.name}</p>
-        {detail && (detail.artist || detail.song) && (
-          <p className="text-xs text-white/55 truncate">
-            {detail.artist}, <span className="italic">{detail.song}</span>
-          </p>
+      <HeartFlag code={score.code} name={score.name} size="md" />
+      <div className="hidden sm:flex flex-1 min-w-0 items-center gap-1.5 overflow-hidden">
+        {detail?.artist && (
+          <MetaPill icon={Mic} className="truncate max-w-[12rem]">
+            <span className="truncate">{detail.artist}</span>
+          </MetaPill>
+        )}
+        {detail?.song && (
+          <MetaPill icon={Music} className="truncate max-w-[14rem]">
+            <span className="truncate italic">{detail.song}</span>
+          </MetaPill>
         )}
       </div>
-      <div className="text-right">
+      <div className="flex-1 sm:hidden" />
+      <div className="text-right shrink-0">
         <ScoreNumber value={score.totalPoints} />
         <p className="text-[10px] uppercase tracking-widest text-white/40">
           pts

@@ -52,7 +52,15 @@ type Float = {
 
 let nextFloatId = 1;
 
-export function FloatingReactionsLayer({ code }: { code: string }) {
+export function FloatingReactionsLayer({
+  code,
+  hideBarOnMobile = false,
+}: {
+  code: string;
+  /** When true (voting is open), the bottom emoji bar collapses on
+   *  mobile so the sticky vote CTA owns that area. Floats keep flying. */
+  hideBarOnMobile?: boolean;
+}) {
   const [floats, setFloats] = useState<Float[]>([]);
   const broadcast = useBroadcastEvent();
 
@@ -141,8 +149,14 @@ export function FloatingReactionsLayer({ code }: { code: string }) {
 
       {/* Reactions bar. Each tile is an Apple-Watch-style solid colour
           circle with a white filled icon — no emoji glyphs (so platform
-          rendering can't make a heart look hollow). */}
-      <div className="fixed bottom-6 left-0 right-0 z-30 flex justify-center pointer-events-none px-2">
+          rendering can't make a heart look hollow). Hidden on mobile
+          while voting is open so the sticky vote CTA owns the bottom
+          of the screen; floats themselves still render. */}
+      <div
+        className={`fixed bottom-6 left-0 right-0 z-30 flex justify-center pointer-events-none px-2 ${
+          hideBarOnMobile ? "hidden sm:flex" : ""
+        }`}
+      >
         <motion.div
           initial={{ y: 80, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
