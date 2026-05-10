@@ -31,7 +31,11 @@ export function AvatarPicker({
           </button>
         )}
       </div>
-      <ul className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-72 overflow-y-auto pr-1">
+      {/* No inner scroll: lets the parent BottomSheet handle vertical
+          scrolling. Two scroll containers on the same page is exactly
+          why the drawer "didn't work" — touches got captured by the
+          inner picker and never reached the outer sheet. */}
+      <ul className="grid grid-cols-4 sm:grid-cols-6 gap-2">
         {AVATARS.map((a) => (
           <Tile
             key={a.id}
