@@ -1,15 +1,17 @@
 /*
- * Tailwind v4 — design tokens & globals for Eurovision 2026 (Vienna).
+ * Tailwind v4 design tokens, Eurovision 2026 Vienna.
  *
- * Brand palette pulled from eurovision.com (Aug 2025 brand refresh):
- *   --fuchsia / --flamingo  → primary signal colour (CTAs, top placement)
- *   --dark-blue             → page background (Vienna 2026 dark theme)
- *   --turquoise             → accent / live indicators
- *   --gold (custom)         → Vienna 2026 "Construct" leitmotif highlight
+ * Tokens lifted directly from eurovision.com/static/assets/website/
+ * styles-DpUB5LjR.css (the official ESC 2026 stylesheet, scraped).
  *
- * Typography (self-hosted in /public/fonts):
- *   Singing Sans  → display / headlines
- *   Neulis Neue   → body, UI, numerals
+ * Brand direction:
+ *   - Dark blue dominant background, restrained.
+ *   - White-on-dark Art-Déco poster CTA (filled = white bg, dark-blue text).
+ *   - Fuchsia is a SELECTION accent (focused / picked / live), not a fill.
+ *   - Signature: a 2px conic-gradient `.rainbow-border` on featured
+ *     elements (the "Curved Line" leitmotif).
+ *   - Hairline borders, soft drop shadows. No neon glows, no rainbow
+ *     fill text, no disco pulse animations.
  */
 
 @import "tailwindcss";
@@ -22,7 +24,6 @@
   font-style: normal;
   font-display: swap;
 }
-
 @font-face {
   font-family: "Neulis Neue";
   src: url("/fonts/Neulis_Neue_Regular-DJA6G8zj.woff2") format("woff2"),
@@ -31,7 +32,6 @@
   font-style: normal;
   font-display: swap;
 }
-
 @font-face {
   font-family: "Neulis Neue";
   src: url("/fonts/Neulis_Neue_Medium-BzgBtg3B.woff2") format("woff2"),
@@ -40,7 +40,6 @@
   font-style: normal;
   font-display: swap;
 }
-
 @font-face {
   font-family: "Neulis Neue";
   src: url("/fonts/Neulis_Neue_Bold-DEBxB0Xt.woff2") format("woff2"),
@@ -52,60 +51,96 @@
 
 @theme {
   --font-display: "Singing Sans", "Neulis Neue", system-ui, sans-serif;
-  --font-sans: "Neulis Neue", system-ui, -apple-system, sans-serif;
+  --font-sans:    "Neulis Neue", system-ui, -apple-system, sans-serif;
 
-  --color-fuchsia: oklch(61.3% 0.2412 13.09);
-  --color-flamingo: oklch(70.55% 0.2725 336.19);
-  --color-pink: oklch(70.55% 0.2725 336.19);
-  --color-blue: oklch(48.26% 0.2615 263.62);
-  --color-dark-blue: oklch(19.08% 0.1033 264.64);
+  /* ---- Brand palette (verbatim from ESC stylesheet) ---- */
+  --color-fuchsia:   oklch(61.3% 0.2412 13.09);
+  --color-flamingo:  oklch(70.55% 0.2725 336.19);
+  --color-pink:      oklch(70.55% 0.2725 336.19);
+  --color-blue:      oklch(48.26% 0.2615 263.62);
+  --color-dark-blue:     oklch(19.08% 0.1033 264.64);
+  --color-dark-blue-50:  oklch(92.94% 0.0067 286.27);
+  --color-dark-blue-100: oklch(77.18% 0.0231 274.65);
+  --color-dark-blue-200: oklch(65.24% 0.0389 278.37);
+  --color-dark-blue-300: oklch(48.05% 0.0603 275.64);
+  --color-dark-blue-400: oklch(36.67% 0.0773 277.08);
+  --color-dark-blue-600: oklch(18.07% 0.0959 264.69);
   --color-dark-blue-700: oklch(15.86% 0.0793 264.82);
+  --color-dark-blue-800: oklch(14.39% 0.0641 267.06);
   --color-dark-blue-900: oklch(12.17% 0.0556 261.83);
-  --color-purple: oklch(41.95% 0.196 295.22);
+  --color-purple:    oklch(41.95% 0.196 295.22);
   --color-turquoise: oklch(78.49% 0.135563 189.949);
-  --color-gold: oklch(82% 0.16 85);
-  --color-orange: oklch(70.64% 0.1934 41.94);
-  --color-yellow: oklch(95.65% 0.1946 108.95);
-  --color-success: oklch(79.36% 0.2293 147.97);
-  --color-error: oklch(65.97% 0.227 26.03);
+  --color-orange:    oklch(70.64% 0.1934 41.94);
+  --color-yellow:    oklch(95.65% 0.1946 108.95);
 
+  /* Kept for backward-compat with components that reference these
+     names. Aliased to a brand-aligned token. */
+  --color-gold:        var(--color-yellow);
+  --color-gold-soft:   var(--color-yellow);
+  --color-parchment:   oklch(98% 0 0);
+
+  --color-success: oklch(79.36% 0.2293 147.97);
+  --color-error:   oklch(65.97% 0.227 26.03);
+  --color-focus:   oklch(83.16% 0.1086 227.51);
+
+  /* ---- App tokens, mapped to ESC's button + role tokens ---- */
   --color-background: var(--color-dark-blue-900);
   --color-foreground: oklch(98% 0.005 250);
-  --color-card: oklch(22% 0.07 264 / 0.7);
-  --color-card-border: oklch(50% 0.2 336 / 0.25);
-  --color-muted: oklch(50% 0.04 260);
-  --color-muted-foreground: oklch(70% 0.02 260);
-  --color-primary: var(--color-flamingo);
-  --color-primary-foreground: oklch(98% 0.005 250);
-  --color-secondary: oklch(28% 0.07 264 / 0.85);
+  --color-card: oklch(22% 0.04 264 / 0.65);
+  --color-card-border: oklch(95% 0.005 250 / 0.10);
+  --color-muted: oklch(45% 0.03 264);
+  --color-muted-foreground: oklch(72% 0.015 264);
+
+  /* Filled CTA = white bg / dark-blue text (ESC's "btn-filled" rule).
+     Outline CTA reads as transparent w/ white border. Our default
+     <Button variant="default"> picks the filled style. */
+  --color-primary: oklch(98% 0 0);
+  --color-primary-foreground: var(--color-dark-blue);
+  --color-secondary: oklch(28% 0.05 264 / 0.85);
   --color-secondary-foreground: oklch(98% 0.005 250);
-  --color-accent: var(--color-turquoise);
-  --color-accent-foreground: oklch(15% 0.06 264);
+
+  /* Selection / focus accent. Used for "this is the chosen thing" not
+     "the whole UI is pink". */
+  --color-accent: var(--color-fuchsia);
+  --color-accent-foreground: oklch(98% 0 0);
+  --color-ring: var(--color-fuchsia);
+
   --color-destructive: var(--color-error);
   --color-destructive-foreground: oklch(98% 0 0);
-  --color-popover: oklch(20% 0.07 264);
+  --color-popover: oklch(20% 0.04 264);
   --color-popover-foreground: oklch(98% 0.005 250);
   --color-card-foreground: oklch(98% 0.005 250);
-  --color-input: oklch(40% 0.04 264 / 0.6);
-  --color-border: oklch(45% 0.05 264 / 0.4);
-  --color-ring: var(--color-flamingo);
+  --color-input: oklch(40% 0.03 264 / 0.5);
+  --color-border: oklch(95% 0.005 250 / 0.16);
 
-  --radius: 0.75rem;
+  --radius:    0.75rem;
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
   --radius-xl: 1.5rem;
 
-  --shadow-glow-pink: 0 0 24px oklch(70% 0.27 336 / 0.45);
-  --shadow-glow-turquoise: 0 0 24px oklch(78% 0.135 189 / 0.45);
+  /* Soft drop shadows, no coloured glow. */
+  --shadow-soft:     0 8px 24px -12px oklch(0% 0 0 / 0.6);
+  --shadow-elevated: 0 18px 48px -18px oklch(0% 0 0 / 0.7),
+                     0 0 0 1px oklch(95% 0.005 250 / 0.08);
+
+  /* Backward-compat shims so components that still reference the old
+     glow names don't break — both alias to a quiet soft shadow now. */
+  --shadow-glow-pink: var(--shadow-soft);
+  --shadow-glow-gold: var(--shadow-soft);
+
+  /* Signature 2px rainbow stroke for the .rainbow-border utility. */
+  --rainbow-thickness: 2px;
+  --rainbow-gradient:
+    linear-gradient(-195deg, #f10d59, #ff3ede 24%, #00d4cc 95%);
 }
 
 @layer base {
   html {
     font-family: var(--font-sans);
   }
-  /* Tailwind v4 dropped the default cursor:pointer on buttons + role=button.
-     Bring it back globally. Disabled buttons keep cursor:not-allowed. */
+
+  /* Tailwind v4 dropped the default cursor:pointer on buttons. */
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   summary,
@@ -113,16 +148,17 @@
   select:not(:disabled) {
     cursor: pointer;
   }
-  /* Body background is FIXED to the viewport, not the document, so it
-     never stretches or scrolls with content height. Decoupling via
-     html-level positioning on long pages. */
+
   body {
     background-color: var(--color-dark-blue-900);
     color: var(--color-foreground);
-    -webkit-tap-highlight-color: oklch(70% 0.27 336 / 0.3);
+    -webkit-tap-highlight-color: oklch(70% 0.27 336 / 0.25);
   }
-  /* The decorative gradient + backdrop img live on a fixed pseudo-layer
-     attached to <html> so they're guaranteed independent of body height. */
+
+  /* Body backdrop. Single quiet warm wash from upper-right; the
+     participant-backdrop image lives underneath at low opacity for
+     a paper-poster texture. No flamingo bloom, no neon. Fixed to the
+     viewport so it never stretches with content. */
   html::before {
     content: "";
     position: fixed;
@@ -130,66 +166,112 @@
     z-index: -2;
     pointer-events: none;
     background:
-      radial-gradient(ellipse at top, oklch(28% 0.12 290 / 0.6), transparent 60%),
-      radial-gradient(ellipse at bottom, oklch(40% 0.18 336 / 0.35), transparent 70%),
+      radial-gradient(
+        ellipse at 90% 0%,
+        oklch(48% 0.21 290 / 0.18),
+        transparent 55%
+      ),
       url("/images/participant-backdrop.webp") center/cover no-repeat,
       var(--color-dark-blue-900);
-    background-blend-mode: screen, screen, multiply;
+    background-blend-mode: screen, multiply;
+    filter: saturate(0.55) brightness(0.5);
   }
 
-  /* Default headings get the display font. */
   h1, h2, h3, .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.005em;
   }
 }
 
 /* ---- utility components ----------------------------------------------- */
 
+/* Title accent. Solid white display type — no rainbow fill (that was a
+   2025 disco move). Pair with .rainbow-rule for the signature 2px
+   rainbow underline below the title. */
 .gradient-text {
-  background-image: linear-gradient(
-    100deg,
-    var(--color-flamingo),
-    var(--color-turquoise) 50%,
-    var(--color-fuchsia)
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: oklch(98% 0 0);
+  letter-spacing: 0;
 }
 
-/* Frosted-glass card with a soft brand-coloured wash, an inset top
-   highlight, and a low ambient drop shadow. Subtle on dark backgrounds —
-   you should feel it, not see it. */
+/* Hairline rainbow rule under section titles. Same gradient as the
+   official ESC rainbow-border, used as a Curved-Line accent. */
+.rainbow-rule {
+  position: relative;
+}
+.rainbow-rule::after {
+  content: "";
+  display: block;
+  width: 2.75rem;
+  height: 2px;
+  margin-top: 0.4rem;
+  background-image: var(--rainbow-gradient);
+  border-radius: 999px;
+}
+
+/* Signature 2px rainbow border. Drop this on any element to get the
+   ESC Curved-Line treatment as a clean stroke (not a glow). Matches
+   eurovision.com's `.rainbow-border` rule exactly via conic-mask
+   composite. */
+.rainbow-border {
+  position: relative;
+  border-radius: var(--radius-xl);
+}
+.rainbow-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  padding: var(--rainbow-thickness);
+  border-radius: inherit;
+  background: var(--rainbow-gradient);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+          mask-composite: exclude;
+}
+
+/* Glass surface, intentionally cool + quiet. Hairline white-low border,
+   restrained drop shadow, no inset bevels, no flamingo glow. */
 .glass-card {
   position: relative;
   background:
     linear-gradient(
-      155deg,
-      oklch(70% 0.27 336 / 0.06) 0%,
-      oklch(28% 0.08 264 / 0.55) 35%,
-      oklch(18% 0.08 264 / 0.6) 65%,
-      oklch(78% 0.13 189 / 0.05) 100%
+      180deg,
+      oklch(24% 0.04 264 / 0.72) 0%,
+      oklch(18% 0.05 264 / 0.62) 100%
     );
-  border: 1px solid var(--color-card-border);
-  backdrop-filter: blur(14px) saturate(1.15);
-  -webkit-backdrop-filter: blur(14px) saturate(1.15);
-  box-shadow:
-    0 1px 0 0 oklch(100% 0 0 / 0.06) inset,
-    0 -1px 0 0 oklch(0% 0 0 / 0.2) inset,
-    0 8px 24px -10px oklch(0% 0 0 / 0.5),
-    0 24px 60px -30px oklch(70% 0.27 336 / 0.25);
+  border: 1px solid oklch(95% 0.005 250 / 0.10);
+  backdrop-filter: blur(14px) saturate(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  box-shadow: var(--shadow-soft);
 }
 
-.glow-pink {
-  box-shadow: var(--shadow-glow-pink);
+/* Make a list row feel pressable. Subtle 1px lift, quiet drop shadow,
+   border lights up white-low (NOT pink). */
+.list-card-hover {
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.25s ease,
+              box-shadow 0.25s ease;
+}
+.list-card-hover:hover {
+  transform: translateY(-1px);
+  border-color: oklch(95% 0.005 250 / 0.22);
+  box-shadow: var(--shadow-elevated);
+}
+.list-card-hover:active {
+  transform: translateY(0);
+  transition-duration: 0.08s;
 }
 
-/* Horizontal sweep gradient used as the per-row tint on list entries
-   (standings rows, ballot slots, voter cards). Subtle blue->purple->pink
-   wash, sourced from the design system. */
+/* Per-row gradient sweep (used on standings, ballot slots, leaderboard).
+   Matches the spec the user provided earlier. Subtle blue → white-low
+   horizontal wash. Replaces any neon overlay. */
 .list-entry-gradient {
-  background: linear-gradient(
+  background-image: linear-gradient(
     90deg,
     #0334de66 16.83%,
     #7a33d800 40.87%,
@@ -198,46 +280,8 @@
   );
 }
 
-/* Make a list-entry card feel pressable: subtle lift + brightening
-   glow on hover, settle on press. Inherits the glass-card border —
-   does NOT override its colour to avoid loud per-row outlines. */
-.list-card-hover {
-  cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.25s ease;
-}
-.list-card-hover:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 1px 0 0 oklch(100% 0 0 / 0.08) inset,
-    0 -1px 0 0 oklch(0% 0 0 / 0.2) inset,
-    0 12px 32px -10px oklch(0% 0 0 / 0.55),
-    var(--shadow-glow-pink);
-}
-.list-card-hover:active {
-  transform: translateY(0);
-  transition-duration: 0.08s;
-}
-
-/* Heading reveal: fades up from below, runs once on first mount.
-   No JS, just CSS. Use on h1/h2 where you want the entrance. */
-@keyframes heading-rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.heading-rise {
-  animation: heading-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.heading-rise-delay-1 { animation-delay: 60ms; }
-.heading-rise-delay-2 { animation-delay: 120ms; }
-.heading-rise-delay-3 { animation-delay: 180ms; }
-
-/* Section reveal: same vibe but a touch slower for content blocks. */
-@keyframes section-rise {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.section-rise {
-  animation: section-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+.glow-pink {
+  box-shadow: var(--shadow-soft);
 }
 
 .bg-radial-fade {
@@ -245,33 +289,13 @@
     radial-gradient(
       ellipse at center,
       transparent 0%,
-      transparent 30%,
-      var(--color-dark-blue-900) 75%
+      transparent 40%,
+      var(--color-dark-blue-900) 80%
     );
 }
 
 /* ---- animations ------------------------------------------------------- */
 
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 6px oklch(70% 0.27 336 / 0.4); }
-  50%      { box-shadow: 0 0 22px oklch(70% 0.27 336 / 0.85),
-                         0 0 32px oklch(78% 0.13 189 / 0.55); }
-}
-
-.cast-pulse-button { animation: pulse-glow 2s infinite ease-in-out; }
-.update-pulse-button { animation: pulse-glow 3s infinite ease-in-out; }
-
-@keyframes float-up {
-  0%   { transform: translateY(0)    scale(1);   opacity: 1; }
-  20%  { transform: translateY(-40px) scale(1.4); opacity: 1; }
-  100% { transform: translateY(-220px) scale(0.8); opacity: 0; }
-}
-
-.float-up { animation: float-up 1.6s ease-out forwards; }
-
-/* Two-beat thump like a real heart but gentler than the old version,
-   and CSS-driven so it's perfectly tied to the element's own paint
-   (the previous one was visibly out of sync with the row's transform). */
 @keyframes heartbeat {
   0%   { transform: scale(1);    }
   20%  { transform: scale(1.08); }
@@ -284,6 +308,13 @@
   transform-origin: center;
 }
 
+@keyframes float-up {
+  0%   { transform: translateY(0)    scale(1);   opacity: 1; }
+  20%  { transform: translateY(-40px) scale(1.4); opacity: 1; }
+  100% { transform: translateY(-220px) scale(0.8); opacity: 0; }
+}
+.float-up { animation: float-up 1.6s ease-out forwards; }
+
 @keyframes ios-widget-shake {
   0%,100% { transform: translateX(0); }
   20%  { transform: translateX(-4px) rotate(-2deg); }
@@ -291,12 +322,31 @@
   60%  { transform: translateX(-4px) rotate(-1deg); }
   80%  { transform: translateX(4px)  rotate(1deg); }
 }
-
 .ios-widget-shake { animation: ios-widget-shake 0.6s ease-in-out; }
 
-/* ---- list reveal ------------------------------------------------------ */
+@keyframes heading-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.heading-rise {
+  animation: heading-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.heading-rise-delay-1 { animation-delay: 60ms; }
+.heading-rise-delay-2 { animation-delay: 120ms; }
+.heading-rise-delay-3 { animation-delay: 180ms; }
 
-.country-list-container { transition: max-height 0.5s ease-in-out; overflow: hidden; }
+@keyframes section-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.section-rise {
+  animation: section-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.country-list-container {
+  transition: max-height 0.5s ease-in-out;
+  overflow: hidden;
+}
 .country-item { transition: transform 0.3s ease, opacity 0.3s ease; }
 
 @keyframes slide-in-right {
@@ -309,8 +359,6 @@
   opacity: 0;
 }
 
-/* ---- iOS niceties ----------------------------------------------------- */
-
 input, button, textarea, select {
   -webkit-appearance: none;
   appearance: none;
@@ -318,6 +366,6 @@ input, button, textarea, select {
 @media (pointer: coarse) {
   .touch-highlight { transition: background-color 0.2s ease; }
   .touch-highlight:active {
-    background-color: oklch(70% 0.27 336 / 0.3);
+    background-color: oklch(95% 0.005 250 / 0.18);
   }
 }

@@ -101,7 +101,7 @@ export function SettingsModal({
             type="submit"
             form="settings-form"
             disabled={!name.trim()}
-            className="bg-gradient-to-r from-gold via-flamingo to-purple text-white"
+            className="bg-white text-dark-blue hover:bg-dark-blue-50"
           >
             {t(lang, "save")}
           </Button>

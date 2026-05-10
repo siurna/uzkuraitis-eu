@@ -146,7 +146,7 @@ export function AdminOfficialFacts({
           size="sm"
           onClick={save}
           disabled={pending}
-          className="bg-gradient-to-r from-gold via-flamingo to-purple text-white"
+          className="bg-white text-dark-blue hover:bg-dark-blue-50"
         >
           <Save className="h-4 w-4 mr-1.5" />
           {pending ? "Saving…" : "Save facts"}
