@@ -31,16 +31,30 @@ export function Logo2026({ className }: { className?: string }) {
         {/* Native aspect of /images/70-logo@2x.webp is 1162×806
             (≈1.44:1). The previous declaration (420×140 ≈ 3:1)
             squashed the heart. Pass the real natural dims and let
-            CSS handle the responsive width. */}
-        <Image
-          src="/images/70-logo@2x.webp"
-          alt="Eurovision Song Contest"
-          width={1162}
-          height={806}
-          priority
-          sizes="(min-width: 640px) 280px, 240px"
-          className="w-full max-w-[280px] h-auto object-contain drop-shadow-[0_0_24px_rgba(124,224,216,0.25)]"
-        />
+            CSS handle the responsive width. The whole mark gets a
+            real heartbeat (two-beat lub-dub) so the brand actually
+            pulses instead of sitting flat. */}
+        <motion.div
+          animate={{ scale: [1, 1.06, 1, 1.04, 1] }}
+          transition={{
+            duration: 1.1,
+            times: [0, 0.18, 0.36, 0.5, 1],
+            repeat: Infinity,
+            repeatDelay: 0.6,
+            ease: "easeInOut",
+          }}
+          className="origin-bottom"
+        >
+          <Image
+            src="/images/70-logo@2x.webp"
+            alt="Eurovision Song Contest"
+            width={1162}
+            height={806}
+            priority
+            sizes="(min-width: 640px) 280px, 240px"
+            className="w-full max-w-[280px] h-auto object-contain drop-shadow-[0_0_24px_rgba(124,224,216,0.25)]"
+          />
+        </motion.div>
       </motion.div>
       <motion.div
         variants={{

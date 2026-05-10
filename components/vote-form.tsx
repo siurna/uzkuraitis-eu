@@ -50,11 +50,9 @@ const NAME_KEY = "uzk_name";
 
 export function VoteForm({
   roomCode,
-  roomName,
   homeCountryCode,
 }: {
   roomCode: string;
-  roomName: string;
   homeCountryCode: string;
 }) {
   const router = useRouter();
@@ -239,7 +237,6 @@ export function VoteForm({
             aria-label="Back to standings"
           >
             <p className="font-display text-lg truncate">{t(lang, "cast_your_vote")}</p>
-            <p className="text-xs text-white/50 truncate">{roomName}</p>
           </Link>
           {/* Tabs live in the header on every screen so they stay in reach
               when you scroll past the long ballot. */}

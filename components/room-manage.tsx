@@ -118,9 +118,6 @@ export function RoomManage({
       </div>
 
       <section className="glass-card w-full max-w-md rounded-2xl p-4 flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-widest text-white/55">
-          Admin link
-        </p>
         <p className="text-xs text-white/45 leading-relaxed">
           Bookmark this URL to manage the room any time. Sharing it gives
           full admin to whoever has the link.

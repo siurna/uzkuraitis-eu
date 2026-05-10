@@ -28,7 +28,6 @@ export default async function VotePage({ params }: { params: RouteParams }) {
   return (
     <VoteForm
       roomCode={room.code}
-      roomName={room.name}
       homeCountryCode={room.homeCountryCode}
     />
   );

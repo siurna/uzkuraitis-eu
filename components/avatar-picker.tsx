@@ -1,37 +1,26 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { Flag } from "@/components/flag";
+import { Flag, HeartFlag } from "@/components/flag";
 import { AVATARS, getAvatar, type Avatar } from "@/lib/avatars";
-import { useLang, t } from "@/lib/i18n";
 
 // Pick-an-avatar grid. Apple-Watch-style rounded-square tiles with a
 // face-cropped photo inside; selection is shown as a fuchsia ring +
 // check pip in the corner — no scale jiggle, no layout animations,
-// just a discrete "this one's chosen" state.
+// just a discrete "this one's chosen" state. Picking is required to
+// continue, so there's no "clear" affordance — pick a different one
+// to change.
 export function AvatarPicker({
   value,
   onChange,
 }: {
   value: string | null;
-  onChange: (id: string | null) => void;
+  onChange: (id: string) => void;
 }) {
   const selected = getAvatar(value);
-  const lang = useLang();
   return (
     <div className="flex flex-col gap-3">
-      {value && (
-        <div className="flex items-center justify-end">
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            className="text-xs text-white/40 hover:text-white/70 transition"
-          >
-            {t(lang, "clear")}
-          </button>
-        </div>
-      )}
-      <ul className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+      <ul className="grid grid-cols-4 gap-2.5">
         {AVATARS.map((a) => (
           <Tile
             key={a.id}
@@ -44,12 +33,11 @@ export function AvatarPicker({
 
       {selected && (
         <div className="glass-card rounded-2xl px-4 py-3 flex items-center gap-3">
-          <Flag code={selected.country} size="lg" />
+          <HeartFlag code={selected.country} size="lg" />
           <div className="flex-1 min-w-0">
             <p className="font-display truncate">{selected.artist}</p>
             <p className="text-xs text-white/55 truncate">
-              {selected.country.toUpperCase()} · {selected.year} ·{" "}
-              <span className="italic">{selected.song}</span>
+              {selected.year} · <span className="italic">{selected.song}</span>
             </p>
           </div>
         </div>

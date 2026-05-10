@@ -54,10 +54,9 @@ export function SettingsModal({
   const save = (e?: React.FormEvent) => {
     e?.preventDefault();
     const clean = name.trim().slice(0, 40);
-    if (!clean) return;
+    if (!clean || !avatar) return;
     localStorage.setItem(NAME_KEY, clean);
-    if (avatar) localStorage.setItem(AVATAR_KEY, avatar);
-    else localStorage.removeItem(AVATAR_KEY);
+    localStorage.setItem(AVATAR_KEY, avatar);
     writeLang(lang);
     window.dispatchEvent(new Event("uzk:avatar-change"));
     updatePresence({ name: clean, avatar });

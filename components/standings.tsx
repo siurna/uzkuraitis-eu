@@ -216,22 +216,26 @@ export function Standings() {
         )}
 
         {scores.length > 0 && (
-          <Button
-            variant="ghost"
+          <button
+            type="button"
             onClick={() => setShowAll((v) => !v)}
-            className="mt-1 text-flamingo hover:text-flamingo/80 font-display"
+            className="self-center mt-1 px-4 h-9 rounded-full font-display text-sm
+                       text-white/80 hover:text-white
+                       bg-white/5 hover:bg-white/10
+                       ring-1 ring-white/10 hover:ring-white/25
+                       transition flex items-center gap-1.5"
           >
             {showAll ? (
               <>
-                <ChevronUp className="h-4 w-4 mr-2" /> {t(lang, "show_top_5")}
+                <ChevronUp className="h-4 w-4" /> {t(lang, "show_top_5")}
               </>
             ) : (
               <>
-                <ChevronDown className="h-4 w-4 mr-2" /> {t(lang, "show_all")}{" "}
+                <ChevronDown className="h-4 w-4" /> {t(lang, "show_all")}{" "}
                 {countries.length}
               </>
             )}
-          </Button>
+          </button>
         )}
       </section>
 
@@ -272,7 +276,6 @@ export function Standings() {
 
 function CountryRow({
   score,
-  index,
   delta,
   pops,
 }: {
@@ -282,12 +285,6 @@ function CountryRow({
   pops?: Array<{ id: number; code: string; delta: number }>;
 }) {
   const detail = getCountry(score.code);
-  const badge = (() => {
-    if (index === 0) return "bg-gold text-black";
-    if (index === 1) return "bg-white/80 text-black";
-    if (index === 2) return "bg-orange text-black";
-    return "bg-flamingo/80 text-white";
-  })();
 
   return (
     <motion.li
@@ -302,12 +299,6 @@ function CountryRow({
       }}
       className="relative list-card-hover glass-card rounded-2xl px-3 py-2.5 flex items-center gap-3"
     >
-      <motion.div
-        layout="position"
-        className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center font-display text-sm ${badge}`}
-      >
-        {index + 1}
-      </motion.div>
       <HeartFlag code={score.code} name={score.name} size="md" />
       <div className="hidden sm:flex flex-1 min-w-0 items-center gap-1.5 overflow-hidden">
         {detail?.artist && (

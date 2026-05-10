@@ -79,7 +79,7 @@ export function BottomSheet({
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 320, damping: 32 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className="relative mx-auto w-full max-w-md
                        glass-card rounded-t-3xl border-x-0 border-b-0
                        max-h-[92vh] flex flex-col"

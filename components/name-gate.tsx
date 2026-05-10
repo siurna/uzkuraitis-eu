@@ -36,9 +36,18 @@ export function NameGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const storedName = localStorage.getItem(NAME_KEY);
     const storedAvatar = localStorage.getItem(AVATAR_KEY);
-    if (storedName) setName(storedName);
-    if (storedAvatar) setAvatar(storedAvatar);
+    if (storedName) {
+      setName(storedName);
+      setDraftName(storedName);
+    }
+    if (storedAvatar) {
+      setAvatar(storedAvatar);
+      setDraftAvatar(storedAvatar);
+    }
     setLang(readLang());
+    // Skip step 1 entirely when the visitor already has a name on
+    // file (returning users picking an avatar for the first time).
+    if (storedName && !storedAvatar) setStep(2);
     setHydrated(true);
   }, []);
 
@@ -58,13 +67,9 @@ export function NameGate({ children }: { children: React.ReactNode }) {
 
   const finish = () => {
     const cleanName = draftName.trim().slice(0, 40);
-    if (!cleanName) return;
+    if (!cleanName || !draftAvatar) return;
     localStorage.setItem(NAME_KEY, cleanName);
-    if (draftAvatar) {
-      localStorage.setItem(AVATAR_KEY, draftAvatar);
-    } else {
-      localStorage.removeItem(AVATAR_KEY);
-    }
+    localStorage.setItem(AVATAR_KEY, draftAvatar);
     writeLang(lang);
     window.dispatchEvent(new Event("uzk:avatar-change"));
     setName(cleanName);
@@ -73,7 +78,7 @@ export function NameGate({ children }: { children: React.ReactNode }) {
 
   if (!hydrated) return null;
 
-  const open = !name;
+  const open = !name || !avatar;
 
   return (
     <>
@@ -114,8 +119,10 @@ export function NameGate({ children }: { children: React.ReactNode }) {
               <Button
                 type="button"
                 onClick={finish}
+                disabled={!draftAvatar}
                 className="font-display rounded-2xl
-                           bg-white text-dark-blue hover:bg-dark-blue-50"
+                           bg-white text-dark-blue hover:bg-dark-blue-50
+                           disabled:opacity-40"
               >
                 {t(lang, "join_party")}
               </Button>
