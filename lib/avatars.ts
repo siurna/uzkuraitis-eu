@@ -13,6 +13,8 @@ export type Avatar = {
   country: string; // iso alpha-2 lowercase
   year: number;
   song: string;
+  /** Optional press-kit photo URL. Falls back to country flag if unset. */
+  photo?: string;
 };
 
 export const AVATARS: Avatar[] = [
@@ -23,15 +25,12 @@ export const AVATARS: Avatar[] = [
   { id: "helena-2005",          artist: "Helena Paparizou",      country: "gr", year: 2005, song: "My Number One" },
   { id: "lordi-2006",           artist: "Lordi",                 country: "fi", year: 2006, song: "Hard Rock Hallelujah" },
   { id: "verka-2007",           artist: "Verka Serduchka",       country: "ua", year: 2007, song: "Dancing Lasha Tumbai" },
-  { id: "dima-2008",            artist: "Dima Bilan",            country: "ru", year: 2008, song: "Believe" },
   { id: "alexander-2009",       artist: "Alexander Rybak",       country: "no", year: 2009, song: "Fairytale" },
   { id: "lena-2010",            artist: "Lena",                  country: "de", year: 2010, song: "Satellite" },
   { id: "azerbaijan-2011",      artist: "Ell & Nikki",           country: "az", year: 2011, song: "Running Scared" },
   { id: "loreen-2012",          artist: "Loreen",                country: "se", year: 2012, song: "Euphoria" },
-  { id: "buranovskiye-2012",    artist: "Buranovskiye Babushki", country: "ru", year: 2012, song: "Party for Everybody" },
   { id: "emmelie-2013",         artist: "Emmelie de Forest",     country: "dk", year: 2013, song: "Only Teardrops" },
   { id: "conchita-2014",        artist: "Conchita Wurst",        country: "at", year: 2014, song: "Rise Like a Phoenix" },
-  { id: "polina-2015",          artist: "Polina Gagarina",       country: "ru", year: 2015, song: "A Million Voices" },
   { id: "mans-2015",            artist: "Måns Zelmerlöw",        country: "se", year: 2015, song: "Heroes" },
   { id: "jamala-2016",          artist: "Jamala",                country: "ua", year: 2016, song: "1944" },
   { id: "salvador-2017",        artist: "Salvador Sobral",       country: "pt", year: 2017, song: "Amar pelos dois" },

@@ -6,6 +6,7 @@ import { useUpdateMyPresence } from "@/lib/liveblocks";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AvatarPicker } from "@/components/avatar-picker";
+import { LANGUAGES, readLang, writeLang, t, type Language } from "@/lib/i18n";
 
 const NAME_KEY = "uzk_name";
 const AVATAR_KEY = "uzk_avatar";
@@ -19,6 +20,7 @@ export function NameGate({ children }: { children: React.ReactNode }) {
   const [avatar, setAvatar] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
   const [draftAvatar, setDraftAvatar] = useState<string | null>(null);
+  const [lang, setLang] = useState<Language>("en");
   const updatePresence = useUpdateMyPresence();
 
   useEffect(() => {
@@ -26,6 +28,7 @@ export function NameGate({ children }: { children: React.ReactNode }) {
     const storedAvatar = localStorage.getItem(AVATAR_KEY);
     if (storedName) setName(storedName);
     if (storedAvatar) setAvatar(storedAvatar);
+    setLang(readLang());
     setHydrated(true);
   }, []);
 
@@ -45,6 +48,7 @@ export function NameGate({ children }: { children: React.ReactNode }) {
     } else {
       localStorage.removeItem(AVATAR_KEY);
     }
+    writeLang(lang);
     setName(cleanName);
     setAvatar(draftAvatar);
   };
@@ -73,20 +77,40 @@ export function NameGate({ children }: { children: React.ReactNode }) {
             >
               <div className="text-center">
                 <p className="font-display text-2xl gradient-text">
-                  Welcome
+                  {t(lang, "welcome")}
                 </p>
                 <p className="text-sm text-white/55 mt-1">
-                  What should we call you in this room?
+                  {t(lang, "name_prompt")}
                 </p>
               </div>
               <Input
                 autoFocus
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value.slice(0, 40))}
-                placeholder="Your name"
+                placeholder={t(lang, "your_name")}
                 className="h-12 text-center text-base"
                 maxLength={40}
               />
+
+              {/* Language toggle. Persists to localStorage; everywhere
+                  else in the app reads it via readLang() / t(). */}
+              <div className="flex items-center justify-center gap-1 rounded-full bg-black/30 p-1 self-center">
+                {LANGUAGES.map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => setLang(code)}
+                    className={`px-4 py-1 rounded-full text-xs font-display uppercase tracking-widest transition ${
+                      lang === code
+                        ? "bg-flamingo text-white shadow-glow-pink"
+                        : "text-white/60 hover:text-white"
+                    }`}
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+
               <AvatarPicker value={draftAvatar} onChange={setDraftAvatar} />
               <Button
                 type="submit"
@@ -96,7 +120,7 @@ export function NameGate({ children }: { children: React.ReactNode }) {
                            text-white shadow-glow-pink
                            disabled:opacity-40 disabled:bg-none disabled:bg-white/10"
               >
-                Join the party
+                {t(lang, "join_party")}
               </Button>
             </motion.form>
           </motion.div>
