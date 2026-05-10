@@ -275,21 +275,22 @@ export function Standings() {
             exit={{ opacity: 0, y: 12, scale: 0.96 }}
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
           >
-            <Link href={`/r/${code}/vote`} className="block">
+            {/* Hero CTA: ESC's filled poster button (white bg, dark-blue
+                text) wrapped in the signature 2px rainbow stroke so it
+                reads as the brand's "Curved Line" leitmotif. No neon
+                glow, no pulse keyframes — the rainbow border + a small
+                fuchsia ping pip carry all the energy. */}
+            <Link href={`/r/${code}/vote`} className="block rainbow-border">
               <Button
-                className={`relative w-full h-14 text-lg font-display
-                  bg-gradient-to-r from-gold via-flamingo to-purple
-                  hover:opacity-95
-                  ${hasVoted ? "update-pulse-button" : "cast-pulse-button"}`}
+                className="relative w-full h-14 text-lg font-display
+                           bg-white text-dark-blue hover:bg-dark-blue-50"
               >
-                {/* "Live" indicator pip + label. Tells the room it's
-                    actively voting time, not just a passive watch. */}
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-fuchsia opacity-75 animate-ping" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-fuchsia" />
                   </span>
-                  <span className="text-[11px] uppercase tracking-widest">
+                  <span className="text-[11px] uppercase tracking-widest text-dark-blue/70">
                     {t(lang, "live")}
                   </span>
                 </span>
