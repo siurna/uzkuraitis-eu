@@ -104,10 +104,11 @@ export type Bets = {
   highestBig5?: string | null;
   juryWinner?: string | null;
   televoteWinner?: string | null;
-  nulTelevote?: string | null;
+  // Multiple guesses allowed: voter picks any number of countries they
+  // think will get nul points from the public, with NONE_TOKEN for "no
+  // country gets zero". Each correct guess scores; cap below.
+  nulTelevote?: string[] | null;
   sameWinners?: boolean | null;
-  ltTop10?: boolean | null;
-  ltTop5?: boolean | null;
   hostTop3?: boolean | null;
   winnerSolo?: boolean | null;
 };
@@ -120,11 +121,14 @@ export type BetBreakdown = {
   televoteWinner: number;
   nulTelevote: number;
   sameWinners: number;
-  ltTop10: number;
-  ltTop5: number;
   hostTop3: number;
   winnerSolo: number;
 };
+
+// Per-correct-guess pts on the multi-select nul televote bet, capped at
+// NUL_TELEVOTE_MAX so spamming all 35 doesn't auto-win.
+export const NUL_TELEVOTE_PER_HIT = 4;
+export const NUL_TELEVOTE_MAX = 12;
 
 // Helper: invert the placements map into a "by placement -> country" lookup.
 function placementToCountry(placements: OfficialPlacements): Map<number, string> {
@@ -179,24 +183,31 @@ export function scoreBets(input: {
   const juryW   = bets.juryWinner && juryWinner && bets.juryWinner === juryWinner ? 5 : 0;
   const teleW   = bets.televoteWinner && teleWinner && bets.televoteWinner === teleWinner ? 5 : 0;
 
-  // Nul points televote: +8 if exact (including the special NONE token).
-  const nulT = bets.nulTelevote && nulTele && bets.nulTelevote === nulTele ? 8 : 0;
+  // Nul points televote: voter can pick multiple country guesses + the
+  // NONE token. Score NUL_TELEVOTE_PER_HIT per correct guess, capped at
+  // NUL_TELEVOTE_MAX so spamming the entire ballot doesn't auto-win.
+  // The fact "nul_televote" itself is a CSV of country codes (or NONE).
+  let nulT = 0;
+  if (bets.nulTelevote && bets.nulTelevote.length > 0) {
+    const truth = new Set(
+      (nulTele ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    );
+    if (truth.size > 0) {
+      const guesses = new Set(bets.nulTelevote);
+      let hits = 0;
+      for (const g of guesses) if (truth.has(g)) hits++;
+      nulT = Math.min(hits * NUL_TELEVOTE_PER_HIT, NUL_TELEVOTE_MAX);
+    }
+  }
 
   // Same winners (jury == televote): +2 if voter's Y/N matches the truth.
   let sameWinners = 0;
   if (bets.sameWinners != null && juryWinner && teleWinner) {
     const truth = juryWinner === teleWinner;
     if (bets.sameWinners === truth) sameWinners = 2;
-  }
-
-  // LT top 10 / top 5: +3 / +5.
-  let ltTop10 = 0;
-  if (bets.ltTop10 != null && homePlacement != null) {
-    if (bets.ltTop10 === homePlacement <= 10) ltTop10 = 3;
-  }
-  let ltTop5 = 0;
-  if (bets.ltTop5 != null && homePlacement != null) {
-    if (bets.ltTop5 === homePlacement <= 5) ltTop5 = 5;
   }
 
   // Host (Austria) top 3: +3.
@@ -222,8 +233,6 @@ export function scoreBets(input: {
     televoteWinner: teleW,
     nulTelevote: nulT,
     sameWinners,
-    ltTop10,
-    ltTop5,
     hostTop3,
     winnerSolo: winnerSoloPts,
   };
@@ -238,8 +247,6 @@ export function totalBetPoints(b: BetBreakdown): number {
     b.televoteWinner +
     b.nulTelevote +
     b.sameWinners +
-    b.ltTop10 +
-    b.ltTop5 +
     b.hostTop3 +
     b.winnerSolo
   );

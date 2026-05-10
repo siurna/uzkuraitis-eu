@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useBroadcastEvent, useEventListener } from "@/lib/liveblocks";
 
-const EMOJIS = ["❤️", "🔥", "🎤", "✨", "💃", "🇪🇺", "🥲", "💯"] as const;
+// Six emojis is the max that fits the bar comfortably on a 320px viewport
+// without scaling each below tap-target size. Eurovision-relevant only.
+const EMOJIS = ["❤️", "🔥", "🎤", "💃", "🇪🇺", "💯"] as const;
 
 type Float = {
   id: number;
@@ -96,13 +98,13 @@ export function FloatingReactionsLayer({ code }: { code: string }) {
         </AnimatePresence>
       </div>
 
-      <div className="fixed bottom-20 left-0 right-0 z-30 flex justify-center pointer-events-none px-3">
+      <div className="fixed bottom-20 left-0 right-0 z-30 flex justify-center pointer-events-none px-2">
         <motion.div
           initial={{ y: 80, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ type: "spring", stiffness: 280, damping: 28, delay: 0.3 }}
-          className="pointer-events-auto glass-card rounded-full p-1 flex gap-0.5 shadow-glow-pink
-                     max-w-full overflow-hidden"
+          className="pointer-events-auto glass-card rounded-full px-1.5 py-1 flex gap-0
+                     shadow-glow-pink max-w-[calc(100vw-1rem)]"
         >
           {EMOJIS.map((e) => (
             <motion.button
@@ -116,7 +118,7 @@ export function FloatingReactionsLayer({ code }: { code: string }) {
                          hover:bg-white/10 text-xl sm:text-2xl leading-none"
               aria-label={`React with ${e}`}
             >
-              {e}
+              <span className="leading-none">{e}</span>
             </motion.button>
           ))}
         </motion.div>
