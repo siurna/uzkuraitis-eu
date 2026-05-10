@@ -84,7 +84,9 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     newCode = updated.code;
   }
 
-  // Push leaderboard refresh so any open clients see config drift quickly.
+  // Two broadcasts so connected clients pick up both the room props
+  // change AND any leaderboard-affecting flip (tallyEnabled).
+  await broadcastToRoom(newCode, { type: "room:updated" });
   await broadcastToRoom(newCode, { type: "leaderboard:updated" });
   return NextResponse.json({ ok: true, code: newCode });
 }

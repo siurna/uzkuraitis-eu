@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { rooms, voters, votes } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
 import { isAdminAuthed } from "@/lib/admin/session";
+import { broadcastToRoom } from "@/lib/liveblocks-server";
 
 type RouteCtx = { params: Promise<{ code: string }> };
 
@@ -36,6 +37,9 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
   }
 
   await db.update(rooms).set(parsed.data).where(eq(rooms.id, room.id));
+  // Push room props change to every connected client so e.g. the standings
+  // page hides the vote CTA the moment voting toggles closed.
+  await broadcastToRoom(room.code, { type: "room:updated" });
   return NextResponse.json({ ok: true });
 }
 

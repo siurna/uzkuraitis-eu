@@ -15,6 +15,7 @@ import { countries, getCountry } from "@/lib/countries";
 import { useEventListener } from "@/lib/liveblocks";
 import { Flag } from "@/components/flag";
 import { Leaderboard } from "@/components/leaderboard";
+import { useRoomLive } from "@/components/room-shell";
 
 type ScoreRow = {
   code: string;
@@ -36,13 +37,10 @@ type ScoresResponse = {
   voters: VoterRow[];
 };
 
-export function Standings({
-  code,
-  votingEnabled,
-}: {
-  code: string;
-  votingEnabled: boolean;
-}) {
+export function Standings() {
+  // Live room props (votingEnabled flips when admin toggles).
+  const { code, votingEnabled } = useRoomLive();
+
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [voters, setVoters] = useState<VoterRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,9 +178,20 @@ export function Standings({
             No votes yet, be the first.
           </motion.div>
         ) : (
+          // LayoutGroup so rank-changes animate cleanly across rows.
+          // AnimatePresence mode="popLayout" so expanding from 5 -> 35
+          // doesn't herd every layout transform at once. Stagger via
+          // variants so 30 rows don't all enter on the same frame.
           <LayoutGroup>
-            <motion.ol layout className="flex flex-col gap-2">
-              <AnimatePresence initial={false}>
+            <motion.ol
+              className="flex flex-col gap-2"
+              initial={false}
+              animate="show"
+              variants={{
+                show: { transition: { staggerChildren: 0.015 } },
+              }}
+            >
+              <AnimatePresence initial={false} mode="popLayout">
                 {visible.map((s, i) => (
                   <CountryRow
                     key={s.code}
@@ -251,23 +260,43 @@ export function Standings({
         </section>
       )}
 
-      {/* No sticky footer container; the vote CTA lives inline at the
-          end of the page so the page background owns the chrome. */}
-      <Link href={`/r/${code}/vote`} className="block">
-        <Button
-          disabled={!votingEnabled}
-          className={`w-full h-14 text-lg font-display
-            bg-gradient-to-r from-gold via-flamingo to-purple
-            hover:opacity-95 disabled:opacity-40
-            ${hasVoted ? "update-pulse-button" : "cast-pulse-button"}`}
-        >
-          {!votingEnabled
-            ? "Voting closed"
-            : hasVoted
-              ? "Update your vote"
-              : "Cast your vote"}
-        </Button>
-      </Link>
+      {/* Activity-style cast-vote CTA: ONLY rendered when voting is
+          open. When the admin closes voting, the button disappears
+          entirely (rather than rendering disabled), so the room reads
+          as "watching mode, react with emotions" by default. */}
+      <AnimatePresence>
+        {votingEnabled && (
+          <motion.div
+            key="vote-cta"
+            initial={{ opacity: 0, y: 12, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 320, damping: 28 }}
+          >
+            <Link href={`/r/${code}/vote`} className="block">
+              <Button
+                className={`relative w-full h-14 text-lg font-display
+                  bg-gradient-to-r from-gold via-flamingo to-purple
+                  hover:opacity-95
+                  ${hasVoted ? "update-pulse-button" : "cast-pulse-button"}`}
+              >
+                {/* "Live" indicator pip + label. Tells the room it's
+                    actively voting time, not just a passive watch. */}
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+                  </span>
+                  <span className="text-[11px] uppercase tracking-widest">
+                    Live
+                  </span>
+                </span>
+                {hasVoted ? "Update your vote" : "Cast your vote"}
+              </Button>
+            </Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
