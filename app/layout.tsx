@@ -1,35 +1,51 @@
-import type React from "react"
-import "./globals.css"
-import { Inter } from "next/font/google"
-import { ThemeProvider } from "@/components/theme-provider"
+import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
+import "./globals.css";
+import { Toaster } from "sonner";
 
-const inter = Inter({ subsets: ["latin"] })
-
-export const metadata = {
-  title: "Užkuraitis 2025",
-  description: "Cast your votes for Eurovision 2025",
-  openGraph: {
-    images: ["/images/eurovision-2025-logo.png"],
+export const metadata: Metadata = {
+  title: {
+    default: "Eurovision 2026",
+    template: "Eurovision 2026",
   },
-    generator: 'v0.dev'
-}
+  description:
+    "Cast your votes and watch live with friends. United by music, Vienna 2026.",
+  applicationName: "Eurovision 2026",
+  openGraph: {
+    title: "Eurovision 2026",
+    description:
+      "Live voting and reactions for the 70th Eurovision Song Contest.",
+    type: "website",
+  },
+  // Favicon is auto-bound by app/icon.svg (Next metadata file convention).
+};
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export const viewport: Viewport = {
+  themeColor: "#10142a",
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="icon" href="/images/eurovision-heart.png" />
-        <link rel="stylesheet" href="https://use.typekit.net/smc0egg.css" />
-      </head>
-      <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-          {children}
-        </ThemeProvider>
+    <html lang="en" className="dark">
+      <body className="min-h-screen antialiased">
+        {children}
+        <Toaster
+          theme="dark"
+          position="top-center"
+          toastOptions={{
+            style: {
+              background: "oklch(20% 0.07 264 / 0.9)",
+              border: "1px solid oklch(50% 0.2 336 / 0.4)",
+              color: "white",
+              fontFamily: "var(--font-sans)",
+            },
+          }}
+        />
       </body>
     </html>
-  )
+  );
 }
