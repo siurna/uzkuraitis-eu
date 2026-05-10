@@ -45,6 +45,7 @@ export function SettingsModal({
   const [lang, setLang] = useState<Language>("lt");
   const [copied, setCopied] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [leaveConfirm, setLeaveConfirm] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -226,16 +227,43 @@ export function SettingsModal({
                   {shareUrl.replace(/^https?:\/\//, "")}
                 </span>
               </button>
-              <button
-                type="button"
-                onClick={leaveRoom}
-                className="flex items-center gap-2 rounded-2xl px-4 py-3
-                           bg-white/5 ring-1 ring-white/10 hover:bg-white/10
-                           text-error/90 hover:text-error text-sm transition"
-              >
-                <LogOut className="h-4 w-4" />
-                {t(lang, "leave_room")}
-              </button>
+              {/* Leave-room. Two-tap confirm so a stray finger doesn't
+                  yank the user out of an in-progress show. */}
+              {leaveConfirm ? (
+                <div className="flex items-center gap-2 rounded-2xl bg-error/10 ring-1 ring-error/30 px-4 py-3">
+                  <p className="flex-1 text-sm text-white/85">
+                    {t(lang, "leave_confirm")}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    type="button"
+                    onClick={() => setLeaveConfirm(false)}
+                  >
+                    {t(lang, "cancel")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    type="button"
+                    onClick={leaveRoom}
+                    className="bg-error text-white hover:bg-error/90"
+                  >
+                    <LogOut className="h-4 w-4 mr-1.5" />
+                    {t(lang, "leave_yes")}
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setLeaveConfirm(true)}
+                  className="flex items-center gap-2 rounded-2xl px-4 py-3
+                             bg-white/5 ring-1 ring-white/10 hover:bg-white/10
+                             text-error/90 hover:text-error text-sm transition"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {t(lang, "leave_room")}
+                </button>
+              )}
             </div>
           </Section>
         </form>
