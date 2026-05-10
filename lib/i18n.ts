@@ -77,6 +77,18 @@ const messages = {
     tab_bets:          "Bets",
     bonus_bets:        "Bonus bets",
 
+    // Room tab bar
+    tab_home:          "Home",
+    tab_chat:          "Chat",
+    tab_bingo:         "Bingo",
+    tab_vote:          "Vote",
+
+    // Coming-soon placeholders
+    chat_coming:       "Chat is on the way",
+    chat_coming_sub:   "Live messaging with reactions, replies, and GIFs lands in a moment.",
+    bingo_coming:      "Bingo card incoming",
+    bingo_coming_sub:  "A 5×5 grid of Eurovision tropes. Cross them off as the night unfolds.",
+
     // Bonus bets — labels + descriptions
     bet_lt_placement:  "{home} placement",
     bet_lt_placement_sub:
@@ -179,6 +191,16 @@ const messages = {
     tab_ballot:        "Balsas",
     tab_bets:          "Statymai",
     bonus_bets:        "Bonus statymai",
+
+    tab_home:          "Pradžia",
+    tab_chat:          "Pokalbiai",
+    tab_bingo:         "Bingo",
+    tab_vote:          "Balsuok",
+
+    chat_coming:       "Pokalbiai jau netoli",
+    chat_coming_sub:   "Realaus laiko žinutės su reakcijomis, atsakymais ir GIF-ais — tuoj tuoj.",
+    bingo_coming:      "Bingo kortelė tuoj bus",
+    bingo_coming_sub:  "5×5 laukelių su klasikiniais Eurovizijos štampais. Bus ką žymėti.",
 
     bet_lt_placement:  "{home} vieta",
     bet_lt_placement_sub:

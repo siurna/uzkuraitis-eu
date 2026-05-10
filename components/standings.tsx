@@ -249,36 +249,6 @@ export function Standings() {
       </section>
 
       <Leaderboard code={code} />
-
-      {/* Activity-style cast-vote CTA. Hidden when the admin has closed
-          voting — the room then reads as "watching mode, react with
-          emojis". On mobile we render the CTA via a separate sticky
-          footer (see room-shell) so this inline copy only shows on
-          larger viewports. */}
-      <AnimatePresence>
-        {votingEnabled && (
-          <motion.div
-            key="vote-cta"
-            initial={{ opacity: 0, y: 12, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.96 }}
-            transition={{ type: "spring", stiffness: 320, damping: 28 }}
-            className="hidden sm:block"
-          >
-            <Link
-              href={`/r/${code}/vote`}
-              className="rainbow-border rounded-2xl"
-            >
-              <Button
-                className="w-full h-14 text-lg font-display rounded-[14px]
-                           bg-white text-dark-blue hover:bg-dark-blue-50"
-              >
-                {hasVoted ? t(lang, "update_vote") : t(lang, "cast_vote")}
-              </Button>
-            </Link>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </main>
   );
 }

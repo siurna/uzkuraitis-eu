@@ -16,5 +16,6 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     code: room.code,
     name: room.name,
     votingEnabled: room.votingEnabled,
+    homeCountryCode: room.homeCountryCode,
   });
 }

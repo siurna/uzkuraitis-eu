@@ -1,24 +1,17 @@
-import { notFound } from "next/navigation";
-import { findRoomByCode, touchRoom } from "@/lib/rooms";
-import { RoomShell } from "@/components/room-shell";
+import { Standings } from "@/components/standings";
+import { HoneycombPresence } from "@/components/honeycomb-presence";
 
-type RouteParams = Promise<{ code: string }>;
-
-export default async function RoomPage({ params }: { params: RouteParams }) {
-  const { code } = await params;
-  const room = await findRoomByCode(code);
-  if (!room) notFound();
-
-  await touchRoom(room.id);
-
+// Home tab content. Layout owns the room context, presence bar, tab
+// bar, particle layer, and reactions overlay. This page just renders
+// the standings + the honeycomb of live users — both of which only
+// belong on Home.
+export default function RoomHomePage() {
   return (
-    <RoomShell
-      code={room.code}
-      name={room.name}
-      votingEnabled={room.votingEnabled}
-    />
+    <>
+      <Standings />
+      <HoneycombPresence />
+    </>
   );
 }
 
-// Make sure deep links always go through SSR so wrong codes 404 cleanly.
 export const dynamic = "force-dynamic";
