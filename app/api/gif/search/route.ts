@@ -24,41 +24,48 @@ type GifResult = {
   height: number;
 };
 
+// Klipy nests each item as:
+//   { id, slug, title, file: { hd|md|sm: { gif|webp|mp4: { url, width, height, size } } } }
+// We pick md for the chat bubble (HD is 3-4MB, too heavy) and sm for
+// the picker grid preview. Falls back to whatever's available.
 function normaliseKlipy(payload: unknown): GifResult[] {
+  type Variant = { url?: string; width?: number; height?: number };
+  type Bucket = { gif?: Variant; webp?: Variant; mp4?: Variant; webm?: Variant };
   type KlipyItem = {
     id?: number | string;
     slug?: string;
     title?: string;
-    file?: {
-      gif?: { hd?: { url?: string }; md?: { url?: string }; sm?: { url?: string }; url?: string };
-      mp4?: { url?: string };
-      webp?: { url?: string };
-    };
-    url?: string;
-    preview?: string;
-    width?: number;
-    height?: number;
+    file?: { hd?: Bucket; md?: Bucket; sm?: Bucket };
   };
   const items =
     (payload as { data?: { data?: KlipyItem[] } })?.data?.data ??
     (payload as { data?: KlipyItem[] })?.data ??
     [];
   if (!Array.isArray(items)) return [];
+
+  const variantUrl = (b: Bucket | undefined): Variant | null =>
+    b?.gif?.url
+      ? b.gif
+      : b?.webp?.url
+        ? b.webp
+        : b?.mp4?.url
+          ? b.mp4
+          : null;
+
   return items
     .map((it): GifResult | null => {
-      const gif = it.file?.gif;
-      const url =
-        gif?.hd?.url ?? gif?.md?.url ?? gif?.url ?? it.url ?? null;
-      if (!url) return null;
-      const preview =
-        gif?.sm?.url ?? gif?.md?.url ?? url ?? it.preview ?? url;
+      const f = it.file;
+      const main =
+        variantUrl(f?.md) ?? variantUrl(f?.hd) ?? variantUrl(f?.sm);
+      if (!main?.url) return null;
+      const previewVariant = variantUrl(f?.sm) ?? main;
       return {
-        id: String(it.id ?? it.slug ?? url),
+        id: String(it.id ?? it.slug ?? main.url),
         title: it.title ?? "",
-        url,
-        preview: preview ?? url,
-        width: typeof it.width === "number" ? it.width : 0,
-        height: typeof it.height === "number" ? it.height : 0,
+        url: main.url,
+        preview: previewVariant.url ?? main.url,
+        width: main.width ?? 0,
+        height: main.height ?? 0,
       };
     })
     .filter((x): x is GifResult => x !== null);
