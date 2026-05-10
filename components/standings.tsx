@@ -364,6 +364,7 @@ function NoVotesYet({
 
 function CountryRow({
   score,
+  index,
   delta,
   pops,
 }: {
@@ -373,6 +374,22 @@ function CountryRow({
   pops?: Array<{ id: number; code: string; delta: number }>;
 }) {
   const detail = getCountry(score.code);
+  // Top-3 get a richer treatment: bigger row padding, gold/silver/bronze
+  // ring + brand glow, and the score in the brand colour. Keeps the
+  // ordered list semantic but lets the eye land on the podium fast.
+  const podium =
+    index === 0
+      ? "ring-2 ring-yellow shadow-[0_0_24px_-8px_oklch(95%_0.19_108_/_0.65)]"
+      : index === 1
+        ? "ring-2 ring-white/70 shadow-[0_0_18px_-10px_rgba(255,255,255,0.55)]"
+        : index === 2
+          ? "ring-2 ring-orange shadow-[0_0_18px_-10px_oklch(70%_0.19_42_/_0.6)]"
+          : "";
+  const scoreColor =
+    index === 0 ? "oklch(95% 0.19 108)"
+      : index === 1 ? "oklch(98% 0 0)"
+        : index === 2 ? "oklch(70% 0.19 42)"
+          : "oklch(70.55% 0.2725 336.19)";
 
   return (
     <motion.li
@@ -385,9 +402,14 @@ function CountryRow({
         layout: { type: "spring", stiffness: 320, damping: 30 },
         opacity: { duration: 0.25 },
       }}
-      className="relative list-card-hover glass-card rounded-2xl px-3 py-2.5 flex items-center gap-3"
+      className={`relative list-card-hover glass-card rounded-2xl flex items-center gap-3
+                  ${index < 3 ? "px-3.5 py-3.5" : "px-3 py-2.5"} ${podium}`}
     >
-      <HeartFlag code={score.code} name={score.name} size="md" />
+      <HeartFlag
+        code={score.code}
+        name={score.name}
+        size={index === 0 ? "lg" : "md"}
+      />
       <div className="hidden sm:flex flex-1 min-w-0 items-center gap-1.5 overflow-hidden">
         {detail?.artist && (
           <MetaPill icon={Mic} className="truncate max-w-[12rem]">
@@ -401,11 +423,8 @@ function CountryRow({
         )}
       </div>
       <div className="flex-1 sm:hidden" />
-      <div className="text-right shrink-0">
-        <ScoreNumber value={score.totalPoints} />
-        <p className="text-[10px] uppercase tracking-widest text-white/40">
-          pts
-        </p>
+      <div className="shrink-0">
+        <ScoreNumber value={score.totalPoints} color={scoreColor} />
       </div>
 
       <AnimatePresence>
@@ -463,12 +482,18 @@ function CountryRow({
   );
 }
 
-function ScoreNumber({ value }: { value: number }) {
+function ScoreNumber({
+  value,
+  color = "oklch(70.55% 0.2725 336.19)",
+}: {
+  value: number;
+  color?: string;
+}) {
   return (
     <motion.p
       key={value}
       initial={{ scale: 1.4, color: "oklch(78.49% 0.135563 189.949)" }}
-      animate={{ scale: 1, color: "oklch(70.55% 0.2725 336.19)" }}
+      animate={{ scale: 1, color }}
       transition={{
         type: "spring",
         stiffness: 360,

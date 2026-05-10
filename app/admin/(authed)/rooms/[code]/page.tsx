@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { eq, sql, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { voters, votes, reactions } from "@/lib/db/schema";
@@ -103,9 +101,6 @@ export default async function AdminRoomDetailPage({
   return (
     <div className="flex flex-col gap-6">
       <header className="flex items-center gap-3">
-        <Link href="/admin" className="text-white/50 hover:text-white">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
             <h1 className="font-display text-3xl gradient-text truncate heading-rise">
@@ -256,13 +251,13 @@ export default async function AdminRoomDetailPage({
           </section>
         }
         settings={
-          <>
+          <div className="flex flex-col gap-6">
             <section className="glass-card rounded-xl p-5">
               <h2 className="font-display text-xl mb-3">Room name</h2>
               <AdminRoomRename code={room.code} initialName={room.name} />
             </section>
             <AdminRoomManageLink code={room.code} adminToken={room.adminToken} />
-          </>
+          </div>
         }
         danger={<AdminRoomDangerZone code={room.code} />}
       />

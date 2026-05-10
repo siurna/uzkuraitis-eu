@@ -34,7 +34,13 @@ export function AdminNav() {
         </Link>
         <nav className="ml-auto flex items-center gap-1">
           {navItems.map(({ path, label, icon: Icon }) => {
-            const active = pathname === path;
+            // Treat /admin/rooms/[code] as part of the Rooms tab so the
+            // "Rooms" link stays highlighted when drilled into a single
+            // room. Other tabs use exact match.
+            const active =
+              path === "/admin"
+                ? pathname === "/admin" || pathname.startsWith("/admin/rooms")
+                : pathname === path;
             return (
               <Link
                 key={path}

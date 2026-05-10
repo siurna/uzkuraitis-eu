@@ -77,36 +77,33 @@ const messages = {
     // Bonus bets — labels + descriptions
     bet_lt_placement:  "{home} placement",
     bet_lt_placement_sub:
-      "Closer guesses score more. Exact +10, off-by-1 +7, off-by-2 +5, off by 3-5 +3, off by 6-10 +1.",
+      "Where does {home} finish? Closer guesses score more.",
     bet_wooden_spoon:  "Wooden spoon",
     bet_wooden_spoon_sub:
-      "Who finishes last? Exact +5, off-by-1 +2.",
-    bet_lt_12_to:      "12 from {home} to",
+      "Who comes last? Even one off the bottom scores.",
+    bet_lt_12_to:      "12 points from {home}",
     bet_lt_12_to_sub:
-      "Where does {home} give its 12 points? Exact +5.",
-    bet_big5:          "Highest-placed Big 5",
+      "Which country gets {home}'s 12 points?",
+    bet_big5:          "Best of the Big 5",
     bet_big5_sub:
-      "UK, Germany, France, Italy, or Spain — which finishes best? +3.",
+      "UK, Germany, France, Italy or Spain — which finishes highest?",
     bet_jury_winner:   "Jury winner",
-    bet_jury_winner_sub: "The country that wins the jury vote. Exact +5.",
+    bet_jury_winner_sub: "Country with the highest jury total.",
     bet_televote_winner: "Televote winner",
     bet_televote_winner_sub:
-      "The country that wins the public televote. Exact +5.",
-    bet_nul:           "Nul points (televote)",
+      "Country with the highest public televote total.",
+    bet_nul:           "Zero from televote",
     bet_nul_sub:
-      "Pick any countries you think get zero from the public, or 'No country' if nobody scores zero. +4 per correct guess, capped at +12.",
+      "Pick the countries you think get zero from the public — or 'No country' if you think no one will.",
     bet_lt_total:      "{home} total points",
     bet_lt_total_sub:
-      "How many total points (jury + public) will {home} end up with? exact +10, ±5 +7, ±15 +5, ±30 +3, ±60 +1.",
-    bet_same_winner:   "Same winner?",
-    bet_same_winner_sub:
-      "Does the same country win both jury and televote? Y/N +2.",
+      "How many points (jury + public) does {home} end with? Closer guesses score more.",
     bet_host_top3:     "{host} top 3?",
     bet_host_top3_sub:
-      "Will the host country finish in the top 3? Y/N +3.",
+      "Will the host land in the top 3?",
     bet_solo_winner:   "Solo winner?",
     bet_solo_winner_sub:
-      "Will the winner be a solo act (vs duo / group)? Y/N +2.",
+      "Will the winner be a solo act?",
     yes_short:         "yes",
     no_short:          "no",
     skip_short:        "—",
@@ -131,7 +128,7 @@ const messages = {
     name_prompt:       "Kaip tave vadinsim šitame kambary?",
     your_name:         "Tavo vardas",
     join_party:        "Prisijungti",
-    pick_avatar:       "Pasirink avatarą",
+    pick_avatar:       "Pasirink veidą",
     settings:          "Nustatymai",
     language:          "Kalba",
     share_link:        "Pasidalink kambariu",
@@ -179,36 +176,33 @@ const messages = {
 
     bet_lt_placement:  "{home} vieta",
     bet_lt_placement_sub:
-      "Tiksliau spėtum — daugiau taškų. Tiksli +10, ±1 +7, ±2 +5, ±3-5 +3, ±6-10 +1.",
+      "Kelintoje vietoje finišuos {home}? Kuo arčiau spėjai — tuo daugiau.",
     bet_wooden_spoon:  "Paskutinė vieta",
     bet_wooden_spoon_sub:
-      "Kas baigs paskutinis? Tiksli +5, gretimo +2.",
-    bet_lt_12_to:      "{home} 12 taškų skirs",
+      "Kas užims paskutinę? Net spėjus gretimą — gauni taškų.",
+    bet_lt_12_to:      "12 taškų iš {home}",
     bet_lt_12_to_sub:
-      "Kuriai šaliai {home} skirs 12 taškų? Tiksli +5.",
-    bet_big5:          "Aukščiausia Big 5 vieta",
+      "Kuriai šaliai {home} skirs savo 12 taškų?",
+    bet_big5:          "Geriausias iš Big 5",
     bet_big5_sub:
-      "Iš UK, Vokietijos, Prancūzijos, Italijos, Ispanijos — kas užims aukščiausią vietą? +3.",
+      "Iš JK, Vokietijos, Prancūzijos, Italijos, Ispanijos — kas finišuos aukščiausiai?",
     bet_jury_winner:   "Žiuri nugalėtojas",
-    bet_jury_winner_sub: "Šalis, kurią išrinks žiuri. Tiksli +5.",
+    bet_jury_winner_sub: "Šalis, kuri surinks daugiausiai žiuri taškų.",
     bet_televote_winner: "Žiūrovų nugalėtojas",
     bet_televote_winner_sub:
-      "Šalis, kuri laimės žiūrovų balsavimą. Tiksli +5.",
-    bet_nul:           "Nul taškų (žiūrovai)",
+      "Šalis, kuri surinks daugiausiai žiūrovų taškų.",
+    bet_nul:           "Nulis iš žiūrovų",
     bet_nul_sub:
-      "Pasirink šalis, kurios negaus nė vieno taško iš žiūrovų, arba 'Nė viena' jeigu visi gaus. +4 už kiekvieną pataikymą, max +12.",
-    bet_lt_total:      "{home} bendra taškų suma",
+      "Spėk, kurios šalys gaus nulį iš žiūrovų. Jei manai, kad visos uždirbs — rink „Nė viena“.",
+    bet_lt_total:      "{home} taškai iš viso",
     bet_lt_total_sub:
-      "Kiek iš viso taškų (žiuri + žiūrovai) surinks {home}? Tiksli +10, ±5 +7, ±15 +5, ±30 +3, ±60 +1.",
-    bet_same_winner:   "Tas pats nugalėtojas?",
-    bet_same_winner_sub:
-      "Ar ta pati šalis laimės žiuri ir žiūrovų balsavimus? Taip/ne +2.",
-    bet_host_top3:     "{host} TOP 3?",
+      "Kiek iš viso taškų (žiuri + žiūrovai) surinks {home}? Kuo arčiau, tuo daugiau.",
+    bet_host_top3:     "{host} TOP3?",
     bet_host_top3_sub:
-      "Ar šeimininkų šalis pateks į TOP 3? Taip/ne +3.",
-    bet_solo_winner:   "Solo atlikėjas laimės?",
+      "Ar šeimininkai pateks į TOP3?",
+    bet_solo_winner:   "Laimės solo?",
     bet_solo_winner_sub:
-      "Ar laimės solinis atlikėjas (ne duetas / grupė)? Taip/ne +2.",
+      "Ar laimės solinis atlikėjas (ne duetas / grupė)?",
     yes_short:         "taip",
     no_short:          "ne",
     skip_short:        "—",
