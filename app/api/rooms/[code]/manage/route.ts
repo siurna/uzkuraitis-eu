@@ -26,6 +26,8 @@ const PatchSchema = z.object({
   tallyEnabled: z.boolean().optional(),
   homeCountryCode: z.string().length(2).optional(),
   code: z.string().min(6).max(6).optional(),
+  // Now-playing country (ISO-2 lowercase) or null to clear.
+  nowPlayingCode: z.string().length(2).nullable().optional(),
 });
 
 async function requireRoomAdmin(req: Request, code: string) {
@@ -49,6 +51,7 @@ export async function GET(req: Request, { params }: RouteCtx) {
       votingEnabled: room.votingEnabled,
       tallyEnabled: room.tallyEnabled,
       homeCountryCode: room.homeCountryCode,
+      nowPlayingCode: room.nowPlayingCode,
     },
   });
 }
@@ -64,11 +67,15 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  const { code: nextCode, ...rest } = parsed.data;
+  const { code: nextCode, nowPlayingCode: nextNowPlaying, ...rest } = parsed.data;
+  const nowPlayingChanged =
+    nextNowPlaying !== undefined && nextNowPlaying !== room.nowPlayingCode;
 
   // Apply non-code fields first.
-  if (Object.keys(rest).length > 0) {
-    await db.update(rooms).set(rest).where(eq(rooms.id, room.id));
+  const updates: Record<string, unknown> = { ...rest };
+  if (nextNowPlaying !== undefined) updates.nowPlayingCode = nextNowPlaying;
+  if (Object.keys(updates).length > 0) {
+    await db.update(rooms).set(updates).where(eq(rooms.id, room.id));
   }
 
   // Code change goes through changeRoomCode for collision check.
@@ -84,10 +91,18 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     newCode = updated.code;
   }
 
-  // Two broadcasts so connected clients pick up both the room props
-  // change AND any leaderboard-affecting flip (tallyEnabled).
+  // Broadcasts: room props change always, leaderboard if tally flipped,
+  // and now-playing:change when the host moves the active country (the
+  // event carries the new code so clients can swarm immediately without
+  // a refetch race).
   await broadcastToRoom(newCode, { type: "room:updated" });
   await broadcastToRoom(newCode, { type: "leaderboard:updated" });
+  if (nowPlayingChanged) {
+    await broadcastToRoom(newCode, {
+      type: "now-playing:change",
+      countryCode: nextNowPlaying ?? null,
+    });
+  }
   return NextResponse.json({ ok: true, code: newCode });
 }
 

@@ -27,6 +27,11 @@ export const rooms = pgTable(
     // ISO 3166-1 alpha-2 lowercase. Used to ask voters where they think
     // this country will finish, scored separately from the top-10 ballot.
     homeCountryCode: text("home_country_code").notNull().default("lt"),
+    // ISO 3166-1 alpha-2 lowercase of the country currently performing.
+    // Admin-set; clients render a top-of-screen strip + spawn a swarm
+    // of heart-flag particles whenever this flips. NULL = no country
+    // is highlighted right now.
+    nowPlayingCode: text("now_playing_code"),
     // Long random token granting per-room admin rights. Anyone with the
     // token can manage *this* room (rename, toggle voting, edit results,
     // change the join code) without a global passkey. Generated on room

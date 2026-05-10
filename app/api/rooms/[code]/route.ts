@@ -17,5 +17,6 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     name: room.name,
     votingEnabled: room.votingEnabled,
     homeCountryCode: room.homeCountryCode,
+    nowPlayingCode: room.nowPlayingCode,
   });
 }

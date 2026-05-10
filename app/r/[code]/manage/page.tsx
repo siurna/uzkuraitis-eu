@@ -34,6 +34,7 @@ export default async function RoomManagePage({
         name: room.name,
         votingEnabled: room.votingEnabled,
         tallyEnabled: room.tallyEnabled,
+        nowPlayingCode: room.nowPlayingCode,
       }}
     />
   );

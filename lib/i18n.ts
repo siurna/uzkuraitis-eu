@@ -89,6 +89,12 @@ const messages = {
     bingo_coming:      "Bingo card incoming",
     bingo_coming_sub:  "A 5×5 grid of Eurovision tropes. Cross them off as the night unfolds.",
 
+    // Now-playing strip
+    now_playing:       "On stage",
+    now_playing_idle:  "Waiting for the next country…",
+    now_playing_admin: "Now playing",
+    now_playing_clear: "Off stage",
+
     // Bonus bets — labels + descriptions
     bet_lt_placement:  "{home} placement",
     bet_lt_placement_sub:
@@ -201,6 +207,11 @@ const messages = {
     chat_coming_sub:   "Realaus laiko žinutės su reakcijomis, atsakymais ir GIF-ais — tuoj tuoj.",
     bingo_coming:      "Bingo kortelė tuoj bus",
     bingo_coming_sub:  "5×5 laukelių su klasikiniais Eurovizijos štampais. Bus ką žymėti.",
+
+    now_playing:       "Scenoje",
+    now_playing_idle:  "Laukiama kitos šalies…",
+    now_playing_admin: "Dabar scenoje",
+    now_playing_clear: "Niekas",
 
     bet_lt_placement:  "{home} vieta",
     bet_lt_placement_sub:

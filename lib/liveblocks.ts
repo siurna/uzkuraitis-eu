@@ -55,9 +55,12 @@ export type UserMeta = {
 //                         flipped), refetch /api/rooms/[code]/leaderboard.
 //   room:updated        — room props (name, votingEnabled, tallyEnabled,
 //                         homeCountryCode, code) changed; refetch room.
+//   now-playing:change  — host moved the active country. Payload carries
+//                         the new code so clients can swarm hearts and
+//                         update the strip without a refetch race.
 //
-// New features should follow the same shape. When adding chat, bingo,
-// now-playing etc., extend the union below with `<feature>:<verb>`.
+// New features should follow the same shape. When adding chat, bingo
+// etc., extend the union below with `<feature>:<verb>`.
 
 export type ReactionEmojiEvent = {
   type: "reaction:emoji";
@@ -73,13 +76,18 @@ export type ReactionCountryEvent = {
 export type ScoresUpdatedEvent = { type: "scores:updated" };
 export type LeaderboardUpdatedEvent = { type: "leaderboard:updated" };
 export type RoomUpdatedEvent = { type: "room:updated" };
+export type NowPlayingChangeEvent = {
+  type: "now-playing:change";
+  countryCode: string | null;
+};
 
 export type RoomEvent =
   | ReactionEmojiEvent
   | ReactionCountryEvent
   | ScoresUpdatedEvent
   | LeaderboardUpdatedEvent
-  | RoomUpdatedEvent;
+  | RoomUpdatedEvent
+  | NowPlayingChangeEvent;
 
 export const {
   RoomProvider,

@@ -3,9 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Copy, Check, Mic, Trophy, Eraser } from "lucide-react";
+import { Copy, Check, Mic, Trophy, Eraser, ChevronRight, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { HeartFlag } from "@/components/flag";
+import { CountryDrawer } from "@/components/country-drawer";
+import { getCountry } from "@/lib/countries";
 
 // Strip-down magic admin page. Two toggles:
 //   1. Voting open  — voters can submit / update their ballot.
@@ -19,6 +22,7 @@ type Room = {
   name: string;
   votingEnabled: boolean;
   tallyEnabled: boolean;
+  nowPlayingCode: string | null;
 };
 
 export function RoomManage({
@@ -31,6 +35,8 @@ export function RoomManage({
   const router = useRouter();
   const [voting, setVoting] = useState(room.votingEnabled);
   const [tally, setTally] = useState(room.tallyEnabled);
+  const [nowPlaying, setNowPlaying] = useState<string | null>(room.nowPlayingCode);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [pending, start] = useTransition();
   const [copied, setCopied] = useState(false);
   const [confirmClean, setConfirmClean] = useState(false);
@@ -65,6 +71,12 @@ export function RoomManage({
     const next = !tally;
     setTally(next);
     patch({ tallyEnabled: next });
+  };
+
+  const pickNowPlaying = (code: string | null) => {
+    setNowPlaying(code);
+    setPickerOpen(false);
+    patch({ nowPlayingCode: code });
   };
 
   const cleanOut = () => {
@@ -132,6 +144,37 @@ export function RoomManage({
           onChange={toggleTally}
           disabled={pending}
         />
+
+        {/* Now playing — pick the country currently on stage. Every
+            client in the room sees the strip flip + a swarm of that
+            country's heart-flag explodes across their screen. */}
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          disabled={pending}
+          className="text-left list-card-hover glass-card rounded-2xl p-5
+                     flex items-center gap-4 transition"
+        >
+          <span className="shrink-0 h-11 w-11 rounded-full grid place-items-center
+                           bg-flamingo/30 text-flamingo">
+            <Radio className="h-5 w-5" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="font-display text-lg">Now playing</p>
+            <p className="text-xs text-white/55 leading-relaxed">
+              {(() => {
+                const c = nowPlaying ? getCountry(nowPlaying) : null;
+                if (!c) return "Tap to set the country currently on stage.";
+                return `${c.name}${c.artist ? ` — ${c.artist}` : ""}`;
+              })()}
+            </p>
+          </div>
+          {nowPlaying ? (
+            <HeartFlag code={nowPlaying} size="sm" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-white/30 shrink-0" />
+          )}
+        </button>
       </div>
 
       <section className="glass-card w-full max-w-md rounded-2xl p-4 flex items-center gap-2">
@@ -193,6 +236,16 @@ export function RoomManage({
           </button>
         )}
       </section>
+
+      <CountryDrawer
+        title="Now playing"
+        sub="Pick the country currently on stage. Tap a country to send the swarm; tap 'No country' to clear."
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        selected={nowPlaying ? [nowPlaying] : []}
+        onPick={(v) => pickNowPlaying(typeof v === "string" ? v : null)}
+        allowNone
+      />
     </main>
   );
 }
