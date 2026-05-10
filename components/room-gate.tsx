@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { Loader2 } from "lucide-react";
+import Image from "next/image";
 import { toast } from "sonner";
 import { isValidRoomCode, normalizeRoomCode } from "@/lib/rooms";
 import { useLang, t } from "@/lib/i18n";
@@ -113,9 +113,23 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex flex-col items-center gap-3 text-white/50"
+            className="flex flex-col items-center gap-4 text-white/50"
           >
-            <Loader2 className="h-6 w-6 animate-spin text-flamingo" />
+            {/* The 70-heart pulses while we check for a remembered
+                room — same lub-dub as the rest of the brand, sized
+                small. When loading completes, the gate fades in and
+                Logo2026's full mark takes over. */}
+            <div className="heartbeat-loop">
+              <Image
+                src="/images/70-heart.webp"
+                alt=""
+                width={64}
+                height={64}
+                priority
+                className="h-16 w-16 object-contain
+                           drop-shadow-[0_0_24px_rgba(255,46,222,0.5)]"
+              />
+            </div>
             <p className="text-xs uppercase tracking-[0.3em] font-display">
               {t(lang, "reconnecting")}
             </p>

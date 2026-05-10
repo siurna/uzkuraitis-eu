@@ -582,7 +582,13 @@ function BallotSlotInner({
       }}
       // min-h pre-allocates the picked-state height so the row doesn't
       // jump taller the moment a country is chosen.
-      className="list-entry-gradient glass-card flex items-stretch rounded-xl min-h-[4.5rem]"
+      // Quiet tile to match the bonus-bets + standings rows. The
+      // points-color on the left already differentiates 12 / 10 / 8.
+      // min-h pre-allocates the picked-state height so the row doesn't
+      // jump taller the moment a country is chosen.
+      className="flex items-stretch rounded-2xl min-h-[4.5rem]
+                 bg-white/[0.04] ring-1 ring-white/8
+                 hover:bg-white/[0.06] hover:ring-white/15 transition"
     >
       {/* Drag handle = the points-number + flag block on the left.
           @dnd-kit listeners attach here so the whole left side feels

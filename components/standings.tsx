@@ -47,8 +47,27 @@ export function Standings() {
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [voters, setVoters] = useState<VoterRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAll, setShowAll] = useState(false);
+  // Show-all is a GLOBAL preference (persisted to localStorage), not
+  // per-room — once you've expanded the table once you probably want it
+  // expanded everywhere.
+  const [showAll, setShowAllState] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
+
+  useEffect(() => {
+    setShowAllState(localStorage.getItem("uzk_show_all") === "1");
+  }, []);
+
+  const setShowAll = useCallback((next: boolean | ((p: boolean) => boolean)) => {
+    setShowAllState((prev) => {
+      const v = typeof next === "function" ? next(prev) : next;
+      try {
+        localStorage.setItem("uzk_show_all", v ? "1" : "0");
+      } catch {
+        /* private mode etc. */
+      }
+      return v;
+    });
+  }, []);
 
   const prevRanks = useRef<Map<string, number>>(new Map());
   const prevScores = useRef<Map<string, number>>(new Map());
