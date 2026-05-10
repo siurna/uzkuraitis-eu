@@ -5,6 +5,7 @@ import { Mic, Music, ExternalLink } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { HeartFlag } from "@/components/flag";
 import { getCountry } from "@/lib/countries";
+import { participantPhoto } from "@/lib/participants";
 import { useLang, t } from "@/lib/i18n";
 
 // Country deep-dive sheet — opens on a country code, shows the chip,
@@ -79,15 +80,37 @@ function CountryDeepDiveSheet({
     >
       {country && (
         <div className="flex flex-col gap-4 pb-2">
-          <div className="flex items-center gap-3">
-            <HeartFlag code={country.code} size="lg" />
-            <div className="flex-1 min-w-0">
-              <p className="font-display text-lg truncate">{country.name}</p>
-              <p className="text-xs text-white/55">
-                #{country.order} {t(lang, "deep_order")}
-              </p>
+          {/* Hero photo — fades in only when the press-kit shot is
+              available on disk. Falls back gracefully to the chip
+              header alone if the participant photo is missing. */}
+          {participantPhoto(country.code) && (
+            <div className="relative -mx-1 rounded-2xl overflow-hidden aspect-[16/9] bg-white/[0.04]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={participantPhoto(country.code) as string}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-dark-blue-900/85 via-dark-blue-900/10 to-transparent" />
+              <div className="absolute bottom-3 left-3 right-3 flex items-center gap-3">
+                <HeartFlag code={country.code} size="md" />
+                <p className="font-display text-lg drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)] truncate">
+                  {country.name}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
+          {!participantPhoto(country.code) && (
+            <div className="flex items-center gap-3">
+              <HeartFlag code={country.code} size="lg" />
+              <div className="flex-1 min-w-0">
+                <p className="font-display text-lg truncate">{country.name}</p>
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-white/55">
+            #{country.order} {t(lang, "deep_order")}
+          </p>
 
           {country.artist && (
             <Row icon={<Mic className="h-4 w-4 text-white/70" />}

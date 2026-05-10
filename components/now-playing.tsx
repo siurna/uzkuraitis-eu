@@ -7,6 +7,7 @@ import { useRoomLive } from "@/components/room-shell";
 import { useParticles } from "@/components/particle-layer";
 import { HeartFlag } from "@/components/flag";
 import { getCountry } from "@/lib/countries";
+import { participantPhoto } from "@/lib/participants";
 import { useLang, t } from "@/lib/i18n";
 
 // Top-of-screen "on stage now" strip. Admin sets the active country
@@ -92,6 +93,26 @@ export function NowPlaying() {
                 transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                 className="flex items-center gap-2.5 min-w-0"
               >
+                {/* Artist hero thumbnail — the strip suddenly carries
+                    a face when admin flips a country live. Pulses
+                    softly while on stage. */}
+                <motion.span
+                  animate={{ scale: [1, 1.06, 1] }}
+                  transition={{
+                    duration: 2.4,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="relative h-8 w-8 shrink-0 rounded-full overflow-hidden
+                             ring-1 ring-white/15 shadow-[0_4px_12px_-4px_rgba(255,46,222,0.45)]"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={participantPhoto(country.code) ?? `/flags/${country.code}.svg`}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                </motion.span>
                 <HeartFlag code={country.code} name={country.name} size="sm" />
                 {country.artist && (
                   <span className="text-xs text-white/55 truncate hidden sm:inline">
