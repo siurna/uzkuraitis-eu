@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "motion/react";
 import { Search, Check } from "lucide-react";
 import { countries, getCountry } from "@/lib/countries";
 import { Flag } from "@/components/flag";
@@ -47,6 +49,15 @@ export function CountryDrawer({
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState<string[]>(selected);
   const [lang, setLang] = useState<"en" | "lt">("en");
+  // One-shot flying heart spawned on a single-mode pick: bursts from
+  // the tapped tile and drifts up + fades. Drawer closes immediately
+  // after — the burst plays in the portal layer so it survives.
+  const [burst, setBurst] = useState<{
+    id: number;
+    code: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -70,8 +81,19 @@ export function CountryDrawer({
 
   const isSelected = (code: string) => draft.includes(code);
 
-  const toggle = (code: string) => {
+  const toggle = (code: string, event?: React.MouseEvent<HTMLButtonElement>) => {
     if (mode === "single") {
+      // Capture the tapped tile's centre so the heart bursts from
+      // exactly where the user pressed, not from a hard-coded spot.
+      if (event) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setBurst({
+          id: Date.now(),
+          code,
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        });
+      }
       onPick(code);
       onClose();
       return;
@@ -88,6 +110,11 @@ export function CountryDrawer({
   };
 
   return (
+    <>
+      <FlyingHeartLayer
+        burst={burst}
+        onDone={() => setBurst(null)}
+      />
     <BottomSheet
       open={open}
       onClose={onClose}
@@ -132,7 +159,7 @@ export function CountryDrawer({
               sub="Nobody scores zero from the public."
               flag={null}
               selected={isSelected(NONE_TOKEN)}
-              onClick={() => toggle(NONE_TOKEN)}
+              onClick={(e) => toggle(NONE_TOKEN, e)}
               multi={mode === "multi"}
             />
           )}
@@ -147,7 +174,7 @@ export function CountryDrawer({
                 sub2={c.song}
                 flag={code}
                 selected={isSelected(code)}
-                onClick={() => toggle(code)}
+                onClick={(e) => toggle(code, e)}
                 multi={mode === "multi"}
               />
             );
@@ -160,6 +187,68 @@ export function CountryDrawer({
         </div>
       </div>
     </BottomSheet>
+    </>
+  );
+}
+
+// One-shot flying-heart overlay. Renders the picked country's
+// heart-flag SVG at the tap coordinates and animates it up + out.
+// Portaled so the drawer's exit animation doesn't take it with it.
+function FlyingHeartLayer({
+  burst,
+  onDone,
+}: {
+  burst: { id: number; code: string; x: number; y: number } | null;
+  onDone: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted || typeof document === "undefined") return null;
+
+  return createPortal(
+    <AnimatePresence>
+      {burst && (
+        <motion.div
+          key={burst.id}
+          initial={{
+            left: burst.x - 28,
+            top: burst.y - 28,
+            opacity: 0,
+            scale: 0.6,
+            rotate: 0,
+          }}
+          animate={{
+            left: burst.x - 28,
+            top: burst.y - 28 - 240,
+            opacity: [0, 1, 1, 0],
+            scale: [0.6, 1.6, 1.2, 0.9],
+            rotate: [0, -12, 8, -4],
+          }}
+          transition={{
+            duration: 1.1,
+            ease: [0.2, 0.7, 0.3, 1],
+            opacity: { times: [0, 0.12, 0.6, 1] },
+            scale: { times: [0, 0.25, 0.6, 1] },
+            rotate: { times: [0, 0.3, 0.65, 1] },
+          }}
+          onAnimationComplete={onDone}
+          className="fixed h-14 w-14 z-[70] pointer-events-none
+                     drop-shadow-[0_8px_24px_rgba(255,46,222,0.55)]"
+        >
+          {burst.code === NONE_TOKEN ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/images/70-heart.webp"
+              alt=""
+              className="h-full w-full object-contain"
+            />
+          ) : (
+            <Flag code={burst.code} size="xl" className="h-full w-full" />
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
   );
 }
 
@@ -177,7 +266,7 @@ function DrawerRow({
   sub2?: string;
   flag: string | null;
   selected: boolean;
-  onClick: () => void;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   multi: boolean;
 }) {
   return (
