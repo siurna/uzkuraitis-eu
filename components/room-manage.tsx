@@ -3,12 +3,23 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Copy, Check, Mic, Trophy, Eraser, ChevronRight, Radio } from "lucide-react";
+import {
+  Copy,
+  Check,
+  Mic,
+  Trophy,
+  Eraser,
+  ChevronRight,
+  Radio,
+  Sun,
+  Pause,
+  Flag as FlagIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { HeartFlag } from "@/components/flag";
 import { CountryDrawer } from "@/components/country-drawer";
-import { getCountry } from "@/lib/countries";
+import { countries, getCountry } from "@/lib/countries";
 
 // Strip-down magic admin page. Two toggles:
 //   1. Voting open  — voters can submit / update their ballot.
@@ -17,12 +28,15 @@ import { getCountry } from "@/lib/countries";
 // Both are persisted on rooms.* and pushed to every connected client
 // over Liveblocks the moment they flip, so spectators see the change
 // without a refresh.
+type ShowStatus = "not_started" | "in_progress" | "break" | "ended";
+
 type Room = {
   code: string;
   name: string;
   votingEnabled: boolean;
   tallyEnabled: boolean;
   nowPlayingCode: string | null;
+  showStatus: ShowStatus;
 };
 
 export function RoomManage({
@@ -36,6 +50,7 @@ export function RoomManage({
   const [voting, setVoting] = useState(room.votingEnabled);
   const [tally, setTally] = useState(room.tallyEnabled);
   const [nowPlaying, setNowPlaying] = useState<string | null>(room.nowPlayingCode);
+  const [showStatus, setShowStatus] = useState<ShowStatus>(room.showStatus);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pending, start] = useTransition();
   const [copied, setCopied] = useState(false);
@@ -79,6 +94,22 @@ export function RoomManage({
     patch({ nowPlayingCode: code });
   };
 
+  const setStatus = (next: ShowStatus) => {
+    setShowStatus(next);
+    // Going back to "not started" wipes the active country.
+    if (next === "not_started" && nowPlaying) {
+      setNowPlaying(null);
+      patch({ showStatus: next, nowPlayingCode: null });
+    } else {
+      patch({ showStatus: next });
+    }
+  };
+
+  const setNowPlayingDirect = (code: string) => {
+    setNowPlaying(code);
+    patch({ nowPlayingCode: code });
+  };
+
   const cleanOut = () => {
     start(async () => {
       const res = await fetch(`/api/rooms/${room.code}/manage`, {
@@ -117,6 +148,95 @@ export function RoomManage({
           {room.code}
         </code>
       </header>
+
+      {/* Live show controls — primary action during a broadcast. Status
+          pills + (when in-progress) the full country list to tap-flip
+          the active country. */}
+      <section className="w-full max-w-md glass-card rounded-2xl p-4 flex flex-col gap-3">
+        <header className="flex items-center gap-2">
+          <Radio className="h-4 w-4 text-flamingo" />
+          <h2 className="font-display text-lg">Live</h2>
+        </header>
+        <div className="grid grid-cols-2 gap-2">
+          {(
+            [
+              { id: "not_started", label: "Not started", Icon: Pause },
+              { id: "in_progress", label: "In progress", Icon: Sun },
+              { id: "break", label: "Break", Icon: Pause },
+              { id: "ended", label: "Ended", Icon: FlagIcon },
+            ] as const
+          ).map(({ id, label, Icon }) => {
+            const active = showStatus === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                disabled={pending}
+                onClick={() => setStatus(id)}
+                className={`flex items-center justify-center gap-1.5 h-10 rounded-xl
+                            font-display text-sm transition
+                            ${
+                              active
+                                ? "bg-flamingo text-white shadow-[0_4px_14px_-4px_oklch(70%_0.27_336_/_0.55)]"
+                                : "bg-white/[0.04] ring-1 ring-white/10 text-white/70 hover:bg-white/[0.08]"
+                            }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {showStatus === "in_progress" && (
+          <div className="flex flex-col gap-1.5 max-h-[55vh] overflow-y-auto -mx-1 px-1">
+            <p className="text-[10px] uppercase tracking-widest text-white/45 font-display px-1 pt-1 pb-1">
+              Tap to put on stage
+            </p>
+            {countries.map((c) => {
+              const isActive = nowPlaying === c.code;
+              return (
+                <button
+                  key={c.code}
+                  type="button"
+                  disabled={pending}
+                  onClick={() => setNowPlayingDirect(c.code)}
+                  className={`flex items-center gap-3 rounded-xl px-2.5 py-2 text-left transition
+                              ${
+                                isActive
+                                  ? "bg-flamingo/15 ring-1 ring-flamingo/45"
+                                  : "bg-white/[0.03] ring-1 ring-white/8 hover:bg-white/[0.06]"
+                              }`}
+                >
+                  <span className="w-6 text-[11px] text-white/40 tabular-nums font-display">
+                    {c.order}
+                  </span>
+                  <HeartFlag code={c.code} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display text-sm truncate">{c.name}</p>
+                    {c.artist && (
+                      <p className="text-[11px] text-white/55 truncate">
+                        {c.artist}
+                        {c.song && (
+                          <>
+                            {" · "}
+                            <span className="italic">{c.song}</span>
+                          </>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                  {isActive && (
+                    <span className="text-[10px] uppercase tracking-widest text-flamingo font-display">
+                      Live
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <div className="w-full max-w-md flex flex-col gap-3">
         <ToggleCard

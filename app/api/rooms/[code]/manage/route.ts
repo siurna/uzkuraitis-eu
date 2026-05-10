@@ -30,6 +30,10 @@ const PatchSchema = z.object({
   code: z.string().min(6).max(6).optional(),
   // Now-playing country (ISO-2 lowercase) or null to clear.
   nowPlayingCode: z.string().length(2).nullable().optional(),
+  // Show state.
+  showStatus: z
+    .enum(["not_started", "in_progress", "break", "ended"])
+    .optional(),
 });
 
 async function requireRoomAdmin(req: Request, code: string) {
@@ -54,6 +58,7 @@ export async function GET(req: Request, { params }: RouteCtx) {
       tallyEnabled: room.tallyEnabled,
       homeCountryCode: room.homeCountryCode,
       nowPlayingCode: room.nowPlayingCode,
+      showStatus: room.showStatus,
     },
   });
 }

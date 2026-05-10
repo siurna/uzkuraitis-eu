@@ -33,6 +33,11 @@ export const rooms = pgTable(
     // of heart-flag particles whenever this flips. NULL = no country
     // is highlighted right now.
     nowPlayingCode: text("now_playing_code"),
+    // Coarse-grained show state for the room. The admin flips this
+    // through the room-manage page; voters see different copy in the
+    // header + tabs depending on the value. "not_started" → "in_progress"
+    // → "break" → "ended" → "not_started" (next semi/final).
+    showStatus: text("show_status").notNull().default("not_started"),
     // Long random token granting per-room admin rights. Anyone with the
     // token can manage *this* room (rename, toggle voting, edit results,
     // change the join code) without a global passkey. Generated on room
