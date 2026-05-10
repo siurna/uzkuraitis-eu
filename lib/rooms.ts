@@ -1,5 +1,5 @@
 import { customAlphabet } from "nanoid";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "./db";
 import { rooms, type Room } from "./db/schema";
 
@@ -7,6 +7,12 @@ import { rooms, type Room } from "./db/schema";
 // codes you can read aloud at a watch party without typos.
 const ROOM_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 const generateCode = customAlphabet(ROOM_CODE_ALPHABET, 6);
+
+// 32-char URL-safe token for the per-room admin link. Long enough to be
+// unguessable, short enough to fit in a share link without ugly wrapping.
+const ADMIN_TOKEN_ALPHABET =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const generateAdminToken = customAlphabet(ADMIN_TOKEN_ALPHABET, 32);
 
 // Match the alphabet letter-for-letter so the validator can't accept a
 // character the generator would never produce (the previous A-HJ-NP-Z
@@ -40,13 +46,17 @@ export async function touchRoom(roomId: string): Promise<void> {
 }
 
 export async function createRoom(name: string): Promise<Room> {
-  // Retry on the (extremely unlikely) collision with an existing code.
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateCode();
+    const adminToken = generateAdminToken();
     try {
       const [room] = await db
         .insert(rooms)
-        .values({ code, name: name.trim() || "Eurovision party" })
+        .values({
+          code,
+          name: name.trim() || "Eurovision party",
+          adminToken,
+        })
         .returning();
       return room;
     } catch (err) {
@@ -57,6 +67,48 @@ export async function createRoom(name: string): Promise<Room> {
     }
   }
   throw new Error("Failed to allocate a unique room code after 5 attempts");
+}
+
+// Per-room admin gate. Returns the room iff the supplied token matches
+// the room's adminToken. Constant-time comparison via byte-equality of
+// equal-length strings; any short-circuit on length mismatch is fine
+// (different lengths are obviously different tokens).
+export async function findRoomByCodeWithToken(
+  code: string,
+  token: string,
+): Promise<Room | null> {
+  const room = await findRoomByCode(code);
+  if (!room) return null;
+  if (!token || token.length !== room.adminToken.length) return null;
+  let mismatch = 0;
+  for (let i = 0; i < token.length; i++) {
+    mismatch |= token.charCodeAt(i) ^ room.adminToken.charCodeAt(i);
+  }
+  return mismatch === 0 ? room : null;
+}
+
+// Update the human-friendly join code. Returns null if the requested code
+// is malformed or already taken by another room.
+export async function changeRoomCode(
+  roomId: string,
+  nextCode: string,
+): Promise<Room | null> {
+  const normalized = normalizeRoomCode(nextCode);
+  if (!isValidRoomCode(normalized)) return null;
+
+  const [conflict] = await db
+    .select({ id: rooms.id })
+    .from(rooms)
+    .where(and(eq(rooms.code, normalized), ne(rooms.id, roomId)))
+    .limit(1);
+  if (conflict) return null;
+
+  const [updated] = await db
+    .update(rooms)
+    .set({ code: normalized })
+    .where(eq(rooms.id, roomId))
+    .returning();
+  return updated ?? null;
 }
 
 export async function getOrCreateRoom(

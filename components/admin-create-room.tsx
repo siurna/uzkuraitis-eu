@@ -26,8 +26,19 @@ export function AdminCreateRoom() {
         toast.error("Couldn't create the room.");
         return;
       }
-      const { code } = (await res.json()) as { code: string };
-      toast.success(`Room ${code} created.`);
+      const { code, adminToken } = (await res.json()) as {
+        code: string;
+        adminToken: string;
+      };
+      // Drop the host-side admin URL on the clipboard so the global
+      // admin can paste it to whoever's running the room. Bookmarkable.
+      const url = `${window.location.origin}/r/${code}/manage?key=${adminToken}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success(`Room ${code} created. Admin link copied.`);
+      } catch {
+        toast.success(`Room ${code} created.`);
+      }
       router.push(`/admin/rooms/${code}`);
     });
   };

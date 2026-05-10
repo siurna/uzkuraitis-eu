@@ -20,8 +20,14 @@ type Row = {
 
 export function AdminOfficialResults({
   initial,
+  endpoint = "/api/admin/official-results",
+  headers,
 }: {
   initial: Row[];
+  /** Override target endpoint (default: global official results). */
+  endpoint?: string;
+  /** Extra request headers (e.g. X-Admin-Token for per-room admins). */
+  headers?: Record<string, string>;
 }) {
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>(
@@ -59,9 +65,9 @@ export function AdminOfficialResults({
       return;
     }
     start(async () => {
-      const res = await fetch("/api/admin/official-results", {
+      const res = await fetch(endpoint, {
         method: "PUT",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(headers ?? {}) },
         body: JSON.stringify({ results: filled }),
       });
       if (!res.ok) {
@@ -85,8 +91,9 @@ export function AdminOfficialResults({
       return;
     }
     start(async () => {
-      const res = await fetch("/api/admin/official-results", {
+      const res = await fetch(endpoint, {
         method: "DELETE",
+        headers: headers ?? {},
       });
       if (!res.ok) {
         toast.error("Couldn't clear.");

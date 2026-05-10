@@ -23,6 +23,11 @@ export const rooms = pgTable(
     // ISO 3166-1 alpha-2 lowercase. Used to ask voters where they think
     // this country will finish, scored separately from the top-10 ballot.
     homeCountryCode: text("home_country_code").notNull().default("lt"),
+    // Long random token granting per-room admin rights. Anyone with the
+    // token can manage *this* room (rename, toggle voting, edit results,
+    // change the join code) without a global passkey. Generated on room
+    // creation, included in the share URL given to the host.
+    adminToken: text("admin_token").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -147,6 +152,42 @@ export const officialFacts = pgTable("official_facts", {
     .notNull()
     .defaultNow(),
 });
+
+// Per-room override of official_results, for async parties watching at a
+// different time. When a room has any rows here, the leaderboard scores
+// against these instead of the global official_results.
+export const roomResults = pgTable(
+  "room_results",
+  {
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    countryCode: text("country_code").notNull(),
+    placement: integer("placement").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.roomId, t.countryCode] })],
+);
+
+// Per-room override of official_facts. Same fallback semantics as
+// roomResults: any rows here take precedence over the global table for
+// this room only.
+export const roomFacts = pgTable(
+  "room_facts",
+  {
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    value: text("value").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.roomId, t.key] })],
+);
 
 export const roomsRelations = relations(rooms, ({ many }) => ({
   voters: many(voters),
