@@ -80,6 +80,7 @@ export async function GET(_req: Request, { params }: RouteCtx) {
   const voterRows = await db
     .select({
       id: voters.id,
+      sessionId: voters.sessionId,
       name: voters.name,
       homeCountryPrediction: voters.homeCountryPrediction,
       betWoodenSpoon: voters.betWoodenSpoon,
@@ -137,6 +138,7 @@ export async function GET(_req: Request, { params }: RouteCtx) {
       });
       return {
         voterId: v.id,
+        sessionId: v.sessionId,
         name: v.name,
         homePrediction: v.homeCountryPrediction,
         topTen: score.topTen,

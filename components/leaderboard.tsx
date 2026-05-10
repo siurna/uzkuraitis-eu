@@ -2,15 +2,17 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Crown, Trophy, ChevronDown } from "lucide-react";
+import { Crown, Trophy, ChevronDown, Sparkles } from "lucide-react";
 import { useEventListener } from "@/lib/liveblocks";
 import { getCountry } from "@/lib/countries";
 import { Flag } from "@/components/flag";
+import { ResultsReveal } from "@/components/results-reveal";
 import type { BetBreakdown } from "@/lib/scoring";
 import { useLang, t } from "@/lib/i18n";
 
 type Row = {
   voterId: string;
+  sessionId: string;
   name: string;
   homePrediction: number | null;
   topTen: number;
@@ -39,7 +41,13 @@ export function Leaderboard({ code }: { code: string }) {
   const [data, setData] = useState<Response | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [revealOpen, setRevealOpen] = useState(false);
+  const [session, setSession] = useState<string>("");
   const lang = useLang();
+
+  useEffect(() => {
+    setSession(localStorage.getItem("uzk_session") ?? "");
+  }, []);
 
   const fetchLeaderboard = useCallback(async () => {
     try {
@@ -74,6 +82,7 @@ export function Leaderboard({ code }: { code: string }) {
 
   const topTotal = leaderboard[0]?.total ?? 0;
   const home = getCountry(homeCountryCode);
+  const myRow = leaderboard.find((r) => r.sessionId === session) ?? null;
 
   return (
     <section className="flex flex-col gap-3">
@@ -87,6 +96,32 @@ export function Leaderboard({ code }: { code: string }) {
           </span>
         )}
       </header>
+
+      {/* Personal reveal — appears once the leaderboard is live and the
+          voter has a row. Tapping plays the full bet-by-bet reveal. */}
+      {myRow && (
+        <button
+          type="button"
+          onClick={() => setRevealOpen(true)}
+          className="rainbow-border rounded-2xl block"
+        >
+          <span className="block w-full h-12 rounded-[14px]
+                           bg-white text-dark-blue font-display
+                           inline-flex items-center justify-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            {t(lang, "reveal_cta")}
+          </span>
+        </button>
+      )}
+
+      {myRow && (
+        <ResultsReveal
+          row={myRow}
+          homeName={home?.name ?? "Home"}
+          open={revealOpen}
+          onClose={() => setRevealOpen(false)}
+        />
+      )}
 
       <ol className="flex flex-col gap-2">
         <AnimatePresence initial={false}>
