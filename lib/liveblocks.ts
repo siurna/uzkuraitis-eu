@@ -1,8 +1,8 @@
 import { createClient } from "@liveblocks/client";
 import { createRoomContext } from "@liveblocks/react";
 
-// One Liveblocks "room" per voting room. Authentication happens through the
-// /api/liveblocks-auth route which verifies the visitor knows the room code
+// One Liveblocks "room" per voting room. Authentication happens through
+// /api/liveblocks-auth which verifies the visitor knows the room code
 // before issuing a token scoped to that room only.
 const client = createClient({
   authEndpoint: async (room) => {
@@ -19,11 +19,12 @@ const client = createClient({
   throttle: 80,
 });
 
-// Presence: who's online + which row they're hovering. Storage stays small —
-// durable scoreboard data lives in Neon, Liveblocks only carries ephemeral UX.
+// Presence: who's online + tiny ephemeral state (which row they're
+// hovering). Durable data lives in Neon — Liveblocks only carries
+// presence + one-shot broadcasts.
 export type Presence = {
   name: string | null;
-  /** Avatar id from lib/avatars.ts; null = use the colour+initial fallback. */
+  /** Avatar id from lib/avatars.ts; null = colour+initial fallback. */
   avatar: string | null;
   emoji: string | null;
   hoveredCountry: string | null;
@@ -41,22 +42,41 @@ export type UserMeta = {
   };
 };
 
-// One-shot reactions + state-change hints broadcast to everyone in the room.
-// Reactions originate on clients, scores:updated is sent by the server-side
-// vote handler so clients refetch without polling.
-export type ReactionEvent =
-  | { type: "floating"; emoji: string; x: number; y: number }
-  | { type: "country"; emoji: string; countryCode: string };
+// -----------------------------------------------------------------------
+// Broadcast events. Convention: `<feature>:<verb>`.
+//
+//   reaction:emoji      — a user tapped an emoji on the reactions bar
+//                         (clients spawn a floating particle).
+//   reaction:country    — a user tapped a country-specific reaction
+//                         (admin reactions panel etc).
+//   scores:updated      — server-side hint: vote was submitted, refetch
+//                         /api/rooms/[code]/scores.
+//   leaderboard:updated — official results changed (or tallyEnabled
+//                         flipped), refetch /api/rooms/[code]/leaderboard.
+//   room:updated        — room props (name, votingEnabled, tallyEnabled,
+//                         homeCountryCode, code) changed; refetch room.
+//
+// New features should follow the same shape. When adding chat, bingo,
+// now-playing etc., extend the union below with `<feature>:<verb>`.
 
+export type ReactionEmojiEvent = {
+  type: "reaction:emoji";
+  emoji: string;
+  x: number;
+  y: number;
+};
+export type ReactionCountryEvent = {
+  type: "reaction:country";
+  emoji: string;
+  countryCode: string;
+};
 export type ScoresUpdatedEvent = { type: "scores:updated" };
 export type LeaderboardUpdatedEvent = { type: "leaderboard:updated" };
-// Room properties (votingEnabled / tallyEnabled / name) changed; clients
-// should refetch /api/rooms/[code] so e.g. the standings page hides the
-// vote CTA the moment the host flips voting closed.
 export type RoomUpdatedEvent = { type: "room:updated" };
 
 export type RoomEvent =
-  | ReactionEvent
+  | ReactionEmojiEvent
+  | ReactionCountryEvent
   | ScoresUpdatedEvent
   | LeaderboardUpdatedEvent
   | RoomUpdatedEvent;

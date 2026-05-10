@@ -220,7 +220,7 @@ function ToggleCard({
       onClick={onChange}
       disabled={disabled}
       whileTap={{ scale: 0.99 }}
-      className={`text-left list-entry-gradient list-card-hover glass-card rounded-2xl p-5
+      className={`text-left list-card-hover glass-card rounded-2xl p-5
                   flex items-center gap-4 transition
                   ${on ? "ring-1 ring-flamingo/50 shadow-glow-pink" : ""}`}
     >

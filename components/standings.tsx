@@ -22,21 +22,11 @@ import { useLang, t } from "@/lib/i18n";
 type ScoreRow = {
   code: string;
   name: string;
-  flag: string;
   totalPoints: number;
-  points12: number;
-  points10: number;
-};
-
-type VoterRow = {
-  id: string;
-  name: string;
-  votes: Record<string, string>;
 };
 
 type ScoresResponse = {
   scores: ScoreRow[];
-  voters: VoterRow[];
 };
 
 export function Standings() {
@@ -45,7 +35,6 @@ export function Standings() {
   const lang = useLang();
 
   const [scores, setScores] = useState<ScoreRow[]>([]);
-  const [voters, setVoters] = useState<VoterRow[]>([]);
   const [loading, setLoading] = useState(true);
   // Show-all is a GLOBAL preference (persisted to localStorage), not
   // per-room — once you've expanded the table once you probably want it
@@ -87,7 +76,6 @@ export function Standings() {
       if (!res.ok) return;
       const data = (await res.json()) as ScoresResponse;
       setScores(data.scores);
-      setVoters(data.voters);
     } finally {
       setLoading(false);
     }
@@ -124,10 +112,7 @@ export function Standings() {
         map.get(c.code) ?? {
           code: c.code,
           name: c.name,
-          flag: c.flag,
           totalPoints: 0,
-          points12: 0,
-          points10: 0,
         },
       )
       .sort((a, b) => {

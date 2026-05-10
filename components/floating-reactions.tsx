@@ -72,7 +72,7 @@ export function FloatingReactionsLayer({
   }, [floats]);
 
   useEventListener(({ event }) => {
-    if (event.type !== "floating") return;
+    if (event.type !== "reaction:emoji") return;
     spawn(event.emoji, event.x, event.y);
   });
 
@@ -94,7 +94,7 @@ export function FloatingReactionsLayer({
   const send = (reactionId: string) => {
     const x = window.innerWidth / 2 + (Math.random() - 0.5) * 80;
     const y = window.innerHeight - 120;
-    broadcast({ type: "floating", emoji: reactionId, x, y });
+    broadcast({ type: "reaction:emoji", emoji: reactionId, x, y });
     spawn(reactionId, x, y);
     if ("vibrate" in navigator) navigator.vibrate?.(8);
   };

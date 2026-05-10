@@ -83,18 +83,3 @@ export function Logo2026({ className }: { className?: string }) {
     </motion.div>
   );
 }
-
-// Compact version for nav bars / sticky headers. The source webp is
-// natively square (40×40), so a fixed size + object-contain keeps the
-// heart from getting squished when callers pass non-square dimensions.
-export function HeartMark({ size = 24 }: { size?: number }) {
-  return (
-    <Image
-      src="/images/70-heart-sm.webp"
-      alt=""
-      width={size}
-      height={size}
-      className="shrink-0 object-contain"
-    />
-  );
-}
