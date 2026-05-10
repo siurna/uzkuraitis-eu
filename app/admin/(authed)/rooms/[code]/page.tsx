@@ -9,6 +9,7 @@ import { getCountry } from "@/lib/countries";
 import { AdminRoomToggle } from "@/components/admin-room-toggle";
 import { AdminRoomDangerZone } from "@/components/admin-room-danger-zone";
 import { AdminRoomRename } from "@/components/admin-room-rename";
+import { AdminRoomManageLink } from "@/components/admin-room-manage-link";
 import { Flag } from "@/components/flag";
 
 type RouteParams = Promise<{ code: string }>;
@@ -127,17 +128,7 @@ export default async function AdminRoomDetailPage({
         <AdminRoomRename code={room.code} initialName={room.name} />
       </section>
 
-      <section className="glass-card rounded-xl p-5 flex flex-col gap-2">
-        <h2 className="font-display text-xl">Per-room admin link</h2>
-        <p className="text-xs text-white/55">
-          Share this URL with whoever runs <strong>{room.name}</strong>.
-          Anyone who has it can manage just this room (rename, toggle voting,
-          edit code, set results) without a global passkey.
-        </p>
-        <code className="break-all text-xs bg-black/30 rounded-md px-3 py-2 font-mono">
-          /r/{room.code}/manage?key={room.adminToken}
-        </code>
-      </section>
+      <AdminRoomManageLink code={room.code} adminToken={room.adminToken} />
 
       <section className="glass-card rounded-xl p-5">
         <h2 className="font-display text-xl mb-4">

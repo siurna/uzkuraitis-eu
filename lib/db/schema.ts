@@ -20,6 +20,10 @@ export const rooms = pgTable(
     code: text("code").notNull().unique(),
     name: text("name").notNull(),
     votingEnabled: boolean("voting_enabled").notNull().default(true),
+    // When false, the leaderboard for this room stays hidden even after
+    // results are entered. Lets a watch-along host delay scoring until
+    // the show actually ends. Toggled via the magic admin link.
+    tallyEnabled: boolean("tally_enabled").notNull().default(false),
     // ISO 3166-1 alpha-2 lowercase. Used to ask voters where they think
     // this country will finish, scored separately from the top-10 ballot.
     homeCountryCode: text("home_country_code").notNull().default("lt"),
@@ -68,6 +72,10 @@ export const voters = pgTable(
     betSameWinners: boolean("bet_same_winners"),
     betHostTop3: boolean("bet_host_top3"),
     betWinnerSolo: boolean("bet_winner_solo"),
+    // Total points the home country (LT by default) will end up with.
+    // Scored on closeness, not exact match (shape: exact +10, off-by-5
+    // +7, off-by-15 +5, off-by-30 +3, beyond +0). Optional bet.
+    betLtTotalPoints: integer("bet_lt_total_points"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

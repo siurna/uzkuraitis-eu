@@ -2,17 +2,17 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
 import { Trash2, Save, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { countries } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 
-// Editor for the official Eurovision result. Admin enters one row per
-// official top-N placement (placement -> country). The leaderboard scores
-// against this. Empty state = no result entered yet, leaderboard is hidden.
+// Editor for the official Eurovision top-10 result. Eurovision scores
+// only the top 10 with points (12, 10, 8, ..., 1), so the editor is
+// LOCKED to exactly 10 rows: one per placement, no add/delete. The
+// admin just picks the country for each fixed slot.
+
 type Row = {
   placement: number;
   countryCode: string;
@@ -24,37 +24,32 @@ export function AdminOfficialResults({
   headers,
 }: {
   initial: Row[];
-  /** Override target endpoint (default: global official results). */
   endpoint?: string;
-  /** Extra request headers (e.g. X-Admin-Token for per-room admins). */
   headers?: Record<string, string>;
 }) {
   const router = useRouter();
-  const [rows, setRows] = useState<Row[]>(
-    initial.length
-      ? [...initial].sort((a, b) => a.placement - b.placement)
-      : Array.from({ length: 10 }, (_, i) => ({
-          placement: i + 1,
-          countryCode: "",
-        })),
-  );
+  const [rows, setRows] = useState<Row[]>(() => {
+    const byPlacement = new Map<number, string>(
+      initial.map((r) => [r.placement, r.countryCode]),
+    );
+    return Array.from({ length: 10 }, (_, i) => ({
+      placement: i + 1,
+      countryCode: byPlacement.get(i + 1) ?? "",
+    }));
+  });
   const [pending, start] = useTransition();
 
-  const setRow = (i: number, patch: Partial<Row>) => {
+  const setRowCountry = (placement: number, countryCode: string) => {
     setRows((prev) =>
-      prev.map((r, j) => (i === j ? { ...r, ...patch } : r)),
+      prev.map((r) => {
+        // Selecting a country that's already in another slot vacates
+        // that other slot to keep the truth table consistent.
+        if (r.placement === placement) return { ...r, countryCode };
+        if (r.countryCode === countryCode && countryCode !== "")
+          return { ...r, countryCode: "" };
+        return r;
+      }),
     );
-  };
-
-  const addRow = () => {
-    setRows((prev) => [
-      ...prev,
-      { placement: prev.length + 1, countryCode: "" },
-    ]);
-  };
-
-  const removeRow = (i: number) => {
-    setRows((prev) => prev.filter((_, j) => j !== i));
   };
 
   const save = () => {
@@ -125,66 +120,52 @@ export function AdminOfficialResults({
       </header>
 
       <p className="text-xs text-white/50 mb-4">
-        Pick the country for each placement. Leave a row empty to skip it.
-        Saving broadcasts the new leaderboard to every room.
+        Top 10 placements only. Pick the country for each slot; the
+        placement number is locked. Saving broadcasts the new leaderboard
+        to every room.
       </p>
 
       <ol className="flex flex-col gap-2">
-        <AnimatePresence initial={false}>
-          {rows.map((row, i) => (
-            <motion.li
-              key={`${row.placement}-${i}`}
-              layout
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              className="flex items-center gap-2"
+        {rows.map((row) => (
+          <li
+            key={row.placement}
+            className="list-entry-gradient glass-card rounded-xl p-3 flex items-center gap-3"
+          >
+            <span
+              className={`shrink-0 w-10 text-center font-display text-2xl tabular-nums ${
+                row.placement === 1
+                  ? "text-gold"
+                  : row.placement === 2
+                    ? "text-flamingo"
+                    : row.placement === 3
+                      ? "text-orange"
+                      : "text-white/60"
+              }`}
             >
-              <Input
-                type="number"
-                min={1}
-                max={50}
-                value={row.placement}
-                onChange={(e) =>
-                  setRow(i, { placement: Number(e.target.value) || 0 })
-                }
-                className="h-10 w-20 text-center font-display tabular-nums"
-              />
-              <select
-                value={row.countryCode}
-                onChange={(e) => setRow(i, { countryCode: e.target.value })}
-                className="h-10 flex-1 rounded-md border border-white/15 bg-black/30 px-2 text-sm"
-              >
-                <option value="">— skip —</option>
-                {countries.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              {row.countryCode && (
-                <Flag code={row.countryCode} size="sm" />
-              )}
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => removeRow(i)}
-                className="text-white/40 hover:text-error"
-                aria-label="Remove row"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </motion.li>
-          ))}
-        </AnimatePresence>
+              {row.placement}
+            </span>
+            {row.countryCode ? (
+              <Flag code={row.countryCode} size="md" />
+            ) : (
+              <span className="shrink-0 h-6 w-8 rounded-[3px] bg-white/5 border border-dashed border-white/15" />
+            )}
+            <select
+              value={row.countryCode}
+              onChange={(e) => setRowCountry(row.placement, e.target.value)}
+              className="h-10 flex-1 rounded-md border border-white/15 bg-black/30 px-2 text-sm"
+            >
+              <option value="">— pick country —</option>
+              {countries.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </li>
+        ))}
       </ol>
 
       <div className="flex flex-wrap gap-2 mt-4">
-        <Button type="button" size="sm" variant="outline" onClick={addRow}>
-          + Row
-        </Button>
-        <div className="flex-1" />
         <Button
           type="button"
           size="sm"
@@ -196,6 +177,7 @@ export function AdminOfficialResults({
           <Trash2 className="h-4 w-4 mr-1.5" />
           Clear all
         </Button>
+        <div className="flex-1" />
         <Button
           type="button"
           size="sm"

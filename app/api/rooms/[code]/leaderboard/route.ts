@@ -57,15 +57,20 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     roomFactRows.length > 0
       ? Object.fromEntries(roomFactRows.map((r) => [r.key, r.value]))
       : Object.fromEntries(factRows.map((r) => [r.key, r.value]));
-  const hasResults =
+  // Two gates: (a) some results exist (else nothing to score against),
+  // (b) the room admin has flipped the "tally up bets" toggle on. Either
+  // gate failing hides the leaderboard entirely.
+  const anyResults =
     roomResultRows.length > 0 ||
     roomFactRows.length > 0 ||
     officialRows.length > 0 ||
     factRows.length > 0;
+  const hasResults = anyResults && room.tallyEnabled;
 
   if (!hasResults) {
     return NextResponse.json({
       hasResults: false,
+      tallyEnabled: room.tallyEnabled,
       homeCountryCode: room.homeCountryCode,
       leaderboard: [],
     });
@@ -86,6 +91,7 @@ export async function GET(_req: Request, { params }: RouteCtx) {
       betSameWinners: voters.betSameWinners,
       betHostTop3: voters.betHostTop3,
       betWinnerSolo: voters.betWinnerSolo,
+      betLtTotalPoints: voters.betLtTotalPoints,
     })
     .from(voters)
     .where(eq(voters.roomId, room.id));
@@ -120,6 +126,7 @@ export async function GET(_req: Request, { params }: RouteCtx) {
         sameWinners: v.betSameWinners,
         hostTop3: v.betHostTop3,
         winnerSolo: v.betWinnerSolo,
+        ltTotalPoints: v.betLtTotalPoints,
       };
       const score = scoreVoter({
         ballot: ballotByVoter.get(v.id) ?? {},

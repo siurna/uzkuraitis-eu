@@ -190,6 +190,7 @@ function Breakdown({
   const lines: { label: string; pts: number }[] = [
     { label: "Top 10 ballot", pts: row.topTen },
     { label: `${home ?? "Home"} placement guess`, pts: row.home },
+    { label: `${home ?? "Home"} total points guess`, pts: row.bets.ltTotalPoints },
     { label: "Wooden spoon", pts: row.bets.woodenSpoon },
     { label: `12 from ${home ?? "home"}`, pts: row.bets.lt12To },
     { label: "Highest Big 5", pts: row.bets.highestBig5 },
