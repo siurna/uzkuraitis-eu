@@ -9,6 +9,7 @@ import { getAvatar } from "@/lib/avatars";
 import { useRoomLive } from "@/components/room-shell";
 import { SettingsModal } from "@/components/settings-modal";
 import { Flag } from "@/components/flag";
+import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { getCountry, countryName } from "@/lib/countries";
 import { useLang, t } from "@/lib/i18n";
 
@@ -25,7 +26,7 @@ const AVATAR_KEY = "uzk_avatar";
 // One sticky element instead of the old Header + NowPlaying stack —
 // keeps the backdrop visible and the page chrome quiet.
 export function PresenceBar() {
-  const { code, nowPlayingCode } = useRoomLive();
+  const { code, nowPlayingCode, showStatus } = useRoomLive();
   const lang = useLang();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [avatarId, setAvatarId] = useState<string | null>(null);
@@ -57,15 +58,31 @@ export function PresenceBar() {
   }, []);
 
   const avatar = getAvatar(avatarId);
-  const playing = nowPlayingCode ? getCountry(nowPlayingCode) : null;
+  const deepDive = useCountryDeepDive();
+  // Only treat a country as "on stage" while the show status is
+  // in_progress — a break or "not started" shouldn't keep showing the
+  // last act in the header.
+  const playing =
+    showStatus === "in_progress" && nowPlayingCode
+      ? getCountry(nowPlayingCode)
+      : null;
 
   return (
     <header className="sticky top-0 z-30 backdrop-blur-md bg-dark-blue-900/70 border-b border-white/5">
       <div className="container mx-auto max-w-3xl px-4 h-14 flex items-center gap-3">
         {/* Brand / now-playing badge — morphs between the 70-heart and
-            the active country's heart-flag SVG. Same slot, same size,
-            so the page chrome stays still while the badge swaps. */}
-        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            the active country's heart-flag SVG. When a country's on
+            stage the whole cluster is tappable → opens its deep-dive
+            sheet (artist / song info). */}
+        <button
+          type="button"
+          disabled={!playing}
+          onClick={() => playing && deepDive.open(playing.code)}
+          className="flex items-center gap-2.5 flex-1 min-w-0 text-left disabled:cursor-default"
+          aria-label={
+            playing ? `What's on stage: ${playing.name}` : undefined
+          }
+        >
           <div className="relative h-8 w-8 shrink-0">
             <AnimatePresence mode="wait" initial={false}>
               {playing ? (
@@ -134,7 +151,7 @@ export function PresenceBar() {
               )}
             </AnimatePresence>
           </div>
-        </div>
+        </button>
 
         {/* Right-side identity: name + avatar tile. Whole pair is
             tappable → settings drawer. */}

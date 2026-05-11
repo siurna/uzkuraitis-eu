@@ -3,33 +3,16 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import {
-  Copy,
-  Check,
-  Mic,
-  Trophy,
-  Eraser,
-  ChevronRight,
-  Radio,
-  Sun,
-  Pause,
-  Flag as FlagIcon,
-} from "lucide-react";
+import { Copy, Check, Mic, Trophy, Eraser } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { HeartFlag } from "@/components/flag";
-import { CountryDrawer } from "@/components/country-drawer";
-import { countries, getCountry } from "@/lib/countries";
+import { RoomLiveControls, type ShowStatus } from "@/components/room-live-controls";
 
-// Strip-down magic admin page. Two toggles:
-//   1. Voting open  — voters can submit / update their ballot.
-//   2. Tally bets    — leaderboard + scoring goes live for this room.
-//
-// Both are persisted on rooms.* and pushed to every connected client
-// over Liveblocks the moment they flip, so spectators see the change
-// without a refresh.
-type ShowStatus = "not_started" | "in_progress" | "break" | "ended";
-
+// Magic-link host page. Three blocks:
+//   1. Live — show status + country-on-stage controls (also on
+//      /admin/rooms/[code]; the host gets it here without a passkey).
+//   2. Voting / tally toggles.
+//   3. Admin link + clean-out.
 type Room = {
   code: string;
   name: string;
@@ -49,9 +32,6 @@ export function RoomManage({
   const router = useRouter();
   const [voting, setVoting] = useState(room.votingEnabled);
   const [tally, setTally] = useState(room.tallyEnabled);
-  const [nowPlaying, setNowPlaying] = useState<string | null>(room.nowPlayingCode);
-  const [showStatus, setShowStatus] = useState<ShowStatus>(room.showStatus);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [pending, start] = useTransition();
   const [copied, setCopied] = useState(false);
   const [confirmClean, setConfirmClean] = useState(false);
@@ -86,28 +66,6 @@ export function RoomManage({
     const next = !tally;
     setTally(next);
     patch({ tallyEnabled: next });
-  };
-
-  const pickNowPlaying = (code: string | null) => {
-    setNowPlaying(code);
-    setPickerOpen(false);
-    patch({ nowPlayingCode: code });
-  };
-
-  const setStatus = (next: ShowStatus) => {
-    setShowStatus(next);
-    // Going back to "not started" wipes the active country.
-    if (next === "not_started" && nowPlaying) {
-      setNowPlaying(null);
-      patch({ showStatus: next, nowPlayingCode: null });
-    } else {
-      patch({ showStatus: next });
-    }
-  };
-
-  const setNowPlayingDirect = (code: string) => {
-    setNowPlaying(code);
-    patch({ nowPlayingCode: code });
   };
 
   const cleanOut = () => {
@@ -149,92 +107,25 @@ export function RoomManage({
         </code>
       </header>
 
-      {/* Live show controls — primary action during a broadcast. Status
-          pills + (when in-progress) the full country list to tap-flip
-          the active country. */}
+      {/* Live show controls for THIS room. (The global /admin/live page
+          can broadcast to every room at once; this is the per-room
+          host's own override.) */}
       <section className="w-full max-w-md glass-card rounded-2xl p-4 flex flex-col gap-3">
         <header>
           <h2 className="font-display text-lg">Live</h2>
         </header>
-        <div className="grid grid-cols-2 gap-2">
-          {(
-            [
-              { id: "not_started", label: "Not started", Icon: Pause },
-              { id: "in_progress", label: "In progress", Icon: Sun },
-              { id: "break", label: "Break", Icon: Pause },
-              { id: "ended", label: "Ended", Icon: FlagIcon },
-            ] as const
-          ).map(({ id, label, Icon }) => {
-            const active = showStatus === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                disabled={pending}
-                onClick={() => setStatus(id)}
-                className={`flex items-center justify-center gap-1.5 h-10 rounded-xl
-                            font-display text-sm transition
-                            ${
-                              active
-                                ? "bg-flamingo text-white shadow-[0_4px_14px_-4px_oklch(70%_0.27_336_/_0.55)]"
-                                : "bg-white/[0.04] ring-1 ring-white/10 text-white/70 hover:bg-white/[0.08]"
-                            }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        {showStatus === "in_progress" && (
-          <div className="flex flex-col gap-1.5 max-h-[55vh] overflow-y-auto -mx-1 px-1">
-            <p className="text-[10px] uppercase tracking-widest text-white/45 font-display px-1 pt-1 pb-1">
-              Tap to put on stage
-            </p>
-            {countries.map((c) => {
-              const isActive = nowPlaying === c.code;
-              return (
-                <button
-                  key={c.code}
-                  type="button"
-                  disabled={pending}
-                  onClick={() => setNowPlayingDirect(c.code)}
-                  className={`flex items-center gap-3 rounded-xl px-2.5 py-2 text-left transition
-                              ${
-                                isActive
-                                  ? "bg-flamingo/15 ring-1 ring-flamingo/45"
-                                  : "bg-white/[0.03] ring-1 ring-white/8 hover:bg-white/[0.06]"
-                              }`}
-                >
-                  <span className="w-6 text-[11px] text-white/40 tabular-nums font-display">
-                    {c.order}
-                  </span>
-                  <HeartFlag code={c.code} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-display text-sm truncate">{c.name}</p>
-                    {c.artist && (
-                      <p className="text-[11px] text-white/55 truncate">
-                        {c.artist}
-                        {c.song && (
-                          <>
-                            {" · "}
-                            <span className="italic">{c.song}</span>
-                          </>
-                        )}
-                      </p>
-                    )}
-                  </div>
-                  {isActive && (
-                    <span className="text-[10px] uppercase tracking-widest text-flamingo font-display">
-                      Live
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <RoomLiveControls
+          initialStatus={room.showStatus}
+          initialNowPlaying={room.nowPlayingCode}
+          apply={async (patch) => {
+            const res = await fetch(`/api/rooms/${room.code}/manage`, {
+              method: "PATCH",
+              headers,
+              body: JSON.stringify(patch),
+            });
+            return res.ok;
+          }}
+        />
       </section>
 
       <div className="w-full max-w-md flex flex-col gap-3">
@@ -263,37 +154,6 @@ export function RoomManage({
           onChange={toggleTally}
           disabled={pending}
         />
-
-        {/* Now playing — pick the country currently on stage. Every
-            client in the room sees the strip flip + a swarm of that
-            country's heart-flag explodes across their screen. */}
-        <button
-          type="button"
-          onClick={() => setPickerOpen(true)}
-          disabled={pending}
-          className="text-left list-card-hover glass-card rounded-2xl p-5
-                     flex items-center gap-4 transition"
-        >
-          <span className="shrink-0 h-11 w-11 rounded-full grid place-items-center
-                           bg-flamingo/30 text-flamingo">
-            <Radio className="h-5 w-5" />
-          </span>
-          <div className="flex-1 min-w-0">
-            <p className="font-display text-lg">Now playing</p>
-            <p className="text-xs text-white/55 leading-relaxed">
-              {(() => {
-                const c = nowPlaying ? getCountry(nowPlaying) : null;
-                if (!c) return "Tap to set the country currently on stage.";
-                return `${c.name}${c.artist ? ` — ${c.artist}` : ""}`;
-              })()}
-            </p>
-          </div>
-          {nowPlaying ? (
-            <HeartFlag code={nowPlaying} size="sm" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-white/30 shrink-0" />
-          )}
-        </button>
       </div>
 
       <section className="glass-card w-full max-w-md rounded-2xl p-4 flex items-center gap-2">
@@ -316,8 +176,7 @@ export function RoomManage({
       </section>
 
       {/* Clean out — wipes every voter + their ballots from this room
-          (room itself stays). Two-tap confirm so a fat finger doesn't
-          nuke an in-progress party. */}
+          (room itself stays). Two-tap confirm. */}
       <section className="w-full max-w-md flex flex-col gap-2">
         {confirmClean ? (
           <div className="flex items-center gap-2 rounded-2xl bg-error/10 ring-1 ring-error/30 px-4 py-3">
@@ -355,16 +214,6 @@ export function RoomManage({
           </button>
         )}
       </section>
-
-      <CountryDrawer
-        title="Now playing"
-        sub="Pick the country currently on stage. Tap a country to send the swarm; tap 'No country' to clear."
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        selected={nowPlaying ? [nowPlaying] : []}
-        onPick={(v) => pickNowPlaying(typeof v === "string" ? v : null)}
-        allowNone
-      />
     </main>
   );
 }

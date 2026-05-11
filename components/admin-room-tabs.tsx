@@ -7,8 +7,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // Tabbed shell for the admin room detail page. Server-side renders the
 // full data per tab; this client component owns the active-tab state
-// and the slide animation. Keep it dumb — tab content comes in as
-// children panels, indexed by id.
+// and the slide animation. (Live show controls live on /admin/live,
+// not here — those are global, not per-room.)
 export type TabId = "overview" | "voters" | "settings" | "danger";
 
 const TAB_DEFS: { id: TabId; label: string; Icon: typeof Activity }[] = [

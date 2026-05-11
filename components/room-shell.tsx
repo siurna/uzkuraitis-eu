@@ -124,19 +124,41 @@ function NowPlayingSwarm() {
     if (!next || typeof window === "undefined") return;
     const w = window.innerWidth;
     const h = window.innerHeight;
-    particles.spawnMany(
-      Array.from({ length: 18 }, () => ({
-        asset: { type: "country" as const, code: next },
-        from: { x: w / 2, y: h * 0.45 },
-        to: {
-          x: Math.random() * w,
-          y: Math.random() * h * 0.85,
-        },
-        size: 44 + Math.random() * 28,
-        durationMs: 1400 + Math.random() * 400,
-        rotate: 18,
-      })),
-    );
+    // Hearts rise from below the fold to a random height, in three
+    // size/speed bands so the swarm reads as a flurry, not a uniform
+    // pop. Staggered by spawning in micro-batches a few ms apart.
+    const COUNT = 26;
+    const fire = (n: number) =>
+      particles.spawnMany(
+        Array.from({ length: n }, () => {
+          // Bias toward small + fast; a few big + slow drifters.
+          const tier = Math.random();
+          const size =
+            tier > 0.85 ? 56 + Math.random() * 30 // big drifters
+              : tier > 0.55 ? 36 + Math.random() * 18 // mid
+                : 18 + Math.random() * 16; // small + fast
+          const duration =
+            tier > 0.85 ? 2600 + Math.random() * 900
+              : tier > 0.55 ? 1900 + Math.random() * 700
+                : 1300 + Math.random() * 500;
+          const fromX = Math.random() * w;
+          return {
+            asset: { type: "country" as const, code: next },
+            from: { x: fromX, y: h + 60 + Math.random() * 80 },
+            to: {
+              // Slight horizontal sway on the way up.
+              x: fromX + (Math.random() - 0.5) * 160,
+              y: Math.random() * h * 0.65,
+            },
+            size,
+            durationMs: duration,
+            rotate: 14 + Math.random() * 18,
+          };
+        }),
+      );
+    fire(10);
+    setTimeout(() => fire(8), 120);
+    setTimeout(() => fire(COUNT - 18), 280);
   });
   return null;
 }

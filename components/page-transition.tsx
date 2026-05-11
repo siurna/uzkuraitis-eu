@@ -1,18 +1,19 @@
 "use client";
 
 import { motion } from "motion/react";
-import { usePathname } from "next/navigation";
 
-// Wrap a route's root element with this and it fades in on every
-// navigation. Keyed on pathname so Next App Router triggers a fresh
-// enter animation for each route, not just the initial mount.
+// Light page wrapper: a single fade-in on first mount only.
 //
-// IMPORTANT: opacity-only — no y/scale/transform. Any transform on this
-// wrapper would establish it as the containing block for descendant
-// position:fixed elements (drawers, the heartbeat backdrop, the
-// honeycomb presence) and they'd anchor to it instead of the viewport.
-// The bottom-sheet ALSO portals into document.body as a belt-and-braces
-// guard against this same class of bug.
+// NOT keyed on pathname — keying it would remount the whole subtree on
+// every navigation, including any shared layout below it (the room
+// shell + its sticky header + tab bar), making the chrome re-animate
+// on every tab switch. We just want a gentle initial fade.
+//
+// Opacity-only — no transform. Any transform here would establish it as
+// the containing block for descendant position:fixed elements
+// (drawers, heartbeat backdrop, honeycomb) and they'd anchor to it
+// instead of the viewport. (The bottom-sheet also portals to body as a
+// belt-and-braces guard against that.)
 export function PageTransition({
   children,
   className,
@@ -20,10 +21,8 @@ export function PageTransition({
   children: React.ReactNode;
   className?: string;
 }) {
-  const pathname = usePathname();
   return (
     <motion.div
-      key={pathname}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
