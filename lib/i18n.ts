@@ -62,6 +62,11 @@ const messages = {
     voting_closed_live: "Voting locked — the show's on",
     voting_closed_ended: "Voting's over",
     voting_closed_ended_sub: "All ballots are in. Check the leaderboard to see how you did.",
+    vote_open_now:     "Europe, start voting now!",
+    vote_open_now_sub: "Lines are open — lock in your TOP 10.",
+    vote_closing:      "Stop voting now!",
+    vote_closing_sub:  "Lines are closing — last chance!",
+    vote_closed_flash: "Voting closed",
     live:              "Live",
     standings:         "Standings",
 
@@ -287,6 +292,11 @@ const messages = {
     voting_closed_live: "Balsavimas užrakintas — vyksta šou",
     voting_closed_ended: "Balsavimas baigtas",
     voting_closed_ended_sub: "Visi balsai suskaičiuoti. Peržiūrėk lyderių lentelę.",
+    vote_open_now:     "Europa, balsuok dabar!",
+    vote_open_now_sub: "Linijos atviros — užfiksuok savo TOP 10.",
+    vote_closing:      "Baik balsuoti — dabar!",
+    vote_closing_sub:  "Linijos užsidaro — paskutinė proga!",
+    vote_closed_flash: "Balsavimas uždarytas",
     live:              "Tiesiogiai",
     standings:         "Rezultatai",
 

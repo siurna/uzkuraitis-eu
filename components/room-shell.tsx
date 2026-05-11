@@ -18,6 +18,7 @@ import {
   useParticles,
 } from "@/components/particle-layer";
 import { CountryDeepDiveProvider } from "@/components/country-deep-dive";
+import { VotingAnnouncement } from "@/components/voting-announcement";
 
 const LAST_ROOM_KEY = "uzk_last_room";
 
@@ -83,6 +84,7 @@ export function RoomShell({
           <ParticleLayer>
             <CountryDeepDiveProvider>
               <NowPlayingSwarm />
+              <VotingAnnouncement />
               <RoomBody>{children}</RoomBody>
             </CountryDeepDiveProvider>
           </ParticleLayer>
