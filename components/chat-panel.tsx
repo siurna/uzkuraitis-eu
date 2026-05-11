@@ -401,7 +401,16 @@ export function ChatPanel() {
   }, [mentionQuery, participantNames]);
 
   return (
-    <main className="flex-1 flex flex-col container mx-auto max-w-3xl px-3 sm:px-4 w-full min-h-0">
+    // Fixed between the sticky header (h-14) and the bottom tab dock so
+    // the message list owns a definite height — that's what makes
+    // overflow-y-auto actually scroll (and lets us pin to the bottom on
+    // open) and keeps the composer welded to the footer. Page itself
+    // doesn't scroll on this tab.
+    <main
+      className="fixed inset-x-0 top-14 z-10 flex justify-center px-3 sm:px-4
+                 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)]"
+    >
+      <div className="flex flex-col w-full max-w-3xl min-h-0">
       <div
         ref={listRef}
         className="flex-1 min-h-0 overflow-y-auto py-4 flex flex-col gap-3"
@@ -573,6 +582,7 @@ export function ChatPanel() {
             {editing ? <Check className="h-4 w-4" /> : <Send className="h-4 w-4" />}
           </button>
         </form>
+      </div>
       </div>
 
       <GifPicker open={gifOpen} onClose={() => setGifOpen(false)} onPick={(url) => sendGif(url)} />

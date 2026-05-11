@@ -151,8 +151,7 @@ function NowPlayingSwarm() {
     const h = window.innerHeight;
     // Hearts rise from below the fold to a random height, in three
     // size/speed bands so the swarm reads as a flurry, not a uniform
-    // pop. Staggered by spawning in micro-batches a few ms apart.
-    const COUNT = 26;
+    // pop. Staggered by spawning in micro-batches over ~2s.
     const fire = (n: number) =>
       particles.spawnMany(
         Array.from({ length: n }, () => {
@@ -181,12 +180,14 @@ function NowPlayingSwarm() {
           };
         }),
       );
-    // Drip the swarm out over ~1.4s so it reads as a sustained flurry
-    // alongside the name takeover rather than one big pop.
-    fire(8);
-    setTimeout(() => fire(6), 220);
-    setTimeout(() => fire(6), 520);
-    setTimeout(() => fire(COUNT - 20), 950);
+    // Drip a big swarm (~64 hearts) out over ~2s so it reads as a
+    // sustained flurry alongside the name takeover, not one pop.
+    fire(14);
+    setTimeout(() => fire(12), 180);
+    setTimeout(() => fire(12), 420);
+    setTimeout(() => fire(10), 720);
+    setTimeout(() => fire(8), 1100);
+    setTimeout(() => fire(8), 1600);
   });
   return null;
 }

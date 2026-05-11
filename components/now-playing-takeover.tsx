@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useEventListener } from "@/lib/liveblocks";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
-import { HeartFlag } from "@/components/flag";
+import { Flag } from "@/components/flag";
 import { useLang, t } from "@/lib/i18n";
 
 // The orchestrated "X is on stage" takeover. Fires on every
@@ -48,6 +48,12 @@ export function NowPlayingTakeover() {
   const country = active ? getCountry(active.code) : null;
   const [c1, c2] = country ? countryColors(country.code) : ["#ff2ede", "#4cc9f0"];
   const name = country ? countryName(country.code, lang) : "";
+  // Auto-fit the name to the viewport width: roughly width / (chars ×
+  // glyph-width) — the display face is condensed so ~0.55em per char.
+  // Clamped so short names don't get cartoonishly huge or long ones
+  // (e.g. "Jungtinė Karalystė") shrink to nothing.
+  const longestWord = name.split(/\s+/).reduce((a, w) => Math.max(a, w.length), 1);
+  const nameVw = Math.max(7, Math.min(30, (94 / Math.max(longestWord, 5)) * 1.7));
 
   return createPortal(
     <AnimatePresence>
@@ -83,18 +89,23 @@ export function NowPlayingTakeover() {
             transition={{ duration: 3.4, ease: "easeInOut", times: [0, 0.5, 1] }}
           />
 
-          {/* Heart-flag chip drifting up above the name. */}
+          {/* Big heart-flag drifting up above the name. */}
           <motion.div
-            initial={{ opacity: 0, y: 60, scale: 0.6 }}
-            animate={{ opacity: [0, 1, 1, 0], y: [60, 0, -8, -28], scale: [0.6, 1, 1, 0.9] }}
+            initial={{ opacity: 0, y: 70, scale: 0.5 }}
+            animate={{ opacity: [0, 1, 1, 0], y: [70, 0, -10, -34], scale: [0.5, 1, 1, 0.92] }}
             transition={{ duration: HOLD_MS / 1000, times: [0, 0.16, 0.85, 1], ease: [0.22, 1, 0.36, 1] }}
-            className="relative mb-4 heartbeat"
+            className="relative mb-5 heartbeat drop-shadow-[0_12px_44px_rgba(0,0,0,0.5)]"
           >
-            <HeartFlag code={country.code} size="lg" />
+            <Flag
+              code={country.code}
+              size="xl"
+              className="h-36 w-36 sm:h-52 sm:w-52"
+            />
           </motion.div>
 
-          {/* The country name — huge, display face, animated gradient
-              sweep through the flag colours + white. Rises from below. */}
+          {/* The country name — auto-sized to fit, display face, animated
+              gradient sweep through the flag colours + white. Rises from
+              below. */}
           <motion.h1
             initial={{ opacity: 0, y: 90, scale: 0.85 }}
             animate={{
@@ -107,9 +118,10 @@ export function NowPlayingTakeover() {
               times: [0, 0.18, 0.85, 1],
               ease: [0.18, 0.9, 0.25, 1],
             }}
-            className="relative font-display uppercase leading-[0.95] tracking-tight
-                       text-[16vw] sm:text-[10rem] drop-shadow-[0_8px_40px_rgba(0,0,0,0.45)]"
+            className="relative font-display uppercase leading-[0.92] tracking-tight
+                       max-w-[94vw] text-balance drop-shadow-[0_8px_40px_rgba(0,0,0,0.45)]"
             style={{
+              fontSize: `clamp(2rem, ${nameVw}vw, 11rem)`,
               backgroundImage: `linear-gradient(100deg, #ffffff, ${c1}, ${c2}, #ffffff, ${c1})`,
               backgroundSize: "260% 100%",
               WebkitBackgroundClip: "text",
@@ -133,22 +145,24 @@ export function NowPlayingTakeover() {
             </motion.span>
           </motion.h1>
 
-          {/* On-stage label + artist · song. */}
+          {/* On-stage label, then artist and song on their own lines. */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: [0, 1, 1, 0], y: [20, 0, 0, -10] }}
             transition={{ duration: HOLD_MS / 1000, times: [0, 0.26, 0.85, 1] }}
-            className="relative mt-3 flex flex-col items-center gap-1"
+            className="relative mt-4 flex flex-col items-center gap-1.5"
           >
-            <span className="text-[11px] sm:text-xs uppercase tracking-[0.42em] text-white/70 font-display">
+            <span className="text-[11px] sm:text-xs uppercase tracking-[0.42em] text-white/65 font-display">
               {t(lang, "now_playing")}
             </span>
             {country.artist && (
-              <span className="text-lg sm:text-2xl text-white/90 font-display">
+              <span className="text-2xl sm:text-3xl text-white font-display leading-tight text-balance">
                 {country.artist}
-                {country.song && (
-                  <span className="text-white/55 italic font-sans"> — {country.song}</span>
-                )}
+              </span>
+            )}
+            {country.song && (
+              <span className="text-base sm:text-xl text-white/55 italic leading-tight text-balance">
+                {country.song}
               </span>
             )}
           </motion.div>

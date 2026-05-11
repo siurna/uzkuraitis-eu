@@ -145,10 +145,9 @@ export async function POST(request: Request, { params }: RouteCtx) {
   // scoreboard immediately. No polling needed.
   await broadcastToRoom(room.code, { type: "scores:updated" });
 
-  // Meta-narrate in chat. Best-effort, fire-and-forget.
-  postSystemMessage(room.code, room.id, `🗳️ ${name} cast their vote`).catch(
-    () => {},
-  );
+  // Meta-narrate in chat. Awaited (it swallows its own errors) so the
+  // row + chat:new broadcast complete before the lambda is frozen.
+  await postSystemMessage(room.code, room.id, `🗳️ ${name} cast their vote`);
 
   return NextResponse.json({ ok: true, voterId: voter.id });
 }

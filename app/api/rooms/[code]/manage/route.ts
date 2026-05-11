@@ -130,8 +130,9 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
           tag: `now-playing:${newCode}`,
         },
       ).catch(() => {});
-      // Full-width "now on stage" banner in the room chat.
-      postNowPlayingMessage(newCode, room.id, nextNowPlaying).catch(() => {});
+      // Full-width "now on stage" banner in the room chat. Awaited so the
+      // insert + broadcast actually complete before the lambda is frozen.
+      await postNowPlayingMessage(newCode, room.id, nextNowPlaying);
     }
   }
   if (parsed.data.votingEnabled !== undefined) {
@@ -163,33 +164,32 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     ).catch(() => {});
   }
 
-  // Meta-narrate state changes in chat (best-effort).
+  // Meta-narrate state changes in chat. Awaited (postSystemMessage
+  // swallows its own errors) so the rows land before the lambda freezes.
   if (
     parsed.data.showStatus !== undefined &&
     parsed.data.showStatus !== room.showStatus
   ) {
-    postSystemMessage(
+    await postSystemMessage(
       newCode,
       room.id,
       showStatusAnnouncement(parsed.data.showStatus),
-    ).catch(() => {});
+    );
   }
   if (
     parsed.data.votingEnabled !== undefined &&
     parsed.data.votingEnabled !== room.votingEnabled
   ) {
-    postSystemMessage(
+    await postSystemMessage(
       newCode,
       room.id,
       parsed.data.votingEnabled
         ? "📣 Voting is OPEN — cast your TOP10!"
         : "🔒 Voting is CLOSED.",
-    ).catch(() => {});
+    );
   }
   if (parsed.data.tallyEnabled === true && room.tallyEnabled !== true) {
-    postSystemMessage(newCode, room.id, "🏆 Results are in — leaderboard's live!").catch(
-      () => {},
-    );
+    await postSystemMessage(newCode, room.id, "🏆 Results are in — leaderboard's live!");
   }
   return NextResponse.json({ ok: true, code: newCode });
 }

@@ -84,13 +84,11 @@ export async function POST(req: Request) {
           countryCode: nowPlayingCode ?? null,
         });
         if (nowPlayingCode) {
-          postNowPlayingMessage(code, id, nowPlayingCode).catch(() => {});
+          await postNowPlayingMessage(code, id, nowPlayingCode);
         }
       }
       if (showStatus !== undefined) {
-        postSystemMessage(code, id, showStatusAnnouncement(showStatus)).catch(
-          () => {},
-        );
+        await postSystemMessage(code, id, showStatusAnnouncement(showStatus));
       }
     }),
   );
