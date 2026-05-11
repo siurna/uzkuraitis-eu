@@ -92,7 +92,7 @@ export function PresenceBar() {
                   animate={{ opacity: 1, scale: 1, rotate: 0 }}
                   exit={{ opacity: 0, scale: 0.6, rotate: 8 }}
                   transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute inset-0 heartbeat-loop"
+                  className="absolute inset-0 heartbeat"
                 >
                   <Flag code={playing.code} size="md" className="h-8 w-8" />
                 </motion.div>
@@ -103,7 +103,7 @@ export function PresenceBar() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.6 }}
                   transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute inset-0 heartbeat-loop"
+                  className="absolute inset-0"
                 >
                   <Image
                     src="/images/70-heart-sm.webp"

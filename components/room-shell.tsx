@@ -19,6 +19,7 @@ import {
 } from "@/components/particle-layer";
 import { CountryDeepDiveProvider } from "@/components/country-deep-dive";
 import { VotingAnnouncement } from "@/components/voting-announcement";
+import { NowPlayingTakeover } from "@/components/now-playing-takeover";
 
 const LAST_ROOM_KEY = "uzk_last_room";
 
@@ -84,6 +85,7 @@ export function RoomShell({
           <ParticleLayer>
             <CountryDeepDiveProvider>
               <NowPlayingSwarm />
+              <NowPlayingTakeover />
               <VotingAnnouncement />
               <RoomBody>{children}</RoomBody>
             </CountryDeepDiveProvider>
@@ -161,17 +163,17 @@ function NowPlayingSwarm() {
               : tier > 0.55 ? 36 + Math.random() * 18 // mid
                 : 18 + Math.random() * 16; // small + fast
           const duration =
-            tier > 0.85 ? 2600 + Math.random() * 900
-              : tier > 0.55 ? 1900 + Math.random() * 700
-                : 1300 + Math.random() * 500;
+            tier > 0.85 ? 3800 + Math.random() * 1400
+              : tier > 0.55 ? 2800 + Math.random() * 1000
+                : 1900 + Math.random() * 800;
           const fromX = Math.random() * w;
           return {
             asset: { type: "country" as const, code: next },
             from: { x: fromX, y: h + 60 + Math.random() * 80 },
             to: {
               // Slight horizontal sway on the way up.
-              x: fromX + (Math.random() - 0.5) * 160,
-              y: Math.random() * h * 0.65,
+              x: fromX + (Math.random() - 0.5) * 180,
+              y: Math.random() * h * 0.7,
             },
             size,
             durationMs: duration,
@@ -179,9 +181,12 @@ function NowPlayingSwarm() {
           };
         }),
       );
-    fire(10);
-    setTimeout(() => fire(8), 120);
-    setTimeout(() => fire(COUNT - 18), 280);
+    // Drip the swarm out over ~1.4s so it reads as a sustained flurry
+    // alongside the name takeover rather than one big pop.
+    fire(8);
+    setTimeout(() => fire(6), 220);
+    setTimeout(() => fire(6), 520);
+    setTimeout(() => fire(COUNT - 20), 950);
   });
   return null;
 }

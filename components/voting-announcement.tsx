@@ -40,7 +40,7 @@ export function VotingAnnouncement() {
 
     if (votingEnabled) {
       setPhase({ kind: "open" });
-      timers.current.push(setTimeout(() => setPhase(null), 3600));
+      timers.current.push(setTimeout(() => setPhase(null), 5200));
     } else {
       setPhase({ kind: "count", n: 3 });
       timers.current.push(setTimeout(() => setPhase({ kind: "count", n: 2 }), 900));
@@ -102,6 +102,18 @@ export function VotingAnnouncement() {
             >
               {phase.n}
             </motion.div>
+          ) : phase.kind === "open" ? (
+            <div className="relative flex flex-col items-center gap-5">
+              <WordsBurst text={t(lang, "vote_open_now")} />
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.4, duration: 0.4 }}
+                className="text-lg sm:text-2xl text-white/80 max-w-md"
+              >
+                {t(lang, "vote_open_now_sub")}
+              </motion.p>
+            </div>
           ) : (
             <motion.div
               className="relative flex flex-col items-center gap-3"
@@ -110,18 +122,14 @@ export function VotingAnnouncement() {
               transition={{ type: "spring", stiffness: 260, damping: 18 }}
             >
               <motion.h2
-                className="text-4xl sm:text-6xl font-black uppercase tracking-tight text-white drop-shadow-[0_4px_28px_rgba(0,0,0,0.5)]"
-                animate={{ scale: [1, 1.04, 1] }}
-                transition={{ duration: 1.1, repeat: Infinity }}
+                className="text-5xl sm:text-7xl font-black uppercase tracking-tight text-white drop-shadow-[0_4px_28px_rgba(0,0,0,0.5)]"
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
               >
-                {phase.kind === "open"
-                  ? t(lang, "vote_open_now")
-                  : t(lang, "vote_closing")}
+                {t(lang, "vote_closing")}
               </motion.h2>
               <p className="text-base sm:text-lg text-white/75 max-w-xs">
-                {phase.kind === "open"
-                  ? t(lang, "vote_open_now_sub")
-                  : t(lang, "vote_closing_sub")}
+                {t(lang, "vote_closing_sub")}
               </p>
             </motion.div>
           )}
@@ -129,5 +137,55 @@ export function VotingAnnouncement() {
       )}
     </AnimatePresence>,
     document.body,
+  );
+}
+
+// "EUROPE, START VOTING NOW!" word-by-word: each word slams in with a
+// spring, staggered, in the display face with a rainbow gradient and a
+// continuous shimmer. Big — fills the viewport width on mobile.
+function WordsBurst({ text }: { text: string }) {
+  const words = text.toUpperCase().split(/\s+/);
+  return (
+    <h2
+      className="relative font-display uppercase leading-[0.92] tracking-tight
+                 text-[15vw] sm:text-[7rem] flex flex-wrap justify-center gap-x-[0.25em] gap-y-1
+                 drop-shadow-[0_6px_36px_rgba(0,0,0,0.45)]"
+    >
+      {words.map((w, i) => (
+        <motion.span
+          key={`${w}-${i}`}
+          className="inline-block"
+          initial={{ opacity: 0, y: 40, scale: 0.4, rotate: i % 2 ? -6 : 6 }}
+          animate={{
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            rotate: 0,
+          }}
+          transition={{
+            delay: 0.12 + i * 0.22,
+            type: "spring",
+            stiffness: 420,
+            damping: 14,
+          }}
+        >
+          <motion.span
+            className="inline-block"
+            style={{
+              backgroundImage:
+                "linear-gradient(100deg,#ffffff,#ff5fa2,#ffd166,#4cc9f0,#b15bff,#ffffff)",
+              backgroundSize: "260% 100%",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+            }}
+            animate={{ backgroundPositionX: ["0%", "260%"] }}
+            transition={{ duration: 2.4, ease: "linear", repeat: Infinity }}
+          >
+            {w}
+          </motion.span>
+        </motion.span>
+      ))}
+    </h2>
   );
 }

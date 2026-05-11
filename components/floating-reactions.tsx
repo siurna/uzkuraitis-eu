@@ -149,11 +149,13 @@ export function FloatingReactionsLayer({
 
       {/* Reactions bar. Each tile is an Apple-Watch-style solid colour
           circle with a white filled icon — no emoji glyphs (so platform
-          rendering can't make a heart look hollow). Hidden on mobile
-          while voting is open so the sticky vote CTA owns the bottom
-          of the screen; floats themselves still render. */}
+          rendering can't make a heart look hollow). Sits just above the
+          bottom tab dock (which is ~76px + safe-area tall). Hidden on
+          mobile while voting is open so the sticky vote CTA owns the
+          bottom of the screen; floats themselves still render. */}
       <div
-        className={`fixed bottom-6 left-0 right-0 z-30 flex justify-center pointer-events-none px-2 ${
+        className={`fixed left-0 right-0 z-30 flex justify-center pointer-events-none px-2
+                    bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] ${
           hideBarOnMobile ? "hidden sm:flex" : ""
         }`}
       >
