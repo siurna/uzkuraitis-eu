@@ -146,6 +146,20 @@ export function getTrope(i: TropeIndex, lang: "en" | "lt"): string {
   return list[i] ?? "";
 }
 
+// Each trope string is "<emoji> <words…>". Split the leading emoji
+// (everything up to the first space) from the readable text.
+export function tropeEmoji(i: TropeIndex): string {
+  const s = TROPES_EN[i] ?? "🎲";
+  const sp = s.indexOf(" ");
+  return sp === -1 ? s : s.slice(0, sp);
+}
+
+export function tropeText(i: TropeIndex, lang: "en" | "lt"): string {
+  const s = getTrope(i, lang);
+  const sp = s.indexOf(" ");
+  return sp === -1 ? s : s.slice(sp + 1).trim();
+}
+
 export const TROPE_COUNT = TROPES_EN.length;
 
 export const FREE_SQUARE = -1; // sentinel for the centre tile
