@@ -3,7 +3,7 @@
 import { useState, useMemo, createContext, useContext } from "react";
 import { Mic, Music, Instagram, Youtube, Globe, Disc3, Music4 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { HeartFlag } from "@/components/flag";
+import { HeartFlag, Flag } from "@/components/flag";
 import { getCountry, countryName } from "@/lib/countries";
 import { participantPhoto } from "@/lib/participants";
 import { artistSocials, type ArtistSocials } from "@/lib/socials";
@@ -63,18 +63,25 @@ function CountryDeepDiveSheet({
   const lang = useLang();
   const country = code ? getCountry(code) : null;
 
-  // YouTube search URL — opens in a new tab. We don't deep-link to a
   return (
     <BottomSheet
       open={!!country}
       onClose={onClose}
-      title={country ? countryName(country.code, lang) : ""}
+      title={
+        country ? (
+          <span className="flex items-center gap-2.5">
+            <Flag code={country.code} size="md" />
+            <span className="min-w-0 truncate">{countryName(country.code, lang)}</span>
+          </span>
+        ) : (
+          ""
+        )
+      }
     >
       {country && (
         <div className="flex flex-col gap-4 pb-2">
-          {/* Hero photo — fades in only when the press-kit shot is
-              available on disk. Falls back gracefully to the chip
-              header alone if the participant photo is missing. */}
+          {/* Hero photo — fades in only when the press-kit shot is on
+              disk; otherwise the flag-led title is enough. */}
           {participantPhoto(country.code) && (
             <div className="relative -mx-1 rounded-2xl overflow-hidden aspect-[16/9] bg-white/[0.04]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -84,24 +91,11 @@ function CountryDeepDiveSheet({
                 className="absolute inset-0 h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-dark-blue-900/80 via-dark-blue-900/5 to-transparent" />
-              {/* Just the heart-flag chip on the photo — the sheet
-                  title already carries the country name. */}
               <div className="absolute bottom-3 left-3">
                 <HeartFlag code={country.code} size="md" />
               </div>
             </div>
           )}
-          {!participantPhoto(country.code) && (
-            <div className="flex items-center gap-3">
-              <HeartFlag code={country.code} size="lg" />
-              <div className="flex-1 min-w-0">
-                <p className="font-display text-lg truncate">{country.name}</p>
-              </div>
-            </div>
-          )}
-          <p className="text-xs text-white/55">
-            #{country.order} {t(lang, "deep_order")}
-          </p>
 
           {country.artist && (
             <Row icon={<Mic className="h-4 w-4 text-white/70" />}

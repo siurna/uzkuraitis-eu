@@ -118,8 +118,9 @@ export function NowPlayingTakeover() {
               times: [0, 0.18, 0.85, 1],
               ease: [0.18, 0.9, 0.25, 1],
             }}
-            className="relative font-display uppercase leading-[0.92] tracking-tight
-                       max-w-[94vw] text-balance drop-shadow-[0_8px_40px_rgba(0,0,0,0.45)]"
+            className="relative font-display uppercase leading-[1.12] tracking-tight
+                       max-w-[94vw] text-balance px-[0.06em] py-[0.05em]
+                       drop-shadow-[0_8px_40px_rgba(0,0,0,0.45)]"
             style={{
               fontSize: `clamp(2rem, ${nameVw}vw, 11rem)`,
               backgroundImage: `linear-gradient(100deg, #ffffff, ${c1}, ${c2}, #ffffff, ${c1})`,

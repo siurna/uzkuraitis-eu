@@ -147,7 +147,7 @@ function WordsBurst({ text }: { text: string }) {
   const words = text.toUpperCase().split(/\s+/);
   return (
     <h2
-      className="relative font-display uppercase leading-[0.92] tracking-tight
+      className="relative font-display uppercase leading-[1.1] tracking-tight py-[0.05em]
                  text-[15vw] sm:text-[7rem] flex flex-wrap justify-center gap-x-[0.25em] gap-y-1
                  drop-shadow-[0_6px_36px_rgba(0,0,0,0.45)]"
     >
