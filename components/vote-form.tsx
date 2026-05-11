@@ -23,7 +23,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { X, ListOrdered, Sparkles, Share2, Check } from "lucide-react";
+import { X, ListOrdered, Sparkles, Share2, Check, ScrollText } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { countries, getCountry } from "@/lib/countries";
 import { Flag, HeartOutline } from "@/components/flag";
@@ -40,6 +40,13 @@ type Slot = {
   points: Points;
   countryCode: string | null;
 };
+
+type VoteTab = "ballot" | "bets" | "rules";
+const VOTE_TABS: { id: VoteTab; icon: typeof ListOrdered; labelKey: "tab_ballot" | "tab_bets" | "tab_rules" }[] = [
+  { id: "ballot", icon: ListOrdered, labelKey: "tab_ballot" },
+  { id: "bets", icon: Sparkles, labelKey: "tab_bets" },
+  { id: "rules", icon: ScrollText, labelKey: "tab_rules" },
+];
 
 const STORAGE_KEY = (code: string) => `uzk_ballot_${code}`;
 const PREDICTION_KEY = (code: string) => `uzk_home_${code}`;
@@ -70,7 +77,7 @@ export function VoteForm({
   const [autoCastFailed, setAutoCastFailed] = useState(false);
   const [showCongrats, setShowCongrats] = useState(false);
   const [voterId, setVoterId] = useState<string | null>(null);
-  const [tab, setTab] = useState<"ballot" | "bets">("ballot");
+  const [tab, setTab] = useState<VoteTab>("ballot");
   // Which ballot slot is currently being edited via the country drawer.
   const [pickingPoints, setPickingPoints] = useState<Points | null>(null);
   // Slot that just got filled, gets a one-shot heartbeat pulse.
@@ -336,18 +343,17 @@ export function VoteForm({
   return (
     <main className="flex-1 flex flex-col pb-12">
       <div className="container mx-auto max-w-3xl px-4 pt-5 pb-6 flex flex-col gap-5">
-        {/* Bigger Ballot / Bets toggle, inline at the top of the body —
-            no longer wedged into a sticky strip. */}
+        {/* Ballot / Bets / Rules toggle, inline at the top of the body. */}
         <div className="flex justify-center">
           <div className="inline-flex items-center gap-1 rounded-2xl bg-black/40 ring-1 ring-white/10 p-1">
-            {(["ballot", "bets"] as const).map((tabId) => {
-              const isActive = tab === tabId;
+            {VOTE_TABS.map(({ id, icon: Icon, labelKey }) => {
+              const isActive = tab === id;
               return (
                 <button
-                  key={tabId}
+                  key={id}
                   type="button"
-                  onClick={() => setTab(tabId)}
-                  className="relative px-6 h-11 rounded-xl font-display text-sm flex items-center gap-2"
+                  onClick={() => setTab(id)}
+                  className="relative px-4 sm:px-5 h-11 rounded-xl font-display text-sm flex items-center gap-1.5"
                 >
                   {isActive && (
                     <motion.span
@@ -357,16 +363,12 @@ export function VoteForm({
                     />
                   )}
                   <span
-                    className={`relative flex items-center gap-2 ${
+                    className={`relative flex items-center gap-1.5 ${
                       isActive ? "text-dark-blue" : "text-white/65"
                     }`}
                   >
-                    {tabId === "ballot" ? (
-                      <ListOrdered className="h-4 w-4" />
-                    ) : (
-                      <Sparkles className="h-4 w-4" />
-                    )}
-                    {t(lang, tabId === "ballot" ? "tab_ballot" : "tab_bets")}
+                    <Icon className="h-4 w-4" />
+                    {t(lang, labelKey)}
                   </span>
                 </button>
               );
@@ -376,7 +378,7 @@ export function VoteForm({
 
         <Tabs
           value={tab}
-          onValueChange={(v) => setTab(v as "ballot" | "bets")}
+          onValueChange={(v) => setTab(v as VoteTab)}
           className="flex flex-col gap-4"
         >
           <TabsContent value="ballot" className="flex flex-col gap-4 mt-0 outline-none">
@@ -468,10 +470,25 @@ export function VoteForm({
               onChange={setBets}
             />
 
-            <p className="text-xs text-white/40 text-center pt-1">
-              Skip any bet you don&apos;t want to take. Skipped = 0 pts
-              for that bet.
-            </p>
+          </TabsContent>
+
+          <TabsContent value="rules" className="flex flex-col gap-3 mt-0 outline-none">
+            <motion.section
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col gap-3"
+            >
+              <h2 className="font-display text-xl gradient-text text-balance px-1">
+                {t(lang, "rules_title")}
+              </h2>
+              <RuleCard title={t(lang, "rules_top10_h")} body={t(lang, "rules_top10_b")} />
+              <RuleCard title={t(lang, "rules_home_h")} body={t(lang, "rules_home_b")} />
+              <RuleCard title={t(lang, "rules_bets_h")} body={t(lang, "rules_bets_b")} />
+              <p className="text-xs text-white/40 text-center pt-1 text-balance">
+                {t(lang, "rules_footer")}
+              </p>
+            </motion.section>
           </TabsContent>
         </Tabs>
       </div>
@@ -656,6 +673,15 @@ function FlyingHeartToSlot({
       )}
     </AnimatePresence>,
     document.body,
+  );
+}
+
+function RuleCard({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3.5 flex flex-col gap-1">
+      <p className="font-display text-sm text-white/90">{title}</p>
+      <p className="text-sm text-white/60 leading-relaxed text-pretty">{body}</p>
+    </div>
   );
 }
 

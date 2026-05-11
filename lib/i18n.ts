@@ -86,6 +86,7 @@ const messages = {
     // Tabs in vote form
     tab_ballot:        "Ballot",
     tab_bets:          "Bets",
+    tab_rules:         "Rules",
     bonus_bets:        "Bonus bets",
     vote_cast_title:   "Your vote's cast! 🎉",
     vote_cast_body:    "Locked in automatically. Reorder any time — just tap Save to update.",
@@ -94,6 +95,14 @@ const messages = {
     vote_updated_toast: "Vote updated.",
     vote_unsaved:      "Unsaved reorder — tap Save to update your vote.",
     save_changes:      "Save changes",
+    rules_title:       "How scoring works",
+    rules_top10_h:     "Your TOP 10",
+    rules_top10_b:     "Score the full Eurovision points (12, 10, 8…1) for every country you placed in the exact spot it finished. Off by a place or more? You get half of that slot's value, rounded down.",
+    rules_home_h:      "Home-country placement",
+    rules_home_b:      "Guess where your home country finishes: exact = 10 pts, off by 1 = 7, by 2 = 5, by 3–5 = 3, by 6–10 = 1, beyond that = 0.",
+    rules_bets_h:      "Bonus bets",
+    rules_bets_b:      "Each side bet is optional and pays out only if you nailed it: jury / televote winner +5, wooden spoon +5 (or +2 if your pick lands bottom-3), 12 from your country +5, best of the Big 5 +3, zero-from-televote +4 per correct pick (max 12), host top-3 +3, solo winner +2, plus a closeness-scored guess for your country's total points (up to +10). Skipped bets = 0.",
+    rules_footer:      "Leaderboard updates the moment the host enters the official results.",
 
     // Room tab bar
     tab_home:          "Home",
@@ -323,6 +332,7 @@ const messages = {
 
     tab_ballot:        "Balsas",
     tab_bets:          "Statymai",
+    tab_rules:         "Taisyklės",
     bonus_bets:        "Bonus statymai",
     vote_cast_title:   "Tavo balsas užfiksuotas! 🎉",
     vote_cast_body:    "Užfiksuota automatiškai. Pertvarkyk bet kada — tiesiog spausk Išsaugoti.",
@@ -331,6 +341,14 @@ const messages = {
     vote_updated_toast: "Balsas atnaujintas.",
     vote_unsaved:      "Neišsaugotas pertvarkymas — spausk Išsaugoti.",
     save_changes:      "Išsaugoti pakeitimus",
+    rules_title:       "Kaip skaičiuojami taškai",
+    rules_top10_h:     "Tavo TOP 10",
+    rules_top10_b:     "Už kiekvieną šalį, pastatytą tiksliai į jos užimtą vietą, gauni pilnus Eurovizijos taškus (12, 10, 8…1). Jei pataikei ne į tą vietą — gauni pusę tos eilutės vertės, suapvalintą žemyn.",
+    rules_home_h:      "Savo šalies vieta",
+    rules_home_b:      "Atspėk, kelintas liks tavo šalis: tiksliai = 10 t., klysti 1 vieta = 7, 2 = 5, 3–5 = 3, 6–10 = 1, daugiau = 0.",
+    rules_bets_h:      "Bonus statymai",
+    rules_bets_b:      "Kiekvienas statymas neprivalomas ir užskaitomas tik pataikius: žiuri / žiūrovų nugalėtojas +5, paskutinė vieta +5 (arba +2, jei pasirinkimas patenka į paskutinius 3), 12 iš tavo šalies +5, geriausias iš Big 5 +3, nulis iš žiūrovų +4 už kiekvieną teisingą (maks. 12), šeimininkai TOP3 +3, solo nugalėtojas +2, plius artumo statymas dėl tavo šalies bendros taškų sumos (iki +10). Praleisti statymai = 0.",
+    rules_footer:      "Lyderių lentelė atsinaujina, kai šeimininkas suveda oficialius rezultatus.",
 
     tab_home:          "Pradžia",
     tab_chat:          "Pokalbiai",

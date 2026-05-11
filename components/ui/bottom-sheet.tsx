@@ -94,12 +94,12 @@ export function BottomSheet({
               <div className="px-5 pt-4 pb-3 flex items-start gap-3 shrink-0">
                 <div className="flex-1 min-w-0">
                   {title && (
-                    <h2 className="font-display text-3xl sm:text-[2rem] leading-tight gradient-text">
+                    <h2 className="font-display text-3xl sm:text-[2rem] leading-tight gradient-text text-balance">
                       {title}
                     </h2>
                   )}
                   {sub && (
-                    <p className="text-sm text-white/55 leading-snug">
+                    <p className="text-sm text-white/55 leading-snug text-pretty">
                       {sub}
                     </p>
                   )}
