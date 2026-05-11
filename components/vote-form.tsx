@@ -25,7 +25,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { X, Send, ListOrdered, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { countries, getCountry } from "@/lib/countries";
 import { Flag, HeartOutline } from "@/components/flag";
@@ -280,44 +279,60 @@ export function VoteForm({
 
   return (
     <main className="flex-1 flex flex-col pb-12">
-      {/* Ballot / Bets toggle. Sticky just below the global PresenceBar
-          so the user can flip context without scrolling all the way
-          back up. No standalone "Cast your vote" header — the global
-          header is the page chrome now. */}
-      <div className="sticky top-14 z-20 backdrop-blur-md bg-dark-blue-900/55 border-b border-white/5">
-        <div className="container mx-auto max-w-3xl px-4 py-2 flex justify-center">
-          <Tabs
-            value={tab}
-            onValueChange={(v) => setTab(v as "ballot" | "bets")}
-          >
-            <TabsList className="h-9">
-              <TabsTrigger value="ballot" className="px-4 py-1 text-xs">
-                <ListOrdered className="h-3.5 w-3.5" />
-                {t(lang, "tab_ballot")}
-              </TabsTrigger>
-              <TabsTrigger value="bets" className="px-4 py-1 text-xs">
-                <Sparkles className="h-3.5 w-3.5" />
-                {t(lang, "tab_bets")}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+      <div className="container mx-auto max-w-3xl px-4 pt-5 pb-6 flex flex-col gap-5">
+        {/* Bigger Ballot / Bets toggle, inline at the top of the body —
+            no longer wedged into a sticky strip. */}
+        <div className="flex justify-center">
+          <div className="inline-flex items-center gap-1 rounded-2xl bg-black/40 ring-1 ring-white/10 p-1">
+            {(["ballot", "bets"] as const).map((tabId) => {
+              const isActive = tab === tabId;
+              return (
+                <button
+                  key={tabId}
+                  type="button"
+                  onClick={() => setTab(tabId)}
+                  className="relative px-6 h-11 rounded-xl font-display text-sm flex items-center gap-2"
+                >
+                  {isActive && (
+                    <motion.span
+                      layoutId="vote-tab-pill"
+                      className="absolute inset-0 rounded-xl bg-white"
+                      transition={{ type: "spring", stiffness: 360, damping: 30 }}
+                    />
+                  )}
+                  <span
+                    className={`relative flex items-center gap-2 ${
+                      isActive ? "text-dark-blue" : "text-white/65"
+                    }`}
+                  >
+                    {tabId === "ballot" ? (
+                      <ListOrdered className="h-4 w-4" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                    {t(lang, tabId === "ballot" ? "tab_ballot" : "tab_bets")}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      <div className="container mx-auto max-w-3xl px-4 py-6 flex flex-col gap-6">
         <Tabs
           value={tab}
           onValueChange={(v) => setTab(v as "ballot" | "bets")}
           className="flex flex-col gap-4"
         >
-          <TabsContent value="ballot" className="flex flex-col gap-6 mt-0 outline-none">
+          <TabsContent value="ballot" className="flex flex-col gap-4 mt-0 outline-none">
+            {/* TOP10 unwrapped — no glass-card container. The slots
+                sit directly on the page bg like the standings rows. */}
             <motion.section
               initial={{ opacity: 0, x: -16 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3"
+              className="flex flex-col gap-3"
             >
-              <div className="flex items-baseline justify-between gap-3">
+              <div className="flex items-baseline justify-between gap-3 px-1">
                 <h2 className="font-display text-xl gradient-text">
                   {t(lang, "your_top_10")}
                 </h2>
@@ -405,26 +420,28 @@ export function VoteForm({
         </Tabs>
       </div>
 
-      {/* Inline submit, no sticky footer container. Lives at the
-          natural end of the form so the page bg owns the chrome. */}
+      {/* Inline submit. ESC poster button (white bg, dark-blue text)
+          wrapped in the rainbow stroke — same CTA language as the
+          rest of the app. */}
       <div className="container mx-auto max-w-3xl px-4 pb-10">
-        <Button
+        <button
+          type="button"
           onClick={submit}
           disabled={submitting || !allFilled || !name.trim()}
-          className="w-full h-14 text-lg font-display
-                     bg-gradient-to-r from-gold via-flamingo to-purple
-                     text-white shadow-glow-pink
-                     disabled:opacity-40 disabled:bg-none disabled:bg-white/10"
+          className="rainbow-border rounded-2xl w-full block disabled:opacity-40"
         >
+          <span className="flex items-center justify-center gap-2 w-full h-14
+                           rounded-[14px] bg-white text-dark-blue font-display text-lg">
           {submitting ? t(lang, "submitting") : (
             <>
-              <Send className="h-4 w-4 mr-2" />
+              <Send className="h-4 w-4" />
               {allFilled
                 ? t(lang, "submit_12")
                 : t(lang, "pick_n_more", 10 - filledCount)}
             </>
           )}
-        </Button>
+          </span>
+        </button>
       </div>
 
       {/* Country picker for the ballot. The "options" list excludes

@@ -153,8 +153,7 @@ export function RoomManage({
           pills + (when in-progress) the full country list to tap-flip
           the active country. */}
       <section className="w-full max-w-md glass-card rounded-2xl p-4 flex flex-col gap-3">
-        <header className="flex items-center gap-2">
-          <Radio className="h-4 w-4 text-flamingo" />
+        <header>
           <h2 className="font-display text-lg">Live</h2>
         </header>
         <div className="grid grid-cols-2 gap-2">

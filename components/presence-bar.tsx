@@ -9,7 +9,7 @@ import { getAvatar } from "@/lib/avatars";
 import { useRoomLive } from "@/components/room-shell";
 import { SettingsModal } from "@/components/settings-modal";
 import { Flag } from "@/components/flag";
-import { getCountry } from "@/lib/countries";
+import { getCountry, countryName } from "@/lib/countries";
 import { useLang, t } from "@/lib/i18n";
 
 const NAME_KEY = "uzk_name";
@@ -115,7 +115,7 @@ export function PresenceBar() {
                     {t(lang, "now_playing")}
                   </p>
                   <p className="text-xs text-white/85 truncate">
-                    <span className="font-display">{playing.name}</span>
+                    <span className="font-display">{countryName(playing.code, lang)}</span>
                     {playing.artist && (
                       <span className="text-white/55"> · {playing.artist}</span>
                     )}

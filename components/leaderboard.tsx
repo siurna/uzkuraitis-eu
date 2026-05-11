@@ -87,7 +87,6 @@ export function Leaderboard({ code }: { code: string }) {
   return (
     <section className="flex flex-col gap-3">
       <header className="flex items-center gap-2">
-        <Trophy className="h-5 w-5 text-gold" />
         <h3 className="text-2xl font-display gradient-text">{t(lang, "leaderboard")}</h3>
         {home && homeCountryOfficialPlacement != null && (
           <span className="ml-auto text-xs text-white/50 inline-flex items-center gap-1.5">

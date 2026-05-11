@@ -10,7 +10,7 @@ import {
   Music,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { countries, getCountry } from "@/lib/countries";
+import { countries, getCountry, countryName } from "@/lib/countries";
 import { useEventListener } from "@/lib/liveblocks";
 import { HeartFlag, MetaPill } from "@/components/flag";
 import { Leaderboard } from "@/components/leaderboard";
@@ -193,6 +193,7 @@ export function Standings() {
                     key={s.code}
                     score={s}
                     index={i}
+                    lang={lang}
                     pops={pointPops.filter((p) => p.code === s.code)}
                   />
                 ))}
@@ -316,10 +317,12 @@ function NoVotesYet({
 function CountryRow({
   score,
   index,
+  lang,
   pops,
 }: {
   score: ScoreRow;
   index: number;
+  lang: "en" | "lt";
   pops?: Array<{ id: number; code: string; delta: number }>;
 }) {
   const detail = getCountry(score.code);
@@ -366,7 +369,7 @@ function CountryRow({
     >
       <HeartFlag
         code={score.code}
-        name={score.name}
+        name={countryName(score.code, lang)}
         size={index === 0 ? "lg" : "md"}
       />
       <div className="hidden sm:flex flex-1 min-w-0 items-center gap-1.5 overflow-hidden">

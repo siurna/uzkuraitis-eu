@@ -25,12 +25,15 @@ const LAST_ROOM_KEY = "uzk_last_room";
 // tallyEnabled, name, home country, now_playing) lives here so any
 // descendant can subscribe without prop-drilling. Refreshed on every
 // "room:updated" / "now-playing:change" broadcast.
+type ShowStatus = "not_started" | "in_progress" | "break" | "ended";
+
 type RoomLive = {
   code: string;
   name: string;
   votingEnabled: boolean;
   homeCountryCode: string;
   nowPlayingCode: string | null;
+  showStatus: ShowStatus;
 };
 
 const RoomLiveContext = createContext<RoomLive | null>(null);
@@ -74,6 +77,7 @@ export function RoomShell({
             votingEnabled,
             homeCountryCode,
             nowPlayingCode: null,
+            showStatus: "not_started",
           }}
         >
           <ParticleLayer>
@@ -156,6 +160,7 @@ function RoomLiveProvider({
         votingEnabled: boolean;
         homeCountryCode: string;
         nowPlayingCode: string | null;
+        showStatus?: ShowStatus;
       };
       setState({
         code: data.code,
@@ -163,6 +168,7 @@ function RoomLiveProvider({
         votingEnabled: data.votingEnabled,
         homeCountryCode: data.homeCountryCode ?? initial.homeCountryCode,
         nowPlayingCode: data.nowPlayingCode ?? null,
+        showStatus: data.showStatus ?? "not_started",
       });
     } catch {
       /* network blips don't kill us */

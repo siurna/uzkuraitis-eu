@@ -88,18 +88,10 @@ export function BottomSheet({
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className="fixed bottom-0 inset-x-0 z-[60] mx-auto w-full max-w-md
                        glass-card rounded-t-3xl border-x-0 border-b-0
-                       max-h-[92dvh] flex flex-col"
+                       max-h-[78dvh] flex flex-col"
           >
-            {/* Drag handle. Decorative; swipe-to-dismiss isn't wired up
-                because backdrop tap is the canonical dismiss path and
-                touch swipes inside a scrolling child don't bubble
-                reliably across browsers. */}
-            <div className="flex justify-center pt-2 pb-1 shrink-0">
-              <div className="h-1 w-10 rounded-full bg-white/20" />
-            </div>
-
             {(title || sub || dismissible) && (
-              <div className="px-5 pb-3 flex items-start gap-3 shrink-0">
+              <div className="px-5 pt-4 pb-3 flex items-start gap-3 shrink-0">
                 <div className="flex-1 min-w-0">
                   {title && (
                     <h2 className="font-display text-3xl sm:text-[2rem] leading-tight gradient-text">

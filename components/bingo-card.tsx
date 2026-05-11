@@ -242,7 +242,6 @@ export function BingoCard() {
   return (
     <main className="container mx-auto max-w-3xl px-4 py-5 flex-1 flex flex-col gap-4">
       <header className="flex items-center gap-3">
-        <Sparkles className="h-5 w-5 text-flamingo" />
         <h2 className="font-display text-2xl gradient-text flex-1">
           {t(lang, "bingo_title")}
         </h2>

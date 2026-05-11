@@ -4,7 +4,7 @@ import { useState, useMemo, createContext, useContext } from "react";
 import { Mic, Music } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { HeartFlag } from "@/components/flag";
-import { getCountry } from "@/lib/countries";
+import { getCountry, countryName } from "@/lib/countries";
 import { participantPhoto } from "@/lib/participants";
 import { useLang, t } from "@/lib/i18n";
 
@@ -67,7 +67,7 @@ function CountryDeepDiveSheet({
     <BottomSheet
       open={!!country}
       onClose={onClose}
-      title={country?.name ?? ""}
+      title={country ? countryName(country.code, lang) : ""}
     >
       {country && (
         <div className="flex flex-col gap-4 pb-2">
@@ -86,7 +86,7 @@ function CountryDeepDiveSheet({
               <div className="absolute bottom-3 left-3 right-3 flex items-center gap-3">
                 <HeartFlag code={country.code} size="md" />
                 <p className="font-display text-lg drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)] truncate">
-                  {country.name}
+                  {countryName(country.code, lang)}
                 </p>
               </div>
             </div>

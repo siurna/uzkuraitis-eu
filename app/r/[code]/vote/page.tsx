@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { findRoomByCode } from "@/lib/rooms";
 import { VoteForm } from "@/components/vote-form";
+import { VotingClosed } from "@/components/voting-closed";
 
 type RouteParams = Promise<{ code: string }>;
 
@@ -9,20 +10,10 @@ export default async function VotePage({ params }: { params: RouteParams }) {
   const room = await findRoomByCode(code);
   if (!room) notFound();
 
+  // flex-1 (not min-h-screen) so the closed-state card fills the room
+  // layout's remaining space without making the page scrollable.
   if (!room.votingEnabled) {
-    return (
-      <main className="min-h-screen flex items-center justify-center p-6 text-center">
-        <div className="glass-card p-8 rounded-xl max-w-md">
-          <p className="font-display text-2xl gradient-text mb-2">
-            Voting is closed
-          </p>
-          <p className="text-white/60 text-sm">
-            The host has paused voting in <strong>{room.name}</strong>. The
-            standings page is still live.
-          </p>
-        </div>
-      </main>
-    );
+    return <VotingClosed code={room.code} />;
   }
 
   return (
