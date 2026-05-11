@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useMemo, createContext, useContext } from "react";
-import { Mic, Music } from "lucide-react";
+import { Mic, Music, Instagram, Youtube, Globe, Disc3, Music4 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { HeartFlag } from "@/components/flag";
 import { getCountry, countryName } from "@/lib/countries";
 import { participantPhoto } from "@/lib/participants";
+import { artistSocials } from "@/lib/socials";
 import { useLang, t } from "@/lib/i18n";
 
 // Country deep-dive sheet — opens on a country code, shows the chip,
@@ -113,9 +114,44 @@ function CountryDeepDiveSheet({
                  value={country.song}
                  italic />
           )}
+
+          <SocialLinks code={country.code} />
         </div>
       )}
     </BottomSheet>
+  );
+}
+
+const SOCIAL_META: { key: keyof NonNullable<ReturnType<typeof artistSocials>>; icon: React.ReactNode; label: string }[] = [
+  { key: "instagram", icon: <Instagram className="h-4 w-4" />, label: "Instagram" },
+  { key: "spotify", icon: <Disc3 className="h-4 w-4" />, label: "Spotify" },
+  { key: "youtube", icon: <Youtube className="h-4 w-4" />, label: "YouTube" },
+  { key: "tiktok", icon: <Music4 className="h-4 w-4" />, label: "TikTok" },
+  { key: "website", icon: <Globe className="h-4 w-4" />, label: "Website" },
+];
+
+function SocialLinks({ code }: { code: string }) {
+  const socials = artistSocials(code);
+  if (!socials) return null;
+  const items = SOCIAL_META.filter((m) => socials[m.key]);
+  if (items.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2 pt-1">
+      {items.map((m) => (
+        <a
+          key={m.key}
+          href={socials[m.key]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 rounded-full px-3.5 py-2 text-sm
+                     bg-white/[0.06] ring-1 ring-white/12 hover:bg-white/[0.1]
+                     text-white/85 transition"
+        >
+          <span className="text-white/70">{m.icon}</span>
+          {m.label}
+        </a>
+      ))}
+    </div>
   );
 }
 
