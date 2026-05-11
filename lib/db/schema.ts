@@ -230,6 +230,7 @@ export const votesRelations = relations(votes, ({ one }) => ({
 export type ChatMessageKind =
   | "text"
   | "gif"
+  | "image"
   | "bingo_strike"
   | "system"
   | "now_playing";

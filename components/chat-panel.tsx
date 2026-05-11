@@ -18,6 +18,8 @@ import {
   Copy,
   Smile,
   Image as ImageIcon,
+  ImagePlus,
+  Loader2,
   Check,
   ChevronUp,
 } from "lucide-react";
@@ -46,7 +48,15 @@ type Reactions = Record<
   { count: number; names: string[]; mine: boolean }
 >;
 
-type MessageKind = "text" | "gif" | "bingo_strike" | "system" | "now_playing";
+type MessageKind =
+  | "text"
+  | "gif"
+  | "image"
+  | "bingo_strike"
+  | "system"
+  | "now_playing";
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
 type Message = {
   id: string;
@@ -86,6 +96,8 @@ export function ChatPanel() {
   const sessionRef = useRef<string>("");
   const listRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
   const didInitialScroll = useRef(false);
 
   // Known participant names for @-mention autocomplete: everyone present
@@ -305,6 +317,64 @@ export function ChatPanel() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ session, name, avatarId, kind: "gif", gifUrl, replyTo: reply }),
     });
+  };
+
+  const sendImage = async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error(t(lang, "chat_image_too_big"));
+      return;
+    }
+    const session = sessionRef.current;
+    const name = localStorage.getItem(NAME_KEY) ?? "Anon";
+    const avatarId = localStorage.getItem(AVATAR_KEY);
+    const reply = replyTo?.id ?? null;
+    const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const localUrl = URL.createObjectURL(file);
+    const optimistic: Message = {
+      id: tempId,
+      sessionId: session,
+      name,
+      avatarId,
+      kind: "image",
+      body: null,
+      gifUrl: localUrl,
+      replyTo: reply,
+      meta: null,
+      createdAt: new Date().toISOString(),
+      reactions: {},
+      pending: true,
+    };
+    setMessages((prev) => [...prev, optimistic]);
+    setReplyTo(null);
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const up = await fetch(`/api/rooms/${code}/chat/upload`, { method: "POST", body: form });
+      if (!up.ok) {
+        const { error } = (await up.json().catch(() => ({}))) as { error?: string };
+        throw new Error(error ?? t(lang, "chat_image_failed"));
+      }
+      const { url } = (await up.json()) as { url: string };
+      const res = await fetch(`/api/rooms/${code}/chat`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ session, name, avatarId, kind: "image", gifUrl: url, replyTo: reply }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { id?: string };
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === tempId ? { ...m, id: data.id ?? m.id, gifUrl: url, pending: false } : m,
+        ),
+      );
+    } catch (err) {
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      toast.error((err as Error).message);
+    } finally {
+      setUploading(false);
+      URL.revokeObjectURL(localUrl);
+    }
   };
 
   const react = async (msgId: string, emoji: string) => {
@@ -558,18 +628,47 @@ export function ChatPanel() {
                        focus:outline-none focus:border-white/30 transition"
             maxLength={2000}
           />
-          {/* GIF picker — its own button to the RIGHT of the input. */}
+          {/* Photo upload + GIF picker — own buttons to the RIGHT. */}
           {!editing && (
-            <button
-              type="button"
-              onClick={() => setGifOpen(true)}
-              aria-label={t(lang, "gif_pick")}
-              className="h-11 w-11 shrink-0 rounded-full grid place-items-center
-                         bg-white/[0.06] ring-1 ring-white/12 text-white/75
-                         hover:bg-white/[0.1] hover:text-white transition active:scale-[0.95]"
-            >
-              <ImageIcon className="h-[18px] w-[18px]" />
-            </button>
+            <>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) sendImage(f);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                aria-label={t(lang, "chat_send_photo")}
+                className="h-11 w-11 shrink-0 rounded-full grid place-items-center
+                           bg-white/[0.06] ring-1 ring-white/12 text-white/75
+                           hover:bg-white/[0.1] hover:text-white transition active:scale-[0.95]
+                           disabled:opacity-50"
+              >
+                {uploading ? (
+                  <Loader2 className="h-[18px] w-[18px] animate-spin" />
+                ) : (
+                  <ImagePlus className="h-[18px] w-[18px]" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setGifOpen(true)}
+                aria-label={t(lang, "gif_pick")}
+                className="h-11 w-11 shrink-0 rounded-full grid place-items-center
+                           bg-white/[0.06] ring-1 ring-white/12 text-white/75
+                           hover:bg-white/[0.1] hover:text-white transition active:scale-[0.95]"
+              >
+                <ImageIcon className="h-[18px] w-[18px]" />
+              </button>
+            </>
           )}
           <button
             type="submit"
@@ -672,7 +771,7 @@ function ChatRow({
   const isCard = m.kind === "bingo_strike";
   const isSystem = m.kind === "system";
   const isNowPlaying = m.kind === "now_playing";
-  const isGif = m.kind === "gif" && m.gifUrl;
+  const isGif = (m.kind === "gif" || m.kind === "image") && m.gifUrl;
   const isEdited = (m.meta as { edited?: boolean } | null)?.edited === true;
   const canEdit =
     mine && m.kind === "text" &&
@@ -856,8 +955,15 @@ function ChatRow({
               {isCard ? (
                 <BingoCardMessage meta={m.meta} />
               ) : isGif ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={m.gifUrl!} alt="" className="block max-h-60 w-auto rounded-2xl" />
+                <span className="relative block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={m.gifUrl!} alt="" className="block max-h-60 w-auto rounded-2xl" />
+                  {m.kind === "image" && m.pending && (
+                    <span className="absolute inset-0 grid place-items-center bg-black/30 rounded-2xl">
+                      <Loader2 className="h-5 w-5 text-white animate-spin" />
+                    </span>
+                  )}
+                </span>
               ) : (
                 <>
                   <span className="whitespace-pre-wrap break-words">

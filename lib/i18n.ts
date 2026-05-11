@@ -131,6 +131,9 @@ const messages = {
     gif_pick:          "Pick a GIF",
     gif_search:        "Search GIFs",
     gif_hint:          "Try \"omg\", \"yes\", \"fire\"…",
+    chat_send_photo:   "Send a photo",
+    chat_image_too_big: "Image is too large (max 8 MB).",
+    chat_image_failed: "Couldn't upload that image.",
     gif_empty:         "No GIFs found.",
 
     // Country deep-dive
@@ -375,6 +378,9 @@ const messages = {
     gif_pick:          "Pasirink GIF",
     gif_search:        "Ieškoti GIF",
     gif_hint:          "Bandyk „omg“, „taip“, „fire“…",
+    chat_send_photo:   "Siųsti nuotrauką",
+    chat_image_too_big: "Nuotrauka per didelė (maks. 8 MB).",
+    chat_image_failed: "Nepavyko įkelti nuotraukos.",
     gif_empty:         "Nieko nerasta.",
 
     deep_artist:       "Atlikėjas",

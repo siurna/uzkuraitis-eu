@@ -20,7 +20,7 @@ const PostSchema = z.object({
   body: z.string().trim().max(2000).optional(),
   gifUrl: z.string().url().max(2000).optional(),
   replyTo: z.string().uuid().nullable().optional(),
-  kind: z.enum(["text", "gif", "bingo_strike"]).optional().default("text"),
+  kind: z.enum(["text", "gif", "image", "bingo_strike"]).optional().default("text"),
   meta: z.record(z.string(), z.unknown()).optional(),
 });
 
