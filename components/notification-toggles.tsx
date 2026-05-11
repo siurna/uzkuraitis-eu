@@ -14,10 +14,8 @@ import {
   type PushState,
 } from "@/lib/push-client";
 import { useRoomLive } from "@/components/room-shell";
+import { NAME_KEY, SESSION_KEY } from "@/lib/use-identity";
 import { useLang, t } from "@/lib/i18n";
-
-const NAME_KEY = "uzk_name";
-const SESSION_KEY = "uzk_session";
 
 const DEFAULT_PREFS: PushPrefs = {
   chatAll: true,

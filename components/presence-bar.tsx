@@ -5,16 +5,13 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
 import { Settings as SettingsIcon } from "lucide-react";
 import { useUpdateMyPresence } from "@/lib/liveblocks";
-import { getAvatar } from "@/lib/avatars";
+import { useIdentity } from "@/lib/use-identity";
 import { useRoomLive } from "@/components/room-shell";
 import { SettingsModal } from "@/components/settings-modal";
 import { Flag } from "@/components/flag";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { getCountry, countryName } from "@/lib/countries";
 import { useLang, t } from "@/lib/i18n";
-
-const NAME_KEY = "uzk_name";
-const AVATAR_KEY = "uzk_avatar";
 
 // Unified room header. Carries everything chrome-y in one translucent
 // strip:
@@ -28,36 +25,20 @@ const AVATAR_KEY = "uzk_avatar";
 export function PresenceBar() {
   const { code, nowPlayingCode, showStatus } = useRoomLive();
   const lang = useLang();
+  const { name, avatarId, avatar } = useIdentity();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [avatarId, setAvatarId] = useState<string | null>(null);
-  const [name, setName] = useState<string>("");
   const updatePresence = useUpdateMyPresence();
   const shareUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/?room=${code}`
       : "";
 
-  // localStorage → state. Subscribe to writes (cross-tab + same-tab via
-  // the custom event the settings drawer dispatches).
+  // Mirror identity into Liveblocks presence so other voters' bars +
+  // honeycomb update when we change name/avatar.
   useEffect(() => {
-    const read = () => {
-      setAvatarId(localStorage.getItem(AVATAR_KEY));
-      setName(localStorage.getItem(NAME_KEY) ?? "");
-    };
-    read();
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === AVATAR_KEY || e.key === NAME_KEY) read();
-    };
-    const onCustom = () => read();
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("uzk:avatar-change", onCustom);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("uzk:avatar-change", onCustom);
-    };
-  }, []);
+    if (name) updatePresence({ name, avatar: avatarId });
+  }, [name, avatarId, updatePresence]);
 
-  const avatar = getAvatar(avatarId);
   const deepDive = useCountryDeepDive();
   // Only treat a country as "on stage" while the show status is
   // in_progress — a break or "not started" shouldn't keep showing the
@@ -196,12 +177,7 @@ export function PresenceBar() {
 
       <SettingsModal
         open={settingsOpen}
-        onClose={() => {
-          setSettingsOpen(false);
-          setAvatarId(localStorage.getItem(AVATAR_KEY));
-          const next = localStorage.getItem(AVATAR_KEY);
-          updatePresence({ avatar: next });
-        }}
+        onClose={() => setSettingsOpen(false)}
         shareUrl={shareUrl}
       />
     </header>

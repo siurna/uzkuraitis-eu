@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { nanoid } from "nanoid";
 import { toast } from "sonner";
 import {
   DndContext,
@@ -25,13 +24,14 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { X, ListOrdered, Sparkles, Share2, Check, ScrollText } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { countries, getCountry } from "@/lib/countries";
+import { countries, getCountry, countryName } from "@/lib/countries";
 import { Flag, HeartOutline } from "@/components/flag";
 import { BonusBetsForm } from "@/components/bonus-bets-form";
 import { CountryDrawer } from "@/components/country-drawer";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { useIdentity } from "@/lib/use-identity";
 import type { Bets } from "@/lib/scoring";
-import { useLang, t } from "@/lib/i18n";
+import { useLang, t, fmt } from "@/lib/i18n";
 
 const POINT_VALUES = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1] as const;
 type Points = (typeof POINT_VALUES)[number];
@@ -51,8 +51,6 @@ const VOTE_TABS: { id: VoteTab; icon: typeof ListOrdered; labelKey: "tab_ballot"
 const STORAGE_KEY = (code: string) => `uzk_ballot_${code}`;
 const PREDICTION_KEY = (code: string) => `uzk_home_${code}`;
 const BETS_KEY = (code: string) => `uzk_bets_${code}`;
-const SESSION_KEY = "uzk_session";
-const NAME_KEY = "uzk_name";
 
 export function VoteForm({
   roomCode,
@@ -61,7 +59,7 @@ export function VoteForm({
   roomCode: string;
   homeCountryCode: string;
 }) {
-  const [name, setName] = useState("");
+  const { name, sessionId } = useIdentity();
   const [slots, setSlots] = useState<Slot[]>(
     POINT_VALUES.map((p) => ({ points: p, countryCode: null })),
   );
@@ -102,12 +100,8 @@ export function VoteForm({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  // Restore session id + previous ballot + previous prediction on mount.
+  // Restore previous ballot / prediction / bets on mount.
   useEffect(() => {
-    if (!localStorage.getItem(SESSION_KEY)) {
-      localStorage.setItem(SESSION_KEY, `s_${nanoid(16)}`);
-    }
-    setName(localStorage.getItem(NAME_KEY) ?? "");
     const stored = localStorage.getItem(STORAGE_KEY(roomCode));
     if (stored) {
       try {
@@ -271,8 +265,6 @@ export function VoteForm({
     }
     setCasting(true);
     try {
-      localStorage.setItem(NAME_KEY, name.trim());
-      const sessionId = localStorage.getItem(SESSION_KEY)!;
       const ballot = Object.fromEntries(
         slots.map((s) => [String(s.points), s.countryCode!]),
       );
@@ -284,7 +276,7 @@ export function VoteForm({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          sessionId,
+          sessionId: sessionId(),
           votes: ballot,
           homePrediction:
             predictionInt && Number.isFinite(predictionInt)
@@ -435,11 +427,10 @@ export function VoteForm({
                   <Flag code={homeCountry.code} size="lg" />
                   <div className="flex-1 min-w-0">
                     <h2 className="font-display text-xl gradient-text">
-                      {homeCountry.name} placement
+                      {fmt(t(lang, "bet_lt_placement"), { home: countryName(homeCountry.code, lang) })}
                     </h2>
                     <p className="text-xs text-white/50">
-                      Exact 10, off-by-1 7, off-by-2 5, off-by-3 to 5 3,
-                      off-by-6 to 10 1, beyond 0.
+                      {fmt(t(lang, "bet_lt_placement_sub"), { home: countryName(homeCountry.code, lang) })}
                     </p>
                   </div>
                 </div>

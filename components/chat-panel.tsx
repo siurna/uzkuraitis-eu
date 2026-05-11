@@ -28,15 +28,13 @@ import {
 import { toast } from "sonner";
 import { useEventListener, useOthers, useUpdateMyPresence } from "@/lib/liveblocks";
 import { useRoomLive } from "@/components/room-shell";
+import { useIdentity } from "@/lib/use-identity";
 import { getAvatar } from "@/lib/avatars";
 import { getCountry, countryName } from "@/lib/countries";
 import { HeartFlag } from "@/components/flag";
 import { GifPicker } from "@/components/gif-picker";
 import { useLang, t } from "@/lib/i18n";
 
-const SESSION_KEY = "uzk_session";
-const NAME_KEY = "uzk_name";
-const AVATAR_KEY = "uzk_avatar";
 const EDIT_WINDOW_MS = 2 * 60 * 1000;
 // How many messages we keep in the DOM. The API already windows to the
 // last ~50 per fetch; this is the cap once "load earlier" pages kick in.
@@ -113,6 +111,8 @@ export function ChatPanel() {
   const lang = useLang();
   const others = useOthers();
   const updatePresence = useUpdateMyPresence();
+  const { name, avatarId, sessionId } = useIdentity();
+  const mySession = sessionId();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,7 +129,6 @@ export function ChatPanel() {
   const [newCount, setNewCount] = useState(0);
   const [lightbox, setLightbox] = useState<string | null>(null);
 
-  const sessionRef = useRef<string>("");
   const listRef = useRef<HTMLDivElement | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -137,19 +136,36 @@ export function ChatPanel() {
   const atBottomRef = useRef(true);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Build an optimistic Message from the current identity + reply state.
+  const makeOptimistic = useCallback(
+    (partial: Partial<Message> & Pick<Message, "kind">): Message => ({
+      id: `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      sessionId: mySession,
+      name: name || "Anon",
+      avatarId,
+      body: null,
+      gifUrl: null,
+      replyTo: replyTo?.id ?? null,
+      meta: null,
+      createdAt: new Date().toISOString(),
+      reactions: {},
+      pending: true,
+      ...partial,
+    }),
+    [mySession, name, avatarId, replyTo],
+  );
+
   // Known participant names (presence + me) for @-mention autocomplete
   // and highlighting. Deduped, alpha-sorted.
-  const myName =
-    typeof window !== "undefined" ? localStorage.getItem(NAME_KEY) ?? "" : "";
   const participantNames = useMemo(() => {
     const set = new Set<string>();
-    if (myName) set.add(myName);
+    if (name) set.add(name);
     for (const o of others) {
       const n = o.presence?.name;
       if (n) set.add(n);
     }
     return [...set].sort((a, b) => a.localeCompare(b));
-  }, [others, myName]);
+  }, [others, name]);
 
   // Who's typing right now (excluding me — useOthers already excludes self).
   const typingNames = useMemo(
@@ -159,15 +175,6 @@ export function ChatPanel() {
         .map((o) => o.presence!.name as string),
     [others],
   );
-
-  useEffect(() => {
-    let s = localStorage.getItem(SESSION_KEY);
-    if (!s) {
-      s = `s_${Math.random().toString(36).slice(2, 14)}`;
-      localStorage.setItem(SESSION_KEY, s);
-    }
-    sessionRef.current = s;
-  }, []);
 
   // Clear typing presence on unmount.
   useEffect(() => {
@@ -183,10 +190,9 @@ export function ChatPanel() {
     if (fetchTimer.current) return;
     fetchTimer.current = setTimeout(async () => {
       fetchTimer.current = null;
-      const s = sessionRef.current || localStorage.getItem(SESSION_KEY) || "";
       try {
         const res = await fetch(
-          `/api/rooms/${code}/chat?session=${encodeURIComponent(s)}&limit=50`,
+          `/api/rooms/${code}/chat?session=${encodeURIComponent(mySession)}&limit=50`,
           { cache: "no-store" },
         );
         if (!res.ok) return;
@@ -351,30 +357,14 @@ export function ChatPanel() {
     taRef.current?.focus();
   };
 
+  const senderName = name || "Anon";
+
   const send = async () => {
     const text = body.trim();
     if (!text) return;
-    const session = sessionRef.current;
-    const name = localStorage.getItem(NAME_KEY) ?? "Anon";
-    const avatarId = localStorage.getItem(AVATAR_KEY);
     const reply = replyTo?.id ?? null;
     const mentions = participantNames.filter((n) => mentionsName(text, n));
-
-    const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const optimistic: Message = {
-      id: tempId,
-      sessionId: session,
-      name,
-      avatarId,
-      kind: "text",
-      body: text,
-      gifUrl: null,
-      replyTo: reply,
-      meta: null,
-      createdAt: new Date().toISOString(),
-      reactions: {},
-      pending: true,
-    };
+    const optimistic = makeOptimistic({ kind: "text", body: text });
     setMessages((prev) => [...prev, optimistic]);
     setBody("");
     setReplyTo(null);
@@ -385,10 +375,10 @@ export function ChatPanel() {
       const res = await fetch(`/api/rooms/${code}/chat`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ session, name, avatarId, body: text, replyTo: reply, mentions }),
+        body: JSON.stringify({ session: mySession, name: senderName, avatarId, body: text, replyTo: reply, mentions }),
       });
       if (!res.ok) {
-        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
         setBody(text);
         setReplyTo(replyTo);
         toast.error(t(lang, res.status === 429 ? "chat_slow_down" : "chat_send_failed"));
@@ -397,29 +387,24 @@ export function ChatPanel() {
       const data = (await res.json()) as { id?: string };
       if (data.id) {
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === tempId ? { ...m, id: data.id!, pending: false } : m,
-          ),
+          prev.map((m) => (m.id === optimistic.id ? { ...m, id: data.id!, pending: false } : m)),
         );
       }
     } catch {
-      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
       setBody(text);
       toast.error(t(lang, "chat_send_failed"));
     }
   };
 
   const sendGif = async (gifUrl: string) => {
-    const session = sessionRef.current;
-    const name = localStorage.getItem(NAME_KEY) ?? "Anon";
-    const avatarId = localStorage.getItem(AVATAR_KEY);
     const reply = replyTo?.id ?? null;
     setReplyTo(null);
     requestAnimationFrame(() => scrollToBottom(false));
     await fetch(`/api/rooms/${code}/chat`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ session, name, avatarId, kind: "gif", gifUrl, replyTo: reply }),
+      body: JSON.stringify({ session: mySession, name: senderName, avatarId, kind: "gif", gifUrl, replyTo: reply }),
     });
   };
 
@@ -429,26 +414,9 @@ export function ChatPanel() {
       toast.error(t(lang, "chat_image_too_big"));
       return;
     }
-    const session = sessionRef.current;
-    const name = localStorage.getItem(NAME_KEY) ?? "Anon";
-    const avatarId = localStorage.getItem(AVATAR_KEY);
     const reply = replyTo?.id ?? null;
-    const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const localUrl = URL.createObjectURL(file);
-    const optimistic: Message = {
-      id: tempId,
-      sessionId: session,
-      name,
-      avatarId,
-      kind: "image",
-      body: null,
-      gifUrl: localUrl,
-      replyTo: reply,
-      meta: null,
-      createdAt: new Date().toISOString(),
-      reactions: {},
-      pending: true,
-    };
+    const optimistic = makeOptimistic({ kind: "image", gifUrl: localUrl });
     setMessages((prev) => [...prev, optimistic]);
     setReplyTo(null);
     setUploading(true);
@@ -465,16 +433,14 @@ export function ChatPanel() {
       const res = await fetch(`/api/rooms/${code}/chat`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ session, name, avatarId, kind: "image", gifUrl: url, replyTo: reply }),
+        body: JSON.stringify({ session: mySession, name: senderName, avatarId, kind: "image", gifUrl: url, replyTo: reply }),
       });
       const data = (await res.json().catch(() => ({}))) as { id?: string };
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === tempId ? { ...m, id: data.id ?? m.id, gifUrl: url, pending: false } : m,
-        ),
+        prev.map((m) => (m.id === optimistic.id ? { ...m, id: data.id ?? m.id, gifUrl: url, pending: false } : m)),
       );
     } catch (err) {
-      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
       toast.error((err as Error).message);
     } finally {
       setUploading(false);
@@ -494,8 +460,6 @@ export function ChatPanel() {
   };
 
   const react = async (msgId: string, emoji: string) => {
-    const session = sessionRef.current;
-    const name = localStorage.getItem(NAME_KEY) ?? "Anon";
     setMenuFor(null);
     setMessages((prev) =>
       prev.map((m) => {
@@ -505,7 +469,7 @@ export function ChatPanel() {
         if (slot.mine) {
           const next = {
             count: Math.max(0, slot.count - 1),
-            names: slot.names.filter((n) => n !== name),
+            names: slot.names.filter((n) => n !== senderName),
             mine: false,
           };
           if (next.count === 0) delete r[emoji];
@@ -513,7 +477,7 @@ export function ChatPanel() {
         } else {
           r[emoji] = {
             count: slot.count + 1,
-            names: [...slot.names, name],
+            names: [...slot.names, senderName],
             mine: true,
           };
         }
@@ -523,7 +487,7 @@ export function ChatPanel() {
     fetch(`/api/rooms/${code}/chat/${msgId}/react`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ session, name, emoji }),
+      body: JSON.stringify({ session: mySession, name: senderName, emoji }),
     }).catch(() => fetchMessages());
   };
 
@@ -540,7 +504,7 @@ export function ChatPanel() {
       setEditing(null);
       return;
     }
-    const session = sessionRef.current;
+    const session = mySession;
     setMessages((prev) =>
       prev.map((m) =>
         m.id === editing.id
@@ -562,7 +526,7 @@ export function ChatPanel() {
 
   const remove = async (m: Message) => {
     setMenuFor(null);
-    const session = sessionRef.current;
+    const session = mySession;
     setMessages((prev) => prev.filter((x) => x.id !== m.id));
     if (m.pending) return;
     const res = await fetch(
@@ -604,7 +568,7 @@ export function ChatPanel() {
   const lastOwnIso = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i];
-      if (m.sessionId === sessionRef.current && (m.kind === "text" || m.kind === "gif" || m.kind === "image")) {
+      if (m.sessionId === mySession && (m.kind === "text" || m.kind === "gif" || m.kind === "image")) {
         return { iso: m.createdAt, id: m.id };
       }
     }
@@ -685,7 +649,7 @@ export function ChatPanel() {
                     )}
                     <ChatRow
                       message={m}
-                      mine={m.sessionId === sessionRef.current}
+                      mine={m.sessionId === mySession}
                       parent={m.replyTo ? byId.get(m.replyTo) ?? null : null}
                       showHeader={!sameAuthor}
                       menuOpen={menuFor === m.id}

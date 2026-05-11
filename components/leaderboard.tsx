@@ -7,6 +7,7 @@ import { useEventListener } from "@/lib/liveblocks";
 import { getCountry } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 import { ResultsReveal } from "@/components/results-reveal";
+import { ensureSessionId } from "@/lib/use-identity";
 import type { BetBreakdown } from "@/lib/scoring";
 import { useLang, t } from "@/lib/i18n";
 
@@ -46,7 +47,7 @@ export function Leaderboard({ code }: { code: string }) {
   const lang = useLang();
 
   useEffect(() => {
-    setSession(localStorage.getItem("uzk_session") ?? "");
+    setSession(ensureSessionId());
   }, []);
 
   const fetchLeaderboard = useCallback(async () => {

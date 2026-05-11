@@ -15,6 +15,7 @@ import {
   useEventListener,
 } from "@/lib/liveblocks";
 import { useRoomLive } from "@/components/room-shell";
+import { useIdentity } from "@/lib/use-identity";
 import {
   buildBingoCard,
   FREE_SQUARE,
@@ -26,10 +27,6 @@ import {
   type TropeIndex,
 } from "@/lib/bingo-tropes";
 import { useLang, t } from "@/lib/i18n";
-
-const SESSION_KEY = "uzk_session";
-const NAME_KEY = "uzk_name";
-const AVATAR_KEY = "uzk_avatar";
 
 type Ticket = {
   id: string;
@@ -68,20 +65,15 @@ export function BingoCard() {
   const lang = useLang();
   const broadcast = useBroadcastEvent();
 
+  const { name, avatarId, sessionId } = useIdentity();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [active, setActive] = useState(0);
   const [hydrated, setHydrated] = useState(false);
   const [scrambling, setScrambling] = useState(false);
-  const [name, setName] = useState("");
   const [tickers, setTickers] = useState<Ticker[]>([]);
 
   useEffect(() => {
-    let session = localStorage.getItem(SESSION_KEY);
-    if (!session) {
-      session = `s_${Math.random().toString(36).slice(2, 14)}`;
-      localStorage.setItem(SESSION_KEY, session);
-    }
-    setName(localStorage.getItem(NAME_KEY) ?? "");
+    const session = sessionId();
     try {
       const stored = JSON.parse(localStorage.getItem(ticketKey(code)) ?? "[]");
       if (Array.isArray(stored) && stored.length > 0) {
@@ -150,13 +142,11 @@ export function BingoCard() {
           const trope = getTrope(tropeIdx, lang);
           broadcast({ type: "bingo:strike", by: name || "Someone", trope, bingo: wonNow });
           if (wonNow) {
-            const session = localStorage.getItem(SESSION_KEY) ?? "";
-            const avatarId = localStorage.getItem(AVATAR_KEY);
             fetch(`/api/rooms/${code}/chat`, {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({
-                session,
+                session: sessionId(),
                 name: name || "Anon",
                 avatarId,
                 kind: "bingo_strike",
