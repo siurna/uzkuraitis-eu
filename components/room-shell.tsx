@@ -92,13 +92,34 @@ export function RoomShell({
   );
 }
 
-// Body. The reaction emoji bar should only appear on the Home tab —
-// the other tabs (chat/bingo/vote) own the bottom area for their own
-// inputs and the bar would fight the tab bar for space.
+// Body. The reaction emoji bar appears only on Home (the other tabs
+// own the bottom for their own inputs). The unread-chat counter lives
+// here so the tab bar can badge it: every chat:new bumps it unless
+// the user is on the chat tab, and the chat panel resets it via the
+// uzk:chat-seen event.
 function RoomBody({ children }: { children: React.ReactNode }) {
   const { code } = useRoomLive();
   const pathname = usePathname();
   const isHome = pathname === `/r/${code}`;
+  const isChat = pathname.startsWith(`/r/${code}/chat`);
+  const [unread, setUnread] = useState(0);
+
+  useEventListener(({ event }) => {
+    if ((event as { type?: string }).type !== "chat:new") return;
+    if (isChat) return; // already looking at it
+    setUnread((n) => Math.min(99, n + 1));
+  });
+
+  useEffect(() => {
+    if (isChat) setUnread(0);
+  }, [isChat]);
+
+  useEffect(() => {
+    const onSeen = () => setUnread(0);
+    window.addEventListener("uzk:chat-seen", onSeen);
+    return () => window.removeEventListener("uzk:chat-seen", onSeen);
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col pb-24">
       <PresenceBar />
@@ -106,7 +127,7 @@ function RoomBody({ children }: { children: React.ReactNode }) {
       {isHome && (
         <FloatingReactionsLayer code={code} hideBarOnMobile={false} />
       )}
-      <RoomTabBar code={code} />
+      <RoomTabBar code={code} chatUnread={unread} />
     </div>
   );
 }

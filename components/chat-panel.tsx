@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -16,8 +17,7 @@ import {
   Pencil,
   Copy,
   Smile,
-  Image as ImageIcon,
-  Sparkles,
+  Sticker,
   Check,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,19 +40,20 @@ type Reactions = Record<
   { count: number; names: string[]; mine: boolean }
 >;
 
+type MessageKind = "text" | "gif" | "bingo_strike" | "system";
+
 type Message = {
   id: string;
   sessionId: string;
   name: string;
   avatarId: string | null;
-  kind: "text" | "gif" | "bingo_strike";
+  kind: MessageKind;
   body: string | null;
   gifUrl: string | null;
   replyTo: string | null;
   meta: Record<string, unknown> | null;
   createdAt: string;
   reactions: Reactions;
-  /** Optimistic-only: true if we haven't received the server echo yet. */
   pending?: boolean;
 };
 
@@ -75,6 +76,7 @@ export function ChatPanel() {
 
   const sessionRef = useRef<string>("");
   const listRef = useRef<HTMLDivElement | null>(null);
+  const didInitialScroll = useRef(false);
 
   useEffect(() => {
     let s = localStorage.getItem(SESSION_KEY);
@@ -94,8 +96,6 @@ export function ChatPanel() {
       );
       if (!res.ok) return;
       const data = (await res.json()) as { messages: Message[] };
-      // Merge: keep optimistic messages that the server hasn't echoed
-      // yet, drop pending duplicates once the real row arrives.
       setMessages((prev) => {
         const fresh = data.messages;
         const freshIds = new Set(fresh.map((m) => m.id));
@@ -113,6 +113,20 @@ export function ChatPanel() {
     fetchMessages();
   }, [fetchMessages]);
 
+  // Mark chat as seen whenever we're on this tab and a message lands —
+  // clears the tab-bar unread badge.
+  useEffect(() => {
+    const stamp = () => {
+      try {
+        localStorage.setItem(`uzk_chat_seen_${code}`, new Date().toISOString());
+        window.dispatchEvent(new Event("uzk:chat-seen"));
+      } catch {
+        /* private mode */
+      }
+    };
+    stamp();
+  }, [code, messages.length]);
+
   useEventListener(({ event }) => {
     const ev = event as { type?: string };
     if (
@@ -124,17 +138,26 @@ export function ChatPanel() {
     }
   });
 
+  // FIRST render: jump straight to the bottom WITHOUT animation so the
+  // chat opens on the newest message with zero scroll-lag, even with
+  // a full page of history. Subsequent appends smooth-scroll, but only
+  // if the user is already near the bottom (so reading old messages
+  // isn't yanked away).
   const lastCount = useRef(0);
-  useEffect(() => {
-    if (!listRef.current) return;
-    if (messages.length === lastCount.current) return;
+  useLayoutEffect(() => {
+    if (loading || !listRef.current) return;
     const el = listRef.current;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
-    lastCount.current = messages.length;
-    if (nearBottom) {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    if (!didInitialScroll.current) {
+      el.scrollTop = el.scrollHeight; // instant
+      didInitialScroll.current = true;
+      lastCount.current = messages.length;
+      return;
     }
-  }, [messages]);
+    if (messages.length === lastCount.current) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 220;
+    lastCount.current = messages.length;
+    if (nearBottom) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, loading]);
 
   const send = async (e?: FormEvent) => {
     e?.preventDefault();
@@ -145,9 +168,6 @@ export function ChatPanel() {
     const avatarId = localStorage.getItem(AVATAR_KEY);
     const reply = replyTo?.id ?? null;
 
-    // Optimistic — drop the message into local state right away so
-    // the input feels instant. Real server-echo will reconcile via
-    // fetchMessages() when chat:new lands.
     const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const optimistic: Message = {
       id: tempId,
@@ -171,24 +191,15 @@ export function ChatPanel() {
       const res = await fetch(`/api/rooms/${code}/chat`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          session,
-          name,
-          avatarId,
-          body: text,
-          replyTo: reply,
-        }),
+        body: JSON.stringify({ session, name, avatarId, body: text, replyTo: reply }),
       });
       if (!res.ok) {
-        // Roll back the optimistic message.
         setMessages((prev) => prev.filter((m) => m.id !== tempId));
         setBody(text);
         setReplyTo(replyTo);
         toast.error(t(lang, "chat_send_failed"));
         return;
       }
-      // Patch the optimistic row with the real id so the broadcast
-      // refetch dedupes correctly.
       const data = (await res.json()) as { id?: string };
       if (data.id) {
         setMessages((prev) =>
@@ -213,26 +224,44 @@ export function ChatPanel() {
     await fetch(`/api/rooms/${code}/chat`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        session,
-        name,
-        avatarId,
-        kind: "gif",
-        gifUrl,
-        replyTo: reply,
-      }),
+      body: JSON.stringify({ session, name, avatarId, kind: "gif", gifUrl, replyTo: reply }),
     });
   };
 
+  // Optimistic reaction toggle — flip it in local state immediately so
+  // the strip never feels laggy; the broadcast refetch reconciles.
   const react = async (msgId: string, emoji: string) => {
     const session = sessionRef.current;
     const name = localStorage.getItem(NAME_KEY) ?? "Anon";
     setMenuFor(null);
-    await fetch(`/api/rooms/${code}/chat/${msgId}/react`, {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== msgId) return m;
+        const r = { ...m.reactions };
+        const slot = r[emoji] ?? { count: 0, names: [], mine: false };
+        if (slot.mine) {
+          const next = {
+            count: Math.max(0, slot.count - 1),
+            names: slot.names.filter((n) => n !== name),
+            mine: false,
+          };
+          if (next.count === 0) delete r[emoji];
+          else r[emoji] = next;
+        } else {
+          r[emoji] = {
+            count: slot.count + 1,
+            names: [...slot.names, name],
+            mine: true,
+          };
+        }
+        return { ...m, reactions: r };
+      }),
+    );
+    fetch(`/api/rooms/${code}/chat/${msgId}/react`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ session, name, emoji }),
-    });
+    }).catch(() => fetchMessages());
   };
 
   const startEdit = (m: Message) => {
@@ -249,7 +278,6 @@ export function ChatPanel() {
       return;
     }
     const session = sessionRef.current;
-    // Optimistic body swap.
     setMessages((prev) =>
       prev.map((m) =>
         m.id === editing.id
@@ -264,7 +292,6 @@ export function ChatPanel() {
       body: JSON.stringify({ session, body: text }),
     });
     if (!res.ok) {
-      // Refetch to revert the optimistic change.
       fetchMessages();
       toast.error(t(lang, "chat_edit_failed"));
     }
@@ -289,6 +316,8 @@ export function ChatPanel() {
       <div
         ref={listRef}
         className="flex-1 overflow-y-auto py-4 flex flex-col gap-3"
+        // Tapping empty space closes any open message menu.
+        onClick={() => menuFor && setMenuFor(null)}
       >
         {loading ? (
           <ul className="flex flex-col gap-3">
@@ -301,7 +330,7 @@ export function ChatPanel() {
           </ul>
         ) : messages.length === 0 ? (
           <div className="flex-1 grid place-items-center text-center text-white/45 gap-2">
-            <Sparkles className="h-6 w-6 text-white/30" />
+            <Smile className="h-6 w-6 text-white/30" />
             <p className="text-sm">{t(lang, "chat_empty")}</p>
           </div>
         ) : (
@@ -310,7 +339,8 @@ export function ChatPanel() {
               {messages.map((m, idx) => {
                 const prev = messages[idx - 1] ?? null;
                 const sameAuthor =
-                  prev && prev.sessionId === m.sessionId && prev.kind === m.kind;
+                  prev && prev.sessionId === m.sessionId && prev.kind === m.kind &&
+                  m.kind === "text" && prev.kind === "text";
                 return (
                   <ChatRow
                     key={m.id}
@@ -337,6 +367,7 @@ export function ChatPanel() {
         )}
       </div>
 
+      {/* Pinned composer — sticky to the bottom of the chat column. */}
       <div className="sticky bottom-0 pb-2 pt-2 bg-gradient-to-t from-dark-blue-900 via-dark-blue-900/95 to-dark-blue-900/0">
         {(replyTo || editing) && (
           <motion.div
@@ -348,15 +379,8 @@ export function ChatPanel() {
             {editing ? (
               <>
                 <Pencil className="h-3.5 w-3.5 text-flamingo" />
-                <p className="flex-1 truncate text-white/70">
-                  {t(lang, "chat_editing")}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setEditing(null)}
-                  className="text-white/40 hover:text-white"
-                  aria-label={t(lang, "cancel")}
-                >
+                <p className="flex-1 truncate text-white/70">{t(lang, "chat_editing")}</p>
+                <button type="button" onClick={() => setEditing(null)} className="text-white/40 hover:text-white" aria-label={t(lang, "cancel")}>
                   <X className="h-3.5 w-3.5" />
                 </button>
               </>
@@ -364,18 +388,11 @@ export function ChatPanel() {
               <>
                 <Reply className="h-3.5 w-3.5 text-flamingo" />
                 <p className="flex-1 truncate text-white/70">
-                  <span className="font-display text-white/90">
-                    {replyTo.name}
-                  </span>
+                  <span className="font-display text-white/90">{replyTo.name}</span>
                   {": "}
                   {replyTo.body ?? (replyTo.gifUrl ? "GIF" : t(lang, "chat_card"))}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setReplyTo(null)}
-                  className="text-white/40 hover:text-white"
-                  aria-label={t(lang, "cancel")}
-                >
+                <button type="button" onClick={() => setReplyTo(null)} className="text-white/40 hover:text-white" aria-label={t(lang, "cancel")}>
                   <X className="h-3.5 w-3.5" />
                 </button>
               </>
@@ -386,36 +403,39 @@ export function ChatPanel() {
           onSubmit={editing ? (e) => { e.preventDefault(); submitEdit(); } : send}
           className="flex items-center gap-2"
         >
-          <input
-            value={editing ? editBody : body}
-            onChange={(e) =>
-              editing
-                ? setEditBody(e.target.value.slice(0, 2000))
-                : setBody(e.target.value.slice(0, 2000))
-            }
-            placeholder={
-              editing
-                ? t(lang, "chat_edit_placeholder")
-                : t(lang, "chat_placeholder")
-            }
-            className="flex-1 h-11 rounded-full
-                       border border-white/15 bg-black/40 px-4 text-base
-                       text-white placeholder:text-white/35
-                       focus:outline-none focus:border-white/30 transition"
-            maxLength={2000}
-          />
-          {!editing && (
-            <button
-              type="button"
-              onClick={() => setGifOpen(true)}
-              className="h-11 w-11 rounded-full grid place-items-center
-                         bg-white/[0.04] ring-1 ring-white/10
-                         text-white/70 hover:bg-white/[0.08] hover:text-white transition"
-              aria-label={t(lang, "gif_pick")}
-            >
-              <ImageIcon className="h-4 w-4" />
-            </button>
-          )}
+          {/* GIF picker trigger lives INSIDE the input pill (left side),
+              Twitter-style — a small "GIF" badge. */}
+          <div className="relative flex-1">
+            {!editing && (
+              <button
+                type="button"
+                onClick={() => setGifOpen(true)}
+                aria-label={t(lang, "gif_pick")}
+                className="absolute left-1.5 top-1/2 -translate-y-1/2 h-8 px-2
+                           rounded-full bg-white/10 ring-1 ring-white/15
+                           text-[10px] font-display tracking-wider text-white/75
+                           hover:bg-white/15 hover:text-white transition
+                           flex items-center gap-1"
+              >
+                <Sticker className="h-3.5 w-3.5" />
+                GIF
+              </button>
+            )}
+            <input
+              value={editing ? editBody : body}
+              onChange={(e) =>
+                editing
+                  ? setEditBody(e.target.value.slice(0, 2000))
+                  : setBody(e.target.value.slice(0, 2000))
+              }
+              placeholder={editing ? t(lang, "chat_edit_placeholder") : t(lang, "chat_placeholder")}
+              className={`w-full h-11 rounded-full border border-white/15 bg-black/40
+                         pr-4 text-base text-white placeholder:text-white/35
+                         focus:outline-none focus:border-white/30 transition
+                         ${editing ? "pl-4" : "pl-[4.25rem]"}`}
+              maxLength={2000}
+            />
+          </div>
           <button
             type="submit"
             disabled={editing ? !editBody.trim() : !body.trim()}
@@ -429,22 +449,13 @@ export function ChatPanel() {
         </form>
       </div>
 
-      <GifPicker
-        open={gifOpen}
-        onClose={() => setGifOpen(false)}
-        onPick={(url) => sendGif(url)}
-      />
+      <GifPicker open={gifOpen} onClose={() => setGifOpen(false)} onPick={(url) => sendGif(url)} />
     </main>
   );
 }
 
 // ---------------------------------------------------------------------
 // Single message row.
-//
-// Interactions:
-//   - Long-press / right-click  → iMessage-style menu (reactions on
-//     top, Reply / Edit / Copy below).
-//   - Swipe right (mine: swipe-left)  → triggers Reply at threshold.
 
 function ChatRow({
   message: m,
@@ -475,15 +486,16 @@ function ChatRow({
 }) {
   const avatar = m.avatarId ? getAvatar(m.avatarId) : null;
   const isCard = m.kind === "bingo_strike";
+  const isSystem = m.kind === "system";
   const isGif = m.kind === "gif" && m.gifUrl;
   const isEdited = (m.meta as { edited?: boolean } | null)?.edited === true;
   const canEdit =
-    mine &&
-    m.kind === "text" &&
+    mine && m.kind === "text" &&
     Date.now() - new Date(m.createdAt).getTime() < EDIT_WINDOW_MS;
 
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startPress = () => {
+    if (isSystem) return;
     pressTimer.current = setTimeout(() => onOpenMenu(), 450);
   };
   const cancelPress = () => {
@@ -493,7 +505,6 @@ function ChatRow({
     }
   };
 
-  // Time formatter — HH:mm in the user's locale.
   const time = useMemo(() => {
     try {
       return new Date(m.createdAt).toLocaleTimeString(undefined, {
@@ -504,6 +515,22 @@ function ChatRow({
       return "";
     }
   }, [m.createdAt]);
+
+  // System messages render centred + muted, no avatar, no actions.
+  if (isSystem) {
+    return (
+      <motion.li
+        layout
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex justify-center"
+      >
+        <span className="text-[11px] text-white/40 px-3 py-1 rounded-full bg-white/[0.03]">
+          {m.body}
+        </span>
+      </motion.li>
+    );
+  }
 
   return (
     <motion.li
@@ -546,8 +573,6 @@ function ChatRow({
         )}
 
         <div className="min-w-0 flex flex-col items-stretch gap-1">
-          {/* Header row: name + timestamp. Only on the first of a run
-              of same-author messages so the thread doesn't look noisy. */}
           {showHeader && !mine && (
             <span className="text-[11px] font-display text-white/55 truncate flex items-center gap-1.5">
               {m.name}
@@ -555,9 +580,7 @@ function ChatRow({
             </span>
           )}
           {showHeader && mine && (
-            <span className="text-[11px] text-white/35 tabular-nums self-end">
-              {time}
-            </span>
+            <span className="text-[11px] text-white/35 tabular-nums self-end">{time}</span>
           )}
 
           {parent && (
@@ -573,66 +596,96 @@ function ChatRow({
             </div>
           )}
 
-          {/* Bubble. Drag-x for swipe-to-reply: swipe outward
-              (right for not-mine, left for mine), past threshold,
-              snaps back + triggers Reply. */}
-          <motion.button
-            drag="x"
-            dragConstraints={{ left: mine ? -60 : 0, right: mine ? 0 : 60 }}
-            dragElastic={0.4}
-            onDragEnd={(_, info) => {
-              if (mine && info.offset.x < -40) onReply();
-              else if (!mine && info.offset.x > 40) onReply();
-            }}
-            type="button"
-            onMouseDown={startPress}
-            onMouseUp={cancelPress}
-            onMouseLeave={cancelPress}
-            onTouchStart={startPress}
-            onTouchEnd={cancelPress}
-            onTouchCancel={cancelPress}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              onOpenMenu();
-            }}
-            className={`relative text-left px-3.5 py-2 rounded-2xl text-sm leading-snug
-                        transition touch-none cursor-pointer
-                        ${
-                          isCard
-                            ? "bg-flamingo/15 ring-1 ring-flamingo/40 text-white"
-                            : mine
-                              ? "bg-white text-dark-blue"
-                              : "bg-white/[0.06] ring-1 ring-white/10 text-white/90"
-                        } ${m.pending ? "opacity-75" : ""}`}
-          >
-            {isCard ? (
-              <BingoCardMessage meta={m.meta} />
-            ) : isGif ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={m.gifUrl!}
-                alt=""
-                className="rounded-xl max-h-60 -mx-1.5 -my-0.5"
-              />
-            ) : (
-              <>
-                <span className="whitespace-pre-wrap break-words">{m.body}</span>
-                {isEdited && (
-                  <span className="text-[10px] opacity-50 ml-1.5">
-                    ({t(lang, "chat_edited")})
-                  </span>
-                )}
-              </>
-            )}
-          </motion.button>
+          {/* Bubble. Drag-x → swipe-to-reply; long-press / right-click
+              → action menu (rendered as an OVERLAY anchored to the
+              bubble, so it never pushes the list and never induces
+              scroll). */}
+          <div className="relative">
+            <motion.button
+              drag="x"
+              dragConstraints={{ left: mine ? -64 : 0, right: mine ? 0 : 64 }}
+              dragElastic={0.4}
+              onDragEnd={(_, info) => {
+                if (mine && info.offset.x < -44) onReply();
+                else if (!mine && info.offset.x > 44) onReply();
+              }}
+              type="button"
+              onMouseDown={startPress}
+              onMouseUp={cancelPress}
+              onMouseLeave={cancelPress}
+              onTouchStart={startPress}
+              onTouchEnd={cancelPress}
+              onTouchCancel={cancelPress}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                onOpenMenu();
+              }}
+              className={`relative text-left rounded-2xl text-sm leading-snug
+                          transition touch-none cursor-pointer overflow-hidden
+                          ${isGif ? "p-0" : "px-3.5 py-2"}
+                          ${
+                            isCard
+                              ? "bg-flamingo/15 ring-1 ring-flamingo/40 text-white px-3.5 py-2"
+                              : mine
+                                ? "bg-white text-dark-blue"
+                                : "bg-white/[0.06] ring-1 ring-white/10 text-white/90"
+                          } ${m.pending ? "opacity-75" : ""}`}
+            >
+              {isCard ? (
+                <BingoCardMessage meta={m.meta} />
+              ) : isGif ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={m.gifUrl!} alt="" className="block max-h-60 w-auto rounded-2xl" />
+              ) : (
+                <>
+                  <span className="whitespace-pre-wrap break-words">{m.body}</span>
+                  {isEdited && (
+                    <span className="text-[10px] opacity-50 ml-1.5">({t(lang, "chat_edited")})</span>
+                  )}
+                </>
+              )}
+            </motion.button>
+
+            {/* Menu overlay — absolute, anchored above the bubble.
+                pointer-events on the panel only; clicking the list
+                background (handled in ChatPanel) closes it. */}
+            <AnimatePresence>
+              {menuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.85, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.85, y: 8 }}
+                  transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                  onClick={(e) => e.stopPropagation()}
+                  className={`absolute bottom-full mb-1.5 z-30 flex flex-col gap-1
+                              ${mine ? "right-0 items-end" : "left-0 items-start"}`}
+                >
+                  <div className="flex items-center gap-1 p-1.5 rounded-full bg-black/80 ring-1 ring-white/12 backdrop-blur-md shadow-xl">
+                    {REACTION_EMOJIS.map((e) => (
+                      <button
+                        key={e}
+                        type="button"
+                        onClick={() => onReact(e)}
+                        className="h-8 w-8 rounded-full grid place-items-center hover:bg-white/10 transition text-base"
+                      >
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-col rounded-2xl bg-black/80 ring-1 ring-white/12 backdrop-blur-md overflow-hidden shadow-xl min-w-[10rem]">
+                    <MenuAction onClick={onReply} icon={Reply} label={t(lang, "chat_reply")} />
+                    {canEdit && <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />}
+                    {m.body && <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />}
+                    <MenuAction onClick={onCloseMenu} icon={X} label={t(lang, "cancel")} muted />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Reactions strip */}
           {Object.keys(m.reactions).length > 0 && (
-            <div
-              className={`flex flex-wrap gap-1 ${
-                mine ? "self-end" : "self-start"
-              }`}
-            >
+            <div className={`flex flex-wrap gap-1 ${mine ? "self-end" : "self-start"}`}>
               {Object.entries(m.reactions).map(([emoji, info]) => (
                 <button
                   key={emoji}
@@ -653,48 +706,6 @@ function ChatRow({
               ))}
             </div>
           )}
-
-          {/* iMessage-style action menu */}
-          <AnimatePresence>
-            {menuOpen && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.85, y: 6 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.85, y: 6 }}
-                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                className={`flex flex-col gap-1 mt-1 ${mine ? "self-end" : "self-start"}`}
-              >
-                <div className="flex items-center gap-1 p-1.5 rounded-full bg-black/75 ring-1 ring-white/10 backdrop-blur-md">
-                  {REACTION_EMOJIS.map((e) => (
-                    <button
-                      key={e}
-                      type="button"
-                      onClick={() => onReact(e)}
-                      className="h-8 w-8 rounded-full grid place-items-center
-                                 hover:bg-white/10 transition text-base"
-                    >
-                      {e}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex flex-col rounded-2xl bg-black/75 ring-1 ring-white/10 backdrop-blur-md overflow-hidden">
-                  <MenuAction onClick={onReply} icon={Reply} label={t(lang, "chat_reply")} />
-                  {canEdit && (
-                    <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />
-                  )}
-                  {m.body && (
-                    <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />
-                  )}
-                  <MenuAction
-                    onClick={onCloseMenu}
-                    icon={X}
-                    label={t(lang, "cancel")}
-                    muted
-                  />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </div>
     </motion.li>

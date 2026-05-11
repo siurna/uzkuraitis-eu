@@ -82,12 +82,11 @@ function CountryDeepDiveSheet({
                 alt=""
                 className="absolute inset-0 h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-dark-blue-900/85 via-dark-blue-900/10 to-transparent" />
-              <div className="absolute bottom-3 left-3 right-3 flex items-center gap-3">
+              <div className="absolute inset-0 bg-gradient-to-t from-dark-blue-900/80 via-dark-blue-900/5 to-transparent" />
+              {/* Just the heart-flag chip on the photo — the sheet
+                  title already carries the country name. */}
+              <div className="absolute bottom-3 left-3">
                 <HeartFlag code={country.code} size="md" />
-                <p className="font-display text-lg drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)] truncate">
-                  {countryName(country.code, lang)}
-                </p>
               </div>
             </div>
           )}

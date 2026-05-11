@@ -62,7 +62,13 @@ const TABS: TabDef[] = [
   },
 ];
 
-export function RoomTabBar({ code }: { code: string }) {
+export function RoomTabBar({
+  code,
+  chatUnread = 0,
+}: {
+  code: string;
+  chatUnread?: number;
+}) {
   const pathname = usePathname();
   const lang = useLang();
   const activeIdx = TABS.findIndex((tab) => tab.match(pathname, code));
@@ -114,6 +120,15 @@ export function RoomTabBar({ code }: { code: string }) {
                     }`}
                     strokeWidth={isActive ? 2.4 : 2}
                   />
+                  {/* Unread badge on the Chat tab. */}
+                  {labelKey === "tab_chat" && chatUnread > 0 && (
+                    <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1
+                                     rounded-full bg-fuchsia text-white text-[10px]
+                                     font-display tabular-nums grid place-items-center
+                                     ring-2 ring-black/55">
+                      {chatUnread > 9 ? "9+" : chatUnread}
+                    </span>
+                  )}
                 </motion.div>
                 <span
                   className={`relative text-[10px] font-display tracking-wide leading-none
