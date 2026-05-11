@@ -104,6 +104,8 @@ const messages = {
     // Chat
     chat_empty:        "No messages yet. Say hi 👋",
     chat_placeholder:  "Message the room…",
+    chat_load_earlier: "Load earlier messages",
+    loading:           "Loading…",
     chat_send:         "Send",
     chat_send_failed:  "Couldn't send your message.",
     chat_reply:        "Reply",
@@ -337,6 +339,8 @@ const messages = {
 
     chat_empty:        "Dar nieks nieko nerašė. Sveikink pirmas 👋",
     chat_placeholder:  "Rašyk kambariui…",
+    chat_load_earlier: "Įkelti senesnes žinutes",
+    loading:           "Įkeliama…",
     chat_send:         "Siųsti",
     chat_send_failed:  "Nepavyko išsiųsti žinutės.",
     chat_reply:        "Atsakyti",

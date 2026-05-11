@@ -10,7 +10,11 @@ import {
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { pushToRoom } from "@/lib/push";
 import { getCountry } from "@/lib/countries";
-import { postSystemMessage, showStatusAnnouncement } from "@/lib/chat-system";
+import {
+  postSystemMessage,
+  postNowPlayingMessage,
+  showStatusAnnouncement,
+} from "@/lib/chat-system";
 
 // Per-room admin endpoint. All actions require an "X-Admin-Token" header
 // matching the room's stored token. The token is generated at room
@@ -126,6 +130,8 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
           tag: `now-playing:${newCode}`,
         },
       ).catch(() => {});
+      // Full-width "now on stage" banner in the room chat.
+      postNowPlayingMessage(newCode, room.id, nextNowPlaying).catch(() => {});
     }
   }
   if (parsed.data.votingEnabled !== undefined) {

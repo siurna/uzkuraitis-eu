@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { chatMessages } from "@/lib/db/schema";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { getCountry } from "@/lib/countries";
 
 // Post a "system" chat message — the meta-narration of the room
 // ("Tomas cast their vote", "Show's underway", "Voting closed"). These
@@ -26,6 +27,37 @@ export async function postSystemMessage(
     await broadcastToRoom(roomCode, { type: "chat:new", id: row.id });
   } catch {
     /* a missing announcement is not worth a 500 */
+  }
+}
+
+// Full-width "now on stage" banner in the thread. Carries the country
+// code (+ artist/song snapshot) in meta so the client can render the
+// heart-flag chip; body is a plain-text fallback for push / non-rich
+// surfaces. Best-effort.
+export async function postNowPlayingMessage(
+  roomCode: string,
+  roomId: string,
+  countryCode: string,
+): Promise<void> {
+  try {
+    const c = getCountry(countryCode);
+    const body = c
+      ? `🎤 ${c.name} on stage${c.artist ? ` — ${c.artist}${c.song ? ` · ${c.song}` : ""}` : ""}`
+      : `🎤 ${countryCode.toUpperCase()} on stage`;
+    const [row] = await db
+      .insert(chatMessages)
+      .values({
+        roomId,
+        sessionId: "system",
+        name: "system",
+        kind: "now_playing",
+        body,
+        meta: { code: countryCode, artist: c?.artist ?? null, song: c?.song ?? null },
+      })
+      .returning({ id: chatMessages.id });
+    await broadcastToRoom(roomCode, { type: "chat:new", id: row.id });
+  } catch {
+    /* not worth a 500 */
   }
 }
 

@@ -5,7 +5,11 @@ import { rooms } from "@/lib/db/schema";
 import { isAdminAuthed } from "@/lib/admin/session";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { getCountry } from "@/lib/countries";
-import { postSystemMessage, showStatusAnnouncement } from "@/lib/chat-system";
+import {
+  postSystemMessage,
+  postNowPlayingMessage,
+  showStatusAnnouncement,
+} from "@/lib/chat-system";
 
 // Global live controller. POST sets show status / now-playing on EVERY
 // room at once and broadcasts the change to each — for running the
@@ -79,6 +83,9 @@ export async function POST(req: Request) {
           type: "now-playing:change",
           countryCode: nowPlayingCode ?? null,
         });
+        if (nowPlayingCode) {
+          postNowPlayingMessage(code, id, nowPlayingCode).catch(() => {});
+        }
       }
       if (showStatus !== undefined) {
         postSystemMessage(code, id, showStatusAnnouncement(showStatus)).catch(
