@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
 import { toast } from "sonner";
 import {
@@ -24,12 +23,13 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { X, Send, ListOrdered, Sparkles } from "lucide-react";
+import { X, ListOrdered, Sparkles, Share2, Check } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { countries, getCountry } from "@/lib/countries";
 import { Flag, HeartOutline } from "@/components/flag";
 import { BonusBetsForm } from "@/components/bonus-bets-form";
 import { CountryDrawer } from "@/components/country-drawer";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import type { Bets } from "@/lib/scoring";
 import { useLang, t } from "@/lib/i18n";
 
@@ -54,14 +54,22 @@ export function VoteForm({
   roomCode: string;
   homeCountryCode: string;
 }) {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [slots, setSlots] = useState<Slot[]>(
     POINT_VALUES.map((p) => ({ points: p, countryCode: null })),
   );
   const [homePrediction, setHomePrediction] = useState<string>("");
   const [bets, setBets] = useState<Bets>({});
-  const [submitting, setSubmitting] = useState(false);
+  // Vote lifecycle. The ballot auto-casts the moment all 10 slots are
+  // filled (no submit button). After that, reorders/swaps/bet edits set
+  // `dirty`; a Save button re-POSTs. `autoCastFailed` surfaces a manual
+  // retry button if the auto-cast network call blew up.
+  const [hasCast, setHasCast] = useState(false);
+  const [casting, setCasting] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [autoCastFailed, setAutoCastFailed] = useState(false);
+  const [showCongrats, setShowCongrats] = useState(false);
+  const [voterId, setVoterId] = useState<string | null>(null);
   const [tab, setTab] = useState<"ballot" | "bets">("ballot");
   // Which ballot slot is currently being edited via the country drawer.
   const [pickingPoints, setPickingPoints] = useState<Points | null>(null);
@@ -112,6 +120,10 @@ export function VoteForm({
         /* ignore corrupt bet draft */
       }
     }
+    if (localStorage.getItem(`uzk_voted_${roomCode}`) === "1") {
+      setHasCast(true);
+      setVoterId(localStorage.getItem(`uzk_voter_${roomCode}`));
+    }
   }, [roomCode]);
 
   // Persist drafts so a tap into another tab doesn't lose progress.
@@ -139,18 +151,33 @@ export function VoteForm({
   const filledCount = slots.filter((s) => s.countryCode).length;
   const allFilled = filledCount === 10;
 
-  // The moment the user fills the 10th slot, slide them over to the
-  // Bonus bets tab so they don't accidentally submit without scoring
-  // any side bets. Only fires on the 9 -> 10 transition; subsequent
-  // edits stay where they are.
-  const wasFullRef = useRef(false);
+  // Auto-cast: the first time all 10 slots are full (and we have a
+  // name), POST the ballot automatically. No submit button. Re-runs are
+  // gated by `hasCast` (set on success) and `autoCastFailed` (set on a
+  // network blow-up — a manual retry button takes over from there).
   useEffect(() => {
-    if (allFilled && !wasFullRef.current) {
-      wasFullRef.current = true;
-      setTab("bets");
+    if (hasCast || casting || autoCastFailed) return;
+    if (!allFilled || !name.trim()) return;
+    void castVote(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allFilled, hasCast, casting, autoCastFailed, name]);
+
+  // Once cast, any change to the ballot / bets / home prediction marks
+  // the vote dirty so the Save button lights up. `dirtyArmed` swallows
+  // the render where the vote first becomes cast (or is restored from
+  // localStorage) so a fresh cast doesn't start out dirty.
+  const dirtyArmed = useRef(false);
+  useEffect(() => {
+    if (!hasCast) {
+      dirtyArmed.current = false;
+      return;
     }
-    if (!allFilled) wasFullRef.current = false;
-  }, [allFilled]);
+    if (!dirtyArmed.current) {
+      dirtyArmed.current = true;
+      return;
+    }
+    setDirty(true);
+  }, [hasCast, slots, bets, homePrediction]);
 
   const assign = (points: Points, code: string) => {
     // Clear the country from any OTHER slot it might be in
@@ -226,7 +253,7 @@ export function VoteForm({
     setSlots(slots.map((s, i) => ({ ...s, countryCode: reorderedCountries[i] })));
   };
 
-  const submit = async () => {
+  const castVote = async (isUpdate: boolean) => {
     if (!name.trim()) {
       toast.error(t(lang, "add_name_first"));
       return;
@@ -235,7 +262,7 @@ export function VoteForm({
       toast.error(t(lang, "fill_n_more", 10 - filledCount));
       return;
     }
-    setSubmitting(true);
+    setCasting(true);
     try {
       localStorage.setItem(NAME_KEY, name.trim());
       const sessionId = localStorage.getItem(SESSION_KEY)!;
@@ -267,13 +294,42 @@ export function VoteForm({
       localStorage.setItem(`uzk_voted_${roomCode}`, "1");
       if (data.voterId) {
         localStorage.setItem(`uzk_voter_${roomCode}`, data.voterId);
+        setVoterId(data.voterId);
       }
-      toast.success(t(lang, "voted_toast"));
-      router.push(`/r/${roomCode}`);
+      setHasCast(true);
+      setDirty(false);
+      setAutoCastFailed(false);
+      if (isUpdate) {
+        toast.success(t(lang, "vote_updated_toast"));
+      } else {
+        toast.success(t(lang, "voted_toast"));
+        setShowCongrats(true);
+      }
     } catch (err) {
       toast.error((err as Error).message);
+      if (!isUpdate) setAutoCastFailed(true);
     } finally {
-      setSubmitting(false);
+      setCasting(false);
+    }
+  };
+
+  const shareTop10 = async () => {
+    if (!voterId || typeof window === "undefined") return;
+    const url = `${window.location.origin}/api/og/${roomCode}/${voterId}`;
+    const text = t(lang, "share_picks_caption");
+    if ("share" in navigator) {
+      try {
+        await navigator.share({ title: text, text, url });
+        return;
+      } catch {
+        /* cancelled — fall through to copy */
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(t(lang, "link_copied"));
+    } catch {
+      toast.error(t(lang, "couldnt_copy"));
     }
   };
 
@@ -420,28 +476,52 @@ export function VoteForm({
         </Tabs>
       </div>
 
-      {/* Inline submit. ESC poster button (white bg, dark-blue text)
-          wrapped in the rainbow stroke — same CTA language as the
-          rest of the app. */}
-      <div className="container mx-auto max-w-3xl px-4 pb-10">
-        <button
-          type="button"
-          onClick={submit}
-          disabled={submitting || !allFilled || !name.trim()}
-          className="rainbow-border rounded-2xl w-full block disabled:opacity-40"
-        >
-          <span className="flex items-center justify-center gap-2 w-full h-14
-                           rounded-[14px] bg-white text-dark-blue font-display text-lg">
-          {submitting ? t(lang, "submitting") : (
-            <>
-              <Send className="h-4 w-4" />
-              {allFilled
-                ? t(lang, "submit_12")
-                : t(lang, "pick_n_more", 10 - filledCount)}
-            </>
-          )}
-          </span>
-        </button>
+      {/* Bottom action area. The ballot auto-casts when full, so there's
+          no submit button — only a Save button once the cast vote has
+          been reordered (or a manual retry if the auto-cast failed). */}
+      <div className="container mx-auto max-w-3xl px-4 pb-10 flex flex-col gap-2">
+        {!hasCast && !allFilled && (
+          <p className="text-sm text-white/45 text-center">
+            {t(lang, "pick_n_more", 10 - filledCount)}
+          </p>
+        )}
+        {!hasCast && allFilled && casting && (
+          <p className="text-sm text-white/55 text-center">{t(lang, "submitting")}</p>
+        )}
+        {!hasCast && allFilled && autoCastFailed && (
+          <button
+            type="button"
+            onClick={() => castVote(false)}
+            disabled={casting}
+            className="rainbow-border rounded-2xl w-full block disabled:opacity-40"
+          >
+            <span className="flex items-center justify-center gap-2 w-full h-14
+                             rounded-[14px] bg-white text-dark-blue font-display text-lg">
+              {casting ? t(lang, "submitting") : t(lang, "submit_12")}
+            </span>
+          </button>
+        )}
+        {hasCast && dirty && (
+          <>
+            <p className="text-xs text-gold/85 text-center">{t(lang, "vote_unsaved")}</p>
+            <button
+              type="button"
+              onClick={() => castVote(true)}
+              disabled={casting || !allFilled}
+              className="rainbow-border rounded-2xl w-full block disabled:opacity-40"
+            >
+              <span className="flex items-center justify-center gap-2 w-full h-14
+                               rounded-[14px] bg-white text-dark-blue font-display text-lg">
+                {casting ? t(lang, "submitting") : (
+                  <>
+                    <Check className="h-4 w-4" />
+                    {t(lang, "save_changes")}
+                  </>
+                )}
+              </span>
+            </button>
+          </>
+        )}
       </div>
 
       {/* Country picker for the ballot. The "options" list excludes
@@ -485,6 +565,49 @@ export function VoteForm({
       />
 
       <FlyingHeartToSlot heart={flyingHeart} />
+
+      {/* Auto-cast confirmation. Pops the instant all 10 slots are
+          filled; from here the voter can jump to bonus bets or share
+          their TOP10. Reordering after this just lights up the Save
+          button at the bottom. */}
+      <BottomSheet
+        open={showCongrats}
+        onClose={() => setShowCongrats(false)}
+        title={t(lang, "vote_cast_title")}
+        sub={t(lang, "vote_cast_body")}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            setShowCongrats(false);
+            setTab("bets");
+          }}
+          className="rainbow-border rounded-2xl w-full block"
+        >
+          <span className="flex items-center justify-center gap-2 w-full py-3.5
+                           rounded-[14px] bg-white text-dark-blue font-display text-base">
+            <Sparkles className="h-4 w-4" />
+            {t(lang, "vote_place_bets")}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={shareTop10}
+          className="flex items-center justify-center gap-2 w-full rounded-2xl py-3.5
+                     bg-white/[0.06] ring-1 ring-white/12 hover:bg-white/[0.1]
+                     transition font-display text-base"
+        >
+          <Share2 className="h-4 w-4 text-white/70" />
+          {t(lang, "share_picks")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowCongrats(false)}
+          className="text-sm text-white/45 hover:text-white/70 transition self-center pt-1"
+        >
+          {t(lang, "vote_keep_editing")}
+        </button>
+      </BottomSheet>
     </main>
   );
 }

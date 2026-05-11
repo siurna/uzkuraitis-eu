@@ -5,16 +5,15 @@ import { voters, votes } from "@/lib/db/schema";
 import { countries } from "@/lib/countries";
 import { findRoomByCode } from "@/lib/rooms";
 
-// Social share card. Renders the voter's TOP10 ballot as a 1200×630
-// PNG suitable for Twitter / iMessage / Facebook previews. Inline
-// styles only — next/og's runtime doesn't understand Tailwind.
+// Social share card. Renders the voter's TOP10 ballot as a 3:4 portrait
+// PNG (good for Stories / iMessage). Inline styles only — next/og's
+// runtime doesn't understand Tailwind. No room code, no domain, no
+// "united by music" — just the ballot, Eurovision-flavoured.
 //
-// URL: /api/og/<roomCode>/<voterId>.png
+// URL: /api/og/<roomCode>/<voterId>
 
-// Default Node runtime — our db proxy uses @neondatabase/serverless
-// over HTTP which works fine here without forcing edge.
 export const contentType = "image/png";
-export const size = { width: 1200, height: 630 };
+export const size = { width: 1080, height: 1440 };
 
 type RouteCtx = {
   params: Promise<{ code: string; voterId: string }>;
@@ -41,7 +40,6 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     .where(eq(votes.voterId, voterId));
   const byPoints = new Map(ballot.map((b) => [b.points, b.countryCode]));
 
-  // Build ordered picks (12, 10, 8, 7, …, 1).
   const picks = POINTS.map((p) => {
     const cc = byPoints.get(p);
     const c = cc ? countries.find((x) => x.code === cc) : null;
@@ -56,105 +54,113 @@ export async function GET(_req: Request, { params }: RouteCtx) {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          backgroundColor: "#10142a",
+          backgroundColor: "#0a0b22",
           backgroundImage:
-            "radial-gradient(ellipse at top, rgba(146,87,255,0.45), transparent 60%), radial-gradient(ellipse at bottom, rgba(255,46,222,0.35), transparent 70%)",
-          padding: 64,
+            "radial-gradient(900px 600px at 80% -5%, rgba(255,46,222,0.55), transparent 60%), radial-gradient(900px 700px at 10% 105%, rgba(76,201,240,0.45), transparent 60%), radial-gradient(700px 500px at 50% 50%, rgba(146,87,255,0.30), transparent 65%)",
+          padding: 80,
           fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif",
           color: "white",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            marginBottom: 32,
-          }}
-        >
+        {/* Header */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div
             style={{
-              fontSize: 22,
-              letterSpacing: 8,
+              fontSize: 28,
+              letterSpacing: 14,
               textTransform: "uppercase",
-              color: "rgba(255,255,255,0.7)",
+              fontWeight: 700,
+              color: "rgba(255,255,255,0.55)",
+              display: "flex",
             }}
           >
-            Eurovision · Vienna 2026
+            ♥ Eurovision 2026
+          </div>
+          <div
+            style={{
+              fontSize: 110,
+              fontWeight: 800,
+              lineHeight: 1,
+              letterSpacing: -2,
+              display: "flex",
+            }}
+          >
+            {voter.name}
+          </div>
+          <div
+            style={{
+              fontSize: 52,
+              fontWeight: 800,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+              background: "linear-gradient(90deg,#ffd166,#ff5fa2,#b15bff,#4cc9f0)",
+              backgroundClip: "text",
+              color: "transparent",
+              display: "flex",
+            }}
+          >
+            My TOP 10
           </div>
         </div>
 
-        <div
-          style={{
-            fontSize: 84,
-            fontWeight: 700,
-            lineHeight: 1,
-            marginBottom: 8,
-            display: "flex",
-          }}
-        >
-          {voter.name}&rsquo;s TOP10
-        </div>
-        <div style={{ fontSize: 26, color: "rgba(255,255,255,0.6)", display: "flex" }}>
-          Cast in room {room.code}
-        </div>
-
+        {/* Ballot rows */}
         <div
           style={{
             display: "flex",
-            flexWrap: "wrap",
+            flexDirection: "column",
             gap: 14,
-            marginTop: 36,
+            marginTop: 56,
           }}
         >
-          {picks.map(({ points, country }) => (
-            <div
-              key={points}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                padding: "16px 22px",
-                borderRadius: 999,
-                background:
-                  points === 12
-                    ? "linear-gradient(90deg, rgba(255,214,10,0.35), rgba(255,46,222,0.15))"
-                    : "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                fontSize: 28,
-              }}
-            >
-              <span
+          {picks.map(({ points, country }) => {
+            const top = points === 12;
+            return (
+              <div
+                key={points}
                 style={{
-                  fontWeight: 700,
-                  width: 48,
-                  textAlign: "left",
-                  color: points === 12 ? "#ffd60a" : "rgba(255,255,255,0.9)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 24,
+                  padding: "18px 28px",
+                  borderRadius: 28,
+                  background: top
+                    ? "linear-gradient(90deg, rgba(255,214,10,0.30), rgba(255,46,222,0.18))"
+                    : "rgba(255,255,255,0.05)",
+                  border: top
+                    ? "2px solid rgba(255,214,10,0.55)"
+                    : "1px solid rgba(255,255,255,0.10)",
                 }}
               >
-                {points}
-              </span>
-              <span style={{ fontSize: 30 }}>{country?.flag ?? "🏳️"}</span>
-              <span style={{ fontWeight: 500 }}>{country?.name ?? "—"}</span>
-            </div>
-          ))}
-        </div>
-
-        <div
-          style={{
-            marginTop: "auto",
-            fontSize: 20,
-            color: "rgba(255,255,255,0.45)",
-            display: "flex",
-          }}
-        >
-          uzkuraitis.eu · United by music
+                <span
+                  style={{
+                    fontWeight: 800,
+                    fontSize: top ? 56 : 44,
+                    width: 96,
+                    display: "flex",
+                    color: top ? "#ffd60a" : "rgba(255,255,255,0.85)",
+                  }}
+                >
+                  {points}
+                </span>
+                <span style={{ fontSize: 56, display: "flex" }}>
+                  {country?.flag ?? "🏳️"}
+                </span>
+                <span
+                  style={{
+                    fontWeight: 600,
+                    fontSize: 46,
+                    display: "flex",
+                  }}
+                >
+                  {country?.name ?? "—"}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     ),
-    {
-      ...size,
-    },
+    { ...size },
   );
 }
 

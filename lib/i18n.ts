@@ -87,6 +87,13 @@ const messages = {
     tab_ballot:        "Ballot",
     tab_bets:          "Bets",
     bonus_bets:        "Bonus bets",
+    vote_cast_title:   "Your vote's cast! 🎉",
+    vote_cast_body:    "Locked in automatically. Reorder any time — just tap Save to update.",
+    vote_place_bets:   "Place your bets",
+    vote_keep_editing: "Keep editing",
+    vote_updated_toast: "Vote updated.",
+    vote_unsaved:      "Unsaved reorder — tap Save to update your vote.",
+    save_changes:      "Save changes",
 
     // Room tab bar
     tab_home:          "Home",
@@ -315,6 +322,13 @@ const messages = {
     tab_ballot:        "Balsas",
     tab_bets:          "Statymai",
     bonus_bets:        "Bonus statymai",
+    vote_cast_title:   "Tavo balsas užfiksuotas! 🎉",
+    vote_cast_body:    "Užfiksuota automatiškai. Pertvarkyk bet kada — tiesiog spausk Išsaugoti.",
+    vote_place_bets:   "Statyk lažybas",
+    vote_keep_editing: "Tęsti redagavimą",
+    vote_updated_toast: "Balsas atnaujintas.",
+    vote_unsaved:      "Neišsaugotas pertvarkymas — spausk Išsaugoti.",
+    save_changes:      "Išsaugoti pakeitimus",
 
     tab_home:          "Pradžia",
     tab_chat:          "Pokalbiai",
