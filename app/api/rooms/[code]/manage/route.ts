@@ -10,6 +10,7 @@ import {
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { pushToRoom } from "@/lib/push";
 import { getCountry } from "@/lib/countries";
+import { postSystemMessage, showStatusAnnouncement } from "@/lib/chat-system";
 
 // Per-room admin endpoint. All actions require an "X-Admin-Token" header
 // matching the room's stored token. The token is generated at room
@@ -154,6 +155,35 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
         tag: `results:${newCode}`,
       },
     ).catch(() => {});
+  }
+
+  // Meta-narrate state changes in chat (best-effort).
+  if (
+    parsed.data.showStatus !== undefined &&
+    parsed.data.showStatus !== room.showStatus
+  ) {
+    postSystemMessage(
+      newCode,
+      room.id,
+      showStatusAnnouncement(parsed.data.showStatus),
+    ).catch(() => {});
+  }
+  if (
+    parsed.data.votingEnabled !== undefined &&
+    parsed.data.votingEnabled !== room.votingEnabled
+  ) {
+    postSystemMessage(
+      newCode,
+      room.id,
+      parsed.data.votingEnabled
+        ? "📣 Voting is OPEN — cast your TOP10!"
+        : "🔒 Voting is CLOSED.",
+    ).catch(() => {});
+  }
+  if (parsed.data.tallyEnabled === true && room.tallyEnabled !== true) {
+    postSystemMessage(newCode, room.id, "🏆 Results are in — leaderboard's live!").catch(
+      () => {},
+    );
   }
   return NextResponse.json({ ok: true, code: newCode });
 }

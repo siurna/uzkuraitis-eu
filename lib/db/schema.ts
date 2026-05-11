@@ -227,7 +227,7 @@ export const votesRelations = relations(votes, ({ one }) => ({
 // room. `kind` discriminates plain text from special cards (GIF, bingo
 // strike, future system messages). `meta` is a free-form jsonb bag so
 // adding new kinds doesn't need a migration.
-export type ChatMessageKind = "text" | "gif" | "bingo_strike";
+export type ChatMessageKind = "text" | "gif" | "bingo_strike" | "system";
 
 export const chatMessages = pgTable(
   "chat_messages",

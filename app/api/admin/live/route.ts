@@ -5,6 +5,7 @@ import { rooms } from "@/lib/db/schema";
 import { isAdminAuthed } from "@/lib/admin/session";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { getCountry } from "@/lib/countries";
+import { postSystemMessage, showStatusAnnouncement } from "@/lib/chat-system";
 
 // Global live controller. POST sets show status / now-playing on EVERY
 // room at once and broadcasts the change to each — for running the
@@ -68,16 +69,21 @@ export async function POST(req: Request) {
 
   await db.update(rooms).set(update);
 
-  // Broadcast to every room. Cheap — these are tiny hint events.
-  const all = await db.select({ code: rooms.code }).from(rooms);
+  // Broadcast to every room + drop a system chat line where relevant.
+  const all = await db.select({ id: rooms.id, code: rooms.code }).from(rooms);
   await Promise.all(
-    all.map(async ({ code }) => {
+    all.map(async ({ id, code }) => {
       await broadcastToRoom(code, { type: "room:updated" });
       if (nowPlayingCode !== undefined) {
         await broadcastToRoom(code, {
           type: "now-playing:change",
           countryCode: nowPlayingCode ?? null,
         });
+      }
+      if (showStatus !== undefined) {
+        postSystemMessage(code, id, showStatusAnnouncement(showStatus)).catch(
+          () => {},
+        );
       }
     }),
   );
