@@ -8,7 +8,8 @@ import { findRoomByCode } from "@/lib/rooms";
 // Social share card. Renders the voter's TOP10 ballot as a 3:4 portrait
 // PNG (good for Stories / iMessage). Inline styles only — next/og's
 // runtime doesn't understand Tailwind. No room code, no domain, no
-// "united by music" — just the ballot, Eurovision-flavoured.
+// "united by music" — just the ballot, in the Eurovision display face
+// (Singing Sans, fetched from /public at request time).
 //
 // URL: /api/og/<roomCode>/<voterId>
 
@@ -21,8 +22,24 @@ type RouteCtx = {
 
 const POINTS = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1] as const;
 
-export async function GET(_req: Request, { params }: RouteCtx) {
+async function loadDisplayFont(origin: string): Promise<ArrayBuffer | null> {
+  // satori (next/og) handles TTF/OTF/WOFF — not WOFF2 — so we point at
+  // the .woff copy in /public. Best-effort: a failed fetch just means
+  // the card falls back to the system sans.
+  try {
+    const res = await fetch(`${origin}/fonts/Singing_Sans-BERC94M5.woff`, {
+      cache: "force-cache",
+    });
+    if (!res.ok) return null;
+    return await res.arrayBuffer();
+  } catch {
+    return null;
+  }
+}
+
+export async function GET(req: Request, { params }: RouteCtx) {
   const { code, voterId } = await params;
+  const origin = new URL(req.url).origin;
 
   const room = await findRoomByCode(code);
   if (!room) return notFound();
@@ -46,6 +63,9 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     return { points: p, country: c };
   });
 
+  const fontData = await loadDisplayFont(origin);
+  const display = fontData ? "Singing Sans, sans-serif" : "system-ui, sans-serif";
+
   return new ImageResponse(
     (
       <div
@@ -56,20 +76,20 @@ export async function GET(_req: Request, { params }: RouteCtx) {
           flexDirection: "column",
           backgroundColor: "#0a0b22",
           backgroundImage:
-            "radial-gradient(900px 600px at 80% -5%, rgba(255,46,222,0.55), transparent 60%), radial-gradient(900px 700px at 10% 105%, rgba(76,201,240,0.45), transparent 60%), radial-gradient(700px 500px at 50% 50%, rgba(146,87,255,0.30), transparent 65%)",
-          padding: 80,
+            "radial-gradient(820px 560px at 82% -4%, rgba(255,46,222,0.55), transparent 60%), radial-gradient(820px 640px at 8% 104%, rgba(76,201,240,0.45), transparent 60%), radial-gradient(640px 460px at 50% 50%, rgba(146,87,255,0.28), transparent 65%)",
+          padding: 64,
           fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif",
           color: "white",
         }}
       >
         {/* Header */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
           <div
             style={{
-              fontSize: 28,
-              letterSpacing: 14,
+              fontSize: 26,
+              letterSpacing: 12,
               textTransform: "uppercase",
-              fontWeight: 700,
+              fontFamily: display,
               color: "rgba(255,255,255,0.55)",
               display: "flex",
             }}
@@ -78,10 +98,10 @@ export async function GET(_req: Request, { params }: RouteCtx) {
           </div>
           <div
             style={{
-              fontSize: 110,
-              fontWeight: 800,
-              lineHeight: 1,
-              letterSpacing: -2,
+              fontSize: 96,
+              fontFamily: display,
+              lineHeight: 1.05,
+              marginTop: 6,
               display: "flex",
             }}
           >
@@ -89,8 +109,8 @@ export async function GET(_req: Request, { params }: RouteCtx) {
           </div>
           <div
             style={{
-              fontSize: 52,
-              fontWeight: 800,
+              fontSize: 56,
+              fontFamily: display,
               letterSpacing: 2,
               textTransform: "uppercase",
               background: "linear-gradient(90deg,#ffd166,#ff5fa2,#b15bff,#4cc9f0)",
@@ -108,8 +128,8 @@ export async function GET(_req: Request, { params }: RouteCtx) {
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: 14,
-            marginTop: 56,
+            gap: 12,
+            marginTop: 40,
           }}
         >
           {picks.map(({ points, country }) => {
@@ -120,11 +140,11 @@ export async function GET(_req: Request, { params }: RouteCtx) {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 24,
-                  padding: "18px 28px",
-                  borderRadius: 28,
+                  gap: 22,
+                  padding: "14px 26px",
+                  borderRadius: 24,
                   background: top
-                    ? "linear-gradient(90deg, rgba(255,214,10,0.30), rgba(255,46,222,0.18))"
+                    ? "linear-gradient(90deg, rgba(255,214,10,0.30), rgba(255,46,222,0.16))"
                     : "rgba(255,255,255,0.05)",
                   border: top
                     ? "2px solid rgba(255,214,10,0.55)"
@@ -133,23 +153,25 @@ export async function GET(_req: Request, { params }: RouteCtx) {
               >
                 <span
                   style={{
-                    fontWeight: 800,
-                    fontSize: top ? 56 : 44,
-                    width: 96,
+                    fontFamily: display,
+                    fontSize: top ? 50 : 40,
+                    width: 86,
                     display: "flex",
                     color: top ? "#ffd60a" : "rgba(255,255,255,0.85)",
                   }}
                 >
                   {points}
                 </span>
-                <span style={{ fontSize: 56, display: "flex" }}>
+                <span style={{ fontSize: 50, display: "flex" }}>
                   {country?.flag ?? "🏳️"}
                 </span>
                 <span
                   style={{
-                    fontWeight: 600,
-                    fontSize: 46,
+                    fontFamily: display,
+                    fontSize: 42,
                     display: "flex",
+                    flex: 1,
+                    overflow: "hidden",
                   }}
                 >
                   {country?.name ?? "—"}
@@ -160,7 +182,12 @@ export async function GET(_req: Request, { params }: RouteCtx) {
         </div>
       </div>
     ),
-    { ...size },
+    {
+      ...size,
+      fonts: fontData
+        ? [{ name: "Singing Sans", data: fontData, weight: 400, style: "normal" }]
+        : [],
+    },
   );
 }
 

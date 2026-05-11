@@ -68,9 +68,22 @@ export const COUNTRY_SOCIALS: Record<string, ArtistSocials> = {
   },
 };
 
-export function artistSocials(code: string): ArtistSocials | null {
-  const s = COUNTRY_SOCIALS[code.toLowerCase()];
-  if (!s) return null;
-  const has = Object.values(s).some(Boolean);
-  return has ? s : null;
+// Curated links when we have them; otherwise synthesise search links so
+// every artist's deep-dive still has a "find them" row. `artist`/`song`
+// come from lib/countries.ts.
+export function artistSocials(
+  code: string,
+  artist?: string,
+  song?: string,
+): ArtistSocials {
+  const curated = COUNTRY_SOCIALS[code.toLowerCase()];
+  if (curated && Object.values(curated).some(Boolean)) return curated;
+  const q = encodeURIComponent(
+    [artist, song].filter(Boolean).join(" ").trim() || code,
+  );
+  const aOnly = encodeURIComponent((artist ?? "").trim() || code);
+  return {
+    youtube: `https://www.youtube.com/results?search_query=${q}+eurovision`,
+    spotify: `https://open.spotify.com/search/${aOnly}`,
+  };
 }

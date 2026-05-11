@@ -6,7 +6,7 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { HeartFlag } from "@/components/flag";
 import { getCountry, countryName } from "@/lib/countries";
 import { participantPhoto } from "@/lib/participants";
-import { artistSocials } from "@/lib/socials";
+import { artistSocials, type ArtistSocials } from "@/lib/socials";
 import { useLang, t } from "@/lib/i18n";
 
 // Country deep-dive sheet — opens on a country code, shows the chip,
@@ -115,14 +115,14 @@ function CountryDeepDiveSheet({
                  italic />
           )}
 
-          <SocialLinks code={country.code} />
+          <SocialLinks code={country.code} artist={country.artist} song={country.song} />
         </div>
       )}
     </BottomSheet>
   );
 }
 
-const SOCIAL_META: { key: keyof NonNullable<ReturnType<typeof artistSocials>>; icon: React.ReactNode; label: string }[] = [
+const SOCIAL_META: { key: keyof ArtistSocials; icon: React.ReactNode; label: string }[] = [
   { key: "instagram", icon: <Instagram className="h-4 w-4" />, label: "Instagram" },
   { key: "spotify", icon: <Disc3 className="h-4 w-4" />, label: "Spotify" },
   { key: "youtube", icon: <Youtube className="h-4 w-4" />, label: "YouTube" },
@@ -130,9 +130,16 @@ const SOCIAL_META: { key: keyof NonNullable<ReturnType<typeof artistSocials>>; i
   { key: "website", icon: <Globe className="h-4 w-4" />, label: "Website" },
 ];
 
-function SocialLinks({ code }: { code: string }) {
-  const socials = artistSocials(code);
-  if (!socials) return null;
+function SocialLinks({
+  code,
+  artist,
+  song,
+}: {
+  code: string;
+  artist?: string;
+  song?: string;
+}) {
+  const socials = artistSocials(code, artist, song);
   const items = SOCIAL_META.filter((m) => socials[m.key]);
   if (items.length === 0) return null;
   return (
