@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { AvatarPicker } from "@/components/avatar-picker";
+import { SelectedAvatarCard } from "@/components/selected-avatar-card";
 import { NotificationToggles } from "@/components/notification-toggles";
 import { getAvatar } from "@/lib/avatars";
 import {
@@ -135,8 +136,8 @@ export function SettingsModal({
             <Input
               value={name}
               onChange={(e) => setName(e.target.value.slice(0, 40))}
-              className="heartbeat-focus h-12 text-base rounded-xl
-                         border border-white/15 bg-black/30"
+              className="heartbeat-focus h-14 text-center text-[20px] font-bold rounded-xl
+                         border border-white/15 bg-black/30 placeholder:text-white/30 placeholder:font-normal"
               maxLength={40}
             />
           </Section>
@@ -291,8 +292,9 @@ export function SettingsModal({
           </>
         }
       >
-        <div className="min-h-[55dvh]">
+        <div className="flex flex-col gap-3 min-h-[55dvh]">
           <AvatarPicker value={avatar} onChange={setAvatar} />
+          <SelectedAvatarCard avatarId={avatar} sticky />
         </div>
       </BottomSheet>
     </>

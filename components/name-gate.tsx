@@ -7,8 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { AvatarPicker } from "@/components/avatar-picker";
-import { HeartFlag } from "@/components/flag";
-import { getAvatar } from "@/lib/avatars";
+import { SelectedAvatarCard } from "@/components/selected-avatar-card";
 import {
   LANGUAGES,
   LANGUAGE_NAMES,
@@ -80,7 +79,6 @@ export function NameGate({ children }: { children: React.ReactNode }) {
   if (!hydrated) return null;
 
   const open = !name || !avatar;
-  const draftAvatarObj = getAvatar(draftAvatar);
 
   return (
     <>
@@ -174,23 +172,7 @@ export function NameGate({ children }: { children: React.ReactNode }) {
           // overflow container, the selected-card sticks to the bottom.
           <div className="flex flex-col gap-3 min-h-[60dvh] pb-2">
             <AvatarPicker value={draftAvatar} onChange={setDraftAvatar} />
-            {draftAvatarObj && (
-              <div
-                className="sticky bottom-0 -mx-5 px-5 pt-2 pb-1
-                           bg-gradient-to-t from-dark-blue-900 via-dark-blue-900/95 to-dark-blue-900/0"
-              >
-                <div className="glass-card rounded-2xl px-4 py-3 flex items-center gap-3">
-                  <HeartFlag code={draftAvatarObj.country} size="md" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-display truncate">{draftAvatarObj.artist}</p>
-                    <p className="text-xs text-white/55 truncate">
-                      {draftAvatarObj.year} ·{" "}
-                      <span className="italic">{draftAvatarObj.song}</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+            <SelectedAvatarCard avatarId={draftAvatar} sticky />
           </div>
         )}
       </BottomSheet>

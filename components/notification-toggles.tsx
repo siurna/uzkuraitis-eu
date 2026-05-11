@@ -108,7 +108,13 @@ export function NotificationToggles() {
     await updatePrefs(roomCode, session, next);
   };
 
-  if (state === null) return null;
+  // Reserve the row's footprint while we resolve push state so the
+  // settings sheet doesn't lurch when this section materialises.
+  if (state === null) {
+    return (
+      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 h-[3.25rem] animate-pulse" />
+    );
+  }
 
   // On iOS, notifications need the PWA to be installed. On unsupported
   // browsers, no amount of UI will help — we still render the help
