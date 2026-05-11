@@ -22,9 +22,32 @@ const PostSchema = z.object({
   replyTo: z.string().uuid().nullable().optional(),
   kind: z.enum(["text", "gif", "image", "bingo_strike"]).optional().default("text"),
   meta: z.record(z.string(), z.unknown()).optional(),
+  // Names the sender @-mentioned (computed client-side from known
+  // participants). Used for targeted push only.
+  mentions: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
 });
 
 const PAGE_SIZE = 50;
+
+// Best-effort, per-warm-instance flood guard: max N posts per session in
+// a rolling window. Not a hard limit (serverless instances are
+// ephemeral), but enough to blunt a hype-moment spam burst.
+const FLOOD_WINDOW_MS = 10_000;
+const FLOOD_MAX = 12;
+const recentPosts = new Map<string, number[]>();
+function floodCheck(session: string): boolean {
+  const now = Date.now();
+  const arr = (recentPosts.get(session) ?? []).filter((t) => now - t < FLOOD_WINDOW_MS);
+  arr.push(now);
+  recentPosts.set(session, arr);
+  if (recentPosts.size > 500) {
+    // crude GC so the map can't grow unbounded
+    for (const [k, v] of recentPosts) {
+      if (v.every((t) => now - t > FLOOD_WINDOW_MS)) recentPosts.delete(k);
+    }
+  }
+  return arr.length <= FLOOD_MAX;
+}
 
 export async function GET(req: Request, { params }: RouteCtx) {
   const { code } = await params;
@@ -116,6 +139,10 @@ export async function POST(req: Request, { params }: RouteCtx) {
   }
   const data = parsed.data;
 
+  if (!floodCheck(data.session)) {
+    return NextResponse.json({ error: "Too many messages — slow down." }, { status: 429 });
+  }
+
   // Need at least one of: body, gifUrl, or a "card"-kind meta payload.
   const hasContent =
     (data.body && data.body.length > 0) ||
@@ -168,6 +195,28 @@ export async function POST(req: Request, { params }: RouteCtx) {
       tag: `chat:${code}`,
     },
   ).catch(() => {});
+
+  // @-mentions — notify the named people (matched on the name they
+  // subscribed with), unless they'd already get a chatAll push.
+  if (data.mentions && data.mentions.length > 0) {
+    const wanted = new Set(data.mentions.map((n) => n.toLowerCase()));
+    pushToRoom(
+      room.id,
+      (prefs, sub) => {
+        if (sub.sessionId === data.session) return false;
+        if (prefs.chatAll) return false; // already covered by the broadcast above
+        if (!sub.voterName) return false;
+        if (!wanted.has(sub.voterName.toLowerCase())) return false;
+        return !!prefs.chatReplies; // mentions piggyback on the replies opt-in
+      },
+      {
+        title: `${data.name} mentioned you`,
+        body: data.body?.slice(0, 120) ?? "Tap to open the chat",
+        url: `/r/${code}/chat`,
+        tag: `chat-mention:${code}`,
+      },
+    ).catch(() => {});
+  }
 
   // Replies — fan separately to the original author only, if their prefs
   // allow it. Doing this with one query keeps the chatAll path clean.

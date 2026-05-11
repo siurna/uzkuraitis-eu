@@ -69,7 +69,7 @@ export function RoomShell({
   return (
     <RoomProvider
       id={`room:${code}`}
-      initialPresence={{ name: null, avatar: null, emoji: null, hoveredCountry: null }}
+      initialPresence={{ name: null, avatar: null, emoji: null, hoveredCountry: null, typing: false, seenAt: null }}
     >
       <NameGate>
         <RoomLiveProvider

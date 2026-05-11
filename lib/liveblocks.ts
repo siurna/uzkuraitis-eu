@@ -28,6 +28,10 @@ export type Presence = {
   avatar: string | null;
   emoji: string | null;
   hoveredCountry: string | null;
+  /** Chat: currently composing a message. */
+  typing?: boolean;
+  /** Chat: ISO timestamp of the newest message this user has seen. */
+  seenAt?: string | null;
 };
 
 export type Storage = Record<string, never>;
