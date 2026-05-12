@@ -79,8 +79,8 @@ const S = {
   // ── Voting open/closed states + the on-air banners ───────────────
   cast_vote:         { en: "Cast your vote", lt: "Balsuok" },
   update_vote:       { en: "Update your vote", lt: "Pakeisti balsą" },
-  voting_closed:     { en: "Voting is closed", lt: "Balsavimas uždarytas" },
-  voting_closed_sub: { en: "The host hasn't opened voting yet.", lt: "Balsavimas dar neįjungtas." },
+  voting_closed:     { en: "Voting locked", lt: "Balsavimas užrakintas" },
+  voting_closed_sub: { en: "The host hasn't opened voting yet — the standings are still live.", lt: "Šeimininkas dar neatidarė balsavimo — rezultatų lentelė vis tiek gyva." },
   voting_closed_live: { en: "Voting locked — the show's on", lt: "Balsavimas užrakintas — vyksta šou!" },
   voting_closed_ended: { en: "Voting's over", lt: "Balsavimas baigtas" },
   voting_closed_ended_sub: { en: "All ballots are in. Check the leaderboard to see how you did.", lt: "Visi balsai suskaičiuoti. Peržiūrėk lyderių lentelę." },
@@ -308,6 +308,7 @@ const S = {
   no_country_sub:        { en: "Nobody scores zero from the public.", lt: "Niekas negauna nulio iš žiūrovų." },
   selected_count:        { en: (n: number) => `${n} selected`, lt: (n: number) => `pasirinkta ${n}` },
   country_search:        { en: "Search country, artist or song", lt: "Ieškoti šalies, atlikėjo ar dainos" },
+  no_matches:            { en: "No matches", lt: "Nieko nerasta" },
   finalists:             { en: "finalists", lt: "finalistai" },
   ballot_pick_for:       { en: (pts: number) => `${pts} points go to...`, lt: (pts: number) => `${pts} taškai keliauja` },
   ballot_pick_hint:      { en: "Tap to assign — it'll auto-swap if the country is already in another slot.", lt: "Pasirink šalį, kad priskirtum taškus." },

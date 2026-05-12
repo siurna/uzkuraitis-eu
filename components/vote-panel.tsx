@@ -9,8 +9,6 @@ import { VotingClosed } from "@/components/voting-closed";
 // this tab is instant.
 export function VotePanel() {
   const { code, votingEnabled, homeCountryCode } = useRoomLive();
-  // flex-1 (not min-h-screen) so the closed-state card fills the room
-  // layout's remaining space without making the page scrollable.
-  if (!votingEnabled) return <VotingClosed code={code} />;
+  if (!votingEnabled) return <VotingClosed />;
   return <VoteForm roomCode={code} homeCountryCode={homeCountryCode} />;
 }

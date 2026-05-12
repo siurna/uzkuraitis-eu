@@ -1,47 +1,33 @@
 "use client";
 
 import { motion } from "motion/react";
+import { Lock } from "lucide-react";
 import { useRoomLive } from "@/components/room-shell";
 import { useLang, t } from "@/lib/i18n";
 
-// "Voting is closed" placeholder shown in the Vote tab when the host
-// has paused voting. flex-1, centred — fills the room layout's
-// remaining space without making the page scrollable. Reflects the
-// show status so the copy isn't always the same.
-export function VotingClosed({ code }: { code: string }) {
+// Shown in the Vote tab when the host hasn't opened (or has closed)
+// voting. Just a padlock + one line — no card, no scroll. `flex-1`
+// centres it in the room layout's remaining space.
+export function VotingClosed() {
   const lang = useLang();
-  // showStatus lives in the room live context — refreshed on
-  // room:updated so this card stays current as the host flips state.
   const { showStatus } = useRoomLive();
-
-  const headline =
-    showStatus === "in_progress"
-      ? t(lang, "voting_closed_live")
-      : showStatus === "ended"
-        ? t(lang, "voting_closed_ended")
-        : t(lang, "voting_closed");
   const sub =
-    showStatus === "ended"
-      ? t(lang, "voting_closed_ended_sub")
-      : t(lang, "voting_closed_sub");
+    showStatus === "ended" ? t(lang, "voting_closed_ended_sub") : t(lang, "voting_closed_sub");
 
   return (
-    <main className="flex-1 flex items-center justify-center px-6 py-10 text-center">
+    <main className="flex-1 flex items-center justify-center px-8 text-center">
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-        className="glass-card rounded-2xl px-6 py-8 max-w-sm flex flex-col items-center gap-3"
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        className="flex flex-col items-center gap-4 max-w-xs"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/images/70-heart.webp"
-          alt=""
-          className="h-16 w-16 object-contain opacity-80"
-        />
-        <p className="font-display text-2xl gradient-text">{headline}</p>
-        <p className="text-white/60 text-sm leading-relaxed">{sub}</p>
-        <span hidden data-code={code} />
+        <span className="grid place-items-center h-16 w-16 rounded-2xl
+                         bg-white/[0.06] ring-1 ring-white/12">
+          <Lock className="h-7 w-7 text-white/55" />
+        </span>
+        <p className="font-display text-2xl gradient-text">{t(lang, "voting_closed")}</p>
+        <p className="text-sm text-white/55 leading-relaxed">{sub}</p>
       </motion.div>
     </main>
   );

@@ -210,7 +210,7 @@ function RoomBody({ children }: { children: React.ReactNode }) {
           the page itself must not scroll — lock it to the viewport. */}
       <div
         className={`flex flex-col pb-24 pt-[calc(env(safe-area-inset-top)+3.5rem)] ${
-          isChat ? "h-[100dvh] overflow-hidden" : "min-h-screen"
+          isChat ? "h-[100dvh] overflow-hidden" : "min-h-dvh"
         }`}
       >
         <PresenceBar />

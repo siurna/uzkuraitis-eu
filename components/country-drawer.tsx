@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Search, Check } from "lucide-react";
-import { countries, getCountry } from "@/lib/countries";
+import { countries, getCountry, countryName } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -76,10 +76,22 @@ export function CountryDrawer({
       onClose();
       return;
     }
-    setDraft((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
-    );
+    if (code === NONE_TOKEN) {
+      // "Nobody scores zero" is mutually exclusive with any country pick.
+      setDraft((prev) => (prev.includes(NONE_TOKEN) ? [] : [NONE_TOKEN]));
+      return;
+    }
+    setDraft((prev) => {
+      const countriesOnly = prev.filter((c) => c !== NONE_TOKEN);
+      return countriesOnly.includes(code)
+        ? countriesOnly.filter((c) => c !== code)
+        : [...countriesOnly, code];
+    });
   };
+
+  const noneChosen = mode === "multi" && draft.includes(NONE_TOKEN);
+  const anyCountryChosen =
+    mode === "multi" && draft.some((c) => c !== NONE_TOKEN);
 
   const commit = () => {
     if (mode === "single") return; // single-mode auto-commits
@@ -132,6 +144,7 @@ export function CountryDrawer({
               sub={t(lang, "no_country_sub")}
               flag={null}
               selected={isSelected(NONE_TOKEN)}
+              disabled={anyCountryChosen}
               onClick={() => toggle(NONE_TOKEN)}
               multi={mode === "multi"}
             />
@@ -142,11 +155,12 @@ export function CountryDrawer({
             return (
               <DrawerRow
                 key={code}
-                label={c.name}
+                label={countryName(code, lang)}
                 sub={c.artist}
                 sub2={c.song}
                 flag={code}
                 selected={isSelected(code)}
+                disabled={noneChosen}
                 onClick={() => toggle(code)}
                 multi={mode === "multi"}
               />
@@ -154,7 +168,7 @@ export function CountryDrawer({
           })}
           {filtered.length === 0 && (
             <p className="text-center text-white/40 text-sm py-8">
-              No matches.
+              {t(lang, "no_matches")}
             </p>
           )}
         </div>
@@ -169,6 +183,7 @@ function DrawerRow({
   sub2,
   flag,
   selected,
+  disabled = false,
   onClick,
   multi,
 }: {
@@ -177,6 +192,7 @@ function DrawerRow({
   sub2?: string;
   flag: string | null;
   selected: boolean;
+  disabled?: boolean;
   onClick: () => void;
   multi: boolean;
 }) {
@@ -184,8 +200,10 @@ function DrawerRow({
     <button
       type="button"
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left
+      disabled={disabled}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left
                   transition transform-gpu duration-150 active:scale-[0.98]
+                  disabled:opacity-35 disabled:active:scale-100 disabled:cursor-not-allowed
                   ${
                     selected
                       ? "bg-flamingo/20 ring-1 ring-flamingo/50 shadow-glow-pink"

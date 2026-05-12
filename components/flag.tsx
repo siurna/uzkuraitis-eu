@@ -67,8 +67,10 @@ export function HeartFlag({
   }[size];
 
   return (
-    <div className={cn("inline-flex items-center", className)}>
-      <Flag code={code} size={flagSize} />
+    <div className={cn("relative inline-flex items-center", className)}>
+      {/* Heart sits in front; the name pill tucks behind its right lobe
+          (ESC standings style) — so the flag needs the higher z. */}
+      <Flag code={code} size={flagSize} className="relative z-[2]" />
       {name && (
         <span
           className={cn(
