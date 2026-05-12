@@ -93,6 +93,7 @@ export function VoteForm({
     toY: number;
   } | null>(null);
 
+  const homeCountry = getCountry(homeCountryCode);
   const lang = useLang();
 
   const sensors = useSensors(
@@ -433,13 +434,49 @@ export function VoteForm({
             )}
 
             {tab === "bets" && (
-              <BonusBetsForm
-                homeCountryCode={homeCountryCode}
-                bets={bets}
-                onChange={setBets}
-                homePrediction={homePrediction}
-                onHomePredictionChange={setHomePrediction}
-              />
+              <>
+                {homeCountry && (
+                  <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <Flag code={homeCountry.code} size="lg" />
+                      <div className="flex-1 min-w-0">
+                        <h2 className="font-display text-xl gradient-text">
+                          {fmt(t(lang, "bet_lt_placement"), { home: countryName(homeCountry.code, lang) })}
+                        </h2>
+                        <p className="text-xs text-white/50">
+                          {fmt(t(lang, "bet_lt_placement_sub"), { home: countryName(homeCountry.code, lang) })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={countries.length}
+                        placeholder="?"
+                        value={homePrediction ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === "") {
+                            setHomePrediction(null);
+                            return;
+                          }
+                          const n = Number(v);
+                          if (!Number.isFinite(n)) return;
+                          setHomePrediction(Math.max(1, Math.min(countries.length, Math.round(n))));
+                        }}
+                        className="h-14 w-20 rounded-xl border border-white/15 bg-black/30
+                                   text-center font-display text-3xl tabular-nums text-white
+                                   caret-flamingo focus:border-flamingo focus:outline-none
+                                   focus:ring-2 focus:ring-flamingo/40 transition"
+                      />
+                      <span className="text-sm text-white/40">/ {countries.length} {t(lang, "finalists")}</span>
+                    </div>
+                  </section>
+                )}
+                <BonusBetsForm homeCountryCode={homeCountryCode} bets={bets} onChange={setBets} />
+              </>
             )}
 
             {tab === "rules" && <RulesPanel homeCountryCode={homeCountryCode} lang={lang} />}
