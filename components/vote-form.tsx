@@ -26,6 +26,7 @@ import { ListOrdered, Sparkles, Share2, ScrollText, GripVertical, Loader2 } from
 import { countries, getCountry, countryName } from "@/lib/countries";
 import { Flag, HeartOutline } from "@/components/flag";
 import { BonusBetsForm } from "@/components/bonus-bets-form";
+import { SharePicks } from "@/components/share-picks";
 import { CountryDrawer } from "@/components/country-drawer";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { useIdentity } from "@/lib/use-identity";
@@ -412,24 +413,7 @@ export function VoteForm({
                 {!hasCast && allFilled && casting && (
                   <p className="text-sm text-white/55 text-center pt-1">{t(lang, "submitting")}</p>
                 )}
-                {hasCast && voterId && (
-                  <button
-                    type="button"
-                    onClick={share}
-                    disabled={sharing}
-                    className="flex items-center justify-center gap-2 w-full rounded-2xl py-3
-                               bg-white/[0.05] ring-1 ring-white/10 hover:bg-white/[0.09]
-                               transition transform-gpu duration-150 active:scale-[0.99]
-                               disabled:opacity-60 font-display text-sm"
-                  >
-                    {sharing ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-dark-blue-200" />
-                    ) : (
-                      <Share2 className="h-4 w-4 text-dark-blue-200" />
-                    )}
-                    {sharing ? t(lang, "share_preparing") : t(lang, "share_picks")}
-                  </button>
-                )}
+                {hasCast && voterId && <SharePicks key={voterId} />}
               </section>
             )}
 
