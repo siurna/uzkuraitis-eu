@@ -229,8 +229,10 @@ export async function POST(req: Request, { params }: RouteCtx) {
     if (parent && parent.sessionId !== data.session) {
       pushToRoom(
         room.id,
+        // Skip anyone who'd already get the chatAll broadcast above —
+        // otherwise reply+text = two notifications.
         (prefs, sub) =>
-          !!prefs.chatReplies && sub.sessionId === parent.sessionId,
+          !!prefs.chatReplies && !prefs.chatAll && sub.sessionId === parent.sessionId,
         {
           title: `${data.name} replied to you`,
           body: data.body?.slice(0, 120) ?? "Tap to see the reply",

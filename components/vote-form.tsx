@@ -714,7 +714,7 @@ function BallotSlotInner({
         role="button"
         aria-label={t(lang, "aria_drag_reorder")}
         className="flex items-center gap-3 pl-2.5 pr-1 py-3 cursor-grab
-                   active:cursor-grabbing touch-none select-none"
+                   active:cursor-grabbing touch-pan-y select-none"
       >
         <span
           className={`h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-xl grid place-items-center

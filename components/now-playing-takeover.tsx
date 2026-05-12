@@ -60,7 +60,7 @@ export function NowPlayingTakeover() {
       {country && active && (
         <motion.div
           key={active.id}
-          className="fixed inset-0 z-[88] flex flex-col items-center justify-center px-6 text-center pointer-events-none overflow-hidden"
+          className="fixed inset-0 z-[88] flex flex-col items-center justify-center px-6 pb-[12vh] sm:pb-0 text-center pointer-events-none overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

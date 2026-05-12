@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { rooms } from "@/lib/db/schema";
 import { isAdminAuthed } from "@/lib/admin/session";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { pushToRoom } from "@/lib/push";
 import { getCountry } from "@/lib/countries";
 import {
   postSystemMessage,
@@ -85,6 +86,19 @@ export async function POST(req: Request) {
         });
         if (nowPlayingCode) {
           await postNowPlayingMessage(code, id, nowPlayingCode);
+          const c = getCountry(nowPlayingCode);
+          await pushToRoom(
+            id,
+            (prefs) => !!prefs.nowPlaying,
+            {
+              title: `${c?.name ?? nowPlayingCode.toUpperCase()} is on stage`,
+              body: c?.artist
+                ? `${c.artist}${c.song ? ` — ${c.song}` : ""}`
+                : "Tap to open the room",
+              url: `/r/${code}`,
+              tag: `now-playing:${code}`,
+            },
+          ).catch(() => {});
         }
       }
       if (showStatus !== undefined) {

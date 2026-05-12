@@ -49,7 +49,10 @@ export function PresenceBar() {
       : null;
 
   return (
-    <header className="sticky top-0 z-30 backdrop-blur-md bg-dark-blue-900/70 border-b border-white/5">
+    <header
+      className="sticky top-0 z-30 backdrop-blur-md bg-dark-blue-900/70 border-b border-white/5 overflow-x-hidden"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       <div className="container mx-auto max-w-3xl px-4 h-14 flex items-center gap-3">
         {/* Brand / now-playing badge — morphs between the 70-heart and
             the active country's heart-flag SVG. When a country's on
