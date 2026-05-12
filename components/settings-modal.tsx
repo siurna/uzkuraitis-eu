@@ -12,6 +12,7 @@ import { AvatarPicker } from "@/components/avatar-picker";
 import { SelectedAvatarCard } from "@/components/selected-avatar-card";
 import { NotificationToggles } from "@/components/notification-toggles";
 import { getAvatar } from "@/lib/avatars";
+import { optimizedSrc } from "@/lib/img";
 import {
   LANGUAGES,
   LANGUAGE_NAMES,
@@ -174,7 +175,7 @@ export function SettingsModal({
                 <span className="relative h-12 w-12 rounded-xl overflow-hidden ring-1 ring-white/15 shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={selectedAvatar.photo}
+                    src={optimizedSrc(selectedAvatar.photo, 128)}
                     alt=""
                     className="absolute inset-0 h-full w-full object-cover"
                     style={{

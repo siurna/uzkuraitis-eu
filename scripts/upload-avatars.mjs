@@ -1,0 +1,79 @@
+/**
+ * Mirror the past-act avatar photos from `public/avatars/` into the
+ * Vercel Blob store and record the public URLs in `lib/avatar-photos.json`.
+ *
+ * Why: the 40-odd press-kit photos are ~16 MB and bloat the deploy bundle.
+ * Once mirrored, `lib/avatars.ts` serves the Blob URLs (still routed
+ * through Next's image optimizer for per-surface thumbnails — see
+ * `lib/img.ts`), and you can `git rm public/avatars/*` if you want the
+ * leaner deploy (the local path stays as a dev fallback otherwise).
+ *
+ * Run:  BLOB_READ_WRITE_TOKEN=… pnpm avatars:upload
+ *   (the token is the read-write token of the "avatars" Blob store —
+ *    Vercel → Storage → your Blob store → ".env.local" tab. It's the
+ *    same kind of token used by the chat image upload route.)
+ *
+ * Idempotent: re-running overwrites the same keys (stable, no random
+ * suffix) and rewrites the JSON. Safe to run after adding new photos.
+ */
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join, extname, basename } from "node:path";
+import { fileURLToPath } from "node:url";
+import { put } from "@vercel/blob";
+
+const ROOT = join(fileURLToPath(import.meta.url), "..", "..");
+const SRC_DIR = join(ROOT, "public", "avatars");
+const OUT_JSON = join(ROOT, "lib", "avatar-photos.json");
+const PREFIX = "avatars"; // key prefix inside the Blob store
+
+const token = process.env.BLOB_READ_WRITE_TOKEN;
+if (!token) {
+  console.error(
+    "BLOB_READ_WRITE_TOKEN is not set. Grab it from the Blob store's " +
+      '".env.local" tab in the Vercel dashboard and re-run:\n' +
+      "  BLOB_READ_WRITE_TOKEN=… pnpm avatars:upload",
+  );
+  process.exit(1);
+}
+
+const CONTENT_TYPES = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+};
+
+const files = readdirSync(SRC_DIR)
+  .filter((f) => extname(f).toLowerCase() in CONTENT_TYPES)
+  .sort();
+
+if (files.length === 0) {
+  console.error(`No images found in ${SRC_DIR}`);
+  process.exit(1);
+}
+
+console.log(`Uploading ${files.length} avatar photos to Blob (prefix "${PREFIX}/")…`);
+
+const map = {};
+let n = 0;
+for (const file of files) {
+  const ext = extname(file).toLowerCase();
+  const id = basename(file, ext);
+  const data = readFileSync(join(SRC_DIR, file));
+  const { url } = await put(`${PREFIX}/${file}`, data, {
+    access: "public",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: CONTENT_TYPES[ext],
+    token,
+  });
+  map[id] = url;
+  n += 1;
+  console.log(`  ${String(n).padStart(2, " ")}/${files.length}  ${id}  →  ${url}`);
+}
+
+// Sort keys so diffs stay stable.
+const sorted = Object.fromEntries(Object.keys(map).sort().map((k) => [k, map[k]]));
+writeFileSync(OUT_JSON, JSON.stringify(sorted, null, 2) + "\n");
+console.log(`\nWrote ${OUT_JSON} (${Object.keys(sorted).length} entries).`);
+console.log("Commit it; lib/avatars.ts will now serve the Blob URLs.");
