@@ -69,7 +69,7 @@ function Card({
           <p className="font-display text-lg text-white leading-tight">{title}</p>
           {sub && <p className="text-sm text-white/55 leading-snug mt-0.5">{sub}</p>}
         </div>
-        <ArrowRight className="h-5 w-5 text-white/35 shrink-0" />
+        <ArrowRight className="h-5 w-5 text-dark-blue-300 shrink-0" />
       </div>
     </div>
   );
@@ -200,7 +200,7 @@ function BingoWidget({
             {struck != null ? t(lang, "home_bingo_progress", struck) : t(lang, "home_bingo_sub")}
           </p>
         </div>
-        <ArrowRight className="relative h-5 w-5 text-white/35 shrink-0" />
+        <ArrowRight className="relative h-5 w-5 text-dark-blue-300 shrink-0" />
       </div>
     </button>
   );
@@ -291,7 +291,7 @@ function PlayingCard({
               {country.song ? <span className="italic text-white/55"> · {country.song}</span> : null}
             </p>
           </div>
-          <MessageCircle className="h-5 w-5 text-white/70 shrink-0" />
+          <MessageCircle className="h-5 w-5 text-dark-blue-200 shrink-0" />
         </div>
       </div>
     </button>

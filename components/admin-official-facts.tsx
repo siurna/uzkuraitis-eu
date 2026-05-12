@@ -212,7 +212,7 @@ function CountryFact({
                 )}
               </span>
             )}
-            <ChevronRight className="h-4 w-4 text-white/30" />
+            <ChevronRight className="h-4 w-4 text-dark-blue-300" />
           </div>
         </button>
         <CountryDrawer
@@ -260,7 +260,7 @@ function CountryFact({
           ) : (
             <span className="text-xs text-white/40 italic">tap to pick</span>
           )}
-          <ChevronRight className="h-4 w-4 text-white/30" />
+          <ChevronRight className="h-4 w-4 text-dark-blue-300" />
         </div>
       </button>
       <CountryDrawer

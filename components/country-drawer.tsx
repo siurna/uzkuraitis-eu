@@ -128,7 +128,7 @@ export function CountryDrawer({
     >
       <div className="flex flex-col gap-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-dark-blue-200 pointer-events-none" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}

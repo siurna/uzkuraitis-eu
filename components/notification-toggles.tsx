@@ -153,7 +153,7 @@ export function NotificationToggles() {
                    text-sm disabled:opacity-40"
       >
         <span className="flex items-center gap-2">
-          <Bell className="h-4 w-4 text-white/70" />
+          <Bell className="h-4 w-4 text-dark-blue-200" />
           {t(lang, "push_enable")}
         </span>
         <span className="text-xs text-white/40">{t(lang, "push_off")}</span>
@@ -211,7 +211,7 @@ function DisabledWithHelp({
                    bg-white/[0.04] ring-1 ring-white/10 hover:bg-white/[0.07] transition text-sm"
       >
         <span className="flex items-center gap-2 text-white/70">
-          <BellOff className="h-4 w-4 text-white/55" />
+          <BellOff className="h-4 w-4 text-dark-blue-200" />
           {reason === "install"
             ? t(lang, "push_install_required")
             : t(lang, "push_blocked")}

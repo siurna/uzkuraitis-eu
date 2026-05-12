@@ -96,7 +96,7 @@ export function MyResults() {
                 <span className="block text-[10px] uppercase tracking-wider text-white/40 mt-0.5">{t(lang, "pts_short")}</span>
               </span>
             )}
-            <ChevronRight className="h-4 w-4 text-white/30 shrink-0" />
+            <ChevronRight className="h-4 w-4 text-dark-blue-300 shrink-0" />
           </div>
         </button>
       </div>

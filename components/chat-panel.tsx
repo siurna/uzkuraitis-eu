@@ -732,7 +732,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
             </ul>
           ) : messages.length === 0 ? (
             <div className="flex-1 grid place-items-center text-center text-white/45 gap-2">
-              <Smile className="h-6 w-6 text-white/30" />
+              <Smile className="h-6 w-6 text-dark-blue-300" />
               <p className="text-sm">{t(lang, "chat_empty")}</p>
             </div>
           ) : (

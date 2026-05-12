@@ -19,7 +19,7 @@ export function VotingClosed() {
       >
         <span className="grid place-items-center h-16 w-16 rounded-2xl
                          bg-white/[0.06] ring-1 ring-white/12">
-          <Lock className="h-7 w-7 text-white/55" />
+          <Lock className="h-7 w-7 text-dark-blue-200" />
         </span>
         <p className="font-display text-2xl gradient-text">{t(lang, "voting_closed")}</p>
       </motion.div>
