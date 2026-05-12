@@ -368,6 +368,19 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     }
   }, [messages, loading]);
 
+  // Re-entering the chat tab: the list was display:none, so any messages
+  // that arrived while hidden ran their "scroll to bottom" against a
+  // zero-height element and clamped scrollTop to 0. If we were parked at
+  // the bottom, snap back to the newest message. (If the user had
+  // scrolled up to read history, leave their position alone.)
+  useLayoutEffect(() => {
+    if (!active) return;
+    const el = listRef.current;
+    if (!el || !atBottomRef.current) return;
+    el.scrollTop = el.scrollHeight;
+    setNewCount(0);
+  }, [active]);
+
   // ----- composer / typing -----
   const onComposerChange = (v: string) => {
     setBody(v.slice(0, 2000));
