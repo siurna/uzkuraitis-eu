@@ -111,7 +111,7 @@ const S = {
   // ── Rules tab (scoring explainer) ────────────────────────────────
   rules_title:       { en: "How scoring works", lt: "Kaip skaičiuojami taškai" },
   rules_top10_h:     { en: "Your TOP 10", lt: "Tavo TOP 10" },
-  rules_top10_b:     { en: "Score the full Eurovision points (12, 10, 8…1) for every country you placed in the exact spot it finished. Off by a place or more? You get half of that slot's value, rounded down.", lt: "Už kiekvieną šalį, pastatytą tiksliai į jos užimtą vietą, gauni pilnus Eurovizijos taškus (12, 10, 8…1). Jei pataikei ne į tą vietą — gauni pusę tos eilutės vertės, suapvalintą žemyn." },
+  rules_top10_b:     { en: "Only countries that finish in the official Top 10 score anything. Place one in the exact spot it finished and you bank its full Eurovision points (12, 10, 8…1). Off by a place? Slide one rung down the scoreboard — a country that came 1st but you ranked 3rd scores 8 (3rd place's value); slide past 10th and it's 0.", lt: "Taškų skiria tik šalys, patekusios į oficialų TOP 10. Pastatei šalį tiksliai į jos užimtą vietą — gauni pilnus Eurovizijos taškus (12, 10, 8…1). Klysti viena vieta? Nuslysti viena pakopa žemyn lentelėje: jei šalis liko 1-a, o tu ją pastatei 3-ią, gauni 8 (3-ios vietos vertę); nuslydus už 10-os — 0." },
   rules_home_h:      { en: "Home-country placement", lt: "Savo šalies vieta" },
   rules_home_b:      { en: "Guess where your home country finishes: exact = 10 pts, off by 1 = 7, by 2 = 5, by 3–5 = 3, by 6–10 = 1, beyond that = 0.", lt: "Atspėk, kelintas liks tavo šalis: tiksliai = 10 t., klysti 1 vieta = 7, 2 = 5, 3–5 = 3, 6–10 = 1, daugiau = 0." },
   rules_bets_h:      { en: "Bonus bets", lt: "Bonus statymai" },
