@@ -331,6 +331,15 @@
 
 /* ---- animations ------------------------------------------------------- */
 
+/* Rainbow sweep for `-webkit-background-clip:text` headlines. Driven by
+   a keyframe (not a transform/JS animation on the same node) so iOS
+   Safari doesn't drop the text clip and paint a stray rectangle. */
+@keyframes text-shimmer {
+  from { background-position-x: 0%; }
+  to   { background-position-x: 260%; }
+}
+.text-shimmer { animation: text-shimmer 2.4s linear infinite; }
+
 /* Two-beat lub-dub, run twice. The first beat is sharper than the
    second so it reads as a real cardiac pulse — strong contraction,
    short pause, weaker contraction, long rest. */

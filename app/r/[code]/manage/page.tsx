@@ -47,7 +47,7 @@ export default async function RoomManagePage({
 
 function Unauthorized({ code }: { code: string }) {
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 text-center">
+    <main className="min-h-dvh flex items-center justify-center px-4 text-center">
       <div className="glass-card rounded-2xl p-8 max-w-md flex flex-col gap-3">
         <p className="font-display text-2xl gradient-text">Not authorised</p>
         <p className="text-sm text-white/60">
