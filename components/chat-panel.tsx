@@ -238,15 +238,27 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     }
   }, [messages, code]);
 
-  // Track the keyboard via the visual viewport so the composer stays
-  // pinned right above it (no dead gap, no "floating" form-bar).
+  // Track the on-screen keyboard via the visual viewport so the composer
+  // sits flush above it — no dead gap, no composer hidden behind the iOS
+  // form-accessory bar. The value is the strip of the *layout* viewport
+  // (what `position:fixed` is measured against) that's covered by the
+  // keyboard + accessory bar.
   useEffect(() => {
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!vv) return;
     const onVv = () => {
-      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      // Below ~80px it's just URL-bar jitter, not the keyboard.
-      setKbInset(inset > 80 ? Math.round(inset) : 0);
+      // Layout-viewport height — NOT window.innerHeight, which on iOS can
+      // overshoot it (bottom toolbar / standalone chrome) and would punt
+      // the composer up into a void.
+      const layoutH = document.documentElement.clientHeight || window.innerHeight;
+      // Clamp offsetTop ≥ 0: iOS occasionally reports a bogus large
+      // negative value mid-animation, which would inflate the inset.
+      const raw = layoutH - vv.height - Math.max(0, vv.offsetTop);
+      // Below ~80px it's URL-bar jitter, not the keyboard. Cap at ~62%
+      // of the viewport — a keyboard + accessory bar is never taller —
+      // so one bad reading can't strand the composer.
+      const inset = raw > 80 ? Math.min(Math.round(raw), Math.round(layoutH * 0.62)) : 0;
+      setKbInset(inset);
     };
     vv.addEventListener("resize", onVv);
     vv.addEventListener("scroll", onVv);
@@ -664,7 +676,10 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       // it (and the iOS form-accessory bar) — no dead gap. Hidden (but
       // kept mounted, with scroll + state intact) when off the chat tab.
       style={{
-        ...(kbInset > 0 ? { bottom: kbInset, transition: "bottom 0.15s ease" } : null),
+        // Track the keyboard directly (the visual-viewport events fire
+        // often enough during the slide); a CSS transition here just
+        // double-eases and lags behind.
+        ...(kbInset > 0 ? { bottom: kbInset } : null),
         ...(active ? null : { display: "none" }),
       }}
       onDragEnter={(e) => {
@@ -913,6 +928,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
             <textarea
               ref={taRef}
               rows={1}
+              enterKeyHint="send"
               value={editing ? editBody : body}
               onChange={(e) =>
                 editing
