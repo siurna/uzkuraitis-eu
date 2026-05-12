@@ -31,6 +31,16 @@ export const LANG_STORAGE_KEY = "uzk_lang";
 // A string, or a function that builds one from args.
 type Phrase = string | ((...a: never[]) => string);
 
+// Lithuanian noun agreement for counts: 1 → singular, things ending in
+// 0 or in 11–19 → genitive plural ("taškų"), everything else → plural
+// ("taškai"). Used by the few count-bearing strings below.
+function ltPoints(n: number): string {
+  if (n === 1) return "taškas";
+  const mod100 = n % 100;
+  if (n % 10 === 0 || (mod100 >= 11 && mod100 <= 19)) return "taškų";
+  return "taškai";
+}
+
 const S = {
   // ── NameGate / SettingsModal ─────────────────────────────────────
   welcome:           { en: "Welcome", lt: "Labas!" },
@@ -58,7 +68,6 @@ const S = {
   couldnt_copy:      { en: "Couldn't copy link", lt: "Nepavyko nukopijuoti" },
 
   // ── RoomGate (entrance code screen) ──────────────────────────────
-  enter_room_code:   { en: "Enter room code", lt: "Įvesk kambario kodą" },
   enter_room:        { en: "Enter room", lt: "Įeiti" },
   checking:          { en: "Checking…", lt: "Tikrinama…" },
   bad_code:          { en: "No room with that code.", lt: "Nėra kambario tokiu kodu." },
@@ -71,49 +80,31 @@ const S = {
   be_the_first:      { en: "Be the first", lt: "Būk pirmas" },
   show_top_5:        { en: "Top 5 only", lt: "Tik TOP 5" },
   show_all:          { en: "Show all", lt: "Visi" },
-  votes_cast:        { en: "Votes cast", lt: "Balsai" },
   pts_short:         { en: "pts", lt: "tšk" },
   standings:         { en: "Standings", lt: "Rezultatai" },
   live:              { en: "Live", lt: "Tiesiogiai" },
 
   // ── Voting open/closed states + the on-air banners ───────────────
-  cast_vote:         { en: "Cast your vote", lt: "Balsuok" },
   update_vote:       { en: "Update your vote", lt: "Pakeisti balsą" },
   voting_closed:     { en: "Voting locked", lt: "Balsavimas užrakintas" },
-  voting_closed_sub: { en: "The host hasn't opened voting yet — the standings are still live.", lt: "Šeimininkas dar neatidarė balsavimo — rezultatų lentelė vis tiek gyva." },
-  voting_closed_live: { en: "Voting locked — the show's on", lt: "Balsavimas užrakintas — vyksta šou!" },
-  voting_closed_ended: { en: "Voting's over", lt: "Balsavimas baigtas" },
-  voting_closed_ended_sub: { en: "All ballots are in. Check the leaderboard to see how you did.", lt: "Visi balsai suskaičiuoti. Peržiūrėk lyderių lentelę." },
   vote_open_now:     { en: "Europe, start voting now!", lt: "Europa, balsuok dabar!" },
-  vote_open_now_sub: { en: "Lines are open — lock in your TOP 10.", lt: "Linijos atviros — užfiksuok savo TOP 10." },
   vote_closing:      { en: "Stop voting now!", lt: "Balsavimas baigtas!" },
-  vote_closing_sub:  { en: "Lines are closing — last chance!", lt: "Linijos užsidaro — paskutinė proga!" },
-  vote_closed_flash: { en: "Voting closed", lt: "Balsavimas uždarytas" },
 
   // ── VoteForm ─────────────────────────────────────────────────────
-  cast_your_vote:    { en: "Cast your vote", lt: "Balsuok" },
   your_top_10:       { en: "My TOP10", lt: "Mano TOP10" },
   tap_to_pick:       { en: "Pick", lt: "Pasirink" },
-  drag_hint:         { en: "Tap a slot to pick, drag to reorder.", lt: "Bakstelėk norėdamas pasirinkti, vilk - pakeisti tvarką." },
-  submit_12:         { en: "Submit my 12 points", lt: "Siųsti mano balus" },
   pick_n_more:       { en: (n: number) => `Pick ${n} more`, lt: (n: number) => `Dar ${n}` },
   submitting:        { en: "Submitting…", lt: "Siunčiama…" },
   fill_n_more:       { en: (n: number) => `Fill all 10 slots, ${n} to go.`, lt: (n: number) => `Užpildyk visas 10 vietų, dar ${n}.` },
   add_name_first:    { en: "Add your name first.", lt: "Pirma įvesk vardą." },
-  voted_toast:       { en: "Vote in. Long live music!", lt: "Balsas užfiksuotas. Tegyvuoja muzika!" },
   couldnt_submit:    { en: "Couldn't submit vote.", lt: "Nepavyko išsiųsti balso." },
   tab_ballot:        { en: "Ballot", lt: "Balsavimas" },
   tab_bets:          { en: "Guesses", lt: "Spėjimai" },
   tab_rules:         { en: "Rules", lt: "Taisyklės" },
-  bonus_bets:        { en: "Bonus bets", lt: "Bonus statymai" },
-  bets_skip_hint:    { en: "Every bet is optional — skipped = 0 points. See the Rules tab for how each one scores.", lt: "Kiekvienas statymas neprivalomas — praleistas = 0 taškų. Kaip jie skaičiuojami — Taisyklių skiltyje." },
   vote_cast_title:   { en: "Your vote's cast! 🎉", lt: "Tavo balsas užfiksuotas! 🎉" },
   vote_cast_body:    { en: "Locked in automatically. Reorder any time — just tap Save to update.", lt: "Išsaugota automatiškai. Keisk eilę bet kada iki balsavimo pabaigos, tiesiog nepamiršk paspaust Išsaugoti." },
   vote_place_bets:   { en: "Place your bets", lt: "Užpildyk spėjimus" },
   vote_keep_editing: { en: "Keep editing", lt: "Tęsti redagavimą" },
-  vote_updated_toast: { en: "Vote updated.", lt: "Balsas atnaujintas!" },
-  vote_unsaved:      { en: "Unsaved reorder — tap Save to update your vote.", lt: "Neišsaugotas pakeitimas. Spausk Išsaugoti." },
-  save_changes:      { en: "Save changes", lt: "Išsaugoti pakeitimus" },
 
   // ── Rules tab (scoring explainer) ────────────────────────────────
   rules_title:       { en: "How scoring works", lt: "Kaip skaičiuojami taškai" },
@@ -132,7 +123,6 @@ const S = {
   tab_vote:          { en: "Vote", lt: "Balsuok" },
 
   // ── Home banners (context-aware shortcuts) ───────────────────────
-  home_now_playing_sub: { en: "Tap to see the artist & song", lt: "Bakstelėk — atlikėjas ir daina" },
   home_vote_open:      { en: "Voting is open — cast your TOP 10", lt: "Balsavimas atidarytas — paskelbk savo TOP 10" },
   home_vote_open_sub:  { en: "Lines won't be open forever — get it in.", lt: "Linijos neilgai bus atviros, nežiopsok." },
   home_vote_done:      { en: "Your vote's in — reorder it anytime", lt: "Tavo balsas užfiksuotas" },
@@ -145,11 +135,6 @@ const S = {
   home_chat_sub:       { en: "React, reply, send GIFs & photos", lt: "Reaguok, atsakyk, siųsk GIF ir nuotraukas" },
   home_my_results:     { en: "Your results", lt: "Tavo rezultatai" },
   home_my_results_rank: { en: (rank: number, total: number) => `Ranked ${rank} of ${total} — tap for the breakdown`, lt: (rank: number, total: number) => `${rank} vieta iš ${total} — bakstelėk išskaidymui` },
-  home_results_chat:   { en: "Results are in 🏆", lt: "Rezultatai jau čia!" },
-  home_status_not_started: { en: "Doors are open — the show hasn't started", lt: "Durys atvertos, bet šou dar neprasidėjo" },
-  home_status_in_progress: { en: "The show is live 🟢", lt: "Šou vyksta tiesiogiai 🟢" },
-  home_status_break:   { en: "Interval break ⏸", lt: "Pertrauka ⏸" },
-  home_status_ended:   { en: "Performances are over — time to vote 🏁", lt: "Pasirodymai baigti — laikas balsuoti 🏁" },
 
   // ── Chat ─────────────────────────────────────────────────────────
   chat_empty:        { en: "No messages yet. Say hi 👋", lt: "Dar nieks nieko nerašė. Pasisveikink pirmas 👋" },
@@ -190,8 +175,6 @@ const S = {
   // ── Country deep-dive ────────────────────────────────────────────
   deep_artist:       { en: "Artist", lt: "Atlikėjas" },
   deep_song:         { en: "Song", lt: "Daina" },
-  deep_order:        { en: "in running order", lt: "vieta tvarkaraštyje" },
-  deep_watch:        { en: "Watch the performance", lt: "Žiūrėti pasirodymą" },
 
   // ── End-of-show reveal ───────────────────────────────────────────
   reveal_cta:        { en: "Reveal my night", lt: "Kaip man sekėsi?" },
@@ -219,14 +202,9 @@ const S = {
 
   // ── Now-playing strip ────────────────────────────────────────────
   now_playing:       { en: "On stage", lt: "Scenoje" },
-  now_playing_idle:  { en: "Waiting for the next country…", lt: "Laukiama kitos šalies…" },
-  now_playing_admin: { en: "Now playing", lt: "Dabar scenoje" },
-  now_playing_clear: { en: "Off stage", lt: "Niekas" },
 
   // ── Bingo ────────────────────────────────────────────────────────
   bingo_title:       { en: "Eurovision bingo", lt: "Eurovizijos bingo" },
-  bingo_free:        { en: "FREE", lt: "LAISVA" },
-  bingo_reset:       { en: "Reset", lt: "Iš naujo" },
   bingo_won:         { en: "BINGO!", lt: "BINGO!" },
   bingo_you_did_it:  { en: "You got bingo! 🎉", lt: "Surinkai bingo! 🎉" },
   bingo_footer:      { en: "Tap a square — or its line in the list — when it happens. Five in a row wins.", lt: "Pamatei, kad tai nutiko? Bakstelėk eilutę sąraše! Surinkai kraštinę? Laimi." },
@@ -237,7 +215,6 @@ const S = {
 
   // ── Notifications ────────────────────────────────────────────────
   notifications:        { en: "Notifications", lt: "Pranešimai" },
-  push_unsupported:     { en: "Push notifications aren't supported on this device.", lt: "Pranešimų ši naršyklė nepalaiko." },
   push_blocked:         { en: "Notifications are blocked.", lt: "Pranešimai užblokuoti." },
   push_install_required: { en: "Install the app to enable notifications", lt: "Įdiek aplikaciją, kad gautum pranešimus" },
   push_how:             { en: "How", lt: "Kaip?" },
@@ -306,14 +283,13 @@ const S = {
   yes_short:             { en: "yes", lt: "taip" },
   no_short:              { en: "no", lt: "ne" },
   skip_short:            { en: "—", lt: "—" },
-  max_pts:               { en: (n: number) => `max +${n}`, lt: (n: number) => `iki +${n}` },
   no_country:            { en: "No country", lt: "Nė viena" },
   no_country_sub:        { en: "Nobody scores zero from the public.", lt: "Niekas negauna nulio iš žiūrovų." },
   selected_count:        { en: (n: number) => `${n} selected`, lt: (n: number) => `pasirinkta ${n}` },
   country_search:        { en: "Search country, artist or song", lt: "Ieškoti šalies, atlikėjo ar dainos" },
   no_matches:            { en: "No matches", lt: "Nieko nerasta" },
   finalists:             { en: "finalists", lt: "finalistai" },
-  ballot_pick_for:       { en: (pts: number) => `${pts} points go to...`, lt: (pts: number) => `${pts} taškai keliauja` },
+  ballot_pick_for:       { en: (pts: number) => `${pts} ${pts === 1 ? "point" : "points"} go to…`, lt: (pts: number) => `${pts} ${ltPoints(pts)} keliauja` },
   ballot_pick_hint:      { en: "Tap to assign — it'll auto-swap if the country is already in another slot.", lt: "Pasirink šalį, kad priskirtum taškus." },
   aria_drag_reorder:     { en: "Drag to reorder", lt: "Vilk perstumti" },
 
@@ -325,7 +301,6 @@ const S = {
   breakdown_total:   { en: "Total", lt: "Iš viso" },
 
   // ── Reactions / honeycomb ────────────────────────────────────────
-  react_with:        { en: (e: string) => `React with ${e}`, lt: (e: string) => `Reaguoti su ${e}` },
 };
 
 // Sanity check: every entry must carry both languages (a typo in `en`/
