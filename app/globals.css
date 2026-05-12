@@ -276,6 +276,50 @@
   box-shadow: var(--shadow-soft);
 }
 
+/* Make a list-entry card feel pressable: subtle lift + brightening glow
+   on hover, settle on press. Apply via class to interactive rows only;
+   non-clickable cards stay still. */
+.list-card-hover {
+  transition: transform 0.18s ease, box-shadow 0.25s ease,
+              border-color 0.25s ease;
+}
+.list-card-hover:hover {
+  transform: translateY(-1px);
+  border-color: oklch(70% 0.27 336 / 0.45);
+  box-shadow:
+    0 1px 0 0 oklch(100% 0 0 / 0.08) inset,
+    0 -1px 0 0 oklch(0% 0 0 / 0.2) inset,
+    0 12px 32px -10px oklch(0% 0 0 / 0.55),
+    0 0 0 1px oklch(70% 0.27 336 / 0.15),
+    var(--shadow-glow-pink);
+}
+.list-card-hover:active {
+  transform: translateY(0);
+  transition-duration: 0.08s;
+}
+
+/* Heading reveal: fades up from below, runs once on first mount.
+   No JS, just CSS. Use on h1/h2 where you want the entrance. */
+@keyframes heading-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.heading-rise {
+  animation: heading-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.heading-rise-delay-1 { animation-delay: 60ms; }
+.heading-rise-delay-2 { animation-delay: 120ms; }
+.heading-rise-delay-3 { animation-delay: 180ms; }
+
+/* Section reveal: same vibe but a touch slower for content blocks. */
+@keyframes section-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.section-rise {
+  animation: section-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .bg-radial-fade {
   background:
     radial-gradient(
