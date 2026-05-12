@@ -8,10 +8,13 @@
  * `lib/img.ts`), and you can `git rm public/avatars/*` if you want the
  * leaner deploy (the local path stays as a dev fallback otherwise).
  *
- * Run:  BLOB_READ_WRITE_TOKEN=… pnpm avatars:upload
- *   (the token is the read-write token of the "avatars" Blob store —
- *    Vercel → Storage → your Blob store → ".env.local" tab. It's the
- *    same kind of token used by the chat image upload route.)
+ * Run:  pnpm avatars:upload
+ *   It reads BLOB_READ_WRITE_TOKEN — pull it down once with
+ *   `vercel env pull .env.local` (the script auto-loads .env.local via
+ *   `node --env-file-if-exists`), or pass it inline:
+ *   `BLOB_READ_WRITE_TOKEN=… pnpm avatars:upload`. It's the same token
+ *   the chat image-upload route uses (Vercel → Storage → Blob store →
+ *   ".env.local" tab).
  *
  * Idempotent: re-running overwrites the same keys (stable, no random
  * suffix) and rewrites the JSON. Safe to run after adding new photos.
@@ -29,8 +32,9 @@ const PREFIX = "avatars"; // key prefix inside the Blob store
 const token = process.env.BLOB_READ_WRITE_TOKEN;
 if (!token) {
   console.error(
-    "BLOB_READ_WRITE_TOKEN is not set. Grab it from the Blob store's " +
-      '".env.local" tab in the Vercel dashboard and re-run:\n' +
+    "BLOB_READ_WRITE_TOKEN is not set. Pull it from Vercel and re-run:\n" +
+      "  vercel env pull .env.local && pnpm avatars:upload\n" +
+      "or pass it inline:\n" +
       "  BLOB_READ_WRITE_TOKEN=… pnpm avatars:upload",
   );
   process.exit(1);
