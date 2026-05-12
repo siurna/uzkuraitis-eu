@@ -163,7 +163,11 @@ export async function POST(req: Request, { params }: RouteCtx) {
       body: data.body ?? null,
       gifUrl: data.gifUrl ?? null,
       replyTo: data.replyTo ?? null,
-      meta: data.meta ?? null,
+      // Snapshot the country on stage when this was sent — the Home
+      // "Highlights of the evening" shows it next to the message.
+      meta: room.nowPlayingCode
+        ? { ...(data.meta ?? {}), nowPlaying: room.nowPlayingCode }
+        : (data.meta ?? null),
     })
     .returning({ id: chatMessages.id });
 

@@ -140,6 +140,9 @@ export function ChatRow({
   const isNowPlaying = m.kind === "now_playing";
   const isResults = m.kind === "results";
   const isMedia = (m.kind === "gif" || m.kind === "image") && m.gifUrl;
+  // A message that's pulled enough reactions glows — it's a "highlight".
+  const reactionTotal = Object.values(m.reactions).reduce((n, r) => n + r.count, 0);
+  const isHighlight = !isSystem && !isNowPlaying && !isResults && reactionTotal >= 5;
   const isEdited = (m.meta as { edited?: boolean } | null)?.edited === true;
   const canEdit =
     mine && m.kind === "text" &&
@@ -383,7 +386,11 @@ export function ChatRow({
                               : mine
                                 ? "bg-white text-dark-blue"
                                 : "bg-white/[0.06] ring-1 ring-white/10 text-white/90"
-                          } ${m.pending ? "opacity-75" : ""}`}
+                          } ${m.pending ? "opacity-75" : ""} ${
+                            isHighlight
+                              ? "ring-2 ring-flamingo/45 shadow-[0_4px_28px_-2px_oklch(70%_0.27_336_/_0.45)]"
+                              : ""
+                          }`}
             >
               {isCard ? (
                 <BingoCardMessage meta={m.meta} lang={lang} />

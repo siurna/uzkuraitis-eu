@@ -134,6 +134,7 @@ const S = {
   home_bingo_sub:      { en: "Tick off the clichés as they happen", lt: "Žymėk klišes, kai jos įvyksta" },
   home_bingo_progress: { en: (n: number) => `${n} / 25 ticked`, lt: (n: number) => `pažymėta ${n} / 25` },
   bingo_widget_title:  { en: "Play bingo!", lt: "Žaisk bingo!" },
+  highlights_title:    { en: "Highlights of the evening", lt: "Vakaro akcentai" },
   home_my_results:     { en: "Your results", lt: "Tavo rezultatai" },
   home_results_in:     { en: "Results are in", lt: "Rezultatai jau čia" },
   home_results_in_sub: { en: "See how everyone did", lt: "Pažiūrėk, kaip visiems sekėsi" },
