@@ -156,9 +156,12 @@
     /* Kill iOS rubber-band so the sticky header never drifts on overscroll. */
     overscroll-behavior: none;
     /* The whole app is an app, not a document — no accidental text
-       selection. Inputs + chat bubbles opt back in via .allow-select. */
+       selection, and no iOS long-press callout (link/image popup) which
+       fights our hold-to-react / hold-to-reorder gestures. Inputs + chat
+       bubbles opt selection back in via .allow-select. */
     -webkit-user-select: none;
     user-select: none;
+    -webkit-touch-callout: none;
   }
 
   input,
@@ -167,6 +170,13 @@
   .allow-select {
     -webkit-user-select: text;
     user-select: text;
+    -webkit-touch-callout: default;
+  }
+
+  /* No accidental image drags / "Save Image" long-press. */
+  img {
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
   }
 
   /* Body backdrop. The participant-backdrop is grey wavy stripes; if
