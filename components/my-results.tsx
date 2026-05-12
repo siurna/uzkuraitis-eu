@@ -52,6 +52,17 @@ export function MyResults() {
     if ((event as { type?: string }).type === "leaderboard:updated") load();
   });
 
+  // The Home "Results are in" promo opens this drawer (on the "me" tab)
+  // instead of scroll-jumping to the card.
+  useEffect(() => {
+    const open = () => {
+      setOpen(true);
+      setTab("me");
+    };
+    window.addEventListener("uzk:open-results", open);
+    return () => window.removeEventListener("uzk:open-results", open);
+  }, []);
+
   if (!tallyEnabled || !rows || rows.length === 0) return null;
   const session = ensureSessionId();
   const idx = rows.findIndex((r) => r.sessionId === session);

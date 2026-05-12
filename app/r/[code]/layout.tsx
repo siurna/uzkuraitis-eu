@@ -32,6 +32,8 @@ export default async function RoomLayout({
       name={room.name}
       votingEnabled={room.votingEnabled}
       homeCountryCode={room.homeCountryCode}
+      nowPlayingCode={room.nowPlayingCode}
+      showStatus={room.showStatus}
     >
       {children}
     </RoomShell>

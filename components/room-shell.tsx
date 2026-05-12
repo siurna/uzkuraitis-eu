@@ -77,12 +77,18 @@ export function RoomShell({
   name,
   votingEnabled,
   homeCountryCode,
+  nowPlayingCode = null,
+  showStatus = "not_started",
   children,
 }: {
   code: string;
   name: string;
   votingEnabled: boolean;
   homeCountryCode: string;
+  // Seeded from the server so the now-playing hero (Home) and the header
+  // strip render in their final state on first paint — no content shift.
+  nowPlayingCode?: string | null;
+  showStatus?: string;
   children: React.ReactNode;
 }) {
   useEffect(() => {
@@ -105,8 +111,8 @@ export function RoomShell({
             votingEnabled,
             tallyEnabled: false,
             homeCountryCode,
-            nowPlayingCode: null,
-            showStatus: "not_started",
+            nowPlayingCode,
+            showStatus: (showStatus ?? "not_started") as ShowStatus,
           }}
         >
           <ParticleLayer>

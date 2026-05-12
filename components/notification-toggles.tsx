@@ -393,32 +393,42 @@ export function NotificationsCta() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className="relative rounded-2xl bg-flamingo/10 ring-1 ring-flamingo/35 px-4 py-3
-                 flex items-center gap-3"
+      className="rainbow-border rounded-3xl block"
     >
-      <Bell className="h-5 w-5 text-flamingo shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="font-display text-sm">{t(lang, "push_cta_title")}</p>
-        <p className="text-xs text-white/55 leading-snug">
-          {t(lang, "push_cta_sub")}
-        </p>
+      <div className="relative overflow-hidden rounded-[22px] bg-dark-blue-900/85 px-4 py-4 flex items-center gap-4">
+        {/* indigo wash — distinct from the vote (turquoise) / results
+            (gold) / bingo (violet) / share (pink) banners. */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "linear-gradient(120deg, rgba(99,102,241,0.20), rgba(76,201,240,0.08) 55%, transparent)" }}
+        />
+        <span className="relative shrink-0 grid place-items-center h-14 w-14 rounded-xl bg-black/30 ring-1 ring-white/12 text-white/85">
+          <Bell className="h-6 w-6" />
+        </span>
+        <div className="relative min-w-0 flex-1">
+          <p className="text-[10px] uppercase tracking-[0.32em] text-flamingo font-display leading-tight mb-0.5">
+            {t(lang, "push_cta_eyebrow")}
+          </p>
+          <p className="font-display text-lg text-white leading-tight">{t(lang, "push_cta_title")}</p>
+          <p className="text-sm text-white/55 leading-snug mt-0.5">{t(lang, "push_cta_sub")}</p>
+        </div>
+        <button
+          type="button"
+          onClick={enable}
+          className="relative shrink-0 px-3.5 h-9 rounded-full font-display text-xs
+                     bg-white text-dark-blue hover:bg-dark-blue-50 transition"
+        >
+          {t(lang, "push_cta_enable")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          aria-label={t(lang, "cancel")}
+          className="relative shrink-0 -mr-1 text-dark-blue-300 hover:text-white transition"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={enable}
-        className="shrink-0 px-3 h-8 rounded-full font-display text-xs
-                   bg-white text-dark-blue hover:bg-dark-blue-50 transition"
-      >
-        {t(lang, "push_cta_enable")}
-      </button>
-      <button
-        type="button"
-        onClick={() => setDismissed(true)}
-        aria-label={t(lang, "cancel")}
-        className="shrink-0 text-white/40 hover:text-white transition"
-      >
-        <X className="h-4 w-4" />
-      </button>
     </motion.div>
   );
 }

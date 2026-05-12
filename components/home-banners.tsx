@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode, type CSSProperties } from "react";
+import { motion } from "motion/react";
 import { ArrowRight, MessageCircle } from "lucide-react";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { getCountry, countryName } from "@/lib/countries";
@@ -22,6 +23,16 @@ function hexA(hex: string, a: number): string {
   if (!m) return hex;
   const n = parseInt(m[1], 16);
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+}
+
+// A `.rainbow-border`-style stroke, but painted in a country's own
+// flag colours — used on the "now playing" hero so each performance
+// reads in its own palette instead of the generic rainbow.
+function countryBorderStyle(c1: string, c2: string): CSSProperties {
+  return {
+    padding: "var(--rainbow-thickness)",
+    backgroundImage: `linear-gradient(135deg, ${c1}, ${c2})`,
+  };
 }
 
 // The shared promo-card shape (extracted from the bingo widget the
@@ -85,15 +96,23 @@ export function HomeBanners() {
   const lang = useLang();
   const { setTab } = useRoomTab();
   const [voted, setVoted] = useState(false);
-  const [bingoStruck, setBingoStruck] = useState<number | null>(null);
+  // Best progress across all bingo tickets (a single "X / 25" is wrong
+  // once you hold more than one) + whether any of them already hit bingo.
+  const [bingo, setBingo] = useState<{ best: number; won: boolean } | null>(null);
 
   useEffect(() => {
     setVoted(localStorage.getItem(`uzk_voted_${code}`) === "1");
     try {
-      const tickets = JSON.parse(localStorage.getItem(`uzk_bingo_tickets_${code}`) ?? "[]");
-      if (Array.isArray(tickets) && tickets[0]) {
-        const struck = Array.isArray(tickets[0].struck) ? tickets[0].struck.length : 0;
-        setBingoStruck(Math.min(25, struck + 1)); // +1 for the auto-struck FREE square
+      const tickets = JSON.parse(localStorage.getItem(`uzk_bingo_tickets_${code}`) ?? "[]") as {
+        struck?: unknown[];
+        bingoFired?: boolean;
+      }[];
+      if (Array.isArray(tickets) && tickets.length > 0) {
+        // +1 per ticket for the auto-struck FREE centre square.
+        const counts = tickets.map((tk) =>
+          Math.min(25, (Array.isArray(tk.struck) ? tk.struck.length : 0) + 1),
+        );
+        setBingo({ best: Math.max(...counts), won: tickets.some((tk) => !!tk.bingoFired) });
       }
     } catch {
       /* ignore */
@@ -118,15 +137,21 @@ export function HomeBanners() {
           onClick={() => setTab("vote")}
           visual={
             <VisualBox>
-              <span className="flex flex-col gap-1">
+              <span className="flex flex-col items-center gap-1">
                 {[
-                  ["12", "bg-gradient-to-br from-gold to-orange text-dark-blue"],
-                  ["10", "bg-gradient-to-br from-flamingo to-fuchsia text-white"],
-                  ["8", "bg-white/[0.08] text-white/65 ring-1 ring-white/12"],
-                ].map(([n, cls]) => (
-                  <span key={n} className={`h-3.5 px-1.5 rounded-[5px] grid place-items-center text-[9px] font-display tabular-nums leading-none ${cls}`}>
+                  { n: "12", size: "h-4 text-[10px]", cls: "bg-gradient-to-br from-gold to-orange text-dark-blue" },
+                  { n: "10", size: "h-3.5 text-[9px]", cls: "bg-gradient-to-br from-flamingo to-fuchsia text-white" },
+                  { n: "8", size: "h-3 text-[8px]", cls: "bg-white/[0.08] text-white/65 ring-1 ring-white/12" },
+                ].map(({ n, size, cls }, i) => (
+                  <motion.span
+                    key={n}
+                    initial={{ opacity: 0, scale: 0.3, y: -7 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ delay: 0.18 + i * 0.13, type: "spring", stiffness: 460, damping: 17 }}
+                    className={`px-1.5 rounded-[5px] grid place-items-center font-display tabular-nums leading-none ${size} ${cls}`}
+                  >
                     {n}
-                  </span>
+                  </motion.span>
                 ))}
               </span>
             </VisualBox>
@@ -134,19 +159,14 @@ export function HomeBanners() {
         />
       )}
 
-      {/* 3 — results (gold) */}
+      {/* 3 — results (warm gold) */}
       {tallyEnabled && (
         <PromoWidget
-          accent="linear-gradient(120deg, rgba(255,214,10,0.18), rgba(255,46,222,0.06) 55%, transparent)"
+          accent="linear-gradient(120deg, rgba(255,214,10,0.22), rgba(255,168,0,0.10) 50%, transparent)"
           eyebrow="🏆"
           title={t(lang, "home_results")}
           sub={t(lang, "home_results_sub")}
-          onClick={() =>
-            (document.getElementById("my-results") ?? document.getElementById("standings"))?.scrollIntoView({
-              behavior: "smooth",
-              block: "start",
-            })
-          }
+          onClick={() => window.dispatchEvent(new CustomEvent("uzk:open-results"))}
           visual={
             <VisualBox>
               <span className="flex flex-col items-center leading-none">
@@ -158,12 +178,18 @@ export function HomeBanners() {
         />
       )}
 
-      {/* 4 — bingo (purple/pink) */}
+      {/* 4 — bingo (violet) */}
       <PromoWidget
-        accent="linear-gradient(120deg, rgba(146,87,255,0.18), rgba(255,46,222,0.08) 55%, transparent)"
+        accent="linear-gradient(120deg, rgba(146,87,255,0.22), rgba(109,40,217,0.10) 55%, transparent)"
         eyebrow="BINGO"
         title={t(lang, "bingo_widget_title")}
-        sub={bingoStruck != null ? t(lang, "home_bingo_progress", bingoStruck) : t(lang, "home_bingo_sub")}
+        sub={
+          bingo?.won
+            ? t(lang, "home_bingo_won")
+            : bingo
+              ? t(lang, "home_bingo_progress", bingo.best)
+              : t(lang, "home_bingo_sub")
+        }
         onClick={() => setTab("bingo")}
         visual={
           <div className="grid grid-cols-3 gap-1 p-1.5 rounded-xl bg-black/30 ring-1 ring-white/12">
@@ -201,7 +227,12 @@ function PlayingCard({
 
   if (photo) {
     return (
-      <button type="button" onClick={onOpen} className="w-full text-left rainbow-border rounded-3xl block">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="w-full text-left rounded-3xl block"
+        style={countryBorderStyle(c1, c2)}
+      >
         <div className="relative overflow-hidden rounded-[22px] aspect-[16/10] sm:aspect-[2/1]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={optimizedSrc(photo, 1080)} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -245,7 +276,12 @@ function PlayingCard({
   }
 
   return (
-    <button type="button" onClick={onOpen} className="w-full text-left rainbow-border rounded-3xl block">
+    <button
+      type="button"
+      onClick={onOpen}
+      className="w-full text-left rounded-3xl block"
+      style={countryBorderStyle(c1, c2)}
+    >
       <div
         className="relative overflow-hidden rounded-[22px] px-5 py-5 sm:px-6"
         style={{
