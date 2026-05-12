@@ -8,7 +8,7 @@ Two pools of avatar photos, both defined in [`lib/avatars.ts`](./lib/avatars.ts)
 
 | Pool | Entries | `id` shape | Source image |
 |---|---|---|---|
-| Iconic past acts | ~40, hand-curated | `<slug>-<year>` (e.g. `loreen-2012`, `kaarija-2023`) | `public/avatars/<id>.{jpg,png}` |
+| Iconic past acts | ~40, hand-curated | `<slug>-<year>` (e.g. `loreen-2012`, `kaarija-2023`) | `avatars-src/<id>.{jpg,png}` → mirrored to Blob (see below) |
 | This year's grand-final lineup | one per competing country, auto-derived from `lib/countries.ts` | `<code>-2026` (e.g. `se-2026`) | `public/participants/<code>.{jpg,png}` (via `participantPhoto()`) |
 
 Every entry also carries a `focal` point — `{ x, y }` as percentages of the
@@ -34,27 +34,27 @@ source image, every size derived on demand:
 | Settings avatar tile | 48 px | `128` |
 | Now-playing / country deep-dive hero | full-bleed | `1080` |
 
-That's why there are no pre-baked `*-thumb.webp` files to keep in sync — there's
-nothing stopping us from adding them later if the optimizer's transformation
-quota ever becomes a concern, but for ~40 images it never will.
+That's why there are no pre-baked `*-thumb.webp` files to keep in sync — nothing
+stops us adding them later if the optimizer's transformation quota ever becomes a
+concern, but for ~40 images it never will.
 
-## Where the bytes live — `public/` vs Blob
+## Where the bytes live — `avatars-src/` + Blob, never `public/`
 
-`public/avatars/*` is the canonical, reviewable source (committed to the repo).
-It's also ~16 MB, which bloats the deploy bundle, so the photos are **mirrored
-to the Vercel Blob store** and `lib/avatars.ts` prefers the Blob URL when one is
-recorded:
+The past-act photos are deliberately **not** in `public/` — that would ship all
+~16 MB in every deploy. Instead:
 
-1. [`scripts/upload-avatars.mjs`](./scripts/upload-avatars.mjs) uploads each
-   `public/avatars/<id>.<ext>` to the Blob store under `avatars/<id>.<ext>`
-   (stable key, no random suffix) and writes the resulting public URLs to
-   [`lib/avatar-photos.json`](./lib/avatar-photos.json).
-2. `lib/avatars.ts` imports that JSON and, for every avatar whose `id` appears
-   there, swaps the inline `/avatars/…` path for the Blob URL. The inline path
-   remains as a local-dev fallback (so the picker still works before you've run
-   the upload, or in a checkout without Blob access).
-3. `images.remotePatterns` in `next.config.mjs` allow-lists
-   `*.public.blob.vercel-storage.com` so the optimizer can fetch from Blob.
+- **`avatars-src/<id>.{jpg,png}`** — the canonical, version-controlled originals.
+  Committed to the repo, but outside `public/`, so they're not in the deploy.
+- **Vercel Blob store** (`avatars/<id>.<ext>`) — the runtime source the app
+  actually serves. Populated by [`scripts/upload-avatars.mjs`](./scripts/upload-avatars.mjs),
+  which uploads each file in `avatars-src/` under a stable key (no random
+  suffix) and writes the resulting URLs to
+  [`lib/avatar-photos.json`](./lib/avatar-photos.json).
+- **`lib/avatars.ts`** imports that JSON and attaches `photo` to each avatar by
+  `id`. There is **no `public/` fallback** — an act shows a photo iff
+  `avatars-src/<id>.<ext>` exists *and* `pnpm avatars:upload` has been run.
+- **`next.config.mjs` → `images.remotePatterns`** allow-lists
+  `*.public.blob.vercel-storage.com` so the optimizer can fetch from Blob.
 
 ### Running the upload
 
@@ -66,25 +66,22 @@ pnpm avatars:upload          # auto-loads .env.local via node --env-file-if-exis
 (or pass the token inline: `BLOB_READ_WRITE_TOKEN=vercel_blob_rw_… pnpm avatars:upload`.)
 
 Then commit the updated `lib/avatar-photos.json`. It's idempotent — re-run it
-after adding new photos; existing keys are overwritten in place.
+after adding/replacing originals; existing keys are overwritten in place.
 
-Once everything's mirrored and the JSON is committed, you can optionally
-`git rm public/avatars/*` to shed the 16 MB from the deploy bundle — the app
-will run entirely off the Blob URLs (you just lose the offline dev fallback).
-
-> The 2026 participant photos in `public/participants/` are **not** mirrored yet.
-> Same pattern would apply (`participantPhoto()` already centralises the lookup);
-> extend `scripts/upload-avatars.mjs` with a second pass + a
-> `lib/participant-photos.json` if/when that 16 MB matters too. Note the OG
-> share-card route (`app/api/og/[code]/[voterId]/route.tsx`) renders via satori
-> and fetches the photo URL directly, so it benefits from a Blob URL but cannot
-> use `/_next/image`.
+> The 2026 participant photos in `public/participants/` are **not** moved off
+> `public/` yet. Same pattern would apply (`participantPhoto()` already
+> centralises the lookup); extend `scripts/upload-avatars.mjs` with a second
+> pass + a `lib/participant-photos.json` if/when that 16 MB matters too. Note the
+> OG share-card route (`app/api/og/[code]/[voterId]/route.tsx`) renders via
+> satori and fetches the photo URL directly, so it benefits from a Blob URL but
+> cannot use `/_next/image`.
 
 ## Adding a new past-act avatar
 
-1. Drop a square-ish portrait at `public/avatars/<slug>-<year>.jpg` (or `.png`).
+1. Drop a square-ish portrait at `avatars-src/<slug>-<year>.jpg` (or `.png`).
    Tighter-than-the-final-crop is fine; the `focal` point handles framing.
 2. Add an entry to `AVATARS` in `lib/avatars.ts` — `id` must match the filename
    stem. Eyeball `focal` (percentages from the top-left; bump `y` down if the
    face is low, nudge `x` toward the face for group shots).
-3. `pnpm avatars:upload` → commit `lib/avatar-photos.json`.
+3. `pnpm avatars:upload`, then commit `avatars-src/<new file>` **and**
+   `lib/avatar-photos.json`.

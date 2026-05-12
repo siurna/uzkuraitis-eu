@@ -1,12 +1,12 @@
 /**
- * Mirror the past-act avatar photos from `public/avatars/` into the
- * Vercel Blob store and record the public URLs in `lib/avatar-photos.json`.
- *
- * Why: the 40-odd press-kit photos are ~16 MB and bloat the deploy bundle.
- * Once mirrored, `lib/avatars.ts` serves the Blob URLs (still routed
- * through Next's image optimizer for per-surface thumbnails — see
- * `lib/img.ts`), and you can `git rm public/avatars/*` if you want the
- * leaner deploy (the local path stays as a dev fallback otherwise).
+ * Mirror the past-act avatar photos from `avatars-src/` (the canonical,
+ * version-controlled originals — kept out of `public/` so they don't
+ * ride along in the deploy bundle) into the Vercel Blob store, and
+ * record the public URLs in `lib/avatar-photos.json`. `lib/avatars.ts`
+ * then serves those Blob URLs (routed through Next's image optimizer for
+ * per-surface thumbnails — see `lib/img.ts`). There is no `public/`
+ * fallback: an avatar shows a photo iff `avatars-src/<id>.<ext>` exists
+ * and this script has been run.
  *
  * Run:  pnpm avatars:upload
  *   It reads BLOB_READ_WRITE_TOKEN — pull it down once with
@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { put } from "@vercel/blob";
 
 const ROOT = join(fileURLToPath(import.meta.url), "..", "..");
-const SRC_DIR = join(ROOT, "public", "avatars");
+const SRC_DIR = join(ROOT, "avatars-src");
 const OUT_JSON = join(ROOT, "lib", "avatar-photos.json");
 const PREFIX = "avatars"; // key prefix inside the Blob store
 
