@@ -657,15 +657,12 @@ function RulesPanel({
   ];
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-4">
       <h2 className="font-display text-xl gradient-text text-balance px-1">{t(lang, "rules_title")}</h2>
 
       {/* TOP 10 ballot */}
       <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-2.5">
-        <div className="flex items-center gap-2">
-          <ListOrdered className="h-4 w-4 text-dark-blue-200 shrink-0" />
-          <p className="font-display text-sm text-white/90">{t(lang, "rules_top10_h")}</p>
-        </div>
+        <p className="font-display text-sm text-white/90">{t(lang, "rules_top10_h")}</p>
         <p className="text-sm text-white/60 leading-relaxed text-pretty">{t(lang, "rules_top10_b")}</p>
         <p className="text-xs text-white/45 leading-relaxed pt-0.5">{t(lang, "rules_top10_eg")}</p>
         <ScaleRow items={[["0", 12], ["1", 10], ["2", 8], ["3", 7], ["5", 5], ["9", 1]]} />
@@ -673,26 +670,20 @@ function RulesPanel({
 
       {/* Home-country placement */}
       <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-2.5">
-        <div className="flex items-center gap-2">
-          <Flag code={homeCountryCode} size="sm" />
-          <p className="font-display text-sm text-white/90">{t(lang, "rules_home_h")}</p>
-        </div>
+        <p className="font-display text-sm text-white/90">{t(lang, "rules_home_h")}</p>
         <p className="text-sm text-white/60 leading-relaxed text-pretty">{tr("rules_home_b")}</p>
         <ScaleRow items={[["0", 10], ["±1", 7], ["±2", 5], ["±3–5", 3], ["±6–10", 1]]} />
       </div>
 
       {/* Bonus bets */}
       <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-flamingo shrink-0" fill="currentColor" />
-          <p className="font-display text-sm text-white/90">{t(lang, "rules_bets_h")}</p>
-        </div>
+        <p className="font-display text-sm text-white/90">{t(lang, "rules_bets_h")}</p>
         <p className="text-xs text-white/50 leading-relaxed">{t(lang, "rules_bets_intro")}</p>
         <ul className="flex flex-col">
           {bets.map((b) => (
             <li
               key={b.label}
-              className="flex items-start gap-3 py-2.5 border-t border-white/8 first:border-t-0 first:pt-0"
+              className="flex items-start gap-3 py-2.5 border-t border-white/8 first:border-t-0 first:pt-0 last:pb-0"
             >
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-white/85 leading-snug">{b.label}</p>
