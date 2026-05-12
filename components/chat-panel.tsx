@@ -67,7 +67,7 @@ function dayLabel(iso: string, lang: "en" | "lt"): string {
 // ---------------------------------------------------------------------
 
 export function ChatPanel({ active = true }: { active?: boolean }) {
-  const { code } = useRoomLive();
+  const { code, nowPlayingCode } = useRoomLive();
   const lang = useLang();
   const others = useOthers();
   const updatePresence = useUpdateMyPresence();
@@ -793,6 +793,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                       onDelete={() => remove(m)}
                       onOpenImage={(url) => setLightbox(url)}
                       lang={lang}
+                      nowPlayingCode={nowPlayingCode}
                     />
                   </div>
                 );

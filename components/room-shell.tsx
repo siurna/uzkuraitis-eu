@@ -270,7 +270,9 @@ function NowPlayingSwarm() {
         Array.from({ length: n }, () => {
           const big = Math.random() < 0.35;
           const size = big ? rng(56, 88) : rng(30, 52);
-          const duration = big ? rng(2200, 3000) : rng(1400, 2200);
+          // They travel most of the screen, so give them time — a slow,
+          // graceful float, not a blur.
+          const duration = big ? rng(3800, 5400) : rng(2800, 4000);
           // Centre 80% of the width, plus a bit of jitter.
           const fromX = Math.min(
             w - 10,

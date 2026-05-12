@@ -204,7 +204,9 @@ const S = {
   reveal_total:      { en: "Your final score", lt: "Galutinis rezultatas" },
 
   // ── Social share ─────────────────────────────────────────────────
-  share_picks:        { en: "Share my TOP10", lt: "Pasidalink savo TOP10" },
+  share_picks:        { en: "Share my TOP10", lt: "Dalinkis savo TOP10" },
+  share_eyebrow:      { en: "Show it off", lt: "Pasigirk" },
+  share_picks_sub:    { en: "A shareable card of your ranking — straight to Stories or chat", lt: "Bendrinama tavo TOP10 kortelė — tiesiai į Stories ar pokalbį" },
   share_picks_caption: { en: "Cast my Eurovision 2026 TOP10", lt: "Mano Eurovizijos 2026 TOP10" },
   share_preparing:    { en: "Preparing image…", lt: "Ruošiamas paveikslėlis…" },
   share_image_copied: { en: "Image copied — paste it anywhere", lt: "Paveikslėlis nukopijuotas — įklijuok bet kur" },

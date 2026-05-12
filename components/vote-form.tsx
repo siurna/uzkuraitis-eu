@@ -22,7 +22,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { X, ListOrdered, Sparkles, Share2, ScrollText, GripVertical, Loader2 } from "lucide-react";
+import { ListOrdered, Sparkles, Share2, ScrollText, GripVertical, Loader2 } from "lucide-react";
 import { countries, getCountry, countryName } from "@/lib/countries";
 import { Flag, HeartOutline } from "@/components/flag";
 import { BonusBetsForm } from "@/components/bonus-bets-form";
@@ -239,12 +239,6 @@ export function VoteForm({
     }, 280);
   };
 
-  const clearSlot = (points: Points) => {
-    setSlots((prev) =>
-      prev.map((s) => (s.points === points ? { ...s, countryCode: null } : s)),
-    );
-  };
-
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
     const oldIndex = slots.findIndex((s) => `slot-${s.points}` === active.id);
@@ -389,7 +383,6 @@ export function VoteForm({
                         <BallotSlot
                           key={slot.points}
                           slot={slot}
-                          onClear={() => clearSlot(slot.points)}
                           onPick={() => setPickingPoints(slot.points)}
                           pulsing={pulsingPoints === slot.points}
                         />
@@ -623,28 +616,24 @@ function RuleCard({ title, body }: { title: string; body: string }) {
 
 function BallotSlot({
   slot,
-  onClear,
   onPick,
   pulsing,
 }: {
   slot: Slot;
-  onClear: () => void;
   onPick: () => void;
   pulsing: boolean;
 }) {
   const lang = useLang();
-  return <BallotSlotInner slot={slot} onClear={onClear} onPick={onPick} pulsing={pulsing} lang={lang} />;
+  return <BallotSlotInner slot={slot} onPick={onPick} pulsing={pulsing} lang={lang} />;
 }
 
 function BallotSlotInner({
   slot,
-  onClear,
   onPick,
   pulsing,
   lang,
 }: {
   slot: Slot;
-  onClear: () => void;
   onPick: () => void;
   pulsing: boolean;
   lang: "en" | "lt";
@@ -784,17 +773,6 @@ function BallotSlotInner({
           )}
         </AnimatePresence>
       </button>
-
-      {country && (
-        <button
-          type="button"
-          onClick={onClear}
-          className="text-white/40 hover:text-error transition px-3"
-          aria-label={t(lang, "clear")}
-        >
-          <X className="h-4 w-4" />
-        </button>
-      )}
     </li>
   );
 }

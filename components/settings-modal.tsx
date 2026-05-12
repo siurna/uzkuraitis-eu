@@ -248,24 +248,29 @@ export function SettingsModal({
         onClose={() => setPickerOpen(false)}
         title={t(lang, "pick_avatar")}
         footer={
-          <>
-            <div className="flex-1" />
-            <Button
-              type="button"
-              onClick={() => setPickerOpen(false)}
-              disabled={!avatar}
-              className="font-display rounded-2xl
-                         bg-white text-dark-blue hover:bg-dark-blue-50
-                         disabled:opacity-40"
-            >
-              {t(lang, "done")}
-            </Button>
-          </>
+          // The picked-artist card lives in the (fixed) footer so it
+          // genuinely stays glued above the Done button — not "sticky"
+          // inside the scroll area where the scroll-edge fade nibbled it.
+          <div className="w-full flex flex-col gap-3">
+            <SelectedAvatarCard avatarId={avatar} />
+            <div className="flex items-center">
+              <div className="flex-1" />
+              <Button
+                type="button"
+                onClick={() => setPickerOpen(false)}
+                disabled={!avatar}
+                className="font-display rounded-2xl
+                           bg-white text-dark-blue hover:bg-dark-blue-50
+                           disabled:opacity-40"
+              >
+                {t(lang, "done")}
+              </Button>
+            </div>
+          </div>
         }
       >
         <div className="flex flex-col gap-3 min-h-[55dvh]">
           <AvatarPicker value={avatar} onChange={setAvatar} />
-          <SelectedAvatarCard avatarId={avatar} sticky />
         </div>
       </BottomSheet>
 
