@@ -137,6 +137,8 @@ const S = {
   home_bonus_sub:      { en: "Wooden spoon, jury winner, nul points… each pays out only if you call it.", lt: "Paskutinė vieta, žiuri nugalėtojas, nulis taškų… užskaitoma tik pataikius." },
   home_vs_room:        { en: "You vs the room", lt: "Tu prieš kitus" },
   home_vs_room_rank:   { en: (n: number) => `Your #1 — the room ranks it #${n}`, lt: (n: number) => `Tavo Nr.1 — kiti vertina ją #${n}` },
+  home_vs_room_agree:  { en: "You and the room agree — it's on top!", lt: "Tu ir kiti sutariate — ji pirmoji!" },
+  home_vs_room_bold:   { en: (n: number) => `Bold pick — the room has it way down at #${n}`, lt: (n: number) => `Drąsu — kiti ją laiko net #${n}` },
   home_vs_room_pending:{ en: "Your #1 — waiting for more ballots", lt: "Tavo Nr.1 — laukiam daugiau balsų" },
   home_vs_room_empty_title: { en: "How do you stack up?", lt: "Kaip atrodai prieš kitus?" },
   home_vs_room_empty_sub:   { en: "Cast your TOP 10 to compare with the room.", lt: "Balsuok ir palygink savo TOP 10 su kitais." },

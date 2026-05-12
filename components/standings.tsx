@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { motion, AnimatePresence, LayoutGroup } from "motion/react";
+import { useEffect, useState, useCallback } from "react";
+import { motion } from "motion/react";
 import { Mic, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -23,30 +23,17 @@ type ScoresResponse = {
 };
 
 export function Standings() {
-  // Live room props (votingEnabled flips when admin toggles).
   const { code, votingEnabled } = useRoomLive();
   const lang = useLang();
 
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [loading, setLoading] = useState(true);
-  // Show-all is a GLOBAL preference (persisted to localStorage), not
-  // Home shows just the fans' top 5; the rest lives behind "See all".
   const [seeAllOpen, setSeeAllOpen] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
 
-  const prevScores = useRef<Map<string, number>>(new Map());
-  // Per-country running queue of "+N" point pops, keyed by an ever-
-  // incrementing id so multiple in-flight pops on the same country
-  // can each animate independently.
-  const [pointPops, setPointPops] = useState<
-    Array<{ id: number; code: string; delta: number }>
-  >([]);
-
   const fetchScores = useCallback(async () => {
     try {
-      const res = await fetch(`/api/rooms/${code}/scores`, {
-        cache: "no-store",
-      });
+      const res = await fetch(`/api/rooms/${code}/scores`, { cache: "no-store" });
       if (!res.ok) return;
       const data = (await res.json()) as ScoresResponse;
       setScores(data.scores);
@@ -55,86 +42,38 @@ export function Standings() {
     }
   }, [code]);
 
-  // Initial load + slow fallback poll. Primary update path is the
-  // Liveblocks scores:updated broadcast; this 60s poll is a safety net
-  // for stalled WebSockets, dropped broadcasts, or misconfigured
-  // Liveblocks credentials. Cheap to run.
+  // Initial load + slow fallback poll; primary update path is the
+  // Liveblocks "scores:updated" broadcast.
   useEffect(() => {
     fetchScores();
     const id = setInterval(fetchScores, 60_000);
     return () => clearInterval(id);
   }, [fetchScores]);
 
-  // Liveblocks-driven updates: the votes API broadcasts "scores:updated"
-  // after a successful submit, every connected client refetches once.
-  // No polling.
   useEventListener(({ event }) => {
-    if ((event as { type?: string }).type === "scores:updated") {
-      fetchScores();
-    }
+    if ((event as { type?: string }).type === "scores:updated") fetchScores();
   });
 
   useEffect(() => {
-    const stored = localStorage.getItem(`uzk_voted_${code}`);
-    setHasVoted(stored === "1");
+    setHasVoted(localStorage.getItem(`uzk_voted_${code}`) === "1");
   }, [code]);
 
   const allWithZero = (() => {
     const map = new Map(scores.map((s) => [s.code, s]));
     return countries
-      .map((c) =>
-        map.get(c.code) ?? {
-          code: c.code,
-          name: c.name,
-          totalPoints: 0,
-        },
-      )
+      .map((c) => map.get(c.code) ?? { code: c.code, name: c.name, totalPoints: 0 })
       .sort((a, b) => {
-        if (b.totalPoints !== a.totalPoints)
-          return b.totalPoints - a.totalPoints;
-        return (
-          (getCountry(a.code)?.order ?? 999) -
-          (getCountry(b.code)?.order ?? 999)
-        );
+        if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+        return (getCountry(a.code)?.order ?? 999) - (getCountry(b.code)?.order ?? 999);
       });
   })();
 
   const visible = scores.slice(0, 5);
 
-  // Point deltas: queue a fly-up "+N" pop for any country whose score
-  // changed since the previous render. Skip the first-ever render
-  // (prevScores empty) so we don't spam pops on initial load.
-  useEffect(() => {
-    const hadPrev = prevScores.current.size > 0;
-    if (hadPrev) {
-      const pops: Array<{ id: number; code: string; delta: number }> = [];
-      let nextId = Date.now();
-      for (const row of visible) {
-        const prev = prevScores.current.get(row.code) ?? 0;
-        const diff = row.totalPoints - prev;
-        if (diff > 0) {
-          pops.push({ id: nextId++, code: row.code, delta: diff });
-        }
-      }
-      if (pops.length > 0) {
-        setPointPops((prev) => [...prev, ...pops]);
-        const stale = pops.map((p) => p.id);
-        setTimeout(() => {
-          setPointPops((prev) => prev.filter((p) => !stale.includes(p.id)));
-        }, 1700);
-      }
-    }
-    visible.forEach((row) =>
-      prevScores.current.set(row.code, row.totalPoints),
-    );
-  }, [visible]);
-
   return (
     <main className="container mx-auto max-w-3xl px-4 pt-2 pb-6 flex flex-col gap-3">
       <h2 className="font-display text-xl gradient-text px-1">{t(lang, "fan_top5")}</h2>
       {loading ? (
-        // Skeleton rows match the real CountryRow shape so the layout
-        // doesn't jump when scores arrive. No spinner.
         <ul className="flex flex-col gap-2">
           {[0, 1, 2, 3, 4].map((i) => (
             <li
@@ -151,26 +90,13 @@ export function Standings() {
       ) : visible.length === 0 ? (
         <NoVotesYet votingEnabled={votingEnabled} lang={lang} hasVoted={hasVoted} />
       ) : (
-        <LayoutGroup>
-          <motion.ol
-            className="flex flex-col gap-2"
-            initial={false}
-            animate="show"
-            variants={{ show: { transition: { staggerChildren: 0.015 } } }}
-          >
-            <AnimatePresence initial={false} mode="popLayout">
-              {visible.map((s, i) => (
-                <CountryRow
-                  key={s.code}
-                  score={s}
-                  index={i}
-                  lang={lang}
-                  pops={pointPops.filter((p) => p.code === s.code)}
-                />
-              ))}
-            </AnimatePresence>
-          </motion.ol>
-        </LayoutGroup>
+        // Static on the Home screen — it's a thing you glance at, not a
+        // show. The animated cascade lives in the "see all" drawer.
+        <ol className="flex flex-col gap-2">
+          {visible.map((s, i) => (
+            <CountryRow key={s.code} score={s} index={i} lang={lang} />
+          ))}
+        </ol>
       )}
 
       {scores.length > 0 && (
@@ -178,22 +104,25 @@ export function Standings() {
           type="button"
           onClick={() => setSeeAllOpen(true)}
           className="self-center mt-1 px-4 h-9 rounded-full font-display text-sm
-                     text-white/80 hover:text-white bg-white/5 hover:bg-white/10
-                     ring-1 ring-white/10 hover:ring-white/25 transition"
+                     text-white/80 bg-white/5 ring-1 ring-white/10
+                     active:bg-white/10 transition"
         >
           {t(lang, "see_all")} ({countries.length})
         </button>
       )}
 
-      {/* Full standings — all competing countries, 0-vote ones included. */}
-      <BottomSheet
-        open={seeAllOpen}
-        onClose={() => setSeeAllOpen(false)}
-        title={t(lang, "standings")}
-      >
+      {/* Full standings — all competing countries, 0-vote ones included.
+          Rows cascade in one by one when the sheet opens. */}
+      <BottomSheet open={seeAllOpen} onClose={() => setSeeAllOpen(false)} title={t(lang, "standings")}>
         <ol className="flex flex-col gap-2">
           {allWithZero.map((s, i) => (
-            <CountryRow key={s.code} score={s} index={i} lang={lang} pops={[]} />
+            <CountryRow
+              key={s.code}
+              score={s}
+              index={i}
+              lang={lang}
+              delay={Math.min(i, 28) * 0.022}
+            />
           ))}
         </ol>
       </BottomSheet>
@@ -211,8 +140,6 @@ function NoVotesYet({
   hasVoted: boolean;
 }) {
   const { setTab } = useRoomTab();
-  // Three placeholder rows hint at the standings shape so the layout
-  // doesn't visually empty out before the first vote lands.
   const placeholders = [0, 1, 2];
   return (
     <motion.div
@@ -239,30 +166,20 @@ function NoVotesYet({
             className="h-20 w-20 object-contain drop-shadow-[0_0_24px_rgba(255,46,222,0.35)]"
           />
         </motion.div>
-        <h3 className="font-display text-2xl text-white/90">
-          {t(lang, "no_votes_yet")}
-        </h3>
-        <p className="text-sm text-white/50 max-w-xs">
-          {t(lang, "no_votes_sub")}
-        </p>
+        <h3 className="font-display text-2xl text-white/90">{t(lang, "no_votes_yet")}</h3>
+        <p className="text-sm text-white/50 max-w-xs">{t(lang, "no_votes_sub")}</p>
       </div>
 
-      {/* Ghost rows: hint at the standings shape so the page doesn't
-          look empty before the first vote lands. */}
       <ul className="flex flex-col gap-2">
         {placeholders.map((i) => (
-          <motion.li
+          <li
             key={i}
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.15 + i * 0.08, duration: 0.4 }}
-            className="glass-card rounded-2xl px-3 py-2.5 flex items-center gap-3
-                       opacity-50"
+            className="glass-card rounded-2xl px-3 py-2.5 flex items-center gap-3 opacity-50"
           >
             <span className="h-9 w-9 rounded-full bg-white/8" />
             <span className="h-7 flex-1 max-w-[8rem] rounded-full bg-white/8" />
             <span className="h-6 w-8 rounded-md bg-white/8" />
-          </motion.li>
+          </li>
         ))}
       </ul>
 
@@ -274,8 +191,7 @@ function NoVotesYet({
         >
           <Button
             asChild
-            className="w-full h-12 text-base font-display rounded-[14px]
-                       bg-white text-dark-blue hover:bg-dark-blue-50"
+            className="w-full h-12 text-base font-display rounded-[14px] bg-white text-dark-blue hover:bg-dark-blue-50"
           >
             <span>{hasVoted ? t(lang, "update_vote") : t(lang, "be_the_first")}</span>
           </Button>
@@ -289,18 +205,20 @@ function CountryRow({
   score,
   index,
   lang,
-  pops,
+  delay = null,
 }: {
   score: ScoreRow;
   index: number;
   lang: "en" | "lt";
-  pops?: Array<{ id: number; code: string; delta: number }>;
+  /** When non-null this row fades/slides in at that delay (the drawer);
+   *  null = render static (the Home list). */
+  delay?: number | null;
 }) {
   const detail = getCountry(score.code);
   const deepDive = useCountryDeepDive();
-  // Top-3 get a richer treatment: bigger row padding, gold/silver/bronze
-  // ring + brand glow, and the score in the brand colour. Keeps the
-  // ordered list semantic but lets the eye land on the podium fast.
+  // Top-3 keep a richer treatment — bigger padding, gold/silver/bronze
+  // ring + brand glow, score in the brand colour. (Static styling, not
+  // an animation.)
   const podium =
     index === 0
       ? "ring-2 ring-yellow shadow-[0_0_24px_-8px_oklch(95%_0.19_108_/_0.65)]"
@@ -315,34 +233,23 @@ function CountryRow({
         : index === 2 ? "oklch(70% 0.19 42)"
           : "oklch(70.55% 0.2725 336.19)";
 
-  return (
-    <motion.li
-      layout
-      layoutId={`row-${score.code}`}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
-      transition={{
-        layout: { type: "spring", stiffness: 320, damping: 30 },
-        opacity: { duration: 0.25 },
-      }}
-      onClick={() => deepDive.open(score.code)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          deepDive.open(score.code);
-        }
-      }}
-      className={`relative list-card-hover glass-card rounded-2xl flex items-center gap-3 cursor-pointer
-                  ${index < 3 ? "px-3.5 py-3.5" : "px-3 py-2.5"} ${podium}`}
-    >
-      <HeartFlag
-        code={score.code}
-        name={countryName(score.code, lang)}
-        size={index === 0 ? "lg" : "md"}
-      />
+  const className = `relative glass-card rounded-2xl flex items-center gap-3 cursor-pointer
+                     ${index < 3 ? "px-3.5 py-3.5" : "px-3 py-2.5"} ${podium}`;
+  const open = () => deepDive.open(score.code);
+  const handlers = {
+    onClick: open,
+    role: "button" as const,
+    tabIndex: 0,
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        open();
+      }
+    },
+  };
+  const inner = (
+    <>
+      <HeartFlag code={score.code} name={countryName(score.code, lang)} size={index === 0 ? "lg" : "md"} />
       <div className="hidden sm:flex flex-1 min-w-0 items-center gap-1.5 overflow-hidden">
         {detail?.artist && (
           <MetaPill icon={Mic} className="truncate max-w-[12rem]">
@@ -356,64 +263,28 @@ function CountryRow({
         )}
       </div>
       <div className="flex-1 sm:hidden" />
-      <div className="shrink-0">
-        <ScoreNumber value={score.totalPoints} color={scoreColor} />
-      </div>
-
-      {/* Live "+N" point pops: each one floats up off the score number
-          when somebody else's vote bumps this country's total. Fan
-          out horizontally so simultaneous bumps don't stack on top. */}
-      <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-        <AnimatePresence>
-          {(pops ?? []).map((p, i) => (
-            <motion.span
-              key={p.id}
-              initial={{ opacity: 0, y: 0, scale: 0.6 }}
-              animate={{
-                opacity: [0, 1, 1, 0],
-                y: -56,
-                scale: 1.1,
-                x: (i - (pops!.length - 1) / 2) * 6,
-              }}
-              exit={{ opacity: 0 }}
-              transition={{
-                duration: 1.5,
-                ease: [0.2, 0.7, 0.3, 1],
-                opacity: { times: [0, 0.15, 0.7, 1] },
-              }}
-              className="absolute right-0 top-0 font-display text-lg tabular-nums
-                         text-gold drop-shadow-[0_0_6px_rgba(255,208,90,0.6)]"
-            >
-              +{p.delta}
-            </motion.span>
-          ))}
-        </AnimatePresence>
-      </div>
-    </motion.li>
+      <p className="shrink-0 font-display text-2xl tabular-nums leading-none" style={{ color: scoreColor }}>
+        {score.totalPoints}
+      </p>
+    </>
   );
-}
 
-function ScoreNumber({
-  value,
-  color = "oklch(70.55% 0.2725 336.19)",
-}: {
-  value: number;
-  color?: string;
-}) {
+  if (delay == null) {
+    return (
+      <li {...handlers} className={className}>
+        {inner}
+      </li>
+    );
+  }
   return (
-    <motion.p
-      key={value}
-      initial={{ scale: 1.4, color: "oklch(78.49% 0.135563 189.949)" }}
-      animate={{ scale: 1, color }}
-      transition={{
-        type: "spring",
-        stiffness: 360,
-        damping: 18,
-        color: { duration: 0.6 },
-      }}
-      className="font-display text-2xl tabular-nums leading-none origin-right"
+    <motion.li
+      {...handlers}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      className={className}
     >
-      {value}
-    </motion.p>
+      {inner}
+    </motion.li>
   );
 }
