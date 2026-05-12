@@ -363,7 +363,7 @@ function PlayingCard({
       >
         <div className="relative overflow-hidden rounded-[22px] aspect-[16/10] sm:aspect-[2/1]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={optimizedSrc(photo, 1080)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={optimizedSrc(photo, 1200)} alt="" className="absolute inset-0 h-full w-full object-cover" />
           <div
             className="absolute inset-0"
             style={{

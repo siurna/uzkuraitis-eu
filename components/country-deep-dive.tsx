@@ -87,7 +87,7 @@ function CountryDeepDiveSheet({
             <div className="relative -mx-1 rounded-2xl overflow-hidden aspect-[16/9] bg-white/[0.04]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={optimizedSrc(participantPhoto(country.code) as string, 1080)}
+                src={optimizedSrc(participantPhoto(country.code) as string, 1200)}
                 alt=""
                 className="absolute inset-0 h-full w-full object-cover"
               />

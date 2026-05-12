@@ -796,24 +796,44 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           )}
         </div>
 
-        {/* Jump-to-bottom pill */}
+        {/* Jump-to-bottom pill — a quiet white "to bottom" by default;
+            when actual new messages have come in below the fold it flips
+            to a rainbow-stroked, glowing "new messages!" (and pops, since
+            it's re-keyed). */}
         <AnimatePresence>
           {!atBottom && messages.length > 0 && (
-            <motion.button
-              type="button"
-              onClick={() => scrollToBottom(true)}
+            <motion.div
+              key={newCount > 0 ? "new" : "bottom"}
               initial={{ opacity: 0, y: 8, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.9 }}
-              className="absolute left-1/2 -translate-x-1/2 bottom-[5.5rem] z-20
-                         flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-display
-                         bg-white text-dark-blue shadow-lg active:scale-[0.96] transition"
+              transition={{ type: "spring", stiffness: 480, damping: 26 }}
+              className="absolute left-1/2 -translate-x-1/2 bottom-[5.5rem] z-20"
             >
-              <ArrowDown className="h-3.5 w-3.5" />
-              {newCount > 0
-                ? t(lang, "chat_new_messages", newCount)
-                : t(lang, "chat_jump_bottom")}
-            </motion.button>
+              {newCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => scrollToBottom(true)}
+                  className="rainbow-border rounded-full block transform-gpu transition active:scale-[0.96]
+                             shadow-[0_0_28px_-3px_oklch(70.55%_0.2725_336.19_/_0.7)]"
+                >
+                  <span className="flex items-center gap-1.5 rounded-full bg-dark-blue-900 px-4 py-2 text-xs font-display text-white">
+                    <ArrowDown className="h-3.5 w-3.5" />
+                    {t(lang, "chat_new_pill")}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => scrollToBottom(true)}
+                  className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-display
+                             bg-white text-dark-blue shadow-lg active:scale-[0.96] transition"
+                >
+                  <ArrowDown className="h-3.5 w-3.5" />
+                  {t(lang, "chat_jump_bottom")}
+                </button>
+              )}
+            </motion.div>
           )}
         </AnimatePresence>
 

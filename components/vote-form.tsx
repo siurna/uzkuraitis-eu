@@ -13,7 +13,6 @@ import {
   closestCenter,
 } from "@dnd-kit/core";
 import { motion, AnimatePresence } from "motion/react";
-import { createPortal } from "react-dom";
 import {
   SortableContext,
   arrayMove,
@@ -83,16 +82,6 @@ export function VoteForm({
   // flamingo-flash briefly so it's obvious what just rearranged.
   const [pulsingPoints, setPulsingPoints] = useState<Points | null>(null);
   const [flashedSlots, setFlashedSlots] = useState<ReadonlySet<Points>>(() => new Set());
-  // One-shot heart particle that flies from screen centre into the
-  // freshly-filled slot's heart spot. Spawned after assign().
-  const [flyingHeart, setFlyingHeart] = useState<{
-    id: number;
-    code: string;
-    fromX: number;
-    fromY: number;
-    toX: number;
-    toY: number;
-  } | null>(null);
 
   const homeCountry = getCountry(homeCountryCode);
   const lang = useLang();
@@ -210,55 +199,18 @@ export function VoteForm({
   }, [hasCast, allFilled, slots, bets, homePrediction]);
 
   const assign = (points: Points, code: string) => {
-    // Clear the country from any OTHER slot it might be in
-    // immediately — but the destination slot stays empty (showing the
-    // dashed-heart placeholder) until the flying heart lands. This
-    // makes the fly-in feel like "the country gets placed", not
-    // "the country was already there and a heart came later".
+    // Drop the country into the slot, clearing it from any other slot it
+    // was in, and give the row a one-shot heartbeat. (The flag's own
+    // AnimatePresence scale-in does the rest — no fly-in particle.)
     setSlots((prev) =>
-      prev.map((s) =>
-        s.points !== points && s.countryCode === code
-          ? { ...s, countryCode: null }
-          : s,
-      ),
+      prev.map((s) => {
+        if (s.points === points) return { ...s, countryCode: code };
+        if (s.countryCode === code) return { ...s, countryCode: null };
+        return s;
+      }),
     );
-    // Wait one frame for the drawer's slide-down to begin, then:
-    //   1. spawn the flying heart from screen-centre → slot's heart spot.
-    //   2. as the heart lands (~480ms), drop the country into the slot
-    //      AND kick off its heartbeat pulse.
-    window.setTimeout(() => {
-      if (typeof document === "undefined") return;
-      const target = document.querySelector(
-        `[data-slot-target="${points}"]`,
-      );
-      if (!target) {
-        // Couldn't measure — just fill the slot directly.
-        setSlots((prev) =>
-          prev.map((s) => (s.points === points ? { ...s, countryCode: code } : s)),
-        );
-        return;
-      }
-      const rect = target.getBoundingClientRect();
-      setFlyingHeart({
-        id: Date.now(),
-        code,
-        fromX: window.innerWidth / 2,
-        fromY: window.innerHeight / 2,
-        toX: rect.left + rect.width / 2,
-        toY: rect.top + rect.height / 2,
-      });
-      // Heart lands ~480ms in (62% of the 0.62s flight). Fill the slot
-      // + pulse on landing so the country materialising reads as the
-      // heart "becoming" the flag.
-      window.setTimeout(() => {
-        setSlots((prev) =>
-          prev.map((s) => (s.points === points ? { ...s, countryCode: code } : s)),
-        );
-        setPulsingPoints(points);
-        window.setTimeout(() => setPulsingPoints(null), 1100);
-      }, 460);
-      window.setTimeout(() => setFlyingHeart(null), 700);
-    }, 280);
+    setPulsingPoints(points);
+    window.setTimeout(() => setPulsingPoints(null), 1100);
   };
 
   const onDragEnd = ({ active, over }: DragEndEvent) => {
@@ -519,8 +471,6 @@ export function VoteForm({
           .map((c) => c.code)}
       />
 
-      <FlyingHeartToSlot heart={flyingHeart} />
-
       {/* Auto-cast confirmation. Pops the instant all 10 slots are
           filled; from here the voter can jump to bonus bets or share
           their TOP10. Reordering after this just lights up the Save
@@ -569,53 +519,6 @@ export function VoteForm({
         </button>
       </BottomSheet>
     </main>
-  );
-}
-
-// A single heart-flag chip portaled to body that arcs from screen
-// centre into the slot's heart spot. Uses framer's keyframe array
-// for a soft drop-and-settle motion (over-shoot then settle).
-function FlyingHeartToSlot({
-  heart,
-}: {
-  heart: { id: number; code: string; fromX: number; fromY: number; toX: number; toY: number } | null;
-}) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  if (!mounted || typeof document === "undefined") return null;
-  return createPortal(
-    <AnimatePresence>
-      {heart && (
-        <motion.div
-          key={heart.id}
-          initial={{
-            left: heart.fromX - 28,
-            top: heart.fromY - 28,
-            opacity: 0,
-            scale: 0.4,
-            rotate: 0,
-          }}
-          animate={{
-            left: [heart.fromX - 28, heart.toX - 18],
-            top: [heart.fromY - 28, heart.toY - 18],
-            opacity: [0, 1, 1, 0],
-            scale: [0.4, 1.4, 1, 0.4],
-            rotate: [0, -8, 4, 0],
-          }}
-          transition={{
-            duration: 0.62,
-            ease: [0.34, 1.2, 0.64, 1],
-            opacity: { times: [0, 0.18, 0.7, 1] },
-            scale: { times: [0, 0.35, 0.7, 1] },
-          }}
-          className="fixed h-14 w-14 z-[70] pointer-events-none
-                     drop-shadow-[0_8px_24px_rgba(255,46,222,0.55)]"
-        >
-          <Flag code={heart.code} size="xl" className="h-full w-full" />
-        </motion.div>
-      )}
-    </AnimatePresence>,
-    document.body,
   );
 }
 
