@@ -38,6 +38,7 @@ export default async function RoomLayout({
   );
 }
 
-// Force dynamic so deep links always re-resolve the room (and 404 cleanly
-// when the code is stale).
-export const dynamic = "force-dynamic";
+// The `findRoomByCode` DB call + the [code] dynamic param already make
+// this render per-request (so a stale code still 404s) — we drop the
+// explicit `force-dynamic` so the rendered tree is client-cacheable
+// (see `staleTimes` in next.config); tab switches stop re-fetching it.
