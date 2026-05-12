@@ -17,8 +17,13 @@ import { useRoomLive } from "@/components/room-shell";
 import { NAME_KEY, SESSION_KEY } from "@/lib/use-identity";
 import { useLang, t } from "@/lib/i18n";
 
+// Sensible defaults: notify on things that need your attention (a reply
+// or @mention, lines opening/closing, results landing) — not on ambient
+// activity (every chat message; "X is on stage" fires ~26× a night and
+// you can see the screen). Both off-by-default ones are one tap away in
+// the settings sheet.
 const DEFAULT_PREFS: PushPrefs = {
-  chatAll: true,
+  chatAll: false,
   chatReplies: true,
   nowPlaying: false,
   votingState: true,

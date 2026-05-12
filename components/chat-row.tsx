@@ -439,7 +439,7 @@ export function ChatRow({
             {avatar?.photo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={optimizedSrc(avatar.photo, 96)}
+                src={optimizedSrc(avatar.photo, 128)}
                 alt=""
                 className="h-full w-full object-cover"
                 style={{ objectPosition: avatar.focal ? `${avatar.focal.x}% ${avatar.focal.y}%` : "50% 30%" }}
