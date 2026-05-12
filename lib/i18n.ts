@@ -80,8 +80,8 @@ const S = {
   no_votes_yet:      { en: "Standings are quiet", lt: "Lentelė tuščia. Gerbėjai tyli." },
   no_votes_sub:      { en: "No one has voted yet. Be the first and the leaderboard fills up live as everyone joins in.", lt: "Niekas dar nebalsavo. Būk pirmas! Lentelė užsipildys realiu laiku, kai prisijungs kiti." },
   be_the_first:      { en: "Be the first", lt: "Būk pirmas" },
-  show_top_5:        { en: "Top 5 only", lt: "Tik TOP 5" },
-  show_all:          { en: "Show all", lt: "Visi" },
+  fan_top5:          { en: "Fan TOP5", lt: "Vakarėlio TOP5" },
+  see_all:           { en: "See all", lt: "Žiūrėti visus" },
   pts_short:         { en: "pts", lt: "tšk" },
   standings:         { en: "Standings", lt: "Rezultatai" },
   live:              { en: "Live", lt: "Tiesiogiai" },
@@ -134,8 +134,13 @@ const S = {
   home_bingo_sub:      { en: "Tick off the clichés as they happen", lt: "Žymėk klišes, kai jos įvyksta" },
   home_bingo_progress: { en: (n: number) => `${n} / 25 ticked`, lt: (n: number) => `pažymėta ${n} / 25` },
   bingo_widget_title:  { en: "Play bingo!", lt: "Žaisk bingo!" },
+  highlights_title:    { en: "Highlights of the evening", lt: "Vakaro akcentai" },
   home_my_results:     { en: "Your results", lt: "Tavo rezultatai" },
-  home_my_results_rank: { en: (rank: number, total: number) => `Ranked ${rank} of ${total} — tap for the breakdown`, lt: (rank: number, total: number) => `${rank} vieta iš ${total} — bakstelėk išskaidymui` },
+  home_results_in:     { en: "Results are in", lt: "Rezultatai jau čia" },
+  home_results_in_sub: { en: "See how everyone did", lt: "Pažiūrėk, kaip visiems sekėsi" },
+  home_my_results_rank: { en: (rank: number, total: number) => `Ranked ${rank} of ${total} — tap for the breakdown`, lt: (rank: number, total: number) => `${rank} vieta iš ${total} — bakstelėk išklotinei` },
+  results_tab_me:      { en: "My breakdown", lt: "Mano išklotinė" },
+  results_tab_board:   { en: "Leaderboard", lt: "Lyderių lentelė" },
 
   // ── Chat ─────────────────────────────────────────────────────────
   chat_empty:        { en: "No messages yet. Say hi 👋", lt: "Dar nieks nieko nerašė. Pasisveikink pirmas 👋" },
@@ -216,7 +221,6 @@ const S = {
   now_playing:       { en: "On stage", lt: "Scenoje" },
 
   // ── Bingo ────────────────────────────────────────────────────────
-  bingo_title:       { en: "Eurovision bingo", lt: "Eurovizijos bingo" },
   bingo_you_did_it:  { en: "You got bingo! 🎉", lt: "Surinkai bingo! 🎉" },
   bingo_footer:      { en: "Tap a square — or its line in the list — when it happens. Five in a row wins.", lt: "Pamatei, kad tai nutiko? Bakstelėk eilutę sąraše! Surinkai kraštinę? Laimi." },
   bingo_list:        { en: "What to watch for", lt: "Ko ieškoti" },
