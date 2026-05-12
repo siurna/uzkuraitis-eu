@@ -1,11 +1,9 @@
 "use client";
 
-import { useMemo, useRef, type ComponentType } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { useMemo, useRef } from "react";
+import { motion, AnimatePresence, useMotionValue, useTransform } from "motion/react";
 import {
   Reply, Pencil, Copy, Trash2, Smile, Loader2, Mic, Music, Trophy,
-  Heart, Flame, PartyPopper, Star, Sparkles,
-  type LucideProps,
 } from "lucide-react";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
@@ -18,16 +16,17 @@ import { t, tDyn } from "@/lib/i18n";
 
 const EDIT_WINDOW_MS = 2 * 60 * 1000;
 
-// Quick-react row in the long-press menu — Apple-Watch-style circles,
-// each a soft gradient of its hue. Stored as the emoji glyph so the
-// reaction strip below renders it.
-const QUICK_REACTS: { emoji: string; Icon: ComponentType<LucideProps>; bg: string; filled: boolean }[] = [
-  { emoji: "❤️", Icon: Heart, bg: "from-[#ff5a7a] to-[#e0123f]", filled: true },
-  { emoji: "🔥", Icon: Flame, bg: "from-[#ffb13d] to-[#ef7400]", filled: true },
-  { emoji: "🎤", Icon: Mic, bg: "from-[#4aa3ff] to-[#0064d6]", filled: false },
-  { emoji: "🎉", Icon: PartyPopper, bg: "from-[#d28bf7] to-[#9b35e6]", filled: false },
-  { emoji: "⭐", Icon: Star, bg: "from-[#ffe14d] to-[#f0b400]", filled: true },
-  { emoji: "✨", Icon: Sparkles, bg: "from-[#5be08a] to-[#1eb84f]", filled: true },
+// Quick-react row in the long-press menu — big colourful gradient
+// circles, very Eurovision-fan energy: love it / haha / what the hell /
+// yasss / no way / so bad it's good. Stored as the emoji glyph so the
+// reaction strip below the message renders it directly.
+const QUICK_REACTS: { emoji: string; bg: string }[] = [
+  { emoji: "❤️", bg: "from-[#ff6a86] to-[#e0123f]" }, // I love it
+  { emoji: "😂", bg: "from-[#ffe35a] to-[#f0a400]" }, // haha
+  { emoji: "🤯", bg: "from-[#cf8df7] to-[#7e2fe0]" }, // what the hell
+  { emoji: "🙌", bg: "from-[#5fe3c0] to-[#0fae8a]" }, // yasss
+  { emoji: "😱", bg: "from-[#62b3ff] to-[#1f6fe0]" }, // no way
+  { emoji: "💀", bg: "from-[#d6dde9] to-[#828ea4]" }, // so bad it's good
 ];
 
 export type Reactions = Record<
@@ -147,6 +146,9 @@ export function ChatRow({
     Date.now() - new Date(m.createdAt).getTime() < EDIT_WINDOW_MS;
 
   const deepDive = useCountryDeepDive();
+  // Swipe-to-reply: the bubble's live x; the reply arrow fades in with it.
+  const swipeX = useMotionValue(0);
+  const arrowOpacity = useTransform(swipeX, mine ? [-12, -42] : [12, 42], [0, 1]);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longFired = useRef(false);
   const startPress = () => {
@@ -324,22 +326,26 @@ export function ChatRow({
           )}
 
           <div className="relative">
-            {/* The reply arrow that peeks out from the swipe side. */}
-            <span
+            {/* The reply arrow — fades in only as you swipe. */}
+            <motion.span
               aria-hidden
-              className={`pointer-events-none absolute inset-y-0 grid place-items-center text-flamingo/70
+              style={{ opacity: arrowOpacity }}
+              className={`pointer-events-none absolute inset-y-0 grid place-items-center text-flamingo
                           ${mine ? "right-1" : "left-1"}`}
             >
               <Reply className="h-4 w-4" />
-            </span>
+            </motion.span>
             <motion.button
               drag="x"
+              style={{ x: swipeX }}
               dragSnapToOrigin
-              dragConstraints={{ left: mine ? -72 : 0, right: mine ? 0 : 72 }}
-              dragElastic={0.18}
+              dragMomentum={false}
+              dragConstraints={{ left: mine ? -78 : 0, right: mine ? 0 : 78 }}
+              dragElastic={0.12}
+              dragTransition={{ bounceStiffness: 600, bounceDamping: 34 }}
               onDragStart={cancelPress}
               onDragEnd={(_, info) => {
-                const past = mine ? info.offset.x < -40 : info.offset.x > 40;
+                const past = mine ? info.offset.x < -42 : info.offset.x > 42;
                 if (past) onReply();
               }}
               type="button"
@@ -406,15 +412,15 @@ export function ChatRow({
             <AnimatePresence>
               {menuOpen && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                  initial={{ opacity: 0, scale: 0.85, y: -8 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.85, y: 8 }}
-                  transition={{ type: "spring", stiffness: 520, damping: 28, mass: 0.6 }}
+                  exit={{ opacity: 0, scale: 0.9, y: -6 }}
+                  transition={{ type: "spring", stiffness: 640, damping: 30, mass: 0.5 }}
                   onClick={(e) => e.stopPropagation()}
-                  className={`absolute bottom-full mb-1.5 z-30 flex flex-col gap-1.5 ${mine ? "right-0 items-end" : "left-0 items-start"}`}
+                  className={`absolute top-full mt-2 z-30 flex flex-col gap-2 ${mine ? "right-0 items-end" : "left-0 items-start"}`}
                 >
-                  <div className="flex items-center gap-1.5 p-1.5 rounded-full bg-black/80 ring-1 ring-white/12 backdrop-blur-md shadow-xl">
-                    {QUICK_REACTS.map(({ emoji, Icon, bg, filled }, i) => (
+                  <div className="flex items-center gap-2 p-2 rounded-full bg-black/80 ring-1 ring-white/12 backdrop-blur-md shadow-xl">
+                    {QUICK_REACTS.map(({ emoji, bg }, i) => (
                       <motion.button
                         key={emoji}
                         type="button"
@@ -422,16 +428,12 @@ export function ChatRow({
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        transition={{ delay: 0.04 + i * 0.035, type: "spring", stiffness: 620, damping: 20 }}
-                        className={`h-9 w-9 shrink-0 rounded-full grid place-items-center ring-1 ring-white/15
-                                    bg-gradient-to-br ${bg}
-                                    shadow-[0_3px_10px_-3px_rgba(0,0,0,0.5)] transition-transform active:scale-90`}
+                        transition={{ delay: i * 0.02, type: "spring", stiffness: 800, damping: 22 }}
+                        className={`h-11 w-11 shrink-0 rounded-full grid place-items-center text-xl leading-none
+                                    ring-1 ring-white/20 bg-gradient-to-br ${bg}
+                                    shadow-[0_4px_12px_-3px_rgba(0,0,0,0.55)] transition-transform active:scale-90`}
                       >
-                        <Icon
-                          className="h-[18px] w-[18px] text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
-                          fill={filled ? "currentColor" : "none"}
-                          strokeWidth={filled ? 1.5 : 2}
-                        />
+                        <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">{emoji}</span>
                       </motion.button>
                     ))}
                   </div>
