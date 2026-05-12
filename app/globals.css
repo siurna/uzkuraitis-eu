@@ -246,6 +246,14 @@
   display: block;
 }
 
+/* contentEditable composer placeholder — editables have no :placeholder.
+   The composer toggles a `data-empty` attribute when it has no text. */
+[contenteditable][data-empty]::before {
+  content: attr(data-placeholder);
+  color: oklch(100% 0 0 / 0.35);
+  pointer-events: none;
+}
+
 /* Glass surface, intentionally cool + quiet. Hairline white-low border,
    restrained drop shadow, no inset bevels, no flamingo glow.
    No `position` here — that fights Tailwind's positioning utilities
