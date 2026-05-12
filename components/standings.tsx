@@ -2,11 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "motion/react";
-import {
-  ChevronDown,
-  Mic,
-  Music,
-} from "lucide-react";
+import { Mic, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { countries, getCountry, countryName } from "@/lib/countries";

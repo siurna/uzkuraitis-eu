@@ -221,7 +221,6 @@ const S = {
   now_playing:       { en: "On stage", lt: "Scenoje" },
 
   // ── Bingo ────────────────────────────────────────────────────────
-  bingo_title:       { en: "Eurovision bingo", lt: "Eurovizijos bingo" },
   bingo_you_did_it:  { en: "You got bingo! 🎉", lt: "Surinkai bingo! 🎉" },
   bingo_footer:      { en: "Tap a square — or its line in the list — when it happens. Five in a row wins.", lt: "Pamatei, kad tai nutiko? Bakstelėk eilutę sąraše! Surinkai kraštinę? Laimi." },
   bingo_list:        { en: "What to watch for", lt: "Ko ieškoti" },
