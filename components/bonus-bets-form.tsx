@@ -41,6 +41,8 @@ export function BonusBetsForm({
     onChange({ ...bets, [k]: v });
 
   return (
+    // Rows ordered by best-case payout, biggest first — same order as the
+    // Rules tab's bonus-bets list.
     <div className="flex flex-col gap-3">
       {home && (
         <NumberRow
@@ -53,6 +55,32 @@ export function BonusBetsForm({
           onChange={onHomePredictionChange}
         />
       )}
+
+      {home && (
+        <NumberRow
+          label={fmt(t(lang, "bet_lt_total"), { home: homeName })}
+          sub={fmt(t(lang, "bet_lt_total_sub"), { home: homeName })}
+          max={10}
+          value={bets.ltTotalPoints ?? null}
+          onChange={(v) => set("ltTotalPoints", v)}
+        />
+      )}
+
+      <CountryRow
+        label={t(lang, "bet_jury_winner")}
+        sub={t(lang, "bet_jury_winner_sub")}
+        max={5}
+        value={bets.juryWinner ?? null}
+        onOpen={() => setDrawerKey("juryWinner")}
+      />
+
+      <CountryRow
+        label={t(lang, "bet_televote_winner")}
+        sub={t(lang, "bet_televote_winner_sub")}
+        max={5}
+        value={bets.televoteWinner ?? null}
+        onOpen={() => setDrawerKey("televoteWinner")}
+      />
 
       <CountryRow
         label={t(lang, "bet_wooden_spoon")}
@@ -72,30 +100,6 @@ export function BonusBetsForm({
         />
       )}
 
-      <CountryRow
-        label={t(lang, "bet_big5")}
-        sub={t(lang, "bet_big5_sub")}
-        max={3}
-        value={bets.highestBig5 ?? null}
-        onOpen={() => setDrawerKey("highestBig5")}
-      />
-
-      <CountryRow
-        label={t(lang, "bet_jury_winner")}
-        sub={t(lang, "bet_jury_winner_sub")}
-        max={5}
-        value={bets.juryWinner ?? null}
-        onOpen={() => setDrawerKey("juryWinner")}
-      />
-
-      <CountryRow
-        label={t(lang, "bet_televote_winner")}
-        sub={t(lang, "bet_televote_winner_sub")}
-        max={5}
-        value={bets.televoteWinner ?? null}
-        onOpen={() => setDrawerKey("televoteWinner")}
-      />
-
       <MultiCountryRow
         label={t(lang, "bet_nul")}
         sub={t(lang, "bet_nul_sub")}
@@ -103,15 +107,13 @@ export function BonusBetsForm({
         onOpen={() => setDrawerKey("nulTelevote")}
       />
 
-      {home && (
-        <NumberRow
-          label={fmt(t(lang, "bet_lt_total"), { home: homeName })}
-          sub={fmt(t(lang, "bet_lt_total_sub"), { home: homeName })}
-          max={10}
-          value={bets.ltTotalPoints ?? null}
-          onChange={(v) => set("ltTotalPoints", v)}
-        />
-      )}
+      <CountryRow
+        label={t(lang, "bet_big5")}
+        sub={t(lang, "bet_big5_sub")}
+        max={3}
+        value={bets.highestBig5 ?? null}
+        onOpen={() => setDrawerKey("highestBig5")}
+      />
 
       <YesNoRow
         label={fmt(t(lang, "bet_host_top3"), { host: hostName })}
@@ -131,38 +133,7 @@ export function BonusBetsForm({
         lang={lang}
       />
 
-      {/* Drawers: only one mounted at a time. */}
-      <CountryDrawer
-        title={t(lang, "bet_wooden_spoon")}
-        sub={t(lang, "bet_wooden_spoon_sub")}
-        open={drawerKey === "woodenSpoon"}
-        onClose={() => setDrawerKey(null)}
-        selected={bets.woodenSpoon ? [bets.woodenSpoon] : []}
-        onPick={(v) =>
-          set("woodenSpoon", typeof v === "string" ? v : null)
-        }
-      />
-      {home && (
-        <CountryDrawer
-          title={fmt(t(lang, "bet_lt_12_to"), { home: homeName })}
-          sub={fmt(t(lang, "bet_lt_12_to_sub"), { home: homeName })}
-          open={drawerKey === "lt12To"}
-          onClose={() => setDrawerKey(null)}
-          selected={bets.lt12To ? [bets.lt12To] : []}
-          onPick={(v) => set("lt12To", typeof v === "string" ? v : null)}
-        />
-      )}
-      <CountryDrawer
-        title={t(lang, "bet_big5")}
-        sub={t(lang, "bet_big5_sub")}
-        open={drawerKey === "highestBig5"}
-        onClose={() => setDrawerKey(null)}
-        selected={bets.highestBig5 ? [bets.highestBig5] : []}
-        onPick={(v) =>
-          set("highestBig5", typeof v === "string" ? v : null)
-        }
-        options={BIG_5 as readonly string[]}
-      />
+      {/* Drawers: only one mounted at a time. Same order as the rows above. */}
       <CountryDrawer
         title={t(lang, "bet_jury_winner")}
         sub={t(lang, "bet_jury_winner_sub")}
@@ -184,6 +155,26 @@ export function BonusBetsForm({
         }
       />
       <CountryDrawer
+        title={t(lang, "bet_wooden_spoon")}
+        sub={t(lang, "bet_wooden_spoon_sub")}
+        open={drawerKey === "woodenSpoon"}
+        onClose={() => setDrawerKey(null)}
+        selected={bets.woodenSpoon ? [bets.woodenSpoon] : []}
+        onPick={(v) =>
+          set("woodenSpoon", typeof v === "string" ? v : null)
+        }
+      />
+      {home && (
+        <CountryDrawer
+          title={fmt(t(lang, "bet_lt_12_to"), { home: homeName })}
+          sub={fmt(t(lang, "bet_lt_12_to_sub"), { home: homeName })}
+          open={drawerKey === "lt12To"}
+          onClose={() => setDrawerKey(null)}
+          selected={bets.lt12To ? [bets.lt12To] : []}
+          onPick={(v) => set("lt12To", typeof v === "string" ? v : null)}
+        />
+      )}
+      <CountryDrawer
         title={t(lang, "bet_nul")}
         sub={t(lang, "bet_nul_sub")}
         open={drawerKey === "nulTelevote"}
@@ -192,6 +183,17 @@ export function BonusBetsForm({
         onPick={(v) => set("nulTelevote", Array.isArray(v) ? v : null)}
         allowNone
         mode="multi"
+      />
+      <CountryDrawer
+        title={t(lang, "bet_big5")}
+        sub={t(lang, "bet_big5_sub")}
+        open={drawerKey === "highestBig5"}
+        onClose={() => setDrawerKey(null)}
+        selected={bets.highestBig5 ? [bets.highestBig5] : []}
+        onPick={(v) =>
+          set("highestBig5", typeof v === "string" ? v : null)
+        }
+        options={BIG_5 as readonly string[]}
       />
     </div>
   );
