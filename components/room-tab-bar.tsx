@@ -111,7 +111,9 @@ export function RoomTabBar({
                 >
                   <Icon
                     className={`h-6 w-6 transition ${
-                      isActive ? "text-white" : "text-white/55"
+                      // Solid dim colour, not white/55 — opacity makes the
+                      // overlapping strokes composite darker and look messy.
+                      isActive ? "text-white" : "text-dark-blue-200"
                     }`}
                     strokeWidth={isActive ? 2.4 : 2}
                   />

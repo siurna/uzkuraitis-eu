@@ -6,6 +6,14 @@ const nextConfig = {
   typedRoutes: true,
   // Both Neon and Liveblocks ship with their own Edge-friendly drivers.
   serverExternalPackages: ["@neondatabase/serverless"],
+  // Next 15 defaults the dynamic-segment client router-cache TTL to 0s,
+  // so every tab navigation re-fetches the room layout + page from the
+  // server — which reads like a full reload. Cache them briefly so
+  // switching tabs within a room is instant. Live state still updates
+  // via the Liveblocks broadcasts + the refetch in RoomShell.
+  experimental: {
+    staleTimes: { dynamic: 30, static: 180 },
+  },
 };
 
 export default nextConfig;

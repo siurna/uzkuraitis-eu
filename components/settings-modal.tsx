@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Share2, Check, LogOut, ChevronRight } from "lucide-react";
+import { Share2, Check, LogOut, ChevronRight, Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useUpdateMyPresence } from "@/lib/liveblocks";
@@ -46,6 +46,7 @@ export function SettingsModal({
   const [lang, setLang] = useState<Language>("lt");
   const [copied, setCopied] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [notifSheetOpen, setNotifSheetOpen] = useState(false);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
 
   useEffect(() => {
@@ -144,16 +145,16 @@ export function SettingsModal({
           </Section>
 
           <Section label={t(lang, "language")}>
-            <div className="inline-flex items-center gap-1 rounded-full bg-black/30 p-1 self-start">
+            <div className="grid grid-cols-2 gap-1 rounded-2xl bg-black/30 ring-1 ring-white/10 p-1">
               {LANGUAGES.map((code) => (
                 <button
                   key={code}
                   type="button"
                   onClick={() => setLang(code)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-display transition ${
+                  className={`h-11 rounded-xl font-display text-base transition ${
                     lang === code
                       ? "bg-white text-dark-blue"
-                      : "text-white/60 hover:text-white"
+                      : "text-white/65 hover:text-white"
                   }`}
                 >
                   {LANGUAGE_NAMES[code]}
@@ -205,20 +206,26 @@ export function SettingsModal({
             </button>
           </Section>
 
-          <Section label={t(lang, "notifications")}>
-            <NotificationToggles />
-          </Section>
-
           <Section label="">
             <button
               type="button"
-              onClick={() => setLeaveSheetOpen(true)}
-              className="flex items-center gap-2 rounded-2xl px-4 py-3
-                         bg-white/5 ring-1 ring-white/10 hover:bg-white/10
-                         text-error/90 hover:text-error text-sm transition"
+              onClick={() => setNotifSheetOpen(true)}
+              className="flex items-center gap-3 rounded-2xl px-4 py-3
+                         bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition text-left"
             >
-              <LogOut className="h-4 w-4" />
-              {t(lang, "leave_room")}
+              <Bell className="h-4 w-4 text-white/55 shrink-0" />
+              <span className="flex-1">{t(lang, "notifications")}</span>
+              <ChevronRight className="h-4 w-4 text-white/30 shrink-0" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setLeaveSheetOpen(true)}
+              className="flex items-center gap-3 rounded-2xl px-4 py-3
+                         bg-white/5 ring-1 ring-white/10 hover:bg-white/10
+                         text-error/90 hover:text-error transition text-left"
+            >
+              <LogOut className="h-4 w-4 shrink-0" />
+              <span className="flex-1">{t(lang, "leave_room")}</span>
             </button>
           </Section>
         </form>
@@ -250,6 +257,29 @@ export function SettingsModal({
           <AvatarPicker value={avatar} onChange={setAvatar} />
           <SelectedAvatarCard avatarId={avatar} sticky />
         </div>
+      </BottomSheet>
+
+      {/* Notifications — its own roomy sheet so the toggles each get a
+          line of explanation instead of being crammed into settings. */}
+      <BottomSheet
+        open={notifSheetOpen}
+        onClose={() => setNotifSheetOpen(false)}
+        title={t(lang, "notifications")}
+        sub={t(lang, "push_cta_sub")}
+        footer={
+          <>
+            <div className="flex-1" />
+            <Button
+              type="button"
+              onClick={() => setNotifSheetOpen(false)}
+              className="font-display rounded-2xl bg-white text-dark-blue hover:bg-dark-blue-50"
+            >
+              {t(lang, "done")}
+            </Button>
+          </>
+        }
+      >
+        <NotificationToggles />
       </BottomSheet>
 
       {/* Leave-room confirmation — a deliberate second step so a stray
