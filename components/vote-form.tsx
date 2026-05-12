@@ -672,7 +672,7 @@ function RulesPanel({
       <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-2.5">
         <p className="font-display text-sm text-white/90">{t(lang, "rules_home_h")}</p>
         <p className="text-sm text-white/60 leading-relaxed text-pretty">{tr("rules_home_b")}</p>
-        <ScaleRow items={[["0", 10], ["±1", 7], ["±2", 5], ["±3–5", 3], ["±6–10", 1]]} />
+        <ScaleRow items={[["0", 12], ["1", 10], ["2", 8], ["3", 7], ["5", 5], ["9", 1]]} />
       </div>
 
       {/* Bonus bets */}

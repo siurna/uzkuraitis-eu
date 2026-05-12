@@ -114,7 +114,7 @@ const S = {
   rules_top10_b:     { en: "Only countries that finish in the official Top 10 score anything. Place one in the exact spot it finished and you bank its full Eurovision points (12, 10, 8…1). Off by a place? Slide one rung down the scoreboard — a country that came 1st but you ranked 3rd scores 8 (3rd place's value); slide past 10th and it's 0.", lt: "Taškų skiria tik šalys, patekusios į oficialų TOP 10. Pastatei šalį tiksliai į jos užimtą vietą — gauni pilnus Eurovizijos taškus (12, 10, 8…1). Klysti viena vieta? Nuslysti viena pakopa žemyn lentelėje: jei šalis liko 1-a, o tu ją pastatei 3-ią, gauni 8 (3-ios vietos vertę); nuslydus už 10-os — 0." },
   rules_top10_eg:    { en: "A country that finished 1st, scored by how far off your ranking was:", lt: "1-ą vietą užėmusi šalis — kiek gausi pagal įvertinimo tikslumą:" },
   rules_home_h:      { en: "Home-country placement", lt: "Savo šalies vieta" },
-  rules_home_b:      { en: "Guess where {home} finishes — closer guesses score more:", lt: "Atspėk, kelintas liks {home} — kuo arčiau, tuo daugiau:" },
+  rules_home_b:      { en: "Guess where {home} finishes. Nail it and that's 12 points; every place you're off slides you one rung down the Eurovision ladder (12 → 10 → 8 → 7 … 1):", lt: "Atspėk, kelintas liks {home}. Pataikei tiksliai — 12 taškų; už kiekvieną netaiklią vietą nuslysti pakopa žemyn Eurovizijos skale (12 → 10 → 8 → 7 … 1):" },
   rules_bets_h:      { en: "Bonus bets", lt: "Bonus statymai" },
   rules_bets_intro:  { en: "Every bet is optional. You only score if you call it right — a skipped bet is just 0.", lt: "Kiekvienas statymas neprivalomas. Taškų gauni tik pataikęs — praleistas statymas tiesiog 0." },
 

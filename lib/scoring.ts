@@ -86,13 +86,11 @@ export function scoreHomePrediction(
   ) {
     return 0;
   }
+  // Same "notch-down the Eurovision ladder" idea as the TOP10 ballot, but
+  // always starting from the top rung: nail the placement → 12, then one
+  // rung lower (12 → 10 → 8 → 7 … 1) per place you're off; >9 off → 0.
   const diff = Math.abs(prediction - officialPlacement);
-  if (diff === 0) return 10;
-  if (diff === 1) return 7;
-  if (diff === 2) return 5;
-  if (diff <= 5) return 3;
-  if (diff <= 10) return 1;
-  return 0;
+  return POINTS_BY_PLACEMENT[1 + diff] ?? 0;
 }
 
 // ---------- side bets ----------
