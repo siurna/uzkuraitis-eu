@@ -13,6 +13,7 @@ import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { participantPhoto } from "@/lib/participants";
+import { optimizedSrc } from "@/lib/img";
 import { HeartFlag } from "@/components/flag";
 import { useLang, t } from "@/lib/i18n";
 
@@ -212,7 +213,7 @@ function PlayingCard({
       <button type="button" onClick={onOpen} className="w-full text-left rainbow-border rounded-3xl block">
         <div className="relative overflow-hidden rounded-[22px] aspect-[16/10] sm:aspect-[2/1]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={optimizedSrc(photo, 1080)} alt="" className="absolute inset-0 h-full w-full object-cover" />
           <div
             className="absolute inset-0"
             style={{

@@ -6,6 +6,7 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Flag } from "@/components/flag";
 import { getCountry, countryName } from "@/lib/countries";
 import { participantPhoto } from "@/lib/participants";
+import { optimizedSrc } from "@/lib/img";
 import { artistSocials, type ArtistSocials } from "@/lib/socials";
 import { useLang, t } from "@/lib/i18n";
 
@@ -86,7 +87,7 @@ function CountryDeepDiveSheet({
             <div className="relative -mx-1 rounded-2xl overflow-hidden aspect-[16/9] bg-white/[0.04]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={participantPhoto(country.code) as string}
+                src={optimizedSrc(participantPhoto(country.code) as string, 1080)}
                 alt=""
                 className="absolute inset-0 h-full w-full object-cover"
               />
