@@ -11,7 +11,7 @@
  * step, and we want the SW to load instantly without a bundler.
  */
 
-const CACHE = "esc-2026-v2";
+const CACHE = "esc-2026-v3";
 const PRECACHE = [
   "/",
   "/icon.png",
@@ -105,7 +105,9 @@ self.addEventListener("push", (event) => {
         body,
         icon: "/icon.png",
         badge: "/icon.png",
+        image: payload.image || undefined,
         tag,
+        renotify: !!tag,
         data,
       });
     })(),

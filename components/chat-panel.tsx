@@ -327,14 +327,20 @@ export function ChatPanel() {
   }, [code, messages.length]);
 
   useEventListener(({ event }) => {
-    const ev = event as { type?: string };
-    if (
-      ev.type === "chat:new" ||
-      ev.type === "chat:react" ||
-      ev.type === "chat:delete"
-    ) {
-      fetchMessages();
+    const ev = event as { type?: string; id?: string };
+    if (ev.type === "chat:delete") {
+      if (ev.id) setMessages((prev) => prev.filter((m) => m.id !== ev.id));
+      return;
     }
+    if (ev.type === "chat:new") {
+      // Our own message — already shown optimistically. Skipping the
+      // refetch keeps the local blob preview from flashing to the
+      // server URL.
+      if (ev.id && byId.has(ev.id)) return;
+      fetchMessages();
+      return;
+    }
+    if (ev.type === "chat:react") fetchMessages();
   });
 
   // First render: jump to the bottom (no animation). After that:
@@ -467,15 +473,29 @@ export function ChatPanel() {
         body: JSON.stringify({ session: mySession, name: senderName, avatarId, kind: "image", gifUrl: url, replyTo: reply }),
       });
       const data = (await res.json().catch(() => ({}))) as { id?: string };
+      const realId = data.id ?? optimistic.id;
+      // Keep showing the local blob preview; just stamp the real id so
+      // the chat:new echo dedupes against it. Only swap to the hosted
+      // URL once the browser has it cached — no "blank then appear" flash.
       setMessages((prev) =>
-        prev.map((m) => (m.id === optimistic.id ? { ...m, id: data.id ?? m.id, gifUrl: url, pending: false } : m)),
+        prev.map((m) => (m.id === optimistic.id ? { ...m, id: realId, pending: false } : m)),
       );
+      const preload = new Image();
+      const finishSwap = () => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === realId && m.gifUrl === localUrl ? { ...m, gifUrl: url } : m)),
+        );
+        URL.revokeObjectURL(localUrl);
+      };
+      preload.onload = finishSwap;
+      preload.onerror = finishSwap;
+      preload.src = url;
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
       toast.error((err as Error).message);
+      URL.revokeObjectURL(localUrl);
     } finally {
       setUploading(false);
-      URL.revokeObjectURL(localUrl);
     }
   };
 

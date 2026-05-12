@@ -6,6 +6,7 @@ import { isAdminAuthed } from "@/lib/admin/session";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { pushToRoom } from "@/lib/push";
 import { getCountry } from "@/lib/countries";
+import { participantPhoto } from "@/lib/participants";
 import {
   postSystemMessage,
   postNowPlayingMessage,
@@ -97,6 +98,7 @@ export async function POST(req: Request) {
                 : "Tap to open the room",
               url: `/r/${code}`,
               tag: `now-playing:${code}`,
+              image: participantPhoto(nowPlayingCode) ?? undefined,
             },
           ).catch(() => {});
         }
