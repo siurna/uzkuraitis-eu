@@ -50,8 +50,10 @@ const S = {
   close:             { en: "Close", lt: "Uždaryti" },
   loading:           { en: "Loading…", lt: "Įkeliama…" },
   leave_room:        { en: "Leave room", lt: "Palikti kambarį" },
-  leave_confirm:     { en: "Leave this room?", lt: "Tikrai palikti šitą kambarį?" },
-  leave_yes:         { en: "Yes, leave", lt: "Taip, palikti" },
+  leave_confirm:     { en: "Leave this room?", lt: "Palikti šitą kambarį?" },
+  leave_confirm_sub: { en: "You can rejoin with the room link any time.", lt: "Galėsi grįžti su kambario nuoroda bet kada." },
+  leave_confirm_body: { en: "Your name, avatar and ballot stay on this device — leaving just takes you back to the entrance. You'll need the room code or link to come back.", lt: "Tavo vardas, veidas ir balsas lieka šiame įrenginyje — palikęs grįši į pradžios ekraną. Norėdamas grįžti, naudok kambario kodą ar nuorodą." },
+  leave_yes:         { en: "Leave room", lt: "Palikti kambarį" },
   link_copied:       { en: "Link copied", lt: "Nuoroda nukopijuota" },
   couldnt_copy:      { en: "Couldn't copy link", lt: "Nepavyko nukopijuoti" },
 

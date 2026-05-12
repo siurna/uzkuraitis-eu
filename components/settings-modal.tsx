@@ -46,7 +46,7 @@ export function SettingsModal({
   const [lang, setLang] = useState<Language>("lt");
   const [copied, setCopied] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [leaveConfirm, setLeaveConfirm] = useState(false);
+  const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -108,10 +108,11 @@ export function SettingsModal({
             <Button
               type="button"
               variant="ghost"
-              onClick={onClose}
-              className="text-white/70"
+              onClick={share}
+              className="text-white/75 gap-1.5"
             >
-              {t(lang, "cancel")}
+              {copied ? <Check className="h-4 w-4 text-success" /> : <Share2 className="h-4 w-4" />}
+              {copied ? t(lang, "link_copied") : t(lang, "share_link")}
             </Button>
             <div className="flex-1" />
             <Button
@@ -209,63 +210,16 @@ export function SettingsModal({
           </Section>
 
           <Section label="">
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={share}
-                className="flex items-center justify-between rounded-2xl px-4 py-3
-                           bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition"
-              >
-                <span className="flex items-center gap-2 text-sm">
-                  {copied ? (
-                    <Check className="h-4 w-4 text-success" />
-                  ) : (
-                    <Share2 className="h-4 w-4 text-white/70" />
-                  )}
-                  {copied ? t(lang, "link_copied") : t(lang, "share_link")}
-                </span>
-                <span className="text-xs text-white/40 truncate max-w-[12rem]">
-                  {shareUrl.replace(/^https?:\/\//, "")}
-                </span>
-              </button>
-              {/* Leave-room. Two-tap confirm so a stray finger doesn't
-                  yank the user out of an in-progress show. */}
-              {leaveConfirm ? (
-                <div className="flex items-center gap-2 rounded-2xl bg-error/10 ring-1 ring-error/30 px-4 py-3">
-                  <p className="flex-1 text-sm text-white/85">
-                    {t(lang, "leave_confirm")}
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    type="button"
-                    onClick={() => setLeaveConfirm(false)}
-                  >
-                    {t(lang, "cancel")}
-                  </Button>
-                  <Button
-                    size="sm"
-                    type="button"
-                    onClick={leaveRoom}
-                    className="bg-error text-white hover:bg-error/90"
-                  >
-                    <LogOut className="h-4 w-4 mr-1.5" />
-                    {t(lang, "leave_yes")}
-                  </Button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setLeaveConfirm(true)}
-                  className="flex items-center gap-2 rounded-2xl px-4 py-3
-                             bg-white/5 ring-1 ring-white/10 hover:bg-white/10
-                             text-error/90 hover:text-error text-sm transition"
-                >
-                  <LogOut className="h-4 w-4" />
-                  {t(lang, "leave_room")}
-                </button>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => setLeaveSheetOpen(true)}
+              className="flex items-center gap-2 rounded-2xl px-4 py-3
+                         bg-white/5 ring-1 ring-white/10 hover:bg-white/10
+                         text-error/90 hover:text-error text-sm transition"
+            >
+              <LogOut className="h-4 w-4" />
+              {t(lang, "leave_room")}
+            </button>
           </Section>
         </form>
       </BottomSheet>
@@ -296,6 +250,33 @@ export function SettingsModal({
           <AvatarPicker value={avatar} onChange={setAvatar} />
           <SelectedAvatarCard avatarId={avatar} sticky />
         </div>
+      </BottomSheet>
+
+      {/* Leave-room confirmation — a deliberate second step so a stray
+          tap doesn't yank you out of an in-progress show. */}
+      <BottomSheet
+        open={leaveSheetOpen}
+        onClose={() => setLeaveSheetOpen(false)}
+        title={t(lang, "leave_confirm")}
+        sub={t(lang, "leave_confirm_sub")}
+        footer={
+          <>
+            <Button type="button" variant="ghost" onClick={() => setLeaveSheetOpen(false)} className="text-white/70">
+              {t(lang, "cancel")}
+            </Button>
+            <div className="flex-1" />
+            <Button
+              type="button"
+              onClick={leaveRoom}
+              className="bg-error text-white hover:bg-error/90 rounded-2xl"
+            >
+              <LogOut className="h-4 w-4 mr-1.5" />
+              {t(lang, "leave_yes")}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-white/60 leading-relaxed">{t(lang, "leave_confirm_body")}</p>
       </BottomSheet>
     </>
   );
