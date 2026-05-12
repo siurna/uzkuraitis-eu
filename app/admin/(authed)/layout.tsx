@@ -22,7 +22,7 @@ export default async function AdminLayout({
   const bypass = isAdminAuthBypassed();
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-dvh flex flex-col">
       <AdminNav />
       {bypass && (
         <div className="bg-orange/15 border-b border-orange/30 text-orange">

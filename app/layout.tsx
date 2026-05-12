@@ -40,7 +40,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen antialiased">
+      {/* min-h-dvh, not 100vh: on iOS Safari `vh` is the *large* viewport
+          (URL bar collapsed), so `min-h-screen` leaves a strip of phantom
+          scroll whenever the URL bar is showing. dvh follows it. */}
+      <body className="min-h-dvh antialiased">
         <PageTransition>{children}</PageTransition>
         <Toaster
           theme="dark"

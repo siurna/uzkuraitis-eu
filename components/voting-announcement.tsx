@@ -129,18 +129,20 @@ export function VotingAnnouncement() {
   );
 }
 
-// "EUROPE, START VOTING NOW!" word-by-word: each word slams in with a
-// spring, staggered, in the display face. Solid white — no -webkit-
-// background-clip:text gradient here: on iOS Safari a clipped-text
-// element that's also being transformed/animated paints a stray
-// rectangle, which looked broken. White + a soft glow reads clean.
+// "EUROPE, START VOTING NOW!" word-by-word: each word springs in,
+// staggered, in the display face. The rainbow shimmer is a `-webkit-
+// background-clip:text` gradient — to keep iOS Safari from painting the
+// infamous stray rectangle, the spring transform lives on the OUTER
+// wrapper while the clipped-text span sits still on its own compositing
+// layer (translateZ(0)), with the shimmer driven by a plain CSS
+// keyframe rather than an animated transform/property on the same node.
 function WordsBurst({ text }: { text: string }) {
   const words = text.toUpperCase().split(/\s+/);
   return (
     <h2
       className="relative font-display uppercase leading-[1.1] tracking-tight py-[0.12em]
                  text-[15vw] sm:text-[7rem] flex flex-wrap justify-center gap-x-[0.25em] gap-y-1
-                 text-white drop-shadow-[0_6px_36px_rgba(0,0,0,0.5)]"
+                 drop-shadow-[0_6px_36px_rgba(0,0,0,0.5)]"
     >
       {words.map((w, i) => (
         <motion.span
@@ -150,7 +152,23 @@ function WordsBurst({ text }: { text: string }) {
           animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
           transition={{ delay: 0.12 + i * 0.22, type: "spring", stiffness: 420, damping: 14 }}
         >
-          {w}
+          <span
+            className="inline-block text-shimmer"
+            style={{
+              backgroundImage:
+                "linear-gradient(100deg,#ffffff,#ff5fa2,#ffd166,#4cc9f0,#b15bff,#ffffff)",
+              backgroundSize: "260% 100%",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+              WebkitTextFillColor: "transparent",
+              transform: "translateZ(0)",
+              isolation: "isolate",
+              paddingBottom: "0.08em",
+            }}
+          >
+            {w}
+          </span>
         </motion.span>
       ))}
     </h2>

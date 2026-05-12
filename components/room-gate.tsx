@@ -104,7 +104,7 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
   };
 
   return (
-    <main className="relative min-h-screen flex flex-col items-center justify-center px-4 py-12">
+    <main className="relative min-h-dvh flex flex-col items-center justify-center px-4 py-12">
       <HeartbeatBackdrop />
       <AnimatePresence mode="wait">
         {rehydrating ? (

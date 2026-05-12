@@ -96,7 +96,7 @@ export function RoomManage({
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center px-4 py-10 gap-8">
+    <main className="min-h-dvh flex flex-col items-center px-4 py-10 gap-8">
       <header className="text-center flex flex-col gap-1">
         <p className="text-xs uppercase tracking-[0.4em] text-white/40 font-display">
           Hosting
