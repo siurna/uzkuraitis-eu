@@ -179,11 +179,11 @@ export function NotificationToggles() {
           {t(lang, "push_disable")}
         </button>
       </div>
-      <PrefRow label={t(lang, "push_chat_all")}         value={!!state.prefs.chatAll}        onChange={(v) => setPref("chatAll", v)} />
-      <PrefRow label={t(lang, "push_chat_replies")}     value={!!state.prefs.chatReplies}    onChange={(v) => setPref("chatReplies", v)} />
-      <PrefRow label={t(lang, "push_now_playing")}      value={!!state.prefs.nowPlaying}     onChange={(v) => setPref("nowPlaying", v)} />
-      <PrefRow label={t(lang, "push_voting_state")}     value={!!state.prefs.votingState}    onChange={(v) => setPref("votingState", v)} />
-      <PrefRow label={t(lang, "push_results_tallied")}  value={!!state.prefs.resultsTallied} onChange={(v) => setPref("resultsTallied", v)} />
+      <PrefRow label={t(lang, "push_chat_all")}        sub={t(lang, "push_chat_all_sub")}        value={!!state.prefs.chatAll}        onChange={(v) => setPref("chatAll", v)} />
+      <PrefRow label={t(lang, "push_chat_replies")}    sub={t(lang, "push_chat_replies_sub")}    value={!!state.prefs.chatReplies}    onChange={(v) => setPref("chatReplies", v)} />
+      <PrefRow label={t(lang, "push_now_playing")}     sub={t(lang, "push_now_playing_sub")}     value={!!state.prefs.nowPlaying}     onChange={(v) => setPref("nowPlaying", v)} />
+      <PrefRow label={t(lang, "push_voting_state")}    sub={t(lang, "push_voting_state_sub")}    value={!!state.prefs.votingState}    onChange={(v) => setPref("votingState", v)} />
+      <PrefRow label={t(lang, "push_results_tallied")} sub={t(lang, "push_results_tallied_sub")} value={!!state.prefs.resultsTallied} onChange={(v) => setPref("resultsTallied", v)} />
     </div>
   );
 }
@@ -298,10 +298,12 @@ function installSteps(
 
 function PrefRow({
   label,
+  sub,
   value,
   onChange,
 }: {
   label: string;
+  sub?: string;
   value: boolean;
   onChange: (v: boolean) => void;
 }) {
@@ -309,11 +311,13 @@ function PrefRow({
     <button
       type="button"
       onClick={() => onChange(!value)}
-      className="flex items-center justify-between rounded-2xl px-4 py-2.5
-                 bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07] transition
-                 text-sm text-left"
+      className="flex items-center gap-3 rounded-2xl px-4 py-3
+                 bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07] transition text-left"
     >
-      <span className="flex-1 truncate">{label}</span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm text-white/90">{label}</span>
+        {sub && <span className="block text-xs text-white/45 leading-snug mt-0.5">{sub}</span>}
+      </span>
       <span
         className={`relative h-6 w-11 rounded-full transition shrink-0 ${
           value ? "bg-success/70" : "bg-white/10"
