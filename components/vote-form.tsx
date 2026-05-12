@@ -138,6 +138,21 @@ export function VoteForm({
     localStorage.setItem(STORAGE_KEY(roomCode), JSON.stringify(slots));
   }, [slots, roomCode]);
 
+  // Someone added a country to the ballot from elsewhere (the now-playing
+  // chat card's "+ TOP 10") — re-read it so the open Vote tab reflects it.
+  useEffect(() => {
+    const reread = () => {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY(roomCode)) ?? "null") as Slot[];
+        if (Array.isArray(parsed) && parsed.length === 10) setSlots(parsed);
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener("uzk:ballot-changed", reread);
+    return () => window.removeEventListener("uzk:ballot-changed", reread);
+  }, [roomCode]);
+
   useEffect(() => {
     if (homePrediction != null) {
       localStorage.setItem(PREDICTION_KEY(roomCode), String(homePrediction));

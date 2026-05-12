@@ -793,6 +793,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                       onOpenImage={(url) => setLightbox(url)}
                       lang={lang}
                       nowPlayingCode={nowPlayingCode}
+                      roomCode={code}
                     />
                   </div>
                 );

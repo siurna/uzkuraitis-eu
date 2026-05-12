@@ -232,6 +232,10 @@ const S = {
 
   // ── Now-playing strip ────────────────────────────────────────────
   now_playing:       { en: "On stage", lt: "Scenoje" },
+  np_add_top10:      { en: "TOP 10", lt: "TOP 10" },
+  np_added:          { en: (n: number) => `Added to your TOP 10 at ${n} pts`, lt: (n: number) => `Įtraukta į tavo TOP 10 — ${n} t.` },
+  np_in_ballot:      { en: (n: number) => `Already in your TOP 10 (${n} pts)`, lt: (n: number) => `Jau tavo TOP 10 (${n} t.)` },
+  np_ballot_full:    { en: "Your TOP 10 is full — reorder it in the Vote tab", lt: "Tavo TOP 10 pilnas — pertvarkyk jį Balsavimo skiltyje" },
 
   // ── Bingo ────────────────────────────────────────────────────────
   bingo_you_did_it:  { en: "You got bingo! 🎉", lt: "Surinkai bingo! 🎉" },
