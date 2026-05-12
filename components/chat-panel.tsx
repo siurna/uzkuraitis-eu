@@ -784,6 +784,9 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                       onReply={() => {
                         setReplyTo(m);
                         setMenuFor(null);
+                        // Jump straight into the composer — synchronous so
+                        // iOS counts it as part of the touch gesture.
+                        taRef.current?.focus();
                       }}
                       onEdit={() => startEdit(m)}
                       onCopy={() => copyBody(m)}
