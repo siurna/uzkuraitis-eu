@@ -173,6 +173,16 @@
     -webkit-touch-callout: default;
   }
 
+  /* Chat tab: the panel is `position:fixed` and owns the whole viewport
+     between the header and the dock, so the document itself must never
+     scroll — otherwise a drag that begins on the fixed header rubber-
+     bands the page. Lock html + body to the viewport. */
+  html.tab-chat,
+  html.tab-chat body {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
   /* No accidental image drags / "Save Image" long-press. */
   img {
     -webkit-user-drag: none;

@@ -69,7 +69,7 @@ function dayLabel(iso: string, lang: "en" | "lt"): string {
 
 // ---------------------------------------------------------------------
 
-export function ChatPanel() {
+export function ChatPanel({ active = true }: { active?: boolean }) {
   const { code } = useRoomLive();
   const lang = useLang();
   const others = useOthers();
@@ -310,21 +310,23 @@ export function ChatPanel() {
   // "seen by N". -----
   const newestIso = messages.length ? messages[messages.length - 1].createdAt : null;
   useEffect(() => {
-    if (!newestIso) return;
+    if (!newestIso || !active) return;
     if (atBottom && (typeof document === "undefined" || !document.hidden)) {
       updatePresence({ seenAt: newestIso });
     }
-  }, [newestIso, atBottom, updatePresence]);
+  }, [newestIso, atBottom, active, updatePresence]);
 
-  // Tab-bar unread badge clear.
+  // Tab-bar unread badge clear — only while the chat tab is actually
+  // showing (the panel stays mounted on other tabs).
   useEffect(() => {
+    if (!active) return;
     try {
       localStorage.setItem(`uzk_chat_seen_${code}`, new Date().toISOString());
       window.dispatchEvent(new Event("uzk:chat-seen"));
     } catch {
       /* private mode */
     }
-  }, [code, messages.length]);
+  }, [code, active, messages.length]);
 
   useEventListener(({ event }) => {
     const ev = event as { type?: string; id?: string };
@@ -646,8 +648,12 @@ export function ChatPanel() {
                  top-[calc(env(safe-area-inset-top)+3.5rem)]
                  bottom-[calc(env(safe-area-inset-bottom)+4.75rem)]"
       // When the keyboard is up, pin the bottom of the panel right above
-      // it (and the iOS form-accessory bar) — no dead gap.
-      style={kbInset > 0 ? { bottom: kbInset, transition: "bottom 0.15s ease" } : undefined}
+      // it (and the iOS form-accessory bar) — no dead gap. Hidden (but
+      // kept mounted, with scroll + state intact) when off the chat tab.
+      style={{
+        ...(kbInset > 0 ? { bottom: kbInset, transition: "bottom 0.15s ease" } : null),
+        ...(active ? null : { display: "none" }),
+      }}
       onDragEnter={(e) => {
         if (!Array.from(e.dataTransfer.types).includes("Files")) return;
         e.preventDefault();

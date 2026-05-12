@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import Link from "next/link";
 import { motion, AnimatePresence, LayoutGroup } from "motion/react";
 import {
   ChevronDown,
@@ -14,7 +13,7 @@ import { countries, getCountry, countryName } from "@/lib/countries";
 import { useEventListener } from "@/lib/liveblocks";
 import { HeartFlag, MetaPill } from "@/components/flag";
 import { Leaderboard } from "@/components/leaderboard";
-import { useRoomLive } from "@/components/room-shell";
+import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { useLang, t } from "@/lib/i18n";
 
@@ -172,7 +171,7 @@ export function Standings() {
             ))}
           </ul>
         ) : visible.length === 0 ? (
-          <NoVotesYet code={code} votingEnabled={votingEnabled} lang={lang} hasVoted={hasVoted} />
+          <NoVotesYet votingEnabled={votingEnabled} lang={lang} hasVoted={hasVoted} />
         ) : (
           // LayoutGroup so rank-changes animate cleanly across rows.
           // AnimatePresence mode="popLayout" so expanding from 5 -> 35
@@ -232,16 +231,15 @@ export function Standings() {
 }
 
 function NoVotesYet({
-  code,
   votingEnabled,
   lang,
   hasVoted,
 }: {
-  code: string;
   votingEnabled: boolean;
   lang: "en" | "lt";
   hasVoted: boolean;
 }) {
+  const { setTab } = useRoomTab();
   // Three placeholder rows hint at the standings shape so the layout
   // doesn't visually empty out before the first vote lands.
   const placeholders = [0, 1, 2];
@@ -298,17 +296,19 @@ function NoVotesYet({
       </ul>
 
       {votingEnabled && (
-        <Link
-          href={`/r/${code}/vote`}
-          className="rainbow-border rounded-2xl mx-auto w-full max-w-xs"
+        <button
+          type="button"
+          onClick={() => setTab("vote")}
+          className="rainbow-border rounded-2xl mx-auto w-full max-w-xs block"
         >
           <Button
+            asChild
             className="w-full h-12 text-base font-display rounded-[14px]
                        bg-white text-dark-blue hover:bg-dark-blue-50"
           >
-            {hasVoted ? t(lang, "update_vote") : t(lang, "be_the_first")}
+            <span>{hasVoted ? t(lang, "update_vote") : t(lang, "be_the_first")}</span>
           </Button>
-        </Link>
+        </button>
       )}
     </motion.div>
   );

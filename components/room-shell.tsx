@@ -7,12 +7,15 @@ import {
   useEffect,
   useState,
 } from "react";
-import { usePathname } from "next/navigation";
 import { RoomProvider, useEventListener } from "@/lib/liveblocks";
 import { FloatingReactionsLayer } from "@/components/floating-reactions";
 import { PresenceBar } from "@/components/presence-bar";
 import { NameGate } from "@/components/name-gate";
 import { RoomTabBar } from "@/components/room-tab-bar";
+import { HomePanel } from "@/components/home-panel";
+import { ChatPanel } from "@/components/chat-panel";
+import { BingoCard } from "@/components/bingo-card";
+import { VotePanel } from "@/components/vote-panel";
 import {
   ParticleLayer,
   useParticles,
@@ -45,6 +48,29 @@ export function useRoomLive(): RoomLive {
   const ctx = useContext(RoomLiveContext);
   if (!ctx) throw new Error("useRoomLive must be used inside <RoomShell>");
   return ctx;
+}
+
+// ---- Tab context ---------------------------------------------------
+// The room is a single-page app: Home / Chat / Bingo / Vote are panels
+// kept mounted side-by-side, not routes. Switching is pure setState —
+// zero navigation, zero RSC fetch, panels keep their scroll + state +
+// live subscriptions. Deep links (/r/x/chat, push notifications) land
+// on the redirect shims which bounce to /r/x?tab=chat; <TabSync> reads
+// that param once on mount.
+export type RoomTab = "home" | "chat" | "bingo" | "vote";
+const ROOM_TABS: readonly RoomTab[] = ["home", "chat", "bingo", "vote"];
+
+type RoomTabCtx = { tab: RoomTab; setTab: (t: RoomTab) => void };
+const RoomTabContext = createContext<RoomTabCtx | null>(null);
+
+export function useRoomTab(): RoomTabCtx {
+  const ctx = useContext(RoomTabContext);
+  if (!ctx) throw new Error("useRoomTab must be used inside <RoomShell>");
+  return ctx;
+}
+
+export function isRoomTab(v: unknown): v is RoomTab {
+  return typeof v === "string" && (ROOM_TABS as readonly string[]).includes(v);
 }
 
 export function RoomShell({
@@ -98,20 +124,61 @@ export function RoomShell({
   );
 }
 
-// Body. The reaction emoji bar appears only on Home (the other tabs
-// own the bottom for their own inputs). The unread-chat counter lives
-// here so the tab bar can badge it: every chat:new bumps it unless
-// the user is on the chat tab, and the chat panel resets it via the
-// uzk:chat-seen event.
+// Body / tab switcher. Holds the active tab + the set of tabs that have
+// been opened (we mount a panel lazily the first time it's shown, then
+// keep it mounted so re-entering is instant and stateful — like a
+// native view controller stack). Inactive in-flow panels collapse to
+// `display:none`; the chat panel is `position:fixed` and hides itself
+// via its `active` prop. The reaction emoji bar shows on Home + Chat
+// only. The unread-chat counter lives here so the tab bar can badge it.
 function RoomBody({ children }: { children: React.ReactNode }) {
   const { code } = useRoomLive();
-  const pathname = usePathname();
-  const isHome = pathname === `/r/${code}`;
-  const isChat = pathname.startsWith(`/r/${code}/chat`);
+  const [tab, setTabState] = useState<RoomTab>("home");
+  const [visited, setVisited] = useState<ReadonlySet<RoomTab>>(
+    () => new Set<RoomTab>(["home"]),
+  );
   const [unread, setUnread] = useState(0);
   // Hide the bottom dock + reactions bar while the chat composer is
   // focused — on iOS the keyboard otherwise stacks them over the input.
   const [composing, setComposing] = useState(false);
+
+  const isHome = tab === "home";
+  const isChat = tab === "chat";
+
+  const setTab = useCallback(
+    (next: RoomTab) => {
+      setVisited((v) => (v.has(next) ? v : new Set(v).add(next)));
+      setTabState((cur) => {
+        if (cur === next) return cur;
+        // Keep the URL honest (back button / refresh / share) without a
+        // navigation: this is a replace, not a push.
+        if (typeof window !== "undefined") {
+          const url = next === "home" ? `/r/${code}` : `/r/${code}?tab=${next}`;
+          window.history.replaceState(window.history.state, "", url);
+          // Each tab starts at the top, the way a fresh screen would.
+          window.scrollTo(0, 0);
+        }
+        return next;
+      });
+    },
+    [code],
+  );
+
+  // Read ?tab= once on mount (deep links / redirect shims land here).
+  useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get("tab");
+    if (isRoomTab(param) && param !== "home") setTab(param);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Lock document scroll on the chat tab — the chat panel owns the
+  // whole viewport between the header and the dock, so any document
+  // scroll (e.g. a drag that starts on the fixed header) is a bug.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("tab-chat", isChat);
+    return () => root.classList.remove("tab-chat");
+  }, [isChat]);
 
   useEventListener(({ event }) => {
     const ev = event as { type?: string; quiet?: boolean };
@@ -137,27 +204,55 @@ function RoomBody({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    // The header is `fixed`, so pad the flow content down past it
-    // (+ the iOS notch). On the chat tab the panel is fixed too, so the
-    // page itself must not scroll — lock it to the viewport.
-    <div
-      className={`flex flex-col pb-24 pt-[calc(env(safe-area-inset-top)+3.5rem)] ${
-        isChat ? "h-[100dvh] overflow-hidden" : "min-h-screen"
-      }`}
-    >
-      <PresenceBar />
-      {children}
-      {(isHome || isChat) && !composing && (
-        <FloatingReactionsLayer
-          code={code}
-          hideBarOnMobile={false}
-          // On the chat tab, ride above the pinned composer.
-          liftAboveComposer={isChat}
-        />
-      )}
-      {!composing && <RoomTabBar code={code} chatUnread={unread} />}
-    </div>
+    <RoomTabContext.Provider value={{ tab, setTab }}>
+      {/* The header is `fixed`, so pad the flow content down past it
+          (+ the iOS notch). On the chat tab the panel is fixed too, so
+          the page itself must not scroll — lock it to the viewport. */}
+      <div
+        className={`flex flex-col pb-24 pt-[calc(env(safe-area-inset-top)+3.5rem)] ${
+          isChat ? "h-[100dvh] overflow-hidden" : "min-h-screen"
+        }`}
+      >
+        <PresenceBar />
+        {/* <TabSync> + anything the route segment renders (no UI). */}
+        {children}
+
+        <TabPane show={isHome}>
+          <HomePanel />
+        </TabPane>
+        {visited.has("bingo") && (
+          <TabPane show={tab === "bingo"}>
+            <BingoCard />
+          </TabPane>
+        )}
+        {visited.has("vote") && (
+          <TabPane show={tab === "vote"}>
+            <VotePanel />
+          </TabPane>
+        )}
+        {/* Chat is `position:fixed` — it manages its own visibility. */}
+        {visited.has("chat") && <ChatPanel active={isChat} />}
+
+        {(isHome || isChat) && !composing && (
+          <FloatingReactionsLayer
+            code={code}
+            hideBarOnMobile={false}
+            // On the chat tab, ride above the pinned composer.
+            liftAboveComposer={isChat}
+          />
+        )}
+        {!composing && <RoomTabBar chatUnread={unread} />}
+      </div>
+    </RoomTabContext.Provider>
   );
+}
+
+// `display:contents` when shown → the child participates in RoomBody's
+// flex column exactly as if it were rendered inline; `display:none`
+// when hidden → fully out of layout but still mounted (effects, live
+// subscriptions and scroll position survive).
+function TabPane({ show, children }: { show: boolean; children: React.ReactNode }) {
+  return <div style={{ display: show ? "contents" : "none" }}>{children}</div>;
 }
 
 // Listen-only side-effect component: when the admin flips the active

@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
 import {
   Home,
@@ -10,69 +8,58 @@ import {
   ListChecks,
   type LucideProps,
 } from "lucide-react";
-import type { Route } from "next";
 import { useLang, t } from "@/lib/i18n";
+import { useRoomTab, type RoomTab } from "@/components/room-shell";
 
-// Bottom dock. Each tab is a real route; the active pill layoutId-
-// animates between them. Brand-gradient active state per tab so the
-// dock itself reads as ESC-coloured rather than monochrome white.
+// Bottom dock. Each tab switches the room's active panel in place —
+// pure state, no navigation. The active pill layoutId-animates between
+// tabs. Brand-gradient active state per tab so the dock itself reads as
+// ESC-coloured rather than monochrome white.
 type TabDef = {
-  href: (code: string) => Route;
+  id: RoomTab;
   labelKey: "tab_home" | "tab_chat" | "tab_bingo" | "tab_vote";
   Icon: React.ComponentType<LucideProps>;
   /** Tailwind gradient classes for the active pill bg. */
   gradient: string;
   /** Glow colour applied to the active icon's drop-shadow + the pill ring. */
   glow: string;
-  match: (pathname: string, code: string) => boolean;
 };
 
 const TABS: TabDef[] = [
   {
-    href: (code) => `/r/${code}` as Route,
+    id: "home",
     labelKey: "tab_home",
     Icon: Home,
     gradient: "from-flamingo via-fuchsia to-orange",
     glow: "shadow-[0_8px_22px_-6px_oklch(70%_0.27_336_/_0.65)]",
-    match: (p, code) => p === `/r/${code}`,
   },
   {
-    href: (code) => `/r/${code}/chat` as Route,
+    id: "chat",
     labelKey: "tab_chat",
     Icon: MessageCircle,
     gradient: "from-turquoise via-blue to-purple",
     glow: "shadow-[0_8px_22px_-6px_oklch(78%_0.13_190_/_0.55)]",
-    match: (p, code) => p.startsWith(`/r/${code}/chat`),
   },
   {
-    href: (code) => `/r/${code}/bingo` as Route,
+    id: "bingo",
     labelKey: "tab_bingo",
     Icon: Grid3x3,
     gradient: "from-purple via-fuchsia to-flamingo",
     glow: "shadow-[0_8px_22px_-6px_oklch(42%_0.20_295_/_0.65)]",
-    match: (p, code) => p.startsWith(`/r/${code}/bingo`),
   },
   {
-    href: (code) => `/r/${code}/vote` as Route,
+    id: "vote",
     labelKey: "tab_vote",
     Icon: ListChecks,
     gradient: "from-yellow via-orange to-fuchsia",
     glow: "shadow-[0_8px_22px_-6px_oklch(95%_0.19_108_/_0.55)]",
-    match: (p, code) => p.startsWith(`/r/${code}/vote`),
   },
 ];
 
-export function RoomTabBar({
-  code,
-  chatUnread = 0,
-}: {
-  code: string;
-  chatUnread?: number;
-}) {
-  const pathname = usePathname();
+export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
   const lang = useLang();
-  const activeIdx = TABS.findIndex((tab) => tab.match(pathname, code));
-  const active = TABS[Math.max(0, activeIdx)];
+  const { tab, setTab } = useRoomTab();
+  const active = TABS.find((t) => t.id === tab) ?? TABS[0];
 
   return (
     <nav
@@ -84,16 +71,17 @@ export function RoomTabBar({
         className="mx-auto max-w-md flex items-stretch justify-around gap-1
                    rounded-[28px] bg-black/55 ring-1 ring-white/10 p-1.5 backdrop-blur-md"
       >
-        {TABS.map(({ href, labelKey, Icon, gradient, glow, match }, i) => {
-          const isActive = match(pathname, code);
+        {TABS.map(({ id, labelKey, Icon, gradient, glow }) => {
+          const isActive = id === tab;
           const label = t(lang, labelKey);
           return (
-            <li key={i} className="flex-1">
-              <Link
-                href={href(code)}
+            <li key={id} className="flex-1">
+              <button
+                type="button"
+                onClick={() => setTab(id)}
                 aria-label={label}
                 aria-current={isActive ? "page" : undefined}
-                className="relative flex flex-col items-center justify-center gap-1
+                className="relative w-full flex flex-col items-center justify-center gap-1
                            py-2 rounded-[22px]"
               >
                 {isActive && (
@@ -133,7 +121,7 @@ export function RoomTabBar({
                 >
                   {label}
                 </span>
-              </Link>
+              </button>
             </li>
           );
         })}
