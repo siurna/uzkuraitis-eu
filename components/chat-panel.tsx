@@ -99,7 +99,9 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const dragDepth = useRef(0);
 
   const listRef = useRef<HTMLDivElement | null>(null);
-  const taRef = useRef<HTMLTextAreaElement | null>(null);
+  // The composer is a contentEditable <div> (an experiment — dodges the
+  // iOS keyboard accessory bar that <textarea>/<input> always get).
+  const taRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const didInitialScroll = useRef(false);
   const atBottomRef = useRef(true);
@@ -399,18 +401,10 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       () => updatePresence({ typing: false }),
       TYPING_OFF_MS,
     );
-    // auto-grow
-    const el = taRef.current;
-    if (el) {
-      el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
-    }
   };
   const clearTyping = () => {
     if (typingTimer.current) clearTimeout(typingTimer.current);
     updatePresence({ typing: false });
-    const el = taRef.current;
-    if (el) el.style.height = "auto";
   };
 
   const insertMention = (name: string) => {
@@ -891,15 +885,12 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           {/* Composer pill. No send button — Enter (or the keyboard's
               "send" key) sends. Photo + GIF sit on the right. */}
           <div className="flex items-end gap-1 rounded-2xl border border-white/15 bg-black/40 px-1.5 py-1.5 transition focus-within:border-white/30">
-            <textarea
-              ref={taRef}
-              rows={1}
+            <ContentEditableInput
+              innerRef={taRef}
               enterKeyHint="send"
               value={editing ? editBody : body}
-              onChange={(e) =>
-                editing
-                  ? setEditBody(e.target.value.slice(0, 2000))
-                  : onComposerChange(e.target.value)
+              onChange={(v) =>
+                editing ? setEditBody(v.slice(0, 2000)) : onComposerChange(v)
               }
               onPaste={editing ? undefined : onPaste}
               onKeyDown={(e) => {
@@ -919,9 +910,8 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                 window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: false }));
               }}
               placeholder={editing ? t(lang, "chat_edit_placeholder") : t(lang, "chat_placeholder")}
-              className="flex-1 min-w-0 max-h-[120px] resize-none bg-transparent border-0 px-1.5 py-2
-                         text-base leading-snug text-white placeholder:text-white/35 focus:outline-none"
-              maxLength={2000}
+              className="flex-1 min-w-0 max-h-[120px] overflow-y-auto bg-transparent px-1.5 py-2
+                         text-base leading-snug text-white whitespace-pre-wrap break-words focus:outline-none"
             />
             {!editing && (
               <div className="flex items-center gap-0.5 shrink-0">
@@ -966,5 +956,111 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       <GifPicker open={gifOpen} onClose={() => setGifOpen(false)} onPick={(url) => sendGif(url)} />
       <Lightbox url={lightbox} onClose={() => setLightbox(null)} closeLabel={t(lang, "close")} />
     </main>
+  );
+}
+
+// ── contentEditable composer ─────────────────────────────────────────
+// Experimental replacement for the <textarea>: a contentEditable <div>
+// doesn't get iOS Safari's "‹ › Done" keyboard accessory bar. We keep it
+// behaving like a plain-text field: paste is sanitised to plain text,
+// Shift+Enter inserts a single line break (not a nested <div>), the
+// length is clamped, and the DOM text is only written from the outside
+// when `value` changes from somewhere other than typing (send clears it,
+// edit-mode pre-fills it, @mention insert rewrites it). `data-empty`
+// drives the CSS placeholder (see globals.css).
+function ContentEditableInput({
+  value,
+  onChange,
+  onKeyDown,
+  onPaste,
+  onFocus,
+  onBlur,
+  placeholder,
+  className,
+  innerRef,
+  maxLength = 2000,
+  enterKeyHint,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
+  onPaste?: (e: React.ClipboardEvent<HTMLDivElement>) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  placeholder: string;
+  className?: string;
+  innerRef: React.RefObject<HTMLDivElement | null>;
+  maxLength?: number;
+  enterKeyHint?: React.HTMLAttributes<HTMLDivElement>["enterKeyHint"];
+}) {
+  const caretToEnd = (el: HTMLElement) => {
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    r.collapse(false);
+    const s = window.getSelection();
+    s?.removeAllRanges();
+    s?.addRange(r);
+  };
+
+  // Mirror external value changes into the DOM (no-op while typing, since
+  // `value` already equals the DOM text then).
+  useEffect(() => {
+    const el = innerRef.current;
+    if (!el) return;
+    const cur = el.innerText === "\n" ? "" : el.innerText;
+    if (cur !== value) {
+      el.innerText = value;
+      if (document.activeElement === el) caretToEnd(el);
+    }
+    el.toggleAttribute("data-empty", value.length === 0);
+  }, [value, innerRef]);
+
+  const readAndEmit = (el: HTMLElement) => {
+    let text = el.innerText;
+    if (text === "\n") text = "";
+    if (text.length > maxLength) {
+      text = text.slice(0, maxLength);
+      el.innerText = text;
+      caretToEnd(el);
+    }
+    el.toggleAttribute("data-empty", text.length === 0);
+    onChange(text);
+  };
+
+  return (
+    <div
+      ref={innerRef}
+      role="textbox"
+      aria-multiline="true"
+      contentEditable
+      suppressContentEditableWarning
+      data-placeholder={placeholder}
+      enterKeyHint={enterKeyHint}
+      onInput={(e) => readAndEmit(e.currentTarget)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && e.shiftKey) {
+          e.preventDefault();
+          document.execCommand("insertLineBreak");
+          return;
+        }
+        onKeyDown?.(e);
+      }}
+      onPaste={(e) => {
+        const hasImage = Array.from(e.clipboardData.items).some((i) =>
+          i.type.startsWith("image/"),
+        );
+        if (hasImage) {
+          if (onPaste) onPaste(e);
+          else e.preventDefault();
+          return;
+        }
+        e.preventDefault();
+        const txt = e.clipboardData.getData("text/plain");
+        if (txt) document.execCommand("insertText", false, txt);
+      }}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      className={className}
+    />
   );
 }
