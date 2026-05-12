@@ -212,6 +212,9 @@ const S = {
   bingo_generate:    { en: "New ticket", lt: "Nauja kortelė" },
   bingo_ticket:      { en: "Ticket", lt: "Kortelė" },
   bingo_remove_ticket: { en: "Remove this ticket", lt: "Pašalinti šią kortelę" },
+  bingo_remove_confirm: { en: "Remove this ticket?", lt: "Pašalinti šią kortelę?" },
+  bingo_remove_confirm_sub: { en: "This can't be undone.", lt: "To nebebus galima atšaukti." },
+  bingo_remove_confirm_body: { en: "The squares you've struck on this ticket will be lost. Your other tickets stay.", lt: "Šios kortelės pažymėti langeliai dings. Kitos tavo kortelės liks." },
 
   // ── Notifications ────────────────────────────────────────────────
   notifications:        { en: "Notifications", lt: "Pranešimai" },

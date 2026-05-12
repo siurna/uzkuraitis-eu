@@ -10,12 +10,10 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { toast } from "sonner";
-import {
-  useBroadcastEvent,
-  useEventListener,
-} from "@/lib/liveblocks";
 import { useRoomLive } from "@/components/room-shell";
 import { useIdentity } from "@/lib/use-identity";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { Button } from "@/components/ui/button";
 import {
   buildBingoCard,
   FREE_SQUARE,
@@ -45,32 +43,20 @@ function makeSeed(): string {
   return Math.random().toString(36).slice(2, 14);
 }
 
-type Ticker = { id: number; by: string; trope: string; bingo: boolean };
-
-// Hand-drawn "pen mark" variants stamped over a struck square — a
-// confident slash / X / tick / scribble in a viewBox 0..100. The path
-// + pen colour vary by cell position so the card looks marked-up by an
-// actual person, not CSS line-through. (The FREE centre never gets one.)
-const SCRIBBLES = [
-  "M19 27 L82 79 M82 22 L17 78",            // rough X
-  "M15 79 L85 21",                          // bold diagonal slash
-  "M20 51 L41 75 L83 25",                   // big checklist tick
-  "M16 38 L84 34 M16 60 L84 56",            // double strike-through
-  "M31 27 C14 45 27 81 53 73 C85 63 89 27 56 21 C46 19 41 30 49 41", // open loop
-];
-const PENS = ["#ef4444", "#2563eb", "#0d9488", "#c026d3", "#e11d48"];
+// One consistent strike mark: a clean X drawn in the brand rainbow.
+// The gradient is defined once (hidden <svg> at the top) and every
+// cell's X references it via stroke="url(#bingo-x)".
+const X_PATH = "M24 24 L76 76 M76 24 L24 76";
 
 export function BingoCard() {
   const { code } = useRoomLive();
   const lang = useLang();
-  const broadcast = useBroadcastEvent();
-
   const { name, avatarId, sessionId } = useIdentity();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [active, setActive] = useState(0);
   const [hydrated, setHydrated] = useState(false);
   const [scrambling, setScrambling] = useState(false);
-  const [tickers, setTickers] = useState<Ticker[]>([]);
+  const [removeOpen, setRemoveOpen] = useState(false);
 
   useEffect(() => {
     const session = sessionId();
@@ -90,6 +76,7 @@ export function BingoCard() {
       setTickets([{ id: makeId(), seed: session, struck: [] }]);
     }
     setHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
   useEffect(() => {
@@ -100,24 +87,6 @@ export function BingoCard() {
       /* private mode */
     }
   }, [tickets, hydrated, code]);
-
-  useEventListener(({ event }) => {
-    const ev = event as { type?: string };
-    if (ev.type !== "bingo:strike") return;
-    const e = event as { by: string; trope: string; bingo?: boolean };
-    setTickers((prev) =>
-      [...prev, { id: Date.now() + Math.random(), by: e.by, trope: e.trope, bingo: !!e.bingo }].slice(-6),
-    );
-  });
-
-  useEffect(() => {
-    if (tickers.length === 0) return;
-    const oldest = tickers[0];
-    const timer = window.setTimeout(() => {
-      setTickers((prev) => prev.filter((t) => t.id !== oldest.id));
-    }, 5000);
-    return () => window.clearTimeout(timer);
-  }, [tickers]);
 
   const currentTicket = tickets[active] ?? null;
   const card = useMemo(
@@ -139,9 +108,8 @@ export function BingoCard() {
           if (has) return { ...tk, struck };
 
           const wonNow = !tk.bingoFired && isBingo(buildBingoCard(tk.seed), new Set(struck));
-          const trope = getTrope(tropeIdx, lang);
-          broadcast({ type: "bingo:strike", by: name || "Someone", trope, bingo: wonNow });
           if (wonNow) {
+            const trope = getTrope(tropeIdx, lang);
             fetch(`/api/rooms/${code}/chat`, {
               method: "POST",
               headers: { "content-type": "application/json" },
@@ -159,28 +127,27 @@ export function BingoCard() {
         }),
       );
     },
-    [currentTicket, broadcast, name, lang, code],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentTicket, name, avatarId, lang, code],
   );
 
   const generate = useCallback(() => {
-    // Add the new (empty) ticket immediately and flip to it, then run
-    // the scramble. The cells render "?" first, spin through random
-    // icons, and lock in left-to-right / top-to-bottom — so it reads
-    // as the ticket "filling up", not a single pop.
+    // Add a new (empty) ticket, flip to it, scroll the freshly-spawned
+    // card into view, then run the scramble — the cells go "?" → spin →
+    // lock left-to-right / top-to-bottom so it reads as "filling up".
     const id = makeId();
     const seed = makeSeed();
     setTickets((prev) => [...prev, { id, seed, struck: [] }]);
     setActive((prev) => prev + 1);
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     setScrambling(true);
     window.setTimeout(() => setScrambling(false), 1800);
   }, []);
 
   const remove = useCallback((id: string) => {
-    setTickets((prev) => {
-      if (prev.length <= 1) return prev;
-      return prev.filter((t) => t.id !== id);
-    });
+    setTickets((prev) => (prev.length <= 1 ? prev : prev.filter((t) => t.id !== id)));
     setActive((a) => Math.max(0, a - 1));
+    setRemoveOpen(false);
   }, []);
 
   if (!hydrated || !currentTicket) {
@@ -198,37 +165,22 @@ export function BingoCard() {
   const struckCount = card.filter((tx) => tx === FREE_SQUARE || struckSet.has(tx)).length;
 
   return (
-    <main className="container mx-auto max-w-3xl px-4 py-4 flex-1 flex flex-col gap-3">
-      <h2 className="font-display text-2xl gradient-text text-balance">
-        {t(lang, "bingo_title")}
-      </h2>
+    <main className="container mx-auto max-w-3xl px-4 pt-4 pb-2 flex-1 flex flex-col gap-3">
+      {/* Brand-rainbow stroke for the strike X, defined once. */}
+      <svg width={0} height={0} className="absolute" aria-hidden>
+        <defs>
+          <linearGradient id="bingo-x" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0" stopColor="#f10d59" />
+            <stop offset="0.24" stopColor="#ff3ede" />
+            <stop offset="0.95" stopColor="#00d4cc" />
+          </linearGradient>
+        </defs>
+      </svg>
 
-      {/* Ticker (other voters' strikes) */}
-      <div className="min-h-[20px]">
-        <AnimatePresence initial={false}>
-          {tickers.slice(-3).map((tk) => (
-            <motion.p
-              key={tk.id}
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.25 }}
-              className={`text-xs leading-tight ${tk.bingo ? "text-flamingo" : "text-white/55"}`}
-            >
-              {tk.bingo ? (
-                <>🎉 <span className="font-display">{tk.by}</span> — {t(lang, "bingo_won")} ({tk.trope})</>
-              ) : (
-                <><span className="font-display">{tk.by}</span> → {tk.trope}</>
-              )}
-            </motion.p>
-          ))}
-        </AnimatePresence>
-      </div>
-
-      {/* Emoji grid — the "card". Just emoji; a scribble lands when struck.
-          overflow-x-clip keeps the slide-in/out contained sideways
-          without chopping the grid's last row. */}
-      <div className="relative overflow-x-clip">
+      {/* The card. The wrapper clips the ticket slide-in/out sideways;
+          the small -mx-2 px-2 gives the tiles' rings room so the edge
+          tiles aren't shaved by the clip. */}
+      <div className="relative overflow-x-clip -mx-2 px-2">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentTicket.id}
@@ -239,9 +191,9 @@ export function BingoCard() {
               if (info.offset.x < -60 && active < tickets.length - 1) setActive(active + 1);
               else if (info.offset.x > 60 && active > 0) setActive(active - 1);
             }}
-            initial={{ opacity: 0, x: 40 }}
+            initial={{ opacity: 0, x: 36 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
+            exit={{ opacity: 0, x: -36 }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className="grid grid-cols-5 gap-1.5 sm:gap-2 touch-pan-y"
           >
@@ -292,8 +244,7 @@ export function BingoCard() {
       )}
 
       {/* The readable list — full trope text, checklist style. Tapping a
-          row toggles the same square. Mobile-readable, unlike 10px text
-          crammed into a tile. */}
+          row toggles the same square. */}
       <section className="flex flex-col gap-2 pt-1">
         <div className="flex items-baseline justify-between gap-3 px-1">
           <h3 className="font-display text-sm uppercase tracking-[0.18em] text-white/55">
@@ -363,13 +314,38 @@ export function BingoCard() {
         {tickets.length > 1 && (
           <button
             type="button"
-            onClick={() => remove(currentTicket.id)}
+            onClick={() => setRemoveOpen(true)}
             className="px-3.5 h-9 rounded-2xl text-xs text-white/45 hover:text-error hover:bg-error/10 transition"
           >
             {t(lang, "bingo_remove_ticket")}
           </button>
         )}
       </div>
+
+      {/* Delete-ticket confirmation. */}
+      <BottomSheet
+        open={removeOpen}
+        onClose={() => setRemoveOpen(false)}
+        title={t(lang, "bingo_remove_confirm")}
+        sub={t(lang, "bingo_remove_confirm_sub")}
+        footer={
+          <>
+            <Button type="button" variant="ghost" onClick={() => setRemoveOpen(false)} className="text-white/70">
+              {t(lang, "cancel")}
+            </Button>
+            <div className="flex-1" />
+            <Button
+              type="button"
+              onClick={() => remove(currentTicket.id)}
+              className="bg-error text-white hover:bg-error/90 rounded-2xl"
+            >
+              {t(lang, "bingo_remove_ticket")}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-white/60 leading-relaxed">{t(lang, "bingo_remove_confirm_body")}</p>
+      </BottomSheet>
     </main>
   );
 }
@@ -404,8 +380,6 @@ function Cell({
       setLocked(true);
       return;
     }
-    // "?" first → spin random icons → lock to the real one, staggered
-    // by cell index so the ticket fills in left-to-right, top-to-bottom.
     setLocked(false);
     setScrambleEmoji(null);
     const startSpin = 200 + index * 26;
@@ -426,8 +400,6 @@ function Cell({
     };
   }, [scrambling, isFree, index]);
 
-  const scribble = SCRIBBLES[index % SCRIBBLES.length];
-  const pen = PENS[(index * 3 + 1) % PENS.length];
   const shown = locked ? emoji : scrambleEmoji ?? "?";
 
   return (
@@ -440,7 +412,7 @@ function Cell({
       transition={{ duration: 0.22, delay: index * 0.012, ease: [0.22, 1, 0.36, 1] }}
       className={`relative aspect-square rounded-2xl grid place-items-center
                   text-[1.7rem] sm:text-4xl select-none
-                  transition transform-gpu duration-150 active:scale-[0.95] focus-visible:outline-none
+                  transition-colors transform-gpu duration-150 active:scale-[0.95] focus-visible:outline-none
                   ${
                     isFree
                       ? "bg-flamingo/15 ring-1 ring-flamingo/40"
@@ -453,19 +425,19 @@ function Cell({
         // The brand heart sits in the centre square — never crossed out.
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src="/images/70-heart-sm.webp"
+          src="/images/70-heart-2x.webp"
           alt=""
-          className="h-9 w-9 sm:h-12 sm:w-12 object-contain heartbeat-loop"
+          className="h-[68%] w-[68%] object-contain heartbeat-loop"
         />
       ) : (
         <span className={isStruck ? "opacity-40 grayscale" : ""}>{shown}</span>
       )}
 
-      {/* Hand-drawn pen mark over a struck square (centre square exempt). */}
+      {/* The single rainbow X over a struck square (centre square exempt). */}
       <AnimatePresence>
         {isStruck && !isFree && (
           <motion.svg
-            key="scribble"
+            key="x"
             viewBox="0 0 100 100"
             className="pointer-events-none absolute inset-0 h-full w-full"
             initial={{ opacity: 0 }}
@@ -473,16 +445,15 @@ function Cell({
             exit={{ opacity: 0 }}
           >
             <motion.path
-              d={scribble}
+              d={X_PATH}
               fill="none"
-              stroke={pen}
-              strokeWidth={7.5}
+              stroke="url(#bingo-x)"
+              strokeWidth={9}
               strokeLinecap="round"
-              strokeLinejoin="round"
               initial={{ pathLength: 0 }}
               animate={{ pathLength: 1 }}
-              transition={{ duration: 0.32, ease: "easeOut" }}
-              style={{ filter: "drop-shadow(0 1px 1.5px rgba(0,0,0,0.4))" }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }}
             />
           </motion.svg>
         )}
