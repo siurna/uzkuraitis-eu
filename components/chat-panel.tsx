@@ -658,11 +658,16 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     // Sized to the visual viewport: `top` = its offset, `height` = its
     // height (minus the dock unless the keyboard's up). So the panel's
     // bottom edge is exactly the top of the keyboard — composer flush, no
-    // gap. `pt-…` clears the fixed header. Hidden (kept mounted, scroll +
-    // state intact) when off the chat tab.
+    // gap. `pt-…` clears the fixed header — but when the composer's
+    // focused the header is hidden (see RoomBody), so don't reserve its
+    // space (otherwise there's an empty strip up top). Hidden (kept
+    // mounted, scroll + state intact) when off the chat tab.
     <main
-      className="fixed inset-x-0 z-10 flex justify-center px-3 sm:px-4
-                 pt-[calc(env(safe-area-inset-top)+3.5rem)]"
+      className={`fixed inset-x-0 z-10 flex justify-center px-3 sm:px-4 ${
+        composerFocused
+          ? "pt-[env(safe-area-inset-top)]"
+          : "pt-[calc(env(safe-area-inset-top)+3.5rem)]"
+      }`}
       style={{
         top: viewport?.top ?? 0,
         height: viewport
@@ -878,7 +883,8 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           )}
 
           {(replyTo || editing) && (
-            <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] ring-1 ring-white/10 text-xs">
+            // Sits on the right — it's about your (right-aligned) message.
+            <div className="mb-2 ml-auto max-w-[85%] flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] ring-1 ring-white/10 text-xs">
               {editing ? (
                 <>
                   <Pencil className="h-3.5 w-3.5 text-flamingo" />
@@ -1056,6 +1062,7 @@ function ContentEditableInput({
       suppressContentEditableWarning
       data-placeholder={placeholder}
       enterKeyHint={enterKeyHint}
+      autoCapitalize="sentences"
       onInput={(e) => readAndEmit(e.currentTarget)}
       onKeyDown={(e) => {
         if (e.key === "Enter" && e.shiftKey) {
