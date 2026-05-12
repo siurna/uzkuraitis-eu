@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLang, t } from "@/lib/i18n";
 
 // Bottom-sheet drawer, shared by NameGate, SettingsModal, CountryDrawer,
 // and anything else that wants the same iOS-style slide-up overlay.
@@ -45,6 +46,7 @@ export function BottomSheet({
   dismissible?: boolean;
   contentClassName?: string;
 }) {
+  const lang = useLang();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -70,7 +72,7 @@ export function BottomSheet({
           <motion.button
             key="backdrop"
             type="button"
-            aria-label="Close"
+            aria-label={t(lang, "close")}
             onClick={dismissible ? onClose : undefined}
             disabled={!dismissible}
             initial={{ opacity: 0 }}
@@ -108,7 +110,7 @@ export function BottomSheet({
                   <button
                     type="button"
                     onClick={onClose}
-                    aria-label="Close"
+                    aria-label={t(lang, "close")}
                     className="text-white/50 hover:text-white p-1 -m-1 transition"
                   >
                     <X className="h-5 w-5" />

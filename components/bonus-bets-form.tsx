@@ -128,8 +128,8 @@ export function BonusBetsForm({
       />
       {home && (
         <CountryDrawer
-          title={`12 from ${home.name} to`}
-          sub={`Pick the country you think ${home.name} will award 12 points to. Exact +5.`}
+          title={fmt(t(lang, "bet_lt_12_to"), { home: homeName })}
+          sub={fmt(t(lang, "bet_lt_12_to_sub"), { home: homeName })}
           open={drawerKey === "lt12To"}
           onClose={() => setDrawerKey(null)}
           selected={bets.lt12To ? [bets.lt12To] : []}
@@ -137,8 +137,8 @@ export function BonusBetsForm({
         />
       )}
       <CountryDrawer
-        title="Highest-placed Big 5"
-        sub="Of UK, Germany, France, Italy, Spain — which finishes best? +3."
+        title={t(lang, "bet_big5")}
+        sub={t(lang, "bet_big5_sub")}
         open={drawerKey === "highestBig5"}
         onClose={() => setDrawerKey(null)}
         selected={bets.highestBig5 ? [bets.highestBig5] : []}
@@ -148,8 +148,8 @@ export function BonusBetsForm({
         options={BIG_5 as readonly string[]}
       />
       <CountryDrawer
-        title="Jury winner"
-        sub="Country that wins the jury vote. Exact +5."
+        title={t(lang, "bet_jury_winner")}
+        sub={t(lang, "bet_jury_winner_sub")}
         open={drawerKey === "juryWinner"}
         onClose={() => setDrawerKey(null)}
         selected={bets.juryWinner ? [bets.juryWinner] : []}
@@ -158,8 +158,8 @@ export function BonusBetsForm({
         }
       />
       <CountryDrawer
-        title="Televote winner"
-        sub="Country that wins the public televote. Exact +5."
+        title={t(lang, "bet_televote_winner")}
+        sub={t(lang, "bet_televote_winner_sub")}
         open={drawerKey === "televoteWinner"}
         onClose={() => setDrawerKey(null)}
         selected={bets.televoteWinner ? [bets.televoteWinner] : []}
@@ -168,8 +168,8 @@ export function BonusBetsForm({
         }
       />
       <CountryDrawer
-        title="Nul points (televote)"
-        sub="Pick any number of countries you think get zero from the public. Add 'No country' if you think nobody does. +4 per correct, max +12."
+        title={t(lang, "bet_nul")}
+        sub={t(lang, "bet_nul_sub")}
         open={drawerKey === "nulTelevote"}
         onClose={() => setDrawerKey(null)}
         selected={bets.nulTelevote ?? []}

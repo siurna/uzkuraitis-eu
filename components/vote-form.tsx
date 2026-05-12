@@ -431,7 +431,7 @@ export function VoteForm({
                                    caret-flamingo focus:border-flamingo focus:outline-none
                                    focus:ring-2 focus:ring-flamingo/40 transition"
                       />
-                      <span className="text-sm text-white/40">/ {countries.length} finalists</span>
+                      <span className="text-sm text-white/40">/ {countries.length} {t(lang, "finalists")}</span>
                     </div>
                   </section>
                 )}
@@ -505,12 +505,8 @@ export function VoteForm({
           the country currently in the slot being edited (so swap is
           a no-op tap if you change your mind). */}
       <CountryDrawer
-        title={
-          pickingPoints != null
-            ? `Pick the country for ${pickingPoints} points`
-            : ""
-        }
-        sub="Tap to assign. Changes auto-swap if the country is already in another slot."
+        title={pickingPoints != null ? t(lang, "ballot_pick_for", pickingPoints) : ""}
+        sub={t(lang, "ballot_pick_hint")}
         open={pickingPoints != null}
         onClose={() => setPickingPoints(null)}
         selected={
@@ -716,7 +712,7 @@ function BallotSlotInner({
         {...attributes}
         {...listeners}
         role="button"
-        aria-label="Drag to reorder"
+        aria-label={t(lang, "aria_drag_reorder")}
         className="flex items-center gap-3 pl-2.5 pr-1 py-3 cursor-grab
                    active:cursor-grabbing touch-none select-none"
       >
@@ -808,7 +804,7 @@ function BallotSlotInner({
           type="button"
           onClick={onClear}
           className="text-white/40 hover:text-error transition px-3"
-          aria-label="Clear slot"
+          aria-label={t(lang, "clear")}
         >
           <X className="h-4 w-4" />
         </button>

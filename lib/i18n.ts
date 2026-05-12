@@ -300,7 +300,13 @@ const S = {
   skip_short:            { en: "—", lt: "—" },
   max_pts:               { en: (n: number) => `max +${n}`, lt: (n: number) => `iki +${n}` },
   no_country:            { en: "No country", lt: "Nė viena" },
+  no_country_sub:        { en: "Nobody scores zero from the public.", lt: "Niekas negauna nulio iš žiūrovų." },
   selected_count:        { en: (n: number) => `${n} selected`, lt: (n: number) => `pasirinkta ${n}` },
+  country_search:        { en: "Search country, artist or song", lt: "Ieškoti šalies, atlikėjo ar dainos" },
+  finalists:             { en: "finalists", lt: "finalistai" },
+  ballot_pick_for:       { en: (pts: number) => `Pick the country for ${pts} points`, lt: (pts: number) => `Pasirink šalį ${pts} taškams` },
+  ballot_pick_hint:      { en: "Tap to assign — it'll auto-swap if the country is already in another slot.", lt: "Bakstelėk priskirti — jei šalis jau kitur, bus apsikeista." },
+  aria_drag_reorder:     { en: "Drag to reorder", lt: "Vilk perstumti" },
 
   // ── Leaderboard ──────────────────────────────────────────────────
   leaderboard:       { en: "Leaderboard", lt: "Lyderiai" },

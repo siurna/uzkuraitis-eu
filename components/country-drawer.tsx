@@ -120,7 +120,7 @@ export function CountryDrawer({
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search country, artist, or song"
+            placeholder={t(lang, "country_search")}
             className="h-11 pl-9"
           />
         </div>
@@ -129,7 +129,7 @@ export function CountryDrawer({
           {allowNone && (
             <DrawerRow
               label={t(lang, "no_country")}
-              sub="Nobody scores zero from the public."
+              sub={t(lang, "no_country_sub")}
               flag={null}
               selected={isSelected(NONE_TOKEN)}
               onClick={() => toggle(NONE_TOKEN)}

@@ -139,7 +139,7 @@ export function PresenceBar() {
         <button
           type="button"
           onClick={() => setSettingsOpen(true)}
-          aria-label="Settings"
+          aria-label={t(lang, "settings")}
           className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-full
                      hover:bg-white/[0.04] transition group"
         >

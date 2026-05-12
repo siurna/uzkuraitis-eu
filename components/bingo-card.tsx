@@ -247,7 +247,7 @@ export function BingoCard() {
             disabled={active === 0}
             onClick={() => setActive((a) => Math.max(0, a - 1))}
             className="h-9 w-9 rounded-full grid place-items-center bg-white/[0.04] ring-1 ring-white/10 disabled:opacity-30 hover:bg-white/[0.08] transition"
-            aria-label="Previous ticket"
+            aria-label={t(lang, "back")}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -259,7 +259,7 @@ export function BingoCard() {
             disabled={active >= tickets.length - 1}
             onClick={() => setActive((a) => Math.min(tickets.length - 1, a + 1))}
             className="h-9 w-9 rounded-full grid place-items-center bg-white/[0.04] ring-1 ring-white/10 disabled:opacity-30 hover:bg-white/[0.08] transition"
-            aria-label="Next ticket"
+            aria-label={t(lang, "next")}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
