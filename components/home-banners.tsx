@@ -91,8 +91,13 @@ const BINGO_PREVIEW = buildBingoCard("uzk-home-preview")
   .slice(0, 9);
 const BINGO_PREVIEW_STRUCK = new Set([0, 4, 8]);
 
+// Denominator for the now-playing progress bar — grand-final size.
+// (Our `countries` list is all participants, not just finalists, so a
+// fixed constant is the honest call here.)
+const GRAND_FINAL_ACTS = 26;
+
 export function HomeBanners() {
-  const { code, votingEnabled, tallyEnabled, nowPlayingCode, showStatus } = useRoomLive();
+  const { code, votingEnabled, tallyEnabled, nowPlayingCode, showStatus, runningOrderPos } = useRoomLive();
   const lang = useLang();
   const { setTab } = useRoomTab();
   const [voted, setVoted] = useState(false);
@@ -125,7 +130,9 @@ export function HomeBanners() {
   return (
     <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">
       {/* 1 — who's on stage right now (the hero) */}
-      {playing && <PlayingCard country={playing} lang={lang} onOpen={() => setTab("chat")} />}
+      {playing && (
+        <PlayingCard country={playing} lang={lang} pos={runningOrderPos} onOpen={() => setTab("chat")} />
+      )}
 
       {/* 2 — voting (turquoise/blue) */}
       {votingEnabled && (
@@ -216,14 +223,25 @@ export function HomeBanners() {
 function PlayingCard({
   country,
   lang,
+  pos,
   onOpen,
 }: {
   country: NonNullable<ReturnType<typeof getCountry>>;
   lang: "en" | "lt";
+  pos: number | null;
   onOpen: () => void;
 }) {
   const [c1, c2] = countryColors(country.code);
   const photo = participantPhoto(country.code);
+  const prog = pos != null ? Math.min(pos / GRAND_FINAL_ACTS, 1) : null;
+  const eyebrow =
+    pos != null ? `${t(lang, "now_playing")} · ${pos} / ${GRAND_FINAL_ACTS}` : t(lang, "now_playing");
+  const progressBar =
+    prog != null ? (
+      <div className="absolute inset-x-0 bottom-0 h-[3px] bg-white/12">
+        <div className="h-full bg-gradient-to-r from-flamingo to-fuchsia" style={{ width: `${prog * 100}%` }} />
+      </div>
+    ) : null;
 
   if (photo) {
     return (
@@ -248,7 +266,7 @@ function PlayingCard({
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-[10px] uppercase tracking-[0.32em] text-white/85 font-display leading-tight mb-0.5 drop-shadow">
-                {t(lang, "now_playing")}
+                {eyebrow}
               </p>
               <p className="font-display text-2xl text-white leading-tight truncate drop-shadow">
                 {countryName(country.code, lang)}
@@ -270,6 +288,7 @@ function PlayingCard({
             </div>
             <MessageCircle className="h-5 w-5 text-white/80 shrink-0 mb-1" />
           </div>
+          {progressBar}
         </div>
       </button>
     );
@@ -294,7 +313,7 @@ function PlayingCard({
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] uppercase tracking-[0.32em] text-white font-display leading-tight mb-1 drop-shadow">
-              {t(lang, "now_playing")}
+              {eyebrow}
             </p>
             <p className="font-display text-2xl text-white leading-tight truncate drop-shadow">
               {countryName(country.code, lang)}
@@ -306,6 +325,7 @@ function PlayingCard({
           </div>
           <MessageCircle className="h-5 w-5 text-dark-blue-200 shrink-0" />
         </div>
+        {progressBar}
       </div>
     </button>
   );

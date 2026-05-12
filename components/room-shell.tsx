@@ -39,6 +39,8 @@ type RoomLive = {
   homeCountryCode: string;
   nowPlayingCode: string | null;
   showStatus: ShowStatus;
+  /** 1-based act position in the running order (e.g. 12 of 26), or null. */
+  runningOrderPos: number | null;
 };
 
 const RoomLiveContext = createContext<RoomLive | null>(null);
@@ -79,6 +81,7 @@ export function RoomShell({
   homeCountryCode,
   nowPlayingCode = null,
   showStatus = "not_started",
+  runningOrderPos = null,
   children,
 }: {
   code: string;
@@ -89,6 +92,7 @@ export function RoomShell({
   // strip render in their final state on first paint — no content shift.
   nowPlayingCode?: string | null;
   showStatus?: string;
+  runningOrderPos?: number | null;
   children: React.ReactNode;
 }) {
   useEffect(() => {
@@ -113,6 +117,7 @@ export function RoomShell({
             homeCountryCode,
             nowPlayingCode,
             showStatus: (showStatus ?? "not_started") as ShowStatus,
+            runningOrderPos,
           }}
         >
           <ParticleLayer>
@@ -326,6 +331,7 @@ function RoomLiveProvider({
         homeCountryCode: string;
         nowPlayingCode: string | null;
         showStatus?: ShowStatus;
+        runningOrderPos?: number | null;
       };
       setState({
         code: data.code,
@@ -335,6 +341,7 @@ function RoomLiveProvider({
         homeCountryCode: data.homeCountryCode ?? initial.homeCountryCode,
         nowPlayingCode: data.nowPlayingCode ?? null,
         showStatus: data.showStatus ?? "not_started",
+        runningOrderPos: data.runningOrderPos ?? null,
       });
     } catch {
       /* network blips don't kill us */

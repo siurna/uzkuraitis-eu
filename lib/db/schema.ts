@@ -38,6 +38,10 @@ export const rooms = pgTable(
     // header + tabs depending on the value. "not_started" → "in_progress"
     // → "break" → "ended" → "not_started" (next semi/final).
     showStatus: text("show_status").notNull().default("not_started"),
+    // 1-based position of the current act in the running order (e.g. 12
+    // of 26). Admin-set alongside now-playing; powers the progress bar on
+    // the now-playing hero. NULL = unknown / not tracking.
+    runningOrderPos: integer("running_order_pos"),
     // Long random token granting per-room admin rights. Anyone with the
     // token can manage *this* room (rename, toggle voting, edit results,
     // change the join code) without a global passkey. Generated on room

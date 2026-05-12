@@ -20,5 +20,6 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     homeCountryCode: room.homeCountryCode,
     nowPlayingCode: room.nowPlayingCode,
     showStatus: room.showStatus,
+    runningOrderPos: room.runningOrderPos,
   });
 }
