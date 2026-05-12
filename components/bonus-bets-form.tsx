@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { ChevronRight } from "lucide-react";
 import { Flag, HeartFlag } from "@/components/flag";
 import { CountryDrawer } from "@/components/country-drawer";
-import { countries, getCountry } from "@/lib/countries";
+import { getCountry, countryName } from "@/lib/countries";
 import { BIG_5, HOST_COUNTRY, type Bets } from "@/lib/scoring";
 import { useLang, t, fmt } from "@/lib/i18n";
 
@@ -25,10 +25,9 @@ export function BonusBetsForm({
   onChange: (next: Bets) => void;
 }) {
   const home = getCountry(homeCountryCode);
-  const host = getCountry(HOST_COUNTRY);
   const lang = useLang();
-  const homeName = home?.name ?? "Home";
-  const hostName = host?.name ?? "Host";
+  const homeName = countryName(homeCountryCode, lang);
+  const hostName = countryName(HOST_COUNTRY, lang);
 
   // Track which row's drawer is open via a discriminated key.
   const [drawerKey, setDrawerKey] = useState<keyof Bets | null>(null);
@@ -256,19 +255,20 @@ function CountryRow({
   value: string | null;
   onOpen: () => void;
 }) {
+  const lang = useLang();
   const c = value && value !== NONE_TOKEN ? getCountry(value) : null;
   return (
     <RowFrame asButton onOpen={onOpen}>
       <HeaderText label={label} sub={sub} max={max} />
       <div className="flex items-center gap-1.5 shrink-0">
         {c ? (
-          <HeartFlag code={c.code} name={c.name} size="sm" />
+          <HeartFlag code={c.code} name={countryName(c.code, lang)} size="sm" />
         ) : value === NONE_TOKEN ? (
           <span className="text-xs font-display text-white/80 px-3 py-1 rounded-full bg-white/10">
-            No country
+            {t(lang, "no_country")}
           </span>
         ) : (
-          <span className="text-xs text-white/35 italic">pick</span>
+          <span className="text-xs text-white/35 italic">{t(lang, "tap_to_pick")}</span>
         )}
         <ChevronRight className="h-4 w-4 text-white/25" />
       </div>
@@ -287,30 +287,26 @@ function MultiCountryRow({
   value: string[];
   onOpen: () => void;
 }) {
+  const lang = useLang();
   const picks = value.filter(Boolean);
   return (
     <RowFrame asButton onOpen={onOpen}>
       <HeaderText label={label} sub={sub} max={12} />
       <div className="flex items-center gap-2 shrink-0">
         {picks.length === 0 ? (
-          <span className="text-xs text-white/40 italic">tap to pick</span>
+          <span className="text-xs text-white/40 italic">{t(lang, "tap_to_pick")}</span>
         ) : (
           <span className="flex items-center -space-x-1.5 max-w-[6rem]">
             {picks.slice(0, 4).map((code) =>
               code === NONE_TOKEN ? (
                 <span
                   key={code}
-                  className="h-5 w-7 grid place-items-center rounded-[3px] bg-white/15 text-[10px] uppercase tracking-widest text-white/70 border border-dark-blue-900"
+                  className="h-5 w-7 grid place-items-center rounded-[3px] bg-white/15 text-[10px] uppercase tracking-widest text-white/70"
                 >
                   —
                 </span>
               ) : (
-                <Flag
-                  key={code}
-                  code={code}
-                  size="sm"
-                  className="ring-2 ring-dark-blue-900"
-                />
+                <Flag key={code} code={code} size="sm" />
               ),
             )}
             {picks.length > 4 && (
@@ -409,13 +405,10 @@ function NumberRow({
           onChange(Math.max(0, Math.min(1000, Math.round(n))));
         }}
         placeholder="?"
-        className="h-11 w-16 shrink-0 rounded-xl bg-black/40 ring-1 ring-white/10
-                   text-center font-display text-xl tabular-nums text-white
-                   caret-flamingo focus:ring-flamingo focus:outline-none transition"
+        className="h-11 w-16 shrink-0 rounded-xl border border-white/15 bg-black/30
+                   text-center font-display text-xl tabular-nums text-white caret-flamingo
+                   focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 transition"
       />
     </RowFrame>
   );
 }
-
-// Suppress unused warning if a future bet drops countries dependency.
-void countries;

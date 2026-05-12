@@ -102,11 +102,6 @@ export function PresenceBar() {
               )}
             </AnimatePresence>
           </div>
-          {playing && (
-            <span className="mt-0.5 text-[8px] leading-none font-display tabular-nums text-white/45">
-              #{playing.order}
-            </span>
-          )}
           </div>
           <div className="min-w-0 flex flex-col leading-tight">
             <AnimatePresence mode="wait" initial={false}>

@@ -17,7 +17,7 @@ import { createPortal } from "react-dom";
 import {
   SortableContext,
   arrayMove,
-  rectSortingStrategy,
+  verticalListSortingStrategy,
   sortableKeyboardCoordinates,
   useSortable,
 } from "@dnd-kit/sortable";
@@ -300,7 +300,7 @@ export function VoteForm({
       if (isUpdate) {
         toast.success(t(lang, "vote_updated_toast"));
       } else {
-        toast.success(t(lang, "voted_toast"));
+        // The confirmation drawer is the celebration — no toast on top.
         setShowCongrats(true);
       }
     } catch (err) {
@@ -332,8 +332,8 @@ export function VoteForm({
   };
 
   return (
-    <main className="flex-1 flex flex-col pb-12">
-      <div className="container mx-auto max-w-3xl px-4 pt-5 pb-6 flex flex-col gap-5">
+    <main className="flex flex-col">
+      <div className="container mx-auto max-w-3xl px-4 pt-5 pb-4 flex flex-col gap-5">
         {/* Ballot / Bets / Rules toggle, inline at the top of the body. */}
         <div className="flex justify-center">
           <div className="inline-flex items-center gap-1 rounded-2xl bg-black/40 ring-1 ring-white/10 p-1">
@@ -380,12 +380,9 @@ export function VoteForm({
           >
             {tab === "ballot" && (
               <section className="flex flex-col gap-3">
-                <div className="flex items-baseline justify-between gap-3 px-1">
-                  <h2 className="font-display text-xl gradient-text">{t(lang, "your_top_10")}</h2>
-                  <p className="text-xs text-white/40">{t(lang, "drag_hint")}</p>
-                </div>
+                <h2 className="font-display text-xl gradient-text px-1">{t(lang, "your_top_10")}</h2>
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-                  <SortableContext items={slots.map((s) => `slot-${s.points}`)} strategy={rectSortingStrategy}>
+                  <SortableContext items={slots.map((s) => `slot-${s.points}`)} strategy={verticalListSortingStrategy}>
                     <ul className="flex flex-col gap-2">
                       {slots.map((slot) => (
                         <BallotSlot
@@ -399,6 +396,19 @@ export function VoteForm({
                     </ul>
                   </SortableContext>
                 </DndContext>
+                {hasCast && voterId && (
+                  <button
+                    type="button"
+                    onClick={shareTop10}
+                    className="flex items-center justify-center gap-2 w-full rounded-2xl py-3
+                               bg-white/[0.05] ring-1 ring-white/10 hover:bg-white/[0.09]
+                               transition transform-gpu duration-150 active:scale-[0.99]
+                               font-display text-sm"
+                  >
+                    <Share2 className="h-4 w-4 text-white/70" />
+                    {t(lang, "share_picks")}
+                  </button>
+                )}
               </section>
             )}
 
@@ -455,13 +465,13 @@ export function VoteForm({
       {/* Bottom action area. The ballot auto-casts when full, so there's
           no submit button — only a Save button once the cast vote has
           been reordered (or a manual retry if the auto-cast failed). */}
-      <div className="container mx-auto max-w-3xl px-4 pb-10 flex flex-col gap-2">
-        {!hasCast && !allFilled && (
+      <div className="container mx-auto max-w-3xl px-4 pb-4 flex flex-col gap-2">
+        {tab === "ballot" && !hasCast && !allFilled && (
           <p className="text-sm text-white/45 text-center">
             {t(lang, "pick_n_more", 10 - filledCount)}
           </p>
         )}
-        {!hasCast && allFilled && casting && (
+        {tab === "ballot" && !hasCast && allFilled && casting && (
           <p className="text-sm text-white/55 text-center">{t(lang, "submitting")}</p>
         )}
         {!hasCast && allFilled && autoCastFailed && (
@@ -691,12 +701,18 @@ function BallotSlotInner({
       ref={setNodeRef}
       style={{
         transform: CSS.Transform.toString(transform),
-        transition,
+        // Kill the transform-transition while this row is the one under
+        // the finger — otherwise every pointer move eases over ~200ms
+        // and the drag feels laggy/floaty. Displaced rows keep it (the
+        // smooth "make room" slide).
+        transition: isDragging ? "none" : transition,
         opacity: isDragging ? 0.7 : 1,
+        position: "relative",
+        zIndex: isDragging ? 1 : undefined,
       }}
       // min-h pre-allocates the picked-state height so the row doesn't
       // jump taller the moment a country is chosen.
-      className={`group flex items-stretch rounded-2xl min-h-[4.75rem] transition
+      className={`group flex items-stretch rounded-2xl min-h-[4.75rem] transition-colors
                   hover:ring-white/20
                   ${
                     country && isTop
@@ -759,11 +775,7 @@ function BallotSlotInner({
         className="flex flex-1 items-center gap-3 px-1 py-3 min-w-0 text-left
                    transition transform-gpu duration-150
                    active:scale-[0.99]"
-        aria-label={
-          country
-            ? `Change ${slot.points} pts pick`
-            : `Pick ${slot.points} pts country`
-        }
+        aria-label={t(lang, "ballot_pick_for", slot.points)}
       >
         <AnimatePresence mode="wait" initial={false}>
           {country ? (
