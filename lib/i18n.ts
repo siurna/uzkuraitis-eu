@@ -129,6 +129,23 @@ const S = {
   tab_bingo:         { en: "Bingo", lt: "Bingo" },
   tab_vote:          { en: "Vote", lt: "Balsuok" },
 
+  // ── Home banners (context-aware shortcuts) ───────────────────────
+  home_now_playing_sub: { en: "Tap to see the artist & song", lt: "Bakstelėk — atlikėjas ir daina" },
+  home_vote_open:      { en: "Voting is open — cast your TOP 10", lt: "Balsavimas atidarytas — užfiksuok TOP 10" },
+  home_vote_open_sub:  { en: "Lines won't be open forever — get it in.", lt: "Linijos neilgai bus atviros — spėk." },
+  home_vote_done:      { en: "Your vote's in — reorder it anytime", lt: "Tavo balsas užfiksuotas — pertvarkyk bet kada" },
+  home_vote_done_sub:  { en: "Place bets, share your TOP 10, or tweak.", lt: "Statyk lažybas, pasidalink TOP 10 ar pakeisk." },
+  home_results:        { en: "Results are in", lt: "Rezultatai jau čia" },
+  home_results_sub:    { en: "See your score and the full breakdown", lt: "Pažiūrėk savo rezultatą ir visą išskaidymą" },
+  home_bingo_sub:      { en: "Tick off the clichés as they happen", lt: "Žymėk klišes, kai jos įvyksta" },
+  home_bingo_progress: { en: (n: number) => `${n} / 25 ticked`, lt: (n: number) => `pažymėta ${n} / 25` },
+  home_chat:           { en: "Jump into the chat", lt: "Šok į pokalbį" },
+  home_chat_sub:       { en: "React, reply, send GIFs & photos", lt: "Reaguok, atsakyk, siųsk GIF ir nuotraukas" },
+  home_status_not_started: { en: "Doors are open — the show hasn't started", lt: "Durys atvertos — šou dar neprasidėjo" },
+  home_status_in_progress: { en: "The show is live 🟢", lt: "Šou vyksta tiesiogiai 🟢" },
+  home_status_break:   { en: "Interval break ⏸", lt: "Pertrauka ⏸" },
+  home_status_ended:   { en: "Performances are over — time to vote 🏁", lt: "Pasirodymai baigti — laikas balsuoti 🏁" },
+
   // ── Chat ─────────────────────────────────────────────────────────
   chat_empty:        { en: "No messages yet. Say hi 👋", lt: "Dar nieks nieko nerašė. Sveikink pirmas 👋" },
   chat_placeholder:  { en: "Message the room…", lt: "Rašyk kambariui…" },

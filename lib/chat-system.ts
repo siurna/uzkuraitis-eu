@@ -24,7 +24,7 @@ export async function postSystemMessage(
         body,
       })
       .returning({ id: chatMessages.id });
-    await broadcastToRoom(roomCode, { type: "chat:new", id: row.id });
+    await broadcastToRoom(roomCode, { type: "chat:new", id: row.id, quiet: true });
   } catch {
     /* a missing announcement is not worth a 500 */
   }
@@ -55,7 +55,7 @@ export async function postNowPlayingMessage(
         meta: { code: countryCode, artist: c?.artist ?? null, song: c?.song ?? null },
       })
       .returning({ id: chatMessages.id });
-    await broadcastToRoom(roomCode, { type: "chat:new", id: row.id });
+    await broadcastToRoom(roomCode, { type: "chat:new", id: row.id, quiet: true });
   } catch {
     /* not worth a 500 */
   }

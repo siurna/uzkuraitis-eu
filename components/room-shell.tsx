@@ -33,6 +33,7 @@ type RoomLive = {
   code: string;
   name: string;
   votingEnabled: boolean;
+  tallyEnabled: boolean;
   homeCountryCode: string;
   nowPlayingCode: string | null;
   showStatus: ShowStatus;
@@ -77,6 +78,7 @@ export function RoomShell({
             code,
             name,
             votingEnabled,
+            tallyEnabled: false,
             homeCountryCode,
             nowPlayingCode: null,
             showStatus: "not_started",
@@ -109,7 +111,9 @@ function RoomBody({ children }: { children: React.ReactNode }) {
   const [unread, setUnread] = useState(0);
 
   useEventListener(({ event }) => {
-    if ((event as { type?: string }).type !== "chat:new") return;
+    const ev = event as { type?: string; quiet?: boolean };
+    if (ev.type !== "chat:new") return;
+    if (ev.quiet) return; // meta/system lines (now-playing, "X voted"…) don't badge
     if (isChat) return; // already looking at it
     setUnread((n) => Math.min(99, n + 1));
   });
@@ -154,45 +158,39 @@ function NowPlayingSwarm() {
     if (!next || typeof window === "undefined") return;
     const w = window.innerWidth;
     const h = window.innerHeight;
-    // Hearts rise from below the fold to a random height, in three
-    // size/speed bands so the swarm reads as a flurry, not a uniform
-    // pop. Staggered by spawning in micro-batches over ~2s.
+    // A clean "release of balloons": hearts rise from just below the
+    // fold and float straight up off the top with only a gentle sway.
+    // Two calm size bands (small / medium) — the bigger ones drift a
+    // touch slower for a light parallax. Spawn X is centre-weighted so
+    // it reads as a burst from the stage, not random screen noise.
+    const rng = (a: number, b: number) => a + Math.random() * (b - a);
     const fire = (n: number) =>
       particles.spawnMany(
         Array.from({ length: n }, () => {
-          // Bias toward small + fast; a few big + slow drifters.
-          const tier = Math.random();
-          const size =
-            tier > 0.85 ? 56 + Math.random() * 30 // big drifters
-              : tier > 0.55 ? 36 + Math.random() * 18 // mid
-                : 18 + Math.random() * 16; // small + fast
-          const duration =
-            tier > 0.85 ? 3800 + Math.random() * 1400
-              : tier > 0.55 ? 2800 + Math.random() * 1000
-                : 1900 + Math.random() * 800;
-          const fromX = Math.random() * w;
+          const big = Math.random() < 0.32;
+          const size = big ? rng(40, 54) : rng(22, 32);
+          const duration = big ? rng(3000, 3800) : rng(2200, 2900);
+          // Centre 70% of the width, then a little extra jitter.
+          const fromX = Math.min(
+            w - 10,
+            Math.max(10, w * 0.5 + (Math.random() - 0.5) * w * 0.7 + (Math.random() - 0.5) * 40),
+          );
           return {
             asset: { type: "country" as const, code: next },
-            from: { x: fromX, y: h + 60 + Math.random() * 80 },
-            to: {
-              // Slight horizontal sway on the way up.
-              x: fromX + (Math.random() - 0.5) * 180,
-              y: Math.random() * h * 0.7,
-            },
+            from: { x: fromX, y: h + rng(20, 80) },
+            // Float up and off the top — gentle horizontal sway only.
+            to: { x: fromX + (Math.random() - 0.5) * 70, y: -rng(80, 220) },
             size,
             durationMs: duration,
-            rotate: 14 + Math.random() * 18,
+            rotate: big ? rng(-12, 12) : rng(-22, 22),
           };
         }),
       );
-    // Drip a big swarm (~64 hearts) out over ~2s so it reads as a
-    // sustained flurry alongside the name takeover, not one pop.
+    // ~40 hearts, dripped out over ~0.9s so the rise reads as a wave.
     fire(14);
-    setTimeout(() => fire(12), 180);
-    setTimeout(() => fire(12), 420);
-    setTimeout(() => fire(10), 720);
-    setTimeout(() => fire(8), 1100);
-    setTimeout(() => fire(8), 1600);
+    setTimeout(() => fire(12), 220);
+    setTimeout(() => fire(8), 480);
+    setTimeout(() => fire(6), 760);
   });
   return null;
 }
@@ -214,6 +212,7 @@ function RoomLiveProvider({
         code: string;
         name: string;
         votingEnabled: boolean;
+        tallyEnabled?: boolean;
         homeCountryCode: string;
         nowPlayingCode: string | null;
         showStatus?: ShowStatus;
@@ -222,6 +221,7 @@ function RoomLiveProvider({
         code: data.code,
         name: data.name,
         votingEnabled: data.votingEnabled,
+        tallyEnabled: !!data.tallyEnabled,
         homeCountryCode: data.homeCountryCode ?? initial.homeCountryCode,
         nowPlayingCode: data.nowPlayingCode ?? null,
         showStatus: data.showStatus ?? "not_started",

@@ -92,7 +92,10 @@ export type BingoStrikeEvent = {
 };
 // Chat: server fans these out after a successful write. Body intention-
 // ally minimal — clients refetch the message slice they need.
-export type ChatNewEvent = { type: "chat:new"; id: string };
+// `quiet` = a meta/system message (now-playing banner, "X voted", show
+// status…) — clients still render it, but it shouldn't bump the
+// unread-chat badge on the tab bar.
+export type ChatNewEvent = { type: "chat:new"; id: string; quiet?: boolean };
 export type ChatReactEvent = { type: "chat:react"; id: string };
 export type ChatDeleteEvent = { type: "chat:delete"; id: string };
 
