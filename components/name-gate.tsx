@@ -151,7 +151,7 @@ export function NameGate({ children }: { children: React.ReactNode }) {
               value={draftName}
               onChange={(e) => setDraftName(e.target.value.slice(0, 40))}
               placeholder={t(lang, "your_name")}
-              className="heartbeat-focus h-14 text-center text-[24px] md:text-[24px] font-bold
+              className="heartbeat-focus h-14 text-center text-2xl font-bold
                          rounded-xl border border-white/15 bg-black/30
                          placeholder:text-white/30 placeholder:font-normal"
               maxLength={40}
