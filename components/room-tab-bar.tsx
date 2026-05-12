@@ -100,18 +100,13 @@ export function RoomTabBar({
                   <motion.span
                     layoutId="tab-pill"
                     className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${gradient} ${glow}`}
-                    transition={{
-                      type: "spring",
-                      stiffness: 360,
-                      damping: 32,
-                      mass: 0.8,
-                    }}
+                    transition={{ type: "spring", stiffness: 560, damping: 42 }}
                   />
                 )}
                 <motion.div
                   initial={false}
-                  animate={{ scale: isActive ? 1.08 : 1 }}
-                  transition={{ type: "spring", stiffness: 380, damping: 26 }}
+                  animate={{ scale: isActive ? 1.06 : 1 }}
+                  transition={{ type: "spring", stiffness: 560, damping: 34 }}
                   className="relative"
                 >
                   <Icon

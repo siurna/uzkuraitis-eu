@@ -556,7 +556,8 @@ export function ChatPanel() {
     // overflow-y-auto actually scroll, lets us pin to the bottom on
     // open, and welds the composer to the footer.
     <main
-      className="fixed inset-x-0 top-14 z-10 flex justify-center px-3 sm:px-4
+      className="fixed inset-x-0 z-10 flex justify-center px-3 sm:px-4
+                 top-[calc(env(safe-area-inset-top)+3.5rem)]
                  bottom-[calc(env(safe-area-inset-bottom)+4.75rem)]"
       onDragEnter={(e) => {
         if (!Array.from(e.dataTransfer.types).includes("Files")) return;
@@ -772,6 +773,8 @@ export function ChatPanel() {
                   type="file"
                   accept="image/*"
                   className="hidden"
+                  tabIndex={-1}
+                  aria-hidden
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     e.target.value = "";
@@ -816,7 +819,11 @@ export function ChatPanel() {
                   else send();
                 }
               }}
-              onBlur={editing ? undefined : clearTyping}
+              onFocus={() => window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: true }))}
+              onBlur={() => {
+                if (!editing) clearTyping();
+                window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: false }));
+              }}
               placeholder={editing ? t(lang, "chat_edit_placeholder") : t(lang, "chat_placeholder")}
               className="flex-1 max-h-[120px] resize-none bg-transparent border-0 px-1.5 py-1.5
                          text-base leading-snug text-white placeholder:text-white/35 focus:outline-none"

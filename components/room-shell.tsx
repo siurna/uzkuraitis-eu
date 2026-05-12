@@ -109,6 +109,9 @@ function RoomBody({ children }: { children: React.ReactNode }) {
   const isHome = pathname === `/r/${code}`;
   const isChat = pathname.startsWith(`/r/${code}/chat`);
   const [unread, setUnread] = useState(0);
+  // Hide the bottom dock + reactions bar while the chat composer is
+  // focused — on iOS the keyboard otherwise stacks them over the input.
+  const [composing, setComposing] = useState(false);
 
   useEventListener(({ event }) => {
     const ev = event as { type?: string; quiet?: boolean };
@@ -124,15 +127,20 @@ function RoomBody({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const onSeen = () => setUnread(0);
+    const onCompose = (e: Event) => setComposing(!!(e as CustomEvent).detail);
     window.addEventListener("uzk:chat-seen", onSeen);
-    return () => window.removeEventListener("uzk:chat-seen", onSeen);
+    window.addEventListener("uzk:compose-focus", onCompose);
+    return () => {
+      window.removeEventListener("uzk:chat-seen", onSeen);
+      window.removeEventListener("uzk:compose-focus", onCompose);
+    };
   }, []);
 
   return (
     <div className="min-h-screen flex flex-col pb-24">
       <PresenceBar />
       {children}
-      {(isHome || isChat) && (
+      {(isHome || isChat) && !composing && (
         <FloatingReactionsLayer
           code={code}
           hideBarOnMobile={false}
@@ -140,7 +148,7 @@ function RoomBody({ children }: { children: React.ReactNode }) {
           liftAboveComposer={isChat}
         />
       )}
-      <RoomTabBar code={code} chatUnread={unread} />
+      {!composing && <RoomTabBar code={code} chatUnread={unread} />}
     </div>
   );
 }

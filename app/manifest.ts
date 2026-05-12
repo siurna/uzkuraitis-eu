@@ -4,8 +4,8 @@ import type { MetadataRoute } from "next";
 // always reflects the current brand tokens.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Eurovision 2026 — uzkuraitis.eu",
-    short_name: "ESC 2026",
+    name: "Eurovision",
+    short_name: "Eurovision",
     description:
       "Cast your votes and watch live with friends. United by music, Vienna 2026.",
     start_url: "/",

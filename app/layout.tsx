@@ -6,14 +6,19 @@ import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = {
   title: {
-    default: "Eurovision 2026",
-    template: "Eurovision 2026",
+    default: "Eurovision",
+    template: "Eurovision",
   },
   description:
     "Cast your votes and watch live with friends. United by music, Vienna 2026.",
-  applicationName: "Eurovision 2026",
+  applicationName: "Eurovision",
+  appleWebApp: {
+    capable: true,
+    title: "Eurovision",
+    statusBarStyle: "black-translucent",
+  },
   openGraph: {
-    title: "Eurovision 2026",
+    title: "Eurovision",
     description:
       "Live voting and reactions for the 70th Eurovision Song Contest.",
     type: "website",
@@ -27,6 +32,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  // Edge-to-edge so env(safe-area-inset-*) actually returns the notch /
+  // home-indicator insets on iOS — the dock + header pad off them.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

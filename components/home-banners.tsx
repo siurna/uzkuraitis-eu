@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { motion } from "motion/react";
 import {
   ArrowRight,
   MessageCircle,
@@ -15,6 +14,7 @@ import { useRoomLive } from "@/components/room-shell";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
+import { participantPhoto } from "@/lib/participants";
 import { HeartFlag } from "@/components/flag";
 import { useLang, t } from "@/lib/i18n";
 
@@ -109,27 +109,8 @@ export function HomeBanners() {
   const playing =
     showStatus === "in_progress" && nowPlayingCode ? getCountry(nowPlayingCode) : null;
 
-  const statusKey = (
-    {
-      not_started: "home_status_not_started",
-      in_progress: "home_status_in_progress",
-      break: "home_status_break",
-      ended: "home_status_ended",
-    } as const
-  )[showStatus];
-
   return (
     <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">
-      {/* Show-status pill */}
-      <motion.p
-        key={showStatus}
-        initial={{ opacity: 0, y: -4 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-[11px] uppercase tracking-[0.24em] text-white/45 font-display text-center"
-      >
-        {t(lang, statusKey)}
-      </motion.p>
-
       {/* 1 — who's on stage right now (the hero card) */}
       {playing && (
         <PlayingCard country={playing} lang={lang} onOpen={() => deepDive.open(playing.code)} />
@@ -211,8 +192,10 @@ export function HomeBanners() {
   );
 }
 
-// The "now playing" hero card — washed in the flag's colours, big
-// heart-flag, country name, artist · song. Tap → artist deep-dive.
+// The "now playing" hero card — built like the artist deep-dive: a
+// press-kit photo (when we have one) with a flag-colour gradient, the
+// heart-flag chip + country name + artist/song over it. Tap → the full
+// deep-dive sheet. Falls back to a colour-wash layout with no photo.
 function PlayingCard({
   country,
   lang,
@@ -223,6 +206,53 @@ function PlayingCard({
   onOpen: () => void;
 }) {
   const [c1, c2] = countryColors(country.code);
+  const photo = participantPhoto(country.code);
+
+  if (photo) {
+    return (
+      <button type="button" onClick={onOpen} className="w-full text-left rainbow-border rounded-3xl block">
+        <div className="relative overflow-hidden rounded-[20px] aspect-[16/10] sm:aspect-[2/1]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `linear-gradient(110deg, ${hexA(c1, 0.5)}, ${hexA(c2, 0.28)} 45%, transparent 70%), linear-gradient(0deg, rgba(8,9,28,0.92), rgba(8,9,28,0.1) 55%, transparent)`,
+            }}
+          />
+          <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 flex items-end gap-3">
+            <span className="heartbeat shrink-0">
+              <HeartFlag code={country.code} size="md" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] uppercase tracking-[0.32em] text-white/85 font-display leading-tight mb-0.5 drop-shadow">
+                {t(lang, "now_playing")}
+              </p>
+              <p className="font-display text-2xl text-white leading-tight truncate drop-shadow">
+                {countryName(country.code, lang)}
+              </p>
+              {(country.artist || country.song) && (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {country.artist && (
+                    <span className="rounded-full bg-white/15 backdrop-blur-sm ring-1 ring-white/20 px-2 py-0.5 text-[11px] text-white">
+                      {country.artist}
+                    </span>
+                  )}
+                  {country.song && (
+                    <span className="rounded-full bg-white/10 backdrop-blur-sm ring-1 ring-white/15 px-2 py-0.5 text-[11px] italic text-white/80">
+                      {country.song}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            <ArrowRight className="h-5 w-5 text-white/70 shrink-0 mb-1" />
+          </div>
+        </div>
+      </button>
+    );
+  }
+
   return (
     <button type="button" onClick={onOpen} className="w-full text-left rainbow-border rounded-3xl block">
       <div

@@ -153,6 +153,8 @@
     background-color: var(--color-dark-blue-900);
     color: var(--color-foreground);
     -webkit-tap-highlight-color: oklch(70% 0.27 336 / 0.25);
+    /* Kill iOS rubber-band so the sticky header never drifts on overscroll. */
+    overscroll-behavior: none;
   }
 
   /* Body backdrop. The participant-backdrop is grey wavy stripes; if
