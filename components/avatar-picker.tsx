@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import { Flag } from "@/components/flag";
 import { AVATARS, type Avatar } from "@/lib/avatars";
+import { optimizedSrc } from "@/lib/img";
 
 // Pick-an-avatar grid. Apple-Watch-style rounded-square tiles with a
 // face-cropped photo inside; selection is shown as a fuchsia ring +
@@ -67,7 +68,7 @@ function Tile({
         {avatar.photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={avatar.photo}
+            src={optimizedSrc(avatar.photo, 128)}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
             style={{

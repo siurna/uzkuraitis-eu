@@ -12,6 +12,7 @@ import { AvatarPicker } from "@/components/avatar-picker";
 import { SelectedAvatarCard } from "@/components/selected-avatar-card";
 import { NotificationToggles } from "@/components/notification-toggles";
 import { getAvatar } from "@/lib/avatars";
+import { optimizedSrc } from "@/lib/img";
 import {
   LANGUAGES,
   LANGUAGE_NAMES,
@@ -138,7 +139,7 @@ export function SettingsModal({
             <Input
               value={name}
               onChange={(e) => setName(e.target.value.slice(0, 40))}
-              className="heartbeat-focus h-14 text-center text-[24px] md:text-[24px] font-bold rounded-xl
+              className="heartbeat-focus h-14 text-center text-2xl font-bold rounded-xl
                          border border-white/15 bg-black/30 placeholder:text-white/30 placeholder:font-normal"
               maxLength={40}
             />
@@ -174,7 +175,7 @@ export function SettingsModal({
                 <span className="relative h-12 w-12 rounded-xl overflow-hidden ring-1 ring-white/15 shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={selectedAvatar.photo}
+                    src={optimizedSrc(selectedAvatar.photo, 128)}
                     alt=""
                     className="absolute inset-0 h-full w-full object-cover"
                     style={{

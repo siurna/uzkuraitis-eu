@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import Link from "next/link";
 import {
   ArrowRight,
   MessageCircle,
@@ -9,12 +8,12 @@ import {
   ListChecks,
   Trophy,
 } from "lucide-react";
-import type { Route } from "next";
-import { useRoomLive } from "@/components/room-shell";
+import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { participantPhoto } from "@/lib/participants";
+import { optimizedSrc } from "@/lib/img";
 import { HeartFlag } from "@/components/flag";
 import { useLang, t } from "@/lib/i18n";
 
@@ -33,7 +32,6 @@ function hexA(hex: string, a: number): string {
 // A tappable card. `bg` is an inline gradient laid over the glass card;
 // `accentRing` tints the border. Renders as <Link> or <button>.
 function Card({
-  href,
   onClick,
   bg,
   accentRing,
@@ -43,7 +41,6 @@ function Card({
   sub,
   rainbow,
 }: {
-  href?: Route;
   onClick?: () => void;
   bg?: string;
   accentRing?: string;
@@ -77,10 +74,12 @@ function Card({
       </div>
     </div>
   );
-  const cls = "block";
-  if (href) return <Link href={href} className={rainbow ? "rainbow-border rounded-3xl block" : cls}>{body}</Link>;
   return (
-    <button type="button" onClick={onClick} className={`w-full text-left ${rainbow ? "rainbow-border rounded-3xl" : ""} ${cls}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`block w-full text-left ${rainbow ? "rainbow-border rounded-3xl" : ""}`}
+    >
       {body}
     </button>
   );
@@ -90,6 +89,7 @@ export function HomeBanners() {
   const { code, votingEnabled, tallyEnabled, nowPlayingCode, showStatus } = useRoomLive();
   const lang = useLang();
   const deepDive = useCountryDeepDive();
+  const { setTab } = useRoomTab();
   const [voted, setVoted] = useState(false);
   const [bingoStruck, setBingoStruck] = useState<number | null>(null);
 
@@ -120,7 +120,7 @@ export function HomeBanners() {
       {votingEnabled &&
         (voted ? (
           <Card
-            href={`/r/${code}/vote` as Route}
+            onClick={() => setTab("vote")}
             icon={<ListChecks className="h-6 w-6 text-turquoise" />}
             accentRing="ring-turquoise/20"
             bg="linear-gradient(120deg, rgba(64,224,208,0.10), transparent 60%)"
@@ -129,7 +129,7 @@ export function HomeBanners() {
           />
         ) : (
           <Card
-            href={`/r/${code}/vote` as Route}
+            onClick={() => setTab("vote")}
             rainbow
             icon={<ListChecks className="h-6 w-6 text-white" />}
             eyebrow={t(lang, "live")}
@@ -159,7 +159,7 @@ export function HomeBanners() {
 
       {/* 4 — bingo (with progress bar) */}
       <Card
-        href={`/r/${code}/bingo` as Route}
+        onClick={() => setTab("bingo")}
         icon={<Grid3x3 className="h-6 w-6 text-purple" />}
         bg="linear-gradient(120deg, rgba(146,87,255,0.12), transparent 60%)"
         title={t(lang, "bingo_title")}
@@ -182,7 +182,7 @@ export function HomeBanners() {
 
       {/* 5 — chat */}
       <Card
-        href={`/r/${code}/chat` as Route}
+        onClick={() => setTab("chat")}
         icon={<MessageCircle className="h-6 w-6 text-turquoise" />}
         bg="linear-gradient(120deg, rgba(64,224,208,0.10), transparent 60%)"
         title={t(lang, "home_chat")}
@@ -213,7 +213,7 @@ function PlayingCard({
       <button type="button" onClick={onOpen} className="w-full text-left rainbow-border rounded-3xl block">
         <div className="relative overflow-hidden rounded-[22px] aspect-[16/10] sm:aspect-[2/1]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={optimizedSrc(photo, 1080)} alt="" className="absolute inset-0 h-full w-full object-cover" />
           <div
             className="absolute inset-0"
             style={{

@@ -75,6 +75,11 @@ export const AVATARS: Avatar[] = [
 // stay in lockstep with the standings/voting data.
 import { countries } from "./countries";
 import { participantPhoto } from "./participants";
+// Blob mirror of public/avatars/* — `{ "<id>": "<https blob url>" }`.
+// Empty until `pnpm avatars:upload` has been run; entries here take
+// precedence over the inline `/avatars/...` paths above (which then
+// just serve as a local-dev fallback). See docs/avatars.md.
+import AVATAR_PHOTOS from "./avatar-photos.json";
 
 const YEAR_2026_AVATARS: Avatar[] = countries
   .filter((c) => c.artist && c.artist !== "TBD")
@@ -92,6 +97,14 @@ const YEAR_2026_AVATARS: Avatar[] = countries
 // — the contest in front of you matters more than every iconic past
 // act combined. Mutates AVATARS once at module load.
 AVATARS.unshift(...YEAR_2026_AVATARS);
+
+// Swap the inline `/avatars/...` paths for their Blob URLs where the
+// upload script has recorded one. (No-op until the JSON is populated.)
+const PHOTO_OVERRIDES: Record<string, string> = AVATAR_PHOTOS;
+for (const a of AVATARS) {
+  const url = PHOTO_OVERRIDES[a.id];
+  if (url) a.photo = url;
+}
 
 export function getAvatar(id: string | null | undefined): Avatar | null {
   if (!id) return null;

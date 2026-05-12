@@ -1,5 +1,11 @@
-import { ChatPanel } from "@/components/chat-panel";
+import { redirect } from "next/navigation";
 
-export default function ChatPage() {
-  return <ChatPanel />;
+// The room is a one-pager now; /r/x/chat just deep-links the chat tab.
+export default async function ChatRedirect({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}) {
+  const { code } = await params;
+  redirect(`/r/${code}?tab=chat`);
 }

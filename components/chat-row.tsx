@@ -8,6 +8,7 @@ import {
   type LucideProps,
 } from "lucide-react";
 import { getAvatar } from "@/lib/avatars";
+import { optimizedSrc } from "@/lib/img";
 import { getCountry, countryName } from "@/lib/countries";
 import { HeartFlag } from "@/components/flag";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
@@ -280,7 +281,7 @@ export function ChatRow({
             {avatar?.photo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={avatar.photo}
+                src={optimizedSrc(avatar.photo, 96)}
                 alt=""
                 className="h-full w-full object-cover"
                 style={{ objectPosition: avatar.focal ? `${avatar.focal.x}% ${avatar.focal.y}%` : "50% 30%" }}

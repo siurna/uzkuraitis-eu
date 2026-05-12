@@ -6,6 +6,14 @@ const nextConfig = {
   typedRoutes: true,
   // Both Neon and Liveblocks ship with their own Edge-friendly drivers.
   serverExternalPackages: ["@neondatabase/serverless"],
+  // Let the image optimizer fetch avatar photos mirrored to the Vercel
+  // Blob store by `pnpm avatars:upload` — otherwise `/_next/image?url=
+  // https://…blob.vercel-storage.com/…` is rejected.
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "**.public.blob.vercel-storage.com" },
+    ],
+  },
   // Next 15 defaults the dynamic-segment client router-cache TTL to 0s,
   // so every tab navigation re-fetches the room layout + page from the
   // server — which reads like a full reload. Cache them briefly so
