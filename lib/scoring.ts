@@ -146,10 +146,9 @@ export function scoreBets(input: {
   facts: OfficialFacts;
   totalFinalists: number;
 }): BetBreakdown {
-  const { bets, homeCountryCode, placements, facts, totalFinalists } = input;
+  const { bets, placements, facts, totalFinalists } = input;
   const placementByCountry = placements;
   const countryByPlacement = placementToCountry(placements);
-  const homePlacement = placementByCountry[homeCountryCode] ?? null;
   const last = countryByPlacement.get(totalFinalists);
 
   const big5Sorted = BIG_5

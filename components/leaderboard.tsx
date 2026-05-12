@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Crown, Trophy, ChevronDown, Sparkles } from "lucide-react";
+import { Crown, ChevronDown, Sparkles } from "lucide-react";
 import { useEventListener } from "@/lib/liveblocks";
 import { getCountry, countryName } from "@/lib/countries";
 import { Flag } from "@/components/flag";

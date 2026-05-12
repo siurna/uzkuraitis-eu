@@ -3,7 +3,7 @@
 import { useMemo, useRef, type ComponentType } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Reply, Pencil, Copy, Trash2, Smile, Loader2, X, Mic, Music, Trophy,
+  Reply, Pencil, Copy, Trash2, Smile, Loader2, Mic, Music, Trophy,
   Heart, Flame, PartyPopper, Star, Sparkles,
   type LucideProps,
 } from "lucide-react";

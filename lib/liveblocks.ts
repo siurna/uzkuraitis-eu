@@ -62,29 +62,12 @@ export type UserMeta = {
 // New features should follow the same shape. When adding chat, bingo
 // etc., extend the union below with `<feature>:<verb>`.
 
-export type ReactionEmojiEvent = {
-  type: "reaction:emoji";
-  emoji: string;
-  x: number;
-  y: number;
-};
-export type ReactionCountryEvent = {
-  type: "reaction:country";
-  emoji: string;
-  countryCode: string;
-};
 export type ScoresUpdatedEvent = { type: "scores:updated" };
 export type LeaderboardUpdatedEvent = { type: "leaderboard:updated" };
 export type RoomUpdatedEvent = { type: "room:updated" };
 export type NowPlayingChangeEvent = {
   type: "now-playing:change";
   countryCode: string | null;
-};
-export type BingoStrikeEvent = {
-  type: "bingo:strike";
-  by: string;        // voter name
-  trope: string;     // the trope string (already localised by sender)
-  bingo?: boolean;   // true when the strike completed a row/col/diag
 };
 // Chat: server fans these out after a successful write. Body intention-
 // ally minimal — clients refetch the message slice they need.
@@ -96,13 +79,10 @@ export type ChatReactEvent = { type: "chat:react"; id: string };
 export type ChatDeleteEvent = { type: "chat:delete"; id: string };
 
 export type RoomEvent =
-  | ReactionEmojiEvent
-  | ReactionCountryEvent
   | ScoresUpdatedEvent
   | LeaderboardUpdatedEvent
   | RoomUpdatedEvent
   | NowPlayingChangeEvent
-  | BingoStrikeEvent
   | ChatNewEvent
   | ChatReactEvent
   | ChatDeleteEvent;

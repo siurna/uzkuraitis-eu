@@ -131,8 +131,6 @@ const S = {
   home_results_sub:    { en: "See your score and the full breakdown", lt: "Pažiūrėk savo rezultatą ir visą išskaidymą" },
   home_bingo_sub:      { en: "Tick off the clichés as they happen", lt: "Žymėk klišes, kai jos įvyksta" },
   home_bingo_progress: { en: (n: number) => `${n} / 25 ticked`, lt: (n: number) => `pažymėta ${n} / 25` },
-  home_chat:           { en: "Jump into the chat", lt: "Šok į pokalbį" },
-  home_chat_sub:       { en: "React, reply, send GIFs & photos", lt: "Reaguok, atsakyk, siųsk GIF ir nuotraukas" },
   home_my_results:     { en: "Your results", lt: "Tavo rezultatai" },
   home_my_results_rank: { en: (rank: number, total: number) => `Ranked ${rank} of ${total} — tap for the breakdown`, lt: (rank: number, total: number) => `${rank} vieta iš ${total} — bakstelėk išskaidymui` },
 
@@ -140,7 +138,6 @@ const S = {
   chat_empty:        { en: "No messages yet. Say hi 👋", lt: "Dar nieks nieko nerašė. Pasisveikink pirmas 👋" },
   chat_placeholder:  { en: "Message", lt: "Tavo žinutė" },
   chat_load_earlier: { en: "Load earlier messages", lt: "Įkelti senesnes žinutes" },
-  chat_send:         { en: "Send", lt: "Siųsti" },
   chat_send_failed:  { en: "Couldn't send your message.", lt: "Nepavyko išsiųsti žinutės." },
   chat_slow_down:    { en: "Whoa — slow down a sec.", lt: "Pala — neskubėk." },
   chat_delete_failed: { en: "Couldn't delete that message.", lt: "Nepavyko ištrinti žinutės." },
@@ -160,7 +157,6 @@ const S = {
   chat_editing:      { en: "Editing your message", lt: "Redaguoji žinutę" },
   chat_edit_placeholder: { en: "Edit your message…", lt: "Redaguok žinutę…" },
   chat_edit_failed:  { en: "Couldn't save your edit.", lt: "Nepavyko išsaugoti pakeitimo." },
-  chat_save_edit:    { en: "Save", lt: "Išsaugoti" },
   chat_copy:         { en: "Copy", lt: "Kopijuoti" },
   chat_copied:       { en: "Copied", lt: "Nukopijuota" },
   chat_send_photo:   { en: "Send a photo", lt: "Siųsti nuotrauką" },
@@ -205,7 +201,6 @@ const S = {
 
   // ── Bingo ────────────────────────────────────────────────────────
   bingo_title:       { en: "Eurovision bingo", lt: "Eurovizijos bingo" },
-  bingo_won:         { en: "BINGO!", lt: "BINGO!" },
   bingo_you_did_it:  { en: "You got bingo! 🎉", lt: "Surinkai bingo! 🎉" },
   bingo_footer:      { en: "Tap a square — or its line in the list — when it happens. Five in a row wins.", lt: "Pamatei, kad tai nutiko? Bakstelėk eilutę sąraše! Surinkai kraštinę? Laimi." },
   bingo_list:        { en: "What to watch for", lt: "Ko ieškoti" },

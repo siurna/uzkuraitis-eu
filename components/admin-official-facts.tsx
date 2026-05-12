@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Save, Trophy, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { countries, getCountry } from "@/lib/countries";
+import { getCountry } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 import { CountryDrawer } from "@/components/country-drawer";
 import { NONE_TOKEN } from "@/lib/scoring";
