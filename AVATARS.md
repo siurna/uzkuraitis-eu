@@ -59,10 +59,11 @@ recorded:
 ### Running the upload
 
 ```bash
-# Token = the read-write token of the Blob store, from
-# Vercel → Storage → <your Blob store> → ".env.local" tab.
-BLOB_READ_WRITE_TOKEN=vercel_blob_rw_… pnpm avatars:upload
+vercel env pull .env.local   # once — grabs BLOB_READ_WRITE_TOKEN (and the rest)
+pnpm avatars:upload          # auto-loads .env.local via node --env-file-if-exists
 ```
+
+(or pass the token inline: `BLOB_READ_WRITE_TOKEN=vercel_blob_rw_… pnpm avatars:upload`.)
 
 Then commit the updated `lib/avatar-photos.json`. It's idempotent — re-run it
 after adding new photos; existing keys are overwritten in place.
