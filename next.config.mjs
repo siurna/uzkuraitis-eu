@@ -8,11 +8,16 @@ const nextConfig = {
   serverExternalPackages: ["@neondatabase/serverless"],
   // Let the image optimizer fetch avatar photos mirrored to the Vercel
   // Blob store by `pnpm avatars:upload` — otherwise `/_next/image?url=
-  // https://…blob.vercel-storage.com/…` is rejected.
+  // https://…blob.vercel-storage.com/…` is rejected. Single `*` for the
+  // store subdomain (Vercel's own recommendation). `localPatterns` kept
+  // wide-open so /participants/* etc. still optimise.
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "**.public.blob.vercel-storage.com" },
+      { protocol: "https", hostname: "*.public.blob.vercel-storage.com", pathname: "/**" },
+      { protocol: "https", hostname: "**.public.blob.vercel-storage.com", pathname: "/**" },
     ],
+    localPatterns: [{ pathname: "/**" }],
+    qualities: [50, 70, 72, 75, 90, 100],
   },
   // Next 15 defaults the dynamic-segment client router-cache TTL to 0s,
   // so every tab navigation re-fetches the room layout + page from the

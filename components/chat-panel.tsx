@@ -89,9 +89,13 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const [newCount, setNewCount] = useState(0);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  // px the on-screen keyboard (+ iOS form accessory bar) eats off the
-  // bottom — used to lift the whole panel to sit right above it.
-  const [kbInset, setKbInset] = useState(0);
+  // The current visual viewport (the bit of the page that's actually
+  // visible — i.e. above the on-screen keyboard). The chat panel is
+  // sized to this directly, so the composer always sits flush above the
+  // keyboard with no dead gap. `composerFocused` toggles whether we
+  // reserve space for the bottom dock (it's hidden while typing).
+  const [viewport, setViewport] = useState<{ h: number; top: number } | null>(null);
+  const [composerFocused, setComposerFocused] = useState(false);
   const dragDepth = useRef(0);
 
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -235,34 +239,23 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     }
   }, [messages, code]);
 
-  // Track the on-screen keyboard via the visual viewport so the composer
-  // sits flush above it — no dead gap, no composer hidden behind the iOS
-  // form-accessory bar. The value is the strip of the *layout* viewport
-  // (what `position:fixed` is measured against) that's covered by the
-  // keyboard + accessory bar.
+  // Mirror the visual viewport — the panel is sized to *exactly* this
+  // (top = offsetTop, height = height), so its bottom edge is the bottom
+  // of what's visible = the top of the on-screen keyboard. No "layout
+  // viewport minus keyboard" arithmetic, no iOS innerHeight quirks, no
+  // dead gap behind the keyboard or the form-accessory bar. The
+  // visualViewport resize event fires continuously during the keyboard
+  // slide, so it tracks smoothly.
   useEffect(() => {
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!vv) return;
-    const onVv = () => {
-      // Layout-viewport height — NOT window.innerHeight, which on iOS can
-      // overshoot it (bottom toolbar / standalone chrome) and would punt
-      // the composer up into a void.
-      const layoutH = document.documentElement.clientHeight || window.innerHeight;
-      // Clamp offsetTop ≥ 0: iOS occasionally reports a bogus large
-      // negative value mid-animation, which would inflate the inset.
-      const raw = layoutH - vv.height - Math.max(0, vv.offsetTop);
-      // Below ~80px it's URL-bar jitter, not the keyboard. Cap at ~62%
-      // of the viewport — a keyboard + accessory bar is never taller —
-      // so one bad reading can't strand the composer.
-      const inset = raw > 80 ? Math.min(Math.round(raw), Math.round(layoutH * 0.62)) : 0;
-      setKbInset(inset);
-    };
-    vv.addEventListener("resize", onVv);
-    vv.addEventListener("scroll", onVv);
-    onVv();
+    const sync = () => setViewport({ h: vv.height, top: Math.max(0, vv.offsetTop) });
+    vv.addEventListener("resize", sync);
+    vv.addEventListener("scroll", sync);
+    sync();
     return () => {
-      vv.removeEventListener("resize", onVv);
-      vv.removeEventListener("scroll", onVv);
+      vv.removeEventListener("resize", sync);
+      vv.removeEventListener("scroll", sync);
     };
   }, []);
 
@@ -661,22 +654,21 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   }, [lastOwnIso, others]);
 
   return (
-    // Fixed between the sticky header (h-14) and the bottom tab dock so
-    // the message list owns a definite height — that's what makes
-    // overflow-y-auto actually scroll, lets us pin to the bottom on
-    // open, and welds the composer to the footer.
+    // Sized to the visual viewport: `top` = its offset, `height` = its
+    // height (minus the dock unless the keyboard's up). So the panel's
+    // bottom edge is exactly the top of the keyboard — composer flush, no
+    // gap. `pt-…` clears the fixed header. Hidden (kept mounted, scroll +
+    // state intact) when off the chat tab.
     <main
       className="fixed inset-x-0 z-10 flex justify-center px-3 sm:px-4
-                 top-[calc(env(safe-area-inset-top)+3.5rem)]
-                 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)]"
-      // When the keyboard is up, pin the bottom of the panel right above
-      // it (and the iOS form-accessory bar) — no dead gap. Hidden (but
-      // kept mounted, with scroll + state intact) when off the chat tab.
+                 pt-[calc(env(safe-area-inset-top)+3.5rem)]"
       style={{
-        // Track the keyboard directly (the visual-viewport events fire
-        // often enough during the slide); a CSS transition here just
-        // double-eases and lags behind.
-        ...(kbInset > 0 ? { bottom: kbInset } : null),
+        top: viewport?.top ?? 0,
+        height: viewport
+          ? composerFocused
+            ? viewport.h
+            : `calc(${viewport.h}px - env(safe-area-inset-bottom) - 4.75rem)`
+          : "calc(100dvh - env(safe-area-inset-bottom) - 4.75rem)",
         ...(active ? null : { display: "none" }),
       }}
       onDragEnter={(e) => {
@@ -909,8 +901,12 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                   else send();
                 }
               }}
-              onFocus={() => window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: true }))}
+              onFocus={() => {
+                setComposerFocused(true);
+                window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: true }));
+              }}
               onBlur={() => {
+                setComposerFocused(false);
                 if (!editing) clearTyping();
                 window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: false }));
               }}

@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import {
-  ArrowRight,
-  MessageCircle,
-  ListChecks,
-  Trophy,
-} from "lucide-react";
+import { ArrowRight, MessageCircle } from "lucide-react";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
@@ -16,9 +11,10 @@ import { buildBingoCard, FREE_SQUARE, tropeEmoji } from "@/lib/bingo-tropes";
 import { HeartFlag } from "@/components/flag";
 import { useLang, t } from "@/lib/i18n";
 
-// Context- + timing-aware shortcut CARDS on the Home tab. The thing
-// you should do *right now* (artist on stage / vote / results) sits up
-// top as a big card; the always-there shortcuts (bingo, chat) follow.
+// Context- + timing-aware promo cards on the Home tab. The thing you
+// should do *right now* (artist on stage) sits up top as the photo hero;
+// the rest (vote / results / bingo) are PromoWidgets — same shape, a
+// little preview "visual" on the left, distinct accent wash each.
 
 // "#rrggbb" + alpha → "rgba(...)". (Tiny dup of the takeover helper.)
 function hexA(hex: string, a: number): string {
@@ -28,61 +24,61 @@ function hexA(hex: string, a: number): string {
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
 }
 
-// A tappable card. `bg` is an inline gradient laid over the glass card;
-// `accentRing` tints the border. Renders as <Link> or <button>.
-function Card({
-  onClick,
-  bg,
-  accentRing,
-  icon,
+// The shared promo-card shape (extracted from the bingo widget the
+// design landed on): rainbow-stroked, a dark inner panel with an accent
+// gradient wash, a left "visual", an eyebrow + title + sub, a trailing
+// chevron/icon.
+function PromoWidget({
+  accent,
   eyebrow,
   title,
   sub,
-  rainbow,
+  visual,
+  trailing = <ArrowRight className="relative h-5 w-5 text-dark-blue-300 shrink-0" />,
+  onClick,
 }: {
-  onClick?: () => void;
-  bg?: string;
-  accentRing?: string;
-  icon: ReactNode;
-  eyebrow?: ReactNode;
+  accent: string;
+  eyebrow: ReactNode;
   title: ReactNode;
-  sub?: ReactNode;
-  rainbow?: boolean;
+  sub: ReactNode;
+  visual: ReactNode;
+  trailing?: ReactNode;
+  onClick: () => void;
 }) {
-  const body = (
-    <div
-      className={`relative overflow-hidden ${
-        rainbow ? "rounded-[22px]" : `rounded-3xl ring-1 ${accentRing ?? "ring-white/10"} glass-card`
-      }`}
-    >
-      {bg && <div className="absolute inset-0 pointer-events-none" style={{ background: bg }} />}
-      <div className="relative flex items-center gap-4 px-5 py-5 sm:px-6">
-        <span className="shrink-0 grid place-items-center h-12 w-12 rounded-2xl bg-white/[0.08] ring-1 ring-white/12 text-white">
-          {icon}
-        </span>
-        <div className="min-w-0 flex-1">
-          {eyebrow && (
-            <p className="text-[10px] uppercase tracking-[0.3em] text-flamingo font-display leading-tight mb-0.5">
-              {eyebrow}
-            </p>
-          )}
-          <p className="font-display text-lg text-white leading-tight">{title}</p>
-          {sub && <p className="text-sm text-white/55 leading-snug mt-0.5">{sub}</p>}
-        </div>
-        <ArrowRight className="h-5 w-5 text-dark-blue-300 shrink-0" />
-      </div>
-    </div>
-  );
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`block w-full text-left ${rainbow ? "rainbow-border rounded-3xl" : ""}`}
+      className="w-full text-left rainbow-border rounded-3xl block transform-gpu transition duration-150 active:scale-[0.99]"
     >
-      {body}
+      <div className="relative overflow-hidden rounded-[22px] bg-dark-blue-900/85 px-4 py-4 flex items-center gap-4">
+        <div className="absolute inset-0 pointer-events-none" style={{ background: accent }} />
+        <div className="relative shrink-0">{visual}</div>
+        <div className="relative min-w-0 flex-1">
+          <p className="text-[10px] uppercase tracking-[0.32em] text-flamingo font-display leading-tight mb-0.5">{eyebrow}</p>
+          <p className="font-display text-lg text-white leading-tight">{title}</p>
+          <p className="text-sm text-white/55 leading-snug mt-0.5">{sub}</p>
+        </div>
+        {trailing}
+      </div>
     </button>
   );
 }
+
+// Small "preview tile" wrapper for the left visual — a dark rounded box.
+function VisualBox({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid place-items-center h-14 w-14 rounded-xl bg-black/30 ring-1 ring-white/12">
+      {children}
+    </div>
+  );
+}
+
+// Bingo: a 3×3 mini grid; a struck diagonal hints at the win condition.
+const BINGO_PREVIEW = buildBingoCard("uzk-home-preview")
+  .filter((i) => i !== FREE_SQUARE)
+  .slice(0, 9);
+const BINGO_PREVIEW_STRUCK = new Set([0, 4, 8]);
 
 export function HomeBanners() {
   const { code, votingEnabled, tallyEnabled, nowPlayingCode, showStatus } = useRoomLive();
@@ -109,107 +105,88 @@ export function HomeBanners() {
 
   return (
     <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">
-      {/* 1 — who's on stage right now (the hero card) */}
-      {playing && (
-        <PlayingCard country={playing} lang={lang} onOpen={() => setTab("chat")} />
+      {/* 1 — who's on stage right now (the hero) */}
+      {playing && <PlayingCard country={playing} lang={lang} onOpen={() => setTab("chat")} />}
+
+      {/* 2 — voting (turquoise/blue) */}
+      {votingEnabled && (
+        <PromoWidget
+          accent="linear-gradient(120deg, rgba(64,224,208,0.18), rgba(76,201,240,0.10) 55%, transparent)"
+          eyebrow={voted ? t(lang, "home_vote_done_eyebrow") : t(lang, "live")}
+          title={t(lang, voted ? "home_vote_done" : "home_vote_open")}
+          sub={t(lang, voted ? "home_vote_done_sub" : "home_vote_open_sub")}
+          onClick={() => setTab("vote")}
+          visual={
+            <VisualBox>
+              <span className="flex flex-col gap-1">
+                {[
+                  ["12", "bg-gradient-to-br from-gold to-orange text-dark-blue"],
+                  ["10", "bg-gradient-to-br from-flamingo to-fuchsia text-white"],
+                  ["8", "bg-white/[0.08] text-white/65 ring-1 ring-white/12"],
+                ].map(([n, cls]) => (
+                  <span key={n} className={`h-3.5 px-1.5 rounded-[5px] grid place-items-center text-[9px] font-display tabular-nums leading-none ${cls}`}>
+                    {n}
+                  </span>
+                ))}
+              </span>
+            </VisualBox>
+          }
+        />
       )}
 
-      {/* 2 — voting */}
-      {votingEnabled &&
-        (voted ? (
-          <Card
-            onClick={() => setTab("vote")}
-            icon={<ListChecks className="h-6 w-6 text-turquoise" />}
-            accentRing="ring-turquoise/20"
-            bg="linear-gradient(120deg, rgba(64,224,208,0.10), transparent 60%)"
-            title={t(lang, "home_vote_done")}
-            sub={t(lang, "home_vote_done_sub")}
-          />
-        ) : (
-          <Card
-            onClick={() => setTab("vote")}
-            rainbow
-            icon={<ListChecks className="h-6 w-6 text-white" />}
-            eyebrow={t(lang, "live")}
-            title={t(lang, "home_vote_open")}
-            sub={t(lang, "home_vote_open_sub")}
-            bg="linear-gradient(120deg, rgba(255,46,222,0.18), rgba(76,201,240,0.12) 60%, transparent)"
-          />
-        ))}
-
-      {/* 3 — results */}
+      {/* 3 — results (gold) */}
       {tallyEnabled && (
-        <Card
+        <PromoWidget
+          accent="linear-gradient(120deg, rgba(255,214,10,0.18), rgba(255,46,222,0.06) 55%, transparent)"
+          eyebrow="🏆"
+          title={t(lang, "home_results")}
+          sub={t(lang, "home_results_sub")}
           onClick={() =>
             (document.getElementById("my-results") ?? document.getElementById("standings"))?.scrollIntoView({
               behavior: "smooth",
               block: "start",
             })
           }
-          icon={<Trophy className="h-6 w-6 text-gold" />}
-          accentRing="ring-gold/25"
-          bg="linear-gradient(120deg, rgba(255,214,10,0.14), transparent 60%)"
-          eyebrow="🏆"
-          title={t(lang, "home_results")}
-          sub={t(lang, "home_results_sub")}
+          visual={
+            <VisualBox>
+              <span className="flex flex-col items-center leading-none">
+                <span className="text-base">🥇</span>
+                <span className="text-sm -mt-0.5 flex gap-0.5"><span>🥈</span><span>🥉</span></span>
+              </span>
+            </VisualBox>
+          }
         />
       )}
 
-      {/* 4 — bingo widget */}
-      <BingoWidget lang={lang} struck={bingoStruck} onOpen={() => setTab("bingo")} />
+      {/* 4 — bingo (purple/pink) */}
+      <PromoWidget
+        accent="linear-gradient(120deg, rgba(146,87,255,0.18), rgba(255,46,222,0.08) 55%, transparent)"
+        eyebrow="BINGO"
+        title={t(lang, "bingo_widget_title")}
+        sub={bingoStruck != null ? t(lang, "home_bingo_progress", bingoStruck) : t(lang, "home_bingo_sub")}
+        onClick={() => setTab("bingo")}
+        visual={
+          <div className="grid grid-cols-3 gap-1 p-1.5 rounded-xl bg-black/30 ring-1 ring-white/12">
+            {BINGO_PREVIEW.map((idx, i) => {
+              const x = BINGO_PREVIEW_STRUCK.has(i);
+              return (
+                <span key={i} className="relative h-5 w-5 grid place-items-center text-[11px] leading-none rounded-md bg-white/[0.04]">
+                  <span className={x ? "opacity-25 grayscale" : ""}>{tropeEmoji(idx)}</span>
+                  {x && <span className="absolute inset-0 grid place-items-center text-flamingo text-[13px] font-bold leading-none">✕</span>}
+                </span>
+              );
+            })}
+          </div>
+        }
+      />
     </div>
-  );
-}
-
-// The bingo invite on Home — a rainbow-bordered card with a little 3×3
-// preview (a struck diagonal hints at the win condition) + progress.
-const BINGO_PREVIEW = buildBingoCard("uzk-home-preview")
-  .filter((i) => i !== FREE_SQUARE)
-  .slice(0, 9);
-const BINGO_PREVIEW_STRUCK = new Set([0, 4, 8]);
-
-function BingoWidget({
-  lang,
-  struck,
-  onOpen,
-}: {
-  lang: "en" | "lt";
-  struck: number | null;
-  onOpen: () => void;
-}) {
-  return (
-    <button type="button" onClick={onOpen} className="w-full text-left rainbow-border rounded-3xl block">
-      <div className="relative overflow-hidden rounded-[22px] bg-dark-blue-900/85 px-4 py-4 flex items-center gap-4">
-        <div className="absolute inset-0 pointer-events-none"
-             style={{ background: "linear-gradient(120deg, rgba(146,87,255,0.16), rgba(255,46,222,0.08) 55%, transparent)" }} />
-        <div className="relative shrink-0 grid grid-cols-3 gap-1 p-1.5 rounded-xl bg-black/30 ring-1 ring-white/12">
-          {BINGO_PREVIEW.map((idx, i) => {
-            const x = BINGO_PREVIEW_STRUCK.has(i);
-            return (
-              <span key={i} className="relative h-6 w-6 grid place-items-center text-[13px] leading-none rounded-md bg-white/[0.04]">
-                <span className={x ? "opacity-25 grayscale" : ""}>{tropeEmoji(idx)}</span>
-                {x && <span className="absolute inset-0 grid place-items-center text-flamingo text-[15px] font-bold leading-none">✕</span>}
-              </span>
-            );
-          })}
-        </div>
-        <div className="relative min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-[0.32em] text-flamingo font-display leading-tight mb-0.5">BINGO</p>
-          <p className="font-display text-lg text-white leading-tight">{t(lang, "bingo_widget_title")}</p>
-          <p className="text-sm text-white/55 leading-snug mt-0.5">
-            {struck != null ? t(lang, "home_bingo_progress", struck) : t(lang, "home_bingo_sub")}
-          </p>
-        </div>
-        <ArrowRight className="relative h-5 w-5 text-dark-blue-300 shrink-0" />
-      </div>
-    </button>
   );
 }
 
 // The "now playing" hero card — built like the artist deep-dive: a
 // press-kit photo (when we have one) with a flag-colour gradient, the
-// heart-flag chip + country name + artist/song over it. Tap → the full
-// deep-dive sheet. Falls back to a colour-wash layout with no photo.
+// heart-flag chip + country name + artist/song over it. Tap → the chat
+// tab. Falls back to a colour-wash layout with no photo.
 function PlayingCard({
   country,
   lang,
