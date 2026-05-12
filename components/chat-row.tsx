@@ -371,7 +371,7 @@ export function ChatRow({
                 </span>
               ) : (
                 <>
-                  <span className="whitespace-pre-wrap break-words allow-select">
+                  <span className="whitespace-pre-wrap break-words">
                     {renderBody(m.body ?? "", participantNames)}
                   </span>
                   {isEdited && (

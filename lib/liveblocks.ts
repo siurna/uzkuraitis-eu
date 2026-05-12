@@ -49,10 +49,6 @@ export type UserMeta = {
 // -----------------------------------------------------------------------
 // Broadcast events. Convention: `<feature>:<verb>`.
 //
-//   reaction:emoji      — a user tapped an emoji on the reactions bar
-//                         (clients spawn a floating particle).
-//   reaction:country    — a user tapped a country-specific reaction
-//                         (admin reactions panel etc).
 //   scores:updated      — server-side hint: vote was submitted, refetch
 //                         /api/rooms/[code]/scores.
 //   leaderboard:updated — official results changed (or tallyEnabled

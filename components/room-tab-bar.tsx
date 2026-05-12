@@ -45,7 +45,10 @@ const TABS: TabDef[] = [
     labelKey: "tab_bingo",
     Icon: Grid3x3,
     gradient: "from-purple via-fuchsia to-flamingo",
-    glow: "shadow-[0_8px_22px_-6px_oklch(42%_0.20_295_/_0.65)]",
+    // The raw `--color-purple` (≈42% L) is too dark to read as a glow
+    // against the near-black dock — like the other tabs, use a bright
+    // version of the gradient's hue.
+    glow: "shadow-[0_8px_22px_-6px_oklch(64%_0.24_320_/_0.6)]",
   },
   {
     id: "vote",
@@ -91,19 +94,15 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
                     transition={{ type: "spring", stiffness: 560, damping: 42 }}
                   />
                 )}
-                <motion.div
-                  initial={false}
-                  animate={{ scale: isActive ? 1.06 : 1 }}
-                  transition={{ type: "spring", stiffness: 560, damping: 34 }}
-                  className="relative"
-                >
+                {/* Constant box + constant stroke width — the only
+                    active-state changes are colour and the pill behind,
+                    so the icon never visually shifts when you switch. */}
+                <div className="relative h-6 w-6">
                   <Icon
-                    className={`h-6 w-6 transition ${
-                      // Solid dim colour, not white/55 — opacity makes the
-                      // overlapping strokes composite darker and look messy.
+                    className={`h-6 w-6 transition-colors ${
                       isActive ? "text-white" : "text-dark-blue-200"
                     }`}
-                    strokeWidth={isActive ? 2.4 : 2}
+                    strokeWidth={2}
                   />
                   {/* Unread badge on the Chat tab. */}
                   {labelKey === "tab_chat" && chatUnread > 0 && (
@@ -114,7 +113,7 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
                       {chatUnread > 9 ? "9+" : chatUnread}
                     </span>
                   )}
-                </motion.div>
+                </div>
                 <span
                   className={`relative text-[10px] font-display tracking-wide leading-none
                               transition ${isActive ? "text-white" : "text-white/55"}`}

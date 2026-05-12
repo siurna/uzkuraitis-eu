@@ -10,15 +10,12 @@ import {
 } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Send,
   X,
   Reply,
   Pencil,
   Smile,
   ImagePlus,
-  Film,
   Loader2,
-  Check,
   ChevronUp,
   ArrowDown,
   ImageDown,
@@ -887,44 +884,9 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
               ) : null}
             </div>
           )}
-          {/* Unified composer bar — photo + GIF live inside the pill. */}
+          {/* Composer pill. No send button — Enter (or the keyboard's
+              "send" key) sends. Photo + GIF sit on the right. */}
           <div className="flex items-end gap-1 rounded-2xl border border-white/15 bg-black/40 px-1.5 py-1.5 transition focus-within:border-white/30">
-            {!editing && (
-              <>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  tabIndex={-1}
-                  aria-hidden
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    e.target.value = "";
-                    if (f) sendImage(f);
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={uploading}
-                  aria-label={t(lang, "chat_send_photo")}
-                  className="h-9 w-9 shrink-0 rounded-full grid place-items-center text-white/55
-                             hover:text-white hover:bg-white/10 transition active:scale-[0.92] disabled:opacity-50"
-                >
-                  {uploading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <ImagePlus className="h-[18px] w-[18px]" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGifOpen(true)}
-                  aria-label={t(lang, "gif_pick")}
-                  className="h-9 w-9 shrink-0 rounded-full grid place-items-center text-white/55
-                             hover:text-white hover:bg-white/10 transition active:scale-[0.92]"
-                >
-                  <Film className="h-[18px] w-[18px]" />
-                </button>
-              </>
-            )}
             <textarea
               ref={taRef}
               rows={1}
@@ -949,20 +911,46 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                 window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: false }));
               }}
               placeholder={editing ? t(lang, "chat_edit_placeholder") : t(lang, "chat_placeholder")}
-              className="flex-1 max-h-[120px] resize-none bg-transparent border-0 px-1.5 py-1.5
+              className="flex-1 min-w-0 max-h-[120px] resize-none bg-transparent border-0 px-1.5 py-2
                          text-base leading-snug text-white placeholder:text-white/35 focus:outline-none"
               maxLength={2000}
             />
-            <button
-              type="button"
-              onClick={() => (editing ? submitEdit() : send())}
-              disabled={editing ? !editBody.trim() : !body.trim()}
-              className="h-9 w-9 shrink-0 rounded-full grid place-items-center
-                         bg-white text-dark-blue disabled:opacity-40 transition active:scale-[0.92]"
-              aria-label={editing ? t(lang, "chat_save_edit") : t(lang, "chat_send")}
-            >
-              {editing ? <Check className="h-4 w-4" /> : <Send className="h-4 w-4" />}
-            </button>
+            {!editing && (
+              <div className="flex items-center gap-0.5 shrink-0">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  tabIndex={-1}
+                  aria-hidden
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = "";
+                    if (f) sendImage(f);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setGifOpen(true)}
+                  aria-label={t(lang, "gif_pick")}
+                  className="h-9 px-2 shrink-0 rounded-full grid place-items-center text-white/55
+                             hover:text-white hover:bg-white/10 transition active:scale-[0.92]"
+                >
+                  <span className="text-[11px] font-display font-bold tracking-tight leading-none">GIF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  aria-label={t(lang, "chat_send_photo")}
+                  className="h-9 w-9 shrink-0 rounded-full grid place-items-center text-white/55
+                             hover:text-white hover:bg-white/10 transition active:scale-[0.92] disabled:opacity-50"
+                >
+                  {uploading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <ImagePlus className="h-[18px] w-[18px]" />}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
