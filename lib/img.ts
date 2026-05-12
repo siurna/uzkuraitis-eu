@@ -7,11 +7,13 @@
 // browser downloads a ~few-KB thumbnail instead of the full press kit.
 //
 // `width` should be one of Next's default `imageSizes` (16/32/48/64/96/
-// 128/256/384) or `deviceSizes`; anything else gets rounded up.
+// 128/256/384) or `deviceSizes`; anything else gets rounded up. Quality
+// stays at Next's default (75) — Next 16 rejects `q=` values that aren't
+// in `images.qualities`, and 75 is always allowed.
 export function optimizedSrc(
   src: string,
   width: number,
-  quality = 72,
+  quality = 75,
 ): string {
   if (!src || src.startsWith("/_next/image") || src.startsWith("data:")) {
     return src;

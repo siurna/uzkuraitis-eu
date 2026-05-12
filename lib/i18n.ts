@@ -128,6 +128,7 @@ const S = {
   home_vote_open:      { en: "Voting is open — cast your TOP 10", lt: "Balsavimas atidarytas — paskelbk savo TOP 10" },
   home_vote_open_sub:  { en: "Lines won't be open forever — get it in.", lt: "Linijos neilgai bus atviros, nežiopsok." },
   home_vote_done:      { en: "Your vote's in — reorder it anytime", lt: "Tavo balsas užfiksuotas" },
+  home_vote_done_eyebrow: { en: "Voted", lt: "Balsuota" },
   home_vote_done_sub:  { en: "Place bets, share your TOP 10, or tweak.", lt: "Dalyvauk spėlionėje, pasidalink TOP 10." },
   home_results:        { en: "Results are in", lt: "Rezultatai jau čia" },
   home_results_sub:    { en: "See your score and the full breakdown", lt: "Pažiūrėk savo rezultatą ir visą išskaidymą" },
