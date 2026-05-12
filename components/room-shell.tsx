@@ -15,10 +15,7 @@ import { HomePanel } from "@/components/home-panel";
 import { ChatPanel } from "@/components/chat-panel";
 import { BingoCard } from "@/components/bingo-card";
 import { VotePanel } from "@/components/vote-panel";
-import {
-  ParticleLayer,
-  useParticles,
-} from "@/components/particle-layer";
+import { ParticleLayer } from "@/components/particle-layer";
 import { CountryDeepDiveProvider } from "@/components/country-deep-dive";
 import { VotingAnnouncement } from "@/components/voting-announcement";
 import { NowPlayingTakeover } from "@/components/now-playing-takeover";
@@ -39,6 +36,8 @@ type RoomLive = {
   homeCountryCode: string;
   nowPlayingCode: string | null;
   showStatus: ShowStatus;
+  /** 1-based act position in the running order (e.g. 12 of 26), or null. */
+  runningOrderPos: number | null;
 };
 
 const RoomLiveContext = createContext<RoomLive | null>(null);
@@ -77,12 +76,20 @@ export function RoomShell({
   name,
   votingEnabled,
   homeCountryCode,
+  nowPlayingCode = null,
+  showStatus = "not_started",
+  runningOrderPos = null,
   children,
 }: {
   code: string;
   name: string;
   votingEnabled: boolean;
   homeCountryCode: string;
+  // Seeded from the server so the now-playing hero (Home) and the header
+  // strip render in their final state on first paint — no content shift.
+  nowPlayingCode?: string | null;
+  showStatus?: string;
+  runningOrderPos?: number | null;
   children: React.ReactNode;
 }) {
   useEffect(() => {
@@ -105,13 +112,13 @@ export function RoomShell({
             votingEnabled,
             tallyEnabled: false,
             homeCountryCode,
-            nowPlayingCode: null,
-            showStatus: "not_started",
+            nowPlayingCode,
+            showStatus: (showStatus ?? "not_started") as ShowStatus,
+            runningOrderPos,
           }}
         >
           <ParticleLayer>
             <CountryDeepDiveProvider>
-              <NowPlayingSwarm />
               <NowPlayingTakeover />
               <VotingAnnouncement />
               <RoomBody>{children}</RoomBody>
@@ -246,59 +253,6 @@ function TabPane({ show, children }: { show: boolean; children: React.ReactNode 
   return <div style={{ display: show ? "contents" : "none" }}>{children}</div>;
 }
 
-// Listen-only side-effect component: when the admin flips the active
-// country, we update local state (via the Provider's refetch) AND
-// spawn a swarm of that country's heart-flag particles across the
-// viewport. Visible-component logic moved into PresenceBar — this
-// component renders nothing.
-function NowPlayingSwarm() {
-  const particles = useParticles();
-  useEventListener(({ event }) => {
-    if ((event as { type?: string }).type !== "now-playing:change") return;
-    const next = (event as { countryCode: string | null }).countryCode;
-    if (!next || typeof window === "undefined") return;
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    // A big "release of balloons": hearts launch from below the fold and
-    // shoot most of the way up the screen (and beyond) before they fade —
-    // not a polite little fizzle near the bottom. Wide size + speed bands
-    // for parallax; spawn X is centre-weighted so it reads as a burst
-    // from the stage, with a generous sway as they climb.
-    const rng = (a: number, b: number) => a + Math.random() * (b - a);
-    const fire = (n: number) =>
-      particles.spawnMany(
-        Array.from({ length: n }, () => {
-          const big = Math.random() < 0.35;
-          const size = big ? rng(56, 88) : rng(30, 52);
-          // They travel most of the screen, so give them time — a slow,
-          // graceful float, not a blur.
-          const duration = big ? rng(3800, 5400) : rng(2800, 4000);
-          // Centre 80% of the width, plus a bit of jitter.
-          const fromX = Math.min(
-            w - 10,
-            Math.max(10, w * 0.5 + (Math.random() - 0.5) * w * 0.8 + (Math.random() - 0.5) * 50),
-          );
-          return {
-            asset: { type: "country" as const, code: next },
-            from: { x: fromX, y: h + rng(20, 80) },
-            // Climb 75–130% of the viewport height past the top — they
-            // travel the whole screen — with a wide sideways drift.
-            to: { x: fromX + (Math.random() - 0.5) * 130, y: -rng(h * 0.75, h * 1.3) },
-            size,
-            durationMs: duration,
-            rotate: big ? rng(-14, 14) : rng(-26, 26),
-          };
-        }),
-      );
-    // ~40 hearts, dripped out over ~0.9s so the rise reads as a wave.
-    fire(14);
-    setTimeout(() => fire(12), 220);
-    setTimeout(() => fire(8), 480);
-    setTimeout(() => fire(6), 760);
-  });
-  return null;
-}
-
 function RoomLiveProvider({
   initial,
   children,
@@ -320,6 +274,7 @@ function RoomLiveProvider({
         homeCountryCode: string;
         nowPlayingCode: string | null;
         showStatus?: ShowStatus;
+        runningOrderPos?: number | null;
       };
       setState({
         code: data.code,
@@ -329,6 +284,7 @@ function RoomLiveProvider({
         homeCountryCode: data.homeCountryCode ?? initial.homeCountryCode,
         nowPlayingCode: data.nowPlayingCode ?? null,
         showStatus: data.showStatus ?? "not_started",
+        runningOrderPos: data.runningOrderPos ?? null,
       });
     } catch {
       /* network blips don't kill us */

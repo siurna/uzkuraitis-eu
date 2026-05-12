@@ -47,6 +47,10 @@ function makeSeed(): string {
 // cell's X references it via stroke="url(#bingo-x)".
 const X_PATH = "M24 24 L76 76 M76 24 L24 76";
 
+// Keep the deck small — three cards is plenty to follow, and the home
+// progress widget would get noisy beyond that.
+const MAX_TICKETS = 3;
+
 export function BingoCard() {
   const { code } = useRoomLive();
   const lang = useLang();
@@ -132,6 +136,7 @@ export function BingoCard() {
   );
 
   const generate = useCallback(() => {
+    if (tickets.length >= MAX_TICKETS) return;
     // Add a new (empty) ticket, flip to it, scroll the freshly-spawned
     // card into view, then run the scramble — the cells go "?" → spin →
     // lock left-to-right / top-to-bottom so it reads as "filling up".
@@ -142,7 +147,7 @@ export function BingoCard() {
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     setScrambling(true);
     window.setTimeout(() => setScrambling(false), 1800);
-  }, []);
+  }, [tickets.length]);
 
   const remove = useCallback((id: string) => {
     setTickets((prev) => (prev.length <= 1 ? prev : prev.filter((t) => t.id !== id)));
@@ -165,7 +170,7 @@ export function BingoCard() {
   const struckCount = card.filter((tx) => tx === FREE_SQUARE || struckSet.has(tx)).length;
 
   return (
-    <main className="container mx-auto max-w-3xl px-4 pt-6 pb-2 flex-1 flex flex-col gap-3">
+    <main className="container mx-auto max-w-3xl px-4 pt-6 pb-10 flex-1 flex flex-col gap-3">
       {/* Brand-rainbow stroke for the strike X, defined once. */}
       <svg width={0} height={0} className="absolute -z-10" aria-hidden>
         <defs>
@@ -295,20 +300,24 @@ export function BingoCard() {
         </ol>
       </section>
 
-      <p className="text-xs text-white/40 text-center pt-1 text-balance">{t(lang, "bingo_footer")}</p>
-
       {/* Ticket actions live at the bottom, under the list. */}
-      <div className="flex items-center justify-center gap-3 pt-1">
+      <div className="flex items-center justify-center gap-3 pt-3">
         <button
           type="button"
           onClick={generate}
-          disabled={scrambling}
+          disabled={scrambling || tickets.length >= MAX_TICKETS}
           className="rainbow-border rounded-2xl disabled:opacity-50"
           aria-label={t(lang, "bingo_generate")}
         >
           <span className="flex items-center gap-1.5 px-3.5 h-9 rounded-[14px] bg-white text-dark-blue font-display text-xs">
-            <Plus className="h-3.5 w-3.5" />
-            {t(lang, "bingo_generate")}
+            {tickets.length >= MAX_TICKETS ? (
+              <span className="tabular-nums">{tickets.length} / {MAX_TICKETS}</span>
+            ) : (
+              <>
+                <Plus className="h-3.5 w-3.5" />
+                {t(lang, "bingo_generate")}
+              </>
+            )}
           </span>
         </button>
         {tickets.length > 1 && (

@@ -26,6 +26,7 @@ const PostSchema = z.object({
     .enum(["not_started", "in_progress", "break", "ended"])
     .optional(),
   nowPlayingCode: z.string().length(2).nullable().optional(),
+  runningOrderPos: z.number().int().min(1).max(60).nullable().optional(),
 });
 
 export async function GET() {
@@ -36,11 +37,12 @@ export async function GET() {
     .select({
       showStatus: rooms.showStatus,
       nowPlayingCode: rooms.nowPlayingCode,
+      runningOrderPos: rooms.runningOrderPos,
     })
     .from(rooms);
   // Mode of each field — what the admin most recently broadcast tends
   // to be the value shared by the majority of rooms.
-  const mode = <T extends string | null>(values: T[]): T | null => {
+  const mode = <T extends string | number | null>(values: T[]): T | null => {
     const counts = new Map<string, { value: T; n: number }>();
     for (const v of values) {
       const key = String(v);
@@ -56,6 +58,7 @@ export async function GET() {
     roomCount: rows.length,
     showStatus: mode(rows.map((r) => r.showStatus)) ?? "not_started",
     nowPlayingCode: mode(rows.map((r) => r.nowPlayingCode)),
+    runningOrderPos: mode(rows.map((r) => r.runningOrderPos)),
   });
 }
 
@@ -67,11 +70,12 @@ export async function POST(req: Request) {
   if (!parsed.success || Object.keys(parsed.data).length === 0) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
-  const { showStatus, nowPlayingCode } = parsed.data;
+  const { showStatus, nowPlayingCode, runningOrderPos } = parsed.data;
 
   const update: Record<string, unknown> = {};
   if (showStatus !== undefined) update.showStatus = showStatus;
   if (nowPlayingCode !== undefined) update.nowPlayingCode = nowPlayingCode;
+  if (runningOrderPos !== undefined) update.runningOrderPos = runningOrderPos;
 
   await db.update(rooms).set(update);
 

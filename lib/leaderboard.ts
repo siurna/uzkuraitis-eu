@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   officialResults,
@@ -7,6 +7,8 @@ import {
   roomFacts,
   voters,
   votes,
+  chatMessages,
+  chatReactions,
 } from "@/lib/db/schema";
 import {
   scoreVoter,
@@ -22,6 +24,17 @@ import { countries } from "@/lib/countries";
 // API route AND by the "results are in" chat card. Per-room result
 // overrides take precedence over the global official tables.
 
+// "Chat highlights" bonus: a small social kicker layered on top of the
+// contest score (which stays pure in lib/scoring.ts). A message that
+// drew ≥ HIGHLIGHT_THRESHOLD reactions is a highlight; each one a voter
+// authored is worth HIGHLIGHT_POINTS_PER, capped per voter at
+// HIGHLIGHT_POINTS_MAX. It's read off the current reaction counts at
+// leaderboard-compute time (i.e. once results are entered the show is
+// over and it's effectively frozen).
+const HIGHLIGHT_THRESHOLD = 5;
+const HIGHLIGHT_POINTS_PER = 2;
+export const HIGHLIGHT_POINTS_MAX = 12;
+
 export type LeaderboardRow = {
   voterId: string;
   sessionId: string;
@@ -31,6 +44,8 @@ export type LeaderboardRow = {
   home: number;
   bets: BetBreakdown;
   betsTotal: number;
+  /** Chat-highlights social bonus (already capped). */
+  highlights: number;
   total: number;
 };
 
@@ -110,6 +125,25 @@ export async function computeRoomLeaderboard(room: {
     ballotByVoter.get(r.voterId)![String(r.points)] = r.countryCode;
   }
 
+  // One row per highlighted message (≥ threshold reactions) → tally how
+  // many each session authored → bonus points (capped).
+  const highlightRows = await db
+    .select({
+      sessionId: chatMessages.sessionId,
+      reactionCount: sql<number>`count(${chatReactions.messageId})`,
+    })
+    .from(chatMessages)
+    .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
+    .where(eq(chatMessages.roomId, room.id))
+    .groupBy(chatMessages.id, chatMessages.sessionId)
+    .having(sql`count(${chatReactions.messageId}) >= ${HIGHLIGHT_THRESHOLD}`);
+  const highlightCountBySession = new Map<string, number>();
+  for (const r of highlightRows) {
+    highlightCountBySession.set(r.sessionId, (highlightCountBySession.get(r.sessionId) ?? 0) + 1);
+  }
+  const highlightPoints = (sessionId: string) =>
+    Math.min((highlightCountBySession.get(sessionId) ?? 0) * HIGHLIGHT_POINTS_PER, HIGHLIGHT_POINTS_MAX);
+
   const totalFinalists = countries.length;
   const officialHome = placements[room.homeCountryCode] ?? null;
 
@@ -135,6 +169,7 @@ export async function computeRoomLeaderboard(room: {
         facts,
         totalFinalists,
       });
+      const highlights = highlightPoints(v.sessionId);
       return {
         voterId: v.id,
         sessionId: v.sessionId,
@@ -144,7 +179,8 @@ export async function computeRoomLeaderboard(room: {
         home: score.home,
         bets: score.bets,
         betsTotal: score.betsTotal,
-        total: score.total,
+        highlights,
+        total: score.total + highlights,
       };
     })
     .sort((a, b) => {

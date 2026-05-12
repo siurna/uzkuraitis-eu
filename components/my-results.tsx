@@ -19,6 +19,7 @@ type Row = {
   topTen: number;
   home: number;
   bets: BetBreakdown;
+  highlights: number;
   total: number;
 };
 
@@ -51,6 +52,17 @@ export function MyResults() {
   useEventListener(({ event }) => {
     if ((event as { type?: string }).type === "leaderboard:updated") load();
   });
+
+  // The Home "Results are in" promo opens this drawer (on the "me" tab)
+  // instead of scroll-jumping to the card.
+  useEffect(() => {
+    const open = () => {
+      setOpen(true);
+      setTab("me");
+    };
+    window.addEventListener("uzk:open-results", open);
+    return () => window.removeEventListener("uzk:open-results", open);
+  }, []);
 
   if (!tallyEnabled || !rows || rows.length === 0) return null;
   const session = ensureSessionId();
@@ -151,6 +163,7 @@ export function MyResults() {
                 topTen={me.topTen}
                 home={me.home}
                 bets={me.bets}
+                highlights={me.highlights}
                 total={me.total}
                 homeName={countryName(homeCountryCode, lang)}
               />

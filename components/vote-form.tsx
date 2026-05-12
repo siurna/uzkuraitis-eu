@@ -26,11 +26,12 @@ import { ListOrdered, Sparkles, Share2, ScrollText, GripVertical, Loader2 } from
 import { countries, getCountry, countryName } from "@/lib/countries";
 import { Flag, HeartOutline } from "@/components/flag";
 import { BonusBetsForm } from "@/components/bonus-bets-form";
+import { SharePicks } from "@/components/share-picks";
 import { CountryDrawer } from "@/components/country-drawer";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { useIdentity } from "@/lib/use-identity";
 import { shareTopTen } from "@/lib/share-card";
-import type { Bets } from "@/lib/scoring";
+import { HOST_COUNTRY, type Bets } from "@/lib/scoring";
 import { useLang, t, fmt } from "@/lib/i18n";
 
 const POINT_VALUES = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1] as const;
@@ -63,7 +64,7 @@ export function VoteForm({
   const [slots, setSlots] = useState<Slot[]>(
     POINT_VALUES.map((p) => ({ points: p, countryCode: null })),
   );
-  const [homePrediction, setHomePrediction] = useState<string>("");
+  const [homePrediction, setHomePrediction] = useState<number | null>(null);
   const [bets, setBets] = useState<Bets>({});
   // Vote lifecycle. There's no submit button: the ballot auto-casts the
   // moment all 10 slots are full, and every later reorder / swap / bet
@@ -77,8 +78,11 @@ export function VoteForm({
   const [tab, setTab] = useState<VoteTab>("ballot");
   // Which ballot slot is currently being edited via the country drawer.
   const [pickingPoints, setPickingPoints] = useState<Points | null>(null);
-  // Slot that just got filled, gets a one-shot heartbeat pulse.
+  // Slot that just got filled / moved into — gets a one-shot heartbeat
+  // pulse. `flashedSlots` are the rows a drag shuffled past — they
+  // flamingo-flash briefly so it's obvious what just rearranged.
   const [pulsingPoints, setPulsingPoints] = useState<Points | null>(null);
+  const [flashedSlots, setFlashedSlots] = useState<ReadonlySet<Points>>(() => new Set());
   // One-shot heart particle that flies from screen centre into the
   // freshly-filled slot's heart spot. Spawned after assign().
   const [flyingHeart, setFlyingHeart] = useState<{
@@ -111,7 +115,10 @@ export function VoteForm({
       }
     }
     const storedPrediction = localStorage.getItem(PREDICTION_KEY(roomCode));
-    if (storedPrediction) setHomePrediction(storedPrediction);
+    if (storedPrediction) {
+      const n = Number(storedPrediction);
+      if (Number.isFinite(n)) setHomePrediction(n);
+    }
     const storedBets = localStorage.getItem(BETS_KEY(roomCode));
     if (storedBets) {
       try {
@@ -132,8 +139,8 @@ export function VoteForm({
   }, [slots, roomCode]);
 
   useEffect(() => {
-    if (homePrediction) {
-      localStorage.setItem(PREDICTION_KEY(roomCode), homePrediction);
+    if (homePrediction != null) {
+      localStorage.setItem(PREDICTION_KEY(roomCode), String(homePrediction));
     } else {
       localStorage.removeItem(PREDICTION_KEY(roomCode));
     }
@@ -253,6 +260,16 @@ export function VoteForm({
       newIndex,
     );
     setSlots(slots.map((s, i) => ({ ...s, countryCode: reorderedCountries[i] })));
+    // Make the change legible: the country you dragged heartbeats in its
+    // new home, and every row it shuffled past flamingo-flashes briefly.
+    const lo = Math.min(oldIndex, newIndex);
+    const hi = Math.max(oldIndex, newIndex);
+    setFlashedSlots(new Set(slots.slice(lo, hi + 1).map((s) => s.points)));
+    setPulsingPoints(slots[newIndex].points);
+    window.setTimeout(() => {
+      setFlashedSlots(new Set());
+      setPulsingPoints(null);
+    }, 1100);
   };
 
   const castVote = async (isUpdate: boolean) => {
@@ -269,9 +286,6 @@ export function VoteForm({
       const ballot = Object.fromEntries(
         slots.map((s) => [String(s.points), s.countryCode!]),
       );
-      const trimmedPrediction = homePrediction.trim();
-      const predictionInt =
-        trimmedPrediction === "" ? null : Number(trimmedPrediction);
       const res = await fetch(`/api/rooms/${roomCode}/votes`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -280,8 +294,8 @@ export function VoteForm({
           sessionId: sessionId(),
           votes: ballot,
           homePrediction:
-            predictionInt && Number.isFinite(predictionInt)
-              ? predictionInt
+            homePrediction != null && Number.isFinite(homePrediction)
+              ? homePrediction
               : null,
           bets,
         }),
@@ -385,6 +399,7 @@ export function VoteForm({
                           slot={slot}
                           onPick={() => setPickingPoints(slot.points)}
                           pulsing={pulsingPoints === slot.points}
+                          flash={flashedSlots.has(slot.points)}
                         />
                       ))}
                     </ul>
@@ -398,24 +413,7 @@ export function VoteForm({
                 {!hasCast && allFilled && casting && (
                   <p className="text-sm text-white/55 text-center pt-1">{t(lang, "submitting")}</p>
                 )}
-                {hasCast && voterId && (
-                  <button
-                    type="button"
-                    onClick={share}
-                    disabled={sharing}
-                    className="flex items-center justify-center gap-2 w-full rounded-2xl py-3
-                               bg-white/[0.05] ring-1 ring-white/10 hover:bg-white/[0.09]
-                               transition transform-gpu duration-150 active:scale-[0.99]
-                               disabled:opacity-60 font-display text-sm"
-                  >
-                    {sharing ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-dark-blue-200" />
-                    ) : (
-                      <Share2 className="h-4 w-4 text-dark-blue-200" />
-                    )}
-                    {sharing ? t(lang, "share_preparing") : t(lang, "share_picks")}
-                  </button>
-                )}
+                {hasCast && voterId && <SharePicks key={voterId} />}
               </section>
             )}
 
@@ -441,8 +439,17 @@ export function VoteForm({
                         min={1}
                         max={countries.length}
                         placeholder="?"
-                        value={homePrediction}
-                        onChange={(e) => setHomePrediction(e.target.value)}
+                        value={homePrediction ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === "") {
+                            setHomePrediction(null);
+                            return;
+                          }
+                          const n = Number(v);
+                          if (!Number.isFinite(n)) return;
+                          setHomePrediction(Math.max(1, Math.min(countries.length, Math.round(n))));
+                        }}
                         className="h-14 w-20 rounded-xl border border-white/15 bg-black/30
                                    text-center font-display text-3xl tabular-nums text-white
                                    caret-flamingo focus:border-flamingo focus:outline-none
@@ -456,15 +463,7 @@ export function VoteForm({
               </>
             )}
 
-            {tab === "rules" && (
-              <section className="flex flex-col gap-3">
-                <h2 className="font-display text-xl gradient-text text-balance px-1">{t(lang, "rules_title")}</h2>
-                <RuleCard title={t(lang, "rules_top10_h")} body={t(lang, "rules_top10_b")} />
-                <RuleCard title={t(lang, "rules_home_h")} body={t(lang, "rules_home_b")} />
-                <RuleCard title={t(lang, "rules_bets_h")} body={t(lang, "rules_bets_b")} />
-                <p className="text-xs text-white/40 text-center pt-1 text-balance">{t(lang, "rules_footer")}</p>
-              </section>
-            )}
+            {tab === "rules" && <RulesPanel homeCountryCode={homeCountryCode} lang={lang} />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -605,12 +604,98 @@ function FlyingHeartToSlot({
   );
 }
 
-function RuleCard({ title, body }: { title: string; body: string }) {
+// "places off → points" mini-ladder shown under the TOP10 and
+// home-placement rules — a row of tiny dark chips, dim distance on the
+// left, bright point value on the right.
+function ScaleRow({ items }: { items: readonly (readonly [string, number])[] }) {
   return (
-    <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3.5 flex flex-col gap-1">
-      <p className="font-display text-sm text-white/90">{title}</p>
-      <p className="text-sm text-white/60 leading-relaxed text-pretty">{body}</p>
+    <div className="flex flex-wrap gap-1.5 pt-1">
+      {items.map(([off, pts]) => (
+        <span
+          key={off}
+          className="inline-flex items-center gap-1 rounded-lg bg-black/30 ring-1 ring-white/10 pl-1.5 pr-1.5 py-1 text-xs leading-none"
+        >
+          <span className="text-white/40 tabular-nums">{off}</span>
+          <span className="text-white/25">→</span>
+          <span className="font-display text-white/90 tabular-nums">{pts}</span>
+        </span>
+      ))}
     </div>
+  );
+}
+
+function RulesPanel({
+  homeCountryCode,
+  lang,
+}: {
+  homeCountryCode: string;
+  lang: "en" | "lt";
+}) {
+  const home = countryName(homeCountryCode, lang);
+  const host = countryName(HOST_COUNTRY, lang);
+  const tr = (k: Parameters<typeof t>[1]) => fmt(t(lang, k), { home, host });
+
+  // Bonus bets, biggest payouts first. `big` = a filled flamingo→fuchsia
+  // chip (the headline +5 / closeness bets); the rest get a quiet chip.
+  const bets: { label: string; sub: string; pts: string; big?: boolean }[] = [
+    { label: tr("bet_lt_total"),        sub: tr("bet_lt_total_sub"),        pts: "0–10", big: true },
+    { label: tr("bet_jury_winner"),     sub: tr("bet_jury_winner_sub"),     pts: "+5",   big: true },
+    { label: tr("bet_televote_winner"), sub: tr("bet_televote_winner_sub"), pts: "+5",   big: true },
+    { label: tr("bet_wooden_spoon"),    sub: tr("bet_wooden_spoon_sub"),    pts: "+5",   big: true },
+    { label: tr("bet_lt_12_to"),        sub: tr("bet_lt_12_to_sub"),        pts: "+5",   big: true },
+    { label: tr("bet_nul"),             sub: tr("bet_nul_sub"),             pts: "+4" },
+    { label: tr("bet_big5"),            sub: tr("bet_big5_sub"),            pts: "+3" },
+    { label: tr("bet_host_top3"),       sub: tr("bet_host_top3_sub"),       pts: "+3" },
+    { label: tr("bet_solo_winner"),     sub: tr("bet_solo_winner_sub"),     pts: "+2" },
+  ];
+
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="font-display text-xl gradient-text text-balance px-1">{t(lang, "rules_title")}</h2>
+
+      {/* TOP 10 ballot */}
+      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-2.5">
+        <p className="font-display text-sm text-white/90">{t(lang, "rules_top10_h")}</p>
+        <p className="text-sm text-white/60 leading-relaxed text-pretty">{t(lang, "rules_top10_b")}</p>
+        <p className="text-xs text-white/45 leading-relaxed pt-0.5">{t(lang, "rules_top10_eg")}</p>
+        <ScaleRow items={[["0", 12], ["1", 10], ["2", 8], ["3", 7], ["5", 5], ["9", 1]]} />
+      </div>
+
+      {/* Home-country placement */}
+      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-2.5">
+        <p className="font-display text-sm text-white/90">{t(lang, "rules_home_h")}</p>
+        <p className="text-sm text-white/60 leading-relaxed text-pretty">{tr("rules_home_b")}</p>
+        <ScaleRow items={[["0", 12], ["1", 10], ["2", 8], ["3", 7], ["5", 5], ["9", 1]]} />
+      </div>
+
+      {/* Bonus bets */}
+      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-3">
+        <p className="font-display text-sm text-white/90">{t(lang, "rules_bets_h")}</p>
+        <p className="text-xs text-white/50 leading-relaxed">{t(lang, "rules_bets_intro")}</p>
+        <ul className="flex flex-col">
+          {bets.map((b) => (
+            <li
+              key={b.label}
+              className="flex items-start gap-3 py-2.5 border-t border-white/8 first:border-t-0 first:pt-0 last:pb-0"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-white/85 leading-snug">{b.label}</p>
+                <p className="text-xs text-white/45 leading-snug mt-0.5 text-pretty">{b.sub}</p>
+              </div>
+              <span
+                className={`shrink-0 mt-0.5 rounded-lg px-2 py-1 text-xs font-display tabular-nums leading-none ${
+                  b.big
+                    ? "bg-gradient-to-br from-flamingo to-fuchsia text-white"
+                    : "bg-white/[0.07] ring-1 ring-white/12 text-white/80"
+                }`}
+              >
+                {b.pts}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 
@@ -618,29 +703,37 @@ function BallotSlot({
   slot,
   onPick,
   pulsing,
+  flash,
 }: {
   slot: Slot;
   onPick: () => void;
   pulsing: boolean;
+  flash: boolean;
 }) {
   const lang = useLang();
-  return <BallotSlotInner slot={slot} onPick={onPick} pulsing={pulsing} lang={lang} />;
+  return <BallotSlotInner slot={slot} onPick={onPick} pulsing={pulsing} flash={flash} lang={lang} />;
 }
 
 function BallotSlotInner({
   slot,
   onPick,
   pulsing,
+  flash,
   lang,
 }: {
   slot: Slot;
   onPick: () => void;
   pulsing: boolean;
+  flash: boolean;
   lang: "en" | "lt";
 }) {
   const id = `slot-${slot.points}`;
+  // Empty slots aren't draggable — there's nothing to reorder until a
+  // country lands in them, and a phantom drag handle on a placeholder
+  // row just reads as broken.
+  const draggable = !!slot.countryCode;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id });
+    useSortable({ id, disabled: !draggable });
 
   const country = slot.countryCode ? getCountry(slot.countryCode) : null;
   // The top point values get a filled, gradient "douze points" chip;
@@ -672,32 +765,40 @@ function BallotSlotInner({
       }}
       // min-h pre-allocates the picked-state height so the row doesn't
       // jump taller the moment a country is chosen.
-      className={`group flex items-stretch rounded-2xl min-h-[4.75rem] transition-colors
+      className={`group flex items-stretch rounded-2xl min-h-[4.75rem] transition-colors duration-300
                   hover:ring-white/20
                   ${
-                    country && isTop
-                      ? "bg-gold/[0.07] ring-1 ring-gold/25"
-                      : "bg-white/[0.04] ring-1 ring-white/8"
+                    flash
+                      ? "bg-flamingo/[0.14] ring-1 ring-flamingo/45"
+                      : country && isTop
+                        ? "bg-gold/[0.07] ring-1 ring-gold/25"
+                        : "bg-white/[0.04] ring-1 ring-white/8"
                   }`}
     >
       {/* Dedicated drag handle — small, touch-action:none so dnd-kit's
           hold-to-drag works, while the rest of the row stays freely
-          scrollable + tappable. */}
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        aria-label={t(lang, "aria_drag_reorder")}
-        className="shrink-0 flex items-center pl-1.5 pr-0.5 cursor-grab
-                   active:cursor-grabbing touch-none text-white/25 hover:text-white/55 transition"
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
+          scrollable + tappable. Hidden (but space kept) on empty rows. */}
+      {draggable ? (
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label={t(lang, "aria_drag_reorder")}
+          className="shrink-0 flex items-center pl-1.5 pr-0.5 cursor-grab
+                     active:cursor-grabbing touch-none text-white/25 hover:text-white/55 transition"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      ) : (
+        <span className="shrink-0 flex items-center pl-1.5 pr-0.5 text-white/10" aria-hidden>
+          <GripVertical className="h-4 w-4" />
+        </span>
+      )}
 
       <div className="flex items-center gap-3 pl-0.5 pr-1 py-3">
         <span
-          className={`h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-xl grid place-items-center
-                      font-display text-lg tabular-nums leading-none ${badgeClass}`}
+          className={`h-10 w-10 sm:h-11 sm:w-11 shrink-0 rounded-xl grid place-items-center
+                      font-display text-xl tabular-nums leading-none pt-px ${badgeClass}`}
         >
           {slot.points}
         </span>

@@ -103,6 +103,9 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const didInitialScroll = useRef(false);
   const atBottomRef = useRef(true);
+  // Messages just prepended by "load earlier" — they must NOT count
+  // toward the "N new messages" badge (they're history, not arrivals).
+  const prependedRef = useRef(0);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Build an optimistic Message from the current identity + reply state.
@@ -278,6 +281,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       setMessages((prev) => {
         const have = new Set(prev.map((m) => m.id));
         const add = data.messages.filter((m) => !have.has(m.id));
+        prependedRef.current += add.length;
         return [...add, ...prev];
       });
       requestAnimationFrame(() => {
@@ -360,7 +364,10 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       lastCount.current = messages.length;
       return;
     }
-    const grew = messages.length - lastCount.current;
+    // Discount anything "load earlier" prepended — only true tail
+    // arrivals advance the badge.
+    const grew = messages.length - lastCount.current - prependedRef.current;
+    prependedRef.current = 0;
     lastCount.current = messages.length;
     if (grew <= 0) return;
     if (atBottomRef.current) {

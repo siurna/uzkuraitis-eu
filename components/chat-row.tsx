@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef } from "react";
-import { motion, AnimatePresence, useMotionValue, useTransform } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Reply, Pencil, Copy, Trash2, Smile, Loader2, Mic, Music, Trophy,
 } from "lucide-react";
@@ -91,6 +91,94 @@ function renderBody(text: string, names: string[]): React.ReactNode {
   return out;
 }
 
+// ── swipe-to-reply ───────────────────────────────────────────────────
+// A hand-rolled horizontal drag: the bubble follows the finger (reply
+// direction only) up to a cap; releasing past the threshold fires the
+// reply. We pick "horizontal swipe vs. vertical scroll" from the first
+// few px of travel and lock it, so list scrolling stays buttery and the
+// bubble never jitters. `touch-action: pan-y` on the element keeps the
+// browser from claiming horizontal pans. All movement is written to the
+// DOM directly — no React re-renders per pointermove.
+const SWIPE_CAP = 64;
+const SWIPE_COMMIT = 40;
+
+function useSwipeToReply({
+  dir,
+  onCommit,
+  onLock,
+}: {
+  /** +1 = incoming message (swipe right), -1 = own message (swipe left). */
+  dir: 1 | -1;
+  onCommit: () => void;
+  /** Fires once the gesture is recognised as a horizontal swipe. */
+  onLock: () => void;
+}) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const arrowRef = useRef<HTMLSpanElement>(null);
+  const swipedRef = useRef(false);
+  const st = useRef<{ id: number; x0: number; y0: number; v: number; axis: "" | "h" | "v" } | null>(null);
+
+  const paint = (v: number) => {
+    const el = ref.current;
+    if (el) {
+      el.style.transition = "none";
+      el.style.transform = v === 0 ? "" : `translate3d(${v}px,0,0)`;
+    }
+    const a = arrowRef.current;
+    if (a) a.style.opacity = String(Math.min(1, Math.abs(v) / SWIPE_COMMIT));
+  };
+  const release = (commit: boolean) => {
+    const el = ref.current;
+    if (el) {
+      el.style.transition = "transform 240ms cubic-bezier(0.22,1,0.36,1)";
+      el.style.transform = "";
+      window.setTimeout(() => { if (el) el.style.transition = ""; }, 280);
+    }
+    const a = arrowRef.current;
+    if (a) { a.style.transition = "opacity 220ms"; a.style.opacity = "0"; }
+    if (commit) onCommit();
+  };
+
+  const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (e.button > 0) return;
+    swipedRef.current = false;
+    st.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, v: 0, axis: "" };
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const s = st.current;
+    if (!s || e.pointerId !== s.id) return;
+    const dx = e.clientX - s.x0;
+    const dy = e.clientY - s.y0;
+    if (s.axis === "") {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      s.axis = Math.abs(dx) > Math.abs(dy) + 2 ? "h" : "v";
+      if (s.axis === "h") {
+        swipedRef.current = true;
+        onLock();
+        try { ref.current?.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+      }
+    }
+    if (s.axis !== "h") return;
+    let v = dir === 1 ? Math.max(0, dx) : Math.min(0, dx);
+    if (Math.abs(v) > SWIPE_CAP) v = dir * (SWIPE_CAP + (Math.abs(v) - SWIPE_CAP) * 0.18);
+    s.v = v;
+    paint(v);
+  };
+  const onPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const s = st.current;
+    if (!s || e.pointerId !== s.id) return;
+    st.current = null;
+    if (s.axis === "h") release(Math.abs(s.v) >= SWIPE_COMMIT);
+  };
+
+  return {
+    ref,
+    arrowRef,
+    swipedRef,
+    handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Single message row. Handles all kinds: now-playing banner, system
 // pill, bingo card, GIF/image, and plain text — plus swipe-to-reply,
@@ -149,9 +237,6 @@ export function ChatRow({
     Date.now() - new Date(m.createdAt).getTime() < EDIT_WINDOW_MS;
 
   const deepDive = useCountryDeepDive();
-  // Swipe-to-reply: the bubble's live x; the reply arrow fades in with it.
-  const swipeX = useMotionValue(0);
-  const arrowOpacity = useTransform(swipeX, mine ? [-12, -42] : [12, 42], [0, 1]);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longFired = useRef(false);
   const startPress = () => {
@@ -168,6 +253,9 @@ export function ChatRow({
       pressTimer.current = null;
     }
   };
+  // Swipe-to-reply (own messages swipe left, incoming swipe right). A
+  // recognised swipe cancels any pending long-press.
+  const swipe = useSwipeToReply({ dir: mine ? -1 : 1, onCommit: onReply, onLock: cancelPress });
 
   const time = useMemo(() => {
     try {
@@ -330,55 +418,55 @@ export function ChatRow({
 
           <div className="relative">
             {/* The reply arrow — fades in only as you swipe. */}
-            <motion.span
+            <span
+              ref={swipe.arrowRef}
               aria-hidden
-              style={{ opacity: arrowOpacity }}
+              style={{ opacity: 0 }}
               className={`pointer-events-none absolute inset-y-0 grid place-items-center text-flamingo
                           ${mine ? "right-1" : "left-1"}`}
             >
               <Reply className="h-4 w-4" />
-            </motion.span>
-            <motion.button
-              drag="x"
-              style={{ x: swipeX }}
-              dragSnapToOrigin
-              dragMomentum={false}
-              dragConstraints={{ left: mine ? -78 : 0, right: mine ? 0 : 78 }}
-              dragElastic={0.12}
-              dragTransition={{ bounceStiffness: 600, bounceDamping: 34 }}
-              onDragStart={cancelPress}
-              onDragEnd={(_, info) => {
-                const past = mine ? info.offset.x < -42 : info.offset.x > 42;
-                if (past) onReply();
-              }}
+            </span>
+            <button
+              ref={swipe.ref}
               type="button"
+              onPointerDown={(e) => {
+                swipe.handlers.onPointerDown(e);
+                startPress();
+              }}
+              onPointerMove={swipe.handlers.onPointerMove}
+              onPointerUp={(e) => {
+                swipe.handlers.onPointerUp(e);
+                cancelPress();
+              }}
+              onPointerCancel={(e) => {
+                swipe.handlers.onPointerCancel(e);
+                cancelPress();
+              }}
+              onPointerLeave={cancelPress}
               onClick={(e) => {
-                // After a long-press the menu is already open; swallow the
-                // trailing click so it doesn't bubble to the list's
-                // "tap-empty-space-to-close" handler.
-                if (longFired.current) {
+                // After a long-press the menu's already open, and after a
+                // swipe the bubble just snapped back — swallow the trailing
+                // click so it doesn't open the lightbox / bubble to the
+                // list's "tap-empty-space-to-close" handler.
+                if (longFired.current || swipe.swipedRef.current) {
                   longFired.current = false;
+                  swipe.swipedRef.current = false;
                   e.stopPropagation();
                   return;
                 }
                 if (isMedia && m.gifUrl) onOpenImage(m.gifUrl);
               }}
-              onMouseDown={startPress}
-              onMouseUp={cancelPress}
-              onMouseLeave={cancelPress}
-              onTouchStart={startPress}
-              onTouchEnd={cancelPress}
-              onTouchCancel={cancelPress}
               onContextMenu={(e) => {
                 e.preventDefault();
                 longFired.current = true;
                 onOpenMenu();
               }}
               // touch-pan-y (not touch-none) so a vertical drag still
-              // scrolls the list when it starts on a bubble; framer
-              // captures the horizontal for swipe-to-reply. transition-
-              // colors only — a transform transition would lag the drag.
-              className={`relative text-left rounded-2xl text-sm leading-snug transition-colors touch-pan-y cursor-pointer overflow-hidden
+              // scrolls the list when it starts on a bubble; we claim the
+              // horizontal for swipe-to-reply. transition-colors only —
+              // the swipe writes its own inline transform/transition.
+              className={`relative text-left rounded-2xl text-sm leading-snug transition-colors touch-pan-y cursor-pointer overflow-hidden will-change-transform
                           ${isMedia ? "p-0" : "px-3.5 py-2"}
                           ${
                             isCard
@@ -414,7 +502,7 @@ export function ChatRow({
                   )}
                 </>
               )}
-            </motion.button>
+            </button>
 
             <AnimatePresence>
               {menuOpen && (

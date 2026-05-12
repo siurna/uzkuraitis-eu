@@ -1,13 +1,16 @@
 // Scoring logic for the Eurovision party prediction game.
 //
 // Components per voter (all summed into a single total):
-//   1. Top-10 ballot vs official top-10 placements (full / half / 0).
+//   1. Top-10 ballot vs official top-10 placements ("notch-down" — see below).
 //   2. Home country (Lithuania) placement guess.
 //   3. 11 side bets covering wooden spoon, jury/televote winners,
 //      nul points, yes/no toggles. See SIDE_BET_DEFS below.
 //
-// Half-credit on the top-10 ballot is FLOORED to integers so the leaderboard
-// reads as whole numbers (12 -> 6, 7 -> 3, etc.).
+// Top-10 ballot — "notch-down": a country only scores if it actually
+// finished in the official top 10. You then earn the Eurovision value of
+// the spot that's `|yourPlace − realPlace|` notches *below* its real
+// finish — i.e. exact = full value, every place you're off slides one rung
+// down the 12/10/8/7…1 ladder, and anything past 10th rungs out to 0.
 
 export type Ballot = Record<string, string>;
 export type OfficialPlacements = Record<string, number>;
@@ -36,19 +39,18 @@ export function scoreTopTen(
 
   let total = 0;
   for (const [code, officialPlacement] of officialTop10) {
-    const fullPoints = POINTS_BY_PLACEMENT[officialPlacement] ?? 0;
     if (!voterPicks.has(code)) continue;
 
     const slotEntry = Object.entries(ballot).find(([, c]) => c === code);
     if (!slotEntry) continue;
 
     const voterPlacement = pointsKeyToPlacement(slotEntry[0]);
-    if (voterPlacement === officialPlacement) {
-      total += fullPoints;
-    } else {
-      // Half points, floored to integer so leaderboard stays clean.
-      total += Math.floor(fullPoints / 2);
-    }
+    if (voterPlacement < 1) continue;
+
+    // Notch-down: score the value of the spot `distance` rungs below the
+    // country's real finish. Exact → full value; past 10th → 0.
+    const distance = Math.abs(voterPlacement - officialPlacement);
+    total += POINTS_BY_PLACEMENT[officialPlacement + distance] ?? 0;
   }
   return total;
 }
@@ -84,13 +86,11 @@ export function scoreHomePrediction(
   ) {
     return 0;
   }
+  // Same "notch-down the Eurovision ladder" idea as the TOP10 ballot, but
+  // always starting from the top rung: nail the placement → 12, then one
+  // rung lower (12 → 10 → 8 → 7 … 1) per place you're off; >9 off → 0.
   const diff = Math.abs(prediction - officialPlacement);
-  if (diff === 0) return 10;
-  if (diff === 1) return 7;
-  if (diff === 2) return 5;
-  if (diff <= 5) return 3;
-  if (diff <= 10) return 1;
-  return 0;
+  return POINTS_BY_PLACEMENT[1 + diff] ?? 0;
 }
 
 // ---------- side bets ----------

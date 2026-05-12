@@ -12,12 +12,14 @@ export function ScoreBreakdown({
   topTen,
   home,
   bets,
+  highlights,
   total,
   homeName,
 }: {
   topTen: number;
   home: number;
   bets: BetBreakdown;
+  highlights: number;
   total: number;
   homeName: string;
 }) {
@@ -36,6 +38,7 @@ export function ScoreBreakdown({
     { label: t(lang, "bet_nul"), pts: bets.nulTelevote },
     { label: t(lang, "bet_host_top3"), pts: bets.hostTop3 },
     { label: t(lang, "bet_solo_winner"), pts: bets.winnerSolo },
+    { label: t(lang, "breakdown_highlights"), pts: highlights },
   ];
   return (
     <ul className="flex flex-col gap-0.5 text-sm">

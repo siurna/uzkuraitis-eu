@@ -11,10 +11,11 @@ export default async function AdminLivePage() {
     .select({
       showStatus: rooms.showStatus,
       nowPlayingCode: rooms.nowPlayingCode,
+      runningOrderPos: rooms.runningOrderPos,
     })
     .from(rooms);
 
-  const mode = <T extends string | null>(values: T[]): T | null => {
+  const mode = <T extends string | number | null>(values: T[]): T | null => {
     const counts = new Map<string, { value: T; n: number }>();
     for (const v of values) {
       const key = String(v);
@@ -34,6 +35,7 @@ export default async function AdminLivePage() {
       | "break"
       | "ended") ?? "not_started";
   const nowPlaying = mode(rows.map((r) => r.nowPlayingCode));
+  const runningOrderPos = mode(rows.map((r) => r.runningOrderPos));
 
   return (
     <div className="flex flex-col gap-6">
@@ -46,7 +48,11 @@ export default async function AdminLivePage() {
         {rows.length === 1 ? "" : "s"} currently exist.
       </p>
       <div className="glass-card rounded-xl p-5 max-w-md">
-        <AdminLivePanel initialStatus={status} initialNowPlaying={nowPlaying} />
+        <AdminLivePanel
+          initialStatus={status}
+          initialNowPlaying={nowPlaying}
+          initialRunningOrderPos={runningOrderPos}
+        />
       </div>
     </div>
   );
