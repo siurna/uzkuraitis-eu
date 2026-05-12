@@ -91,7 +91,7 @@ export async function POST(req: Request) {
             id,
             (prefs) => !!prefs.nowPlaying,
             {
-              title: `${c?.name ?? nowPlayingCode.toUpperCase()} is on stage`,
+              title: `${c?.flag ? `${c.flag} ` : ""}${c?.name ?? nowPlayingCode.toUpperCase()} is on stage`,
               body: c?.artist
                 ? `${c.artist}${c.song ? ` — ${c.song}` : ""}`
                 : "Tap to open the room",

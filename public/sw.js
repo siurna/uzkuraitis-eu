@@ -11,7 +11,7 @@
  * step, and we want the SW to load instantly without a bundler.
  */
 
-const CACHE = "esc-2026-v1";
+const CACHE = "esc-2026-v2";
 const PRECACHE = [
   "/",
   "/icon.png",
@@ -75,21 +75,40 @@ self.addEventListener("push", (event) => {
   try {
     payload = event.data ? event.data.json() : {};
   } catch {
-    payload = { title: "Eurovision 2026", body: event.data?.text() ?? "" };
+    payload = { title: "Eurovision", body: event.data?.text() ?? "" };
   }
-  const title = payload.title || "Eurovision 2026";
+  const title = payload.title || "Eurovision";
   const body = payload.body || "";
   const tag = payload.tag || undefined;
   const data = { url: payload.url || "/", ...payload };
+  const isReplyToMe = typeof tag === "string" && tag.startsWith("chat-reply:");
 
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon: "/icon.png",
-      badge: "/icon.png",
-      tag,
-      data,
-    }),
+    (async () => {
+      const wins = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      const focused = wins.find((c) => c.focused);
+      if (focused) {
+        // The app is open & in front. Only surface a reply-to-me, and
+        // only if they're not already sitting in the chat tab.
+        let onChat = false;
+        try {
+          onChat = /\/r\/[^/]+\/chat/.test(new URL(focused.url).pathname);
+        } catch {
+          /* ignore */
+        }
+        if (!(isReplyToMe && !onChat)) return; // everything else: stay quiet
+      }
+      return self.registration.showNotification(title, {
+        body,
+        icon: "/icon.png",
+        badge: "/icon.png",
+        tag,
+        data,
+      });
+    })(),
   );
 });
 

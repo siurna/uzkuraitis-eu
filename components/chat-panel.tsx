@@ -92,6 +92,9 @@ export function ChatPanel() {
   const [newCount, setNewCount] = useState(0);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  // px the on-screen keyboard (+ iOS form accessory bar) eats off the
+  // bottom — used to lift the whole panel to sit right above it.
+  const [kbInset, setKbInset] = useState(0);
   const dragDepth = useRef(0);
 
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -149,47 +152,110 @@ export function ChatPanel() {
     };
   }, [updatePresence]);
 
-  // ----- fetch (debounced) -----
+  // ----- fetch -----
   const fetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fetchMessages = useCallback(() => {
-    if (fetchTimer.current) return;
-    fetchTimer.current = setTimeout(async () => {
-      fetchTimer.current = null;
-      try {
-        const res = await fetch(
-          `/api/rooms/${code}/chat?session=${encodeURIComponent(mySession)}&limit=50`,
-          { cache: "no-store" },
+  const runFetch = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `/api/rooms/${code}/chat?session=${encodeURIComponent(mySession)}&limit=50`,
+        { cache: "no-store" },
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as { messages: Message[] };
+      const fresh = data.messages;
+      setHasMore(fresh.length >= 50);
+      setMessages((prev) => {
+        const freshIds = new Set(fresh.map((m) => m.id));
+        const olderKept = prev.filter(
+          (m) =>
+            !freshIds.has(m.id) &&
+            !m.pending &&
+            new Date(m.createdAt).getTime() <
+              new Date(fresh[0]?.createdAt ?? 0).getTime(),
         );
-        if (!res.ok) return;
-        const data = (await res.json()) as { messages: Message[] };
-        const fresh = data.messages;
-        setHasMore(fresh.length >= 50);
-        setMessages((prev) => {
-          const freshIds = new Set(fresh.map((m) => m.id));
-          const olderKept = prev.filter(
-            (m) =>
-              !freshIds.has(m.id) &&
-              !m.pending &&
-              new Date(m.createdAt).getTime() <
-                new Date(fresh[0]?.createdAt ?? 0).getTime(),
-          );
-          const stillPending = prev.filter(
-            (m) => m.pending && !freshIds.has(m.id),
-          );
-          return [...olderKept, ...fresh, ...stillPending].slice(-RENDER_CAP);
-        });
-      } finally {
-        setLoading(false);
-      }
-    }, 180);
-  }, [code]);
+        const stillPending = prev.filter((m) => m.pending && !freshIds.has(m.id));
+        return [...olderKept, ...fresh, ...stillPending].slice(-RENDER_CAP);
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [code, mySession]);
 
+  // Events get a trailing debounce (a burst of chat:new collapses to one
+  // round-trip); the initial load runs immediately.
+  const fetchMessages = useCallback(
+    (immediate = false) => {
+      if (immediate) {
+        if (fetchTimer.current) {
+          clearTimeout(fetchTimer.current);
+          fetchTimer.current = null;
+        }
+        void runFetch();
+        return;
+      }
+      if (fetchTimer.current) return;
+      fetchTimer.current = setTimeout(() => {
+        fetchTimer.current = null;
+        void runFetch();
+      }, 180);
+    },
+    [runFetch],
+  );
+
+  // Mount: paint the last-seen messages from sessionStorage instantly so
+  // switching to the Chat tab isn't a blank flash, then refresh in the
+  // background.
   useEffect(() => {
-    fetchMessages();
+    try {
+      const cached = sessionStorage.getItem(`uzk_chat_cache_${code}`);
+      if (cached) {
+        const arr = JSON.parse(cached) as Message[];
+        if (Array.isArray(arr) && arr.length) {
+          setMessages(arr);
+          setLoading(false);
+        }
+      }
+    } catch {
+      /* private mode / corrupt */
+    }
+    fetchMessages(true);
     return () => {
       if (fetchTimer.current) clearTimeout(fetchTimer.current);
     };
-  }, [fetchMessages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
+
+  // Keep the cache warm for the next tab switch.
+  useEffect(() => {
+    if (messages.length === 0) return;
+    try {
+      sessionStorage.setItem(
+        `uzk_chat_cache_${code}`,
+        JSON.stringify(messages.filter((m) => !m.pending).slice(-50)),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [messages, code]);
+
+  // Track the keyboard via the visual viewport so the composer stays
+  // pinned right above it (no dead gap, no "floating" form-bar).
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+    const onVv = () => {
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      // Below ~80px it's just URL-bar jitter, not the keyboard.
+      setKbInset(inset > 80 ? Math.round(inset) : 0);
+    };
+    vv.addEventListener("resize", onVv);
+    vv.addEventListener("scroll", onVv);
+    onVv();
+    return () => {
+      vv.removeEventListener("resize", onVv);
+      vv.removeEventListener("scroll", onVv);
+    };
+  }, []);
 
   const loadEarlier = async () => {
     if (loadingMore || messages.length === 0) return;
@@ -559,6 +625,9 @@ export function ChatPanel() {
       className="fixed inset-x-0 z-10 flex justify-center px-3 sm:px-4
                  top-[calc(env(safe-area-inset-top)+3.5rem)]
                  bottom-[calc(env(safe-area-inset-bottom)+4.75rem)]"
+      // When the keyboard is up, pin the bottom of the panel right above
+      // it (and the iOS form-accessory bar) — no dead gap.
+      style={kbInset > 0 ? { bottom: kbInset, transition: "bottom 0.15s ease" } : undefined}
       onDragEnter={(e) => {
         if (!Array.from(e.dataTransfer.types).includes("Files")) return;
         e.preventDefault();
