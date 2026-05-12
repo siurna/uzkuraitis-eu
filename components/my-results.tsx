@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { Trophy, ChevronRight } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { useEventListener } from "@/lib/liveblocks";
 import { useRoomLive } from "@/components/room-shell";
 import { ensureSessionId } from "@/lib/use-identity";
@@ -80,35 +80,52 @@ export function MyResults() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="w-full text-left rainbow-border rounded-3xl block transform-gpu transition duration-150 active:scale-[0.99]"
+          className="relative block w-full overflow-hidden rounded-3xl text-left transform-gpu transition duration-150 active:scale-[0.99]"
+          style={{ background: "linear-gradient(135deg, #d97706 0%, #7c2d12 100%)" }}
         >
-          <div className="flex items-center gap-4 rounded-[22px] bg-dark-blue-900/90 px-5 py-5">
-            <span className="shrink-0 grid place-items-center h-14 w-14 rounded-2xl bg-white/[0.07] ring-1 ring-white/12 text-2xl font-display text-white">
+          {/* podium artwork bleeding off the right — middle block tallest */}
+          <div className="pointer-events-none absolute inset-y-0 -right-4 flex items-end gap-1.5 pb-6 opacity-90">
+            {[
+              { h: "h-12", e: "🥈", c: "bg-white/35", t: rank === 2 },
+              { h: "h-[5.25rem]", e: "🥇", c: "bg-yellow", t: rank === 1 },
+              { h: "h-9", e: "🥉", c: "bg-white/25", t: rank === 3 },
+            ].map(({ h, e, c, t: hi }, i) => (
+              <span key={i} className="flex flex-col items-center gap-1">
+                <span className={`text-base ${hi ? "" : "opacity-40 grayscale"}`}>{e}</span>
+                <span className={`w-7 rounded-t-md ${h} ${c} ${hi ? "ring-2 ring-white/60" : ""}`} />
+              </span>
+            ))}
+          </div>
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.42) 0%, rgba(8,9,28,0.15) 42%, transparent 64%)" }}
+          />
+          <div className="relative flex items-center gap-3 px-5 py-5 min-h-[7rem]">
+            <span className="shrink-0 grid place-items-center h-14 w-14 rounded-2xl bg-white/15 ring-1 ring-white/25 text-2xl font-display text-white drop-shadow-sm">
               {me ? (medal ?? `#${rank}`) : "🏆"}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-[0.3em] text-gold font-display leading-tight mb-0.5 flex items-center gap-1.5">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white/75 font-display leading-tight mb-1 flex items-center gap-1.5">
                 <Trophy className="h-3 w-3" />
                 {t(lang, me ? "home_my_results" : "home_results_in")}
               </p>
               {me ? (
                 <>
-                  <p className="font-display text-lg text-white truncate leading-tight">{me.name}</p>
-                  <p className="text-xs text-white/55 leading-tight">
+                  <p className="font-display text-xl text-white truncate leading-tight drop-shadow-sm">{me.name}</p>
+                  <p className="text-sm text-white/70 leading-snug mt-0.5">
                     {t(lang, "home_my_results_rank", rank, rows.length)}
                   </p>
                 </>
               ) : (
-                <p className="text-sm text-white/55 leading-snug mt-0.5">{t(lang, "home_results_in_sub")}</p>
+                <p className="text-sm text-white/70 leading-snug mt-0.5">{t(lang, "home_results_in_sub")}</p>
               )}
             </div>
             {me && (
-              <span className="text-right shrink-0">
-                <span className="block font-display text-3xl text-flamingo tabular-nums leading-none">{me.total}</span>
-                <span className="block text-[10px] uppercase tracking-wider text-white/40 mt-0.5">{t(lang, "pts_short")}</span>
+              <span className="relative text-right shrink-0 pr-1">
+                <span className="block font-display text-3xl text-white tabular-nums leading-none drop-shadow">{me.total}</span>
+                <span className="block text-[10px] uppercase tracking-wider text-white/60 mt-0.5">{t(lang, "pts_short")}</span>
               </span>
             )}
-            <ChevronRight className="h-4 w-4 text-dark-blue-300 shrink-0" />
           </div>
         </button>
       </div>

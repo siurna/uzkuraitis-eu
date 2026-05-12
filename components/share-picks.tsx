@@ -48,30 +48,34 @@ export function SharePicks() {
       type="button"
       onClick={share}
       disabled={sharing}
-      className="w-full text-left rainbow-border rounded-3xl block transform-gpu transition duration-150 active:scale-[0.99] disabled:opacity-60"
+      className="relative block w-full overflow-hidden rounded-3xl text-left transform-gpu transition duration-150 active:scale-[0.99] disabled:opacity-60"
+      style={{ background: "linear-gradient(135deg, #db2777 0%, #6d1242 100%)" }}
     >
-      <div className="relative overflow-hidden rounded-[22px] bg-dark-blue-900/85 px-4 py-4 flex items-center gap-4">
-        <div className="absolute inset-0 pointer-events-none"
-             style={{ background: "linear-gradient(120deg, rgba(255,46,222,0.18), rgba(255,46,222,0.06) 50%, transparent)" }} />
-        <span className="relative shrink-0 grid place-items-center h-16 w-12 rounded-lg overflow-hidden ring-1 ring-white/15 bg-black/30">
-          {thumbOk ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={ogUrl} alt="" className="h-full w-full object-cover" onError={() => setThumbOk(false)} />
-          ) : (
-            <Share2 className="h-5 w-5 text-white/80" />
-          )}
-          {sharing && (
-            <span className="absolute inset-0 grid place-items-center bg-black/55">
-              <Loader2 className="h-5 w-5 animate-spin text-white" />
-            </span>
-          )}
-        </span>
-        <div className="relative min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-[0.32em] text-flamingo font-display leading-tight mb-0.5">{t(lang, "share_eyebrow")}</p>
-          <p className="font-display text-lg text-white leading-tight">{sharing ? t(lang, "share_preparing") : t(lang, "share_picks")}</p>
-          <p className="text-sm text-white/55 leading-snug mt-0.5">{t(lang, "share_picks_sub")}</p>
+      {/* the rendered TOP10 card, tilted, bleeding off the right edge */}
+      <div className="pointer-events-none absolute -right-4 top-1/2 -translate-y-1/2 h-[7.5rem] w-[5.625rem] rotate-[8deg] overflow-hidden rounded-xl ring-1 ring-white/25 bg-black/30 shadow-xl">
+        {thumbOk ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={ogUrl} alt="" className="h-full w-full object-cover" onError={() => setThumbOk(false)} />
+        ) : (
+          <span className="grid h-full w-full place-items-center"><Share2 className="h-6 w-6 text-white/80" /></span>
+        )}
+        {sharing && (
+          <span className="absolute inset-0 grid place-items-center bg-black/55">
+            <Loader2 className="h-5 w-5 animate-spin text-white" />
+          </span>
+        )}
+      </div>
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.42) 0%, rgba(8,9,28,0.15) 42%, transparent 64%)" }}
+      />
+      <div className="relative flex items-center gap-3 px-5 py-5 min-h-[7rem]">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-white/75 font-display leading-tight mb-1">{t(lang, "share_eyebrow")}</p>
+          <p className="font-display text-xl text-white leading-tight drop-shadow-sm">{sharing ? t(lang, "share_preparing") : t(lang, "share_picks")}</p>
+          <p className="text-sm text-white/70 leading-snug mt-0.5">{t(lang, "share_picks_sub")}</p>
         </div>
-        <ArrowRight className="relative h-5 w-5 text-dark-blue-300 shrink-0" />
+        <ArrowRight className="relative h-5 w-5 text-white/70 shrink-0" />
       </div>
     </button>
   );

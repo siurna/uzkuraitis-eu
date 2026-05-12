@@ -67,9 +67,9 @@ export function Highlights() {
           return (
             <li
               key={h.id}
-              className="flex items-center gap-3 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-3 py-2.5"
+              className="flex items-center gap-3 rounded-2xl bg-orange/[0.07] ring-1 ring-orange/20 px-3 py-2.5 shadow-[0_2px_18px_-6px_oklch(70%_0.19_42_/_0.35)]"
             >
-              <span className="h-9 w-9 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/[0.04]">
+              <span className="h-9 w-9 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/12 bg-white/[0.06]">
                 {avatar?.photo ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -104,7 +104,7 @@ export function Highlights() {
                   className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-white/10"
                 />
               )}
-              <span className="shrink-0 flex items-center gap-1 text-xs text-flamingo tabular-nums font-display">
+              <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange/15 ring-1 ring-orange/35 px-2 h-6 text-xs text-orange tabular-nums font-display">
                 ❤️ {h.reactionCount}
               </span>
             </li>
