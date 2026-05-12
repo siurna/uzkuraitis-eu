@@ -3,7 +3,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
   ArrowRight,
-  Grid3x3,
   ListChecks,
   Trophy,
 } from "lucide-react";
@@ -12,6 +11,7 @@ import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { participantPhoto } from "@/lib/participants";
 import { optimizedSrc } from "@/lib/img";
+import { buildBingoCard, FREE_SQUARE, tropeEmoji } from "@/lib/bingo-tropes";
 import { HeartFlag } from "@/components/flag";
 import { useLang, t } from "@/lib/i18n";
 
@@ -154,29 +154,54 @@ export function HomeBanners() {
         />
       )}
 
-      {/* 4 — bingo (with progress bar) */}
-      <Card
-        onClick={() => setTab("bingo")}
-        icon={<Grid3x3 className="h-6 w-6 text-purple" />}
-        bg="linear-gradient(120deg, rgba(146,87,255,0.12), transparent 60%)"
-        title={t(lang, "bingo_title")}
-        sub={
-          bingoStruck != null ? (
-            <span className="flex items-center gap-2">
-              <span className="relative h-1.5 w-28 rounded-full bg-white/10 overflow-hidden">
-                <span
-                  className="absolute inset-y-0 left-0 rounded-full bg-flamingo"
-                  style={{ width: `${(bingoStruck / 25) * 100}%` }}
-                />
-              </span>
-              <span className="text-xs text-white/45 tabular-nums">{t(lang, "home_bingo_progress", bingoStruck)}</span>
-            </span>
-          ) : (
-            t(lang, "home_bingo_sub")
-          )
-        }
-      />
+      {/* 4 — bingo widget */}
+      <BingoWidget lang={lang} struck={bingoStruck} onOpen={() => setTab("bingo")} />
     </div>
+  );
+}
+
+// The bingo invite on Home — a rainbow-bordered card with a little 3×3
+// preview (a struck diagonal hints at the win condition) + progress.
+const BINGO_PREVIEW = buildBingoCard("uzk-home-preview")
+  .filter((i) => i !== FREE_SQUARE)
+  .slice(0, 9);
+const BINGO_PREVIEW_STRUCK = new Set([0, 4, 8]);
+
+function BingoWidget({
+  lang,
+  struck,
+  onOpen,
+}: {
+  lang: "en" | "lt";
+  struck: number | null;
+  onOpen: () => void;
+}) {
+  return (
+    <button type="button" onClick={onOpen} className="w-full text-left rainbow-border rounded-3xl block">
+      <div className="relative overflow-hidden rounded-[22px] bg-dark-blue-900/85 px-4 py-4 flex items-center gap-4">
+        <div className="absolute inset-0 pointer-events-none"
+             style={{ background: "linear-gradient(120deg, rgba(146,87,255,0.16), rgba(255,46,222,0.08) 55%, transparent)" }} />
+        <div className="relative shrink-0 grid grid-cols-3 gap-1 p-1.5 rounded-xl bg-black/30 ring-1 ring-white/12">
+          {BINGO_PREVIEW.map((idx, i) => {
+            const x = BINGO_PREVIEW_STRUCK.has(i);
+            return (
+              <span key={i} className="relative h-6 w-6 grid place-items-center text-[13px] leading-none rounded-md bg-white/[0.04]">
+                <span className={x ? "opacity-25 grayscale" : ""}>{tropeEmoji(idx)}</span>
+                {x && <span className="absolute inset-0 grid place-items-center text-flamingo text-[15px] font-bold leading-none">✕</span>}
+              </span>
+            );
+          })}
+        </div>
+        <div className="relative min-w-0 flex-1">
+          <p className="text-[10px] uppercase tracking-[0.32em] text-flamingo font-display leading-tight mb-0.5">BINGO</p>
+          <p className="font-display text-lg text-white leading-tight">{t(lang, "bingo_widget_title")}</p>
+          <p className="text-sm text-white/55 leading-snug mt-0.5">
+            {struck != null ? t(lang, "home_bingo_progress", struck) : t(lang, "home_bingo_sub")}
+          </p>
+        </div>
+        <ArrowRight className="relative h-5 w-5 text-white/35 shrink-0" />
+      </div>
+    </button>
   );
 }
 

@@ -13,6 +13,8 @@
 // a language.
 // ─────────────────────────────────────────────────────────────────────
 
+import { useEffect, useState } from "react";
+
 export type Language = "en" | "lt";
 
 // LT first — this is a Lithuanian Eurovision party app first; EN is for
@@ -131,6 +133,7 @@ const S = {
   home_results_sub:    { en: "See your score and the full breakdown", lt: "Pažiūrėk savo rezultatą ir visą išskaidymą" },
   home_bingo_sub:      { en: "Tick off the clichés as they happen", lt: "Žymėk klišes, kai jos įvyksta" },
   home_bingo_progress: { en: (n: number) => `${n} / 25 ticked`, lt: (n: number) => `pažymėta ${n} / 25` },
+  bingo_widget_title:  { en: "Play bingo!", lt: "Žaisk bingo!" },
   home_my_results:     { en: "Your results", lt: "Tavo rezultatai" },
   home_my_results_rank: { en: (rank: number, total: number) => `Ranked ${rank} of ${total} — tap for the breakdown`, lt: (rank: number, total: number) => `${rank} vieta iš ${total} — bakstelėk išskaidymui` },
 
@@ -152,6 +155,17 @@ const S = {
   chat_reply:        { en: "Reply", lt: "Atsakyti" },
   chat_delete:       { en: "Delete", lt: "Ištrinti" },
   chat_card:         { en: "card", lt: "kortelė" },
+  // System (meta-narration) chat messages — rendered in the recipient's
+  // language from meta.sysKey. The server still stores the EN text in
+  // `body` for back-compat / debuggability.
+  sys_voted:         { en: (name: string) => `🗳️ ${name} cast their vote`, lt: (name: string) => `🗳️ ${name} atidavė savo balsą` },
+  sys_voting_open:   { en: "📣 Voting is OPEN — cast your TOP10!", lt: "📣 Balsavimas ATIDARYTAS — užfiksuok savo TOP10!" },
+  sys_voting_closed: { en: "🔒 Voting is CLOSED.", lt: "🔒 Balsavimas UŽDARYTAS." },
+  sys_show_started:  { en: "🟢 The show is underway — Europe, get ready!", lt: "🟢 Šou prasidėjo — Europa, pasiruošk!" },
+  sys_show_break:    { en: "⏸ Interval break. Stretch those legs.", lt: "⏸ Pertrauka. Pajudink kojas." },
+  sys_show_ended:    { en: "🏁 Performances are over. Time to vote!", lt: "🏁 Pasirodymai baigti. Laikas balsuoti!" },
+  sys_show_doors:    { en: "🎬 Doors open — the show hasn't started yet.", lt: "🎬 Durys atvertos — šou dar neprasidėjo." },
+  sys_results_in:    { en: "🏆 Results are in — leaderboard's live!", lt: "🏆 Rezultatai jau čia — lyderių lentelė gyva!" },
   chat_edit:         { en: "Edit", lt: "Redaguoti" },
   chat_edited:       { en: "edited", lt: "redaguota" },
   chat_editing:      { en: "Editing your message", lt: "Redaguoji žinutę" },
@@ -326,6 +340,19 @@ export function t<K extends MessageKey>(
     : value;
 }
 
+// Like `t`, but the key is just a string (no compile-time check) — for
+// the few places where the key is data: chat system messages carry
+// their i18n key in `meta.sysKey` and the recipient renders it in their
+// own language. Falls back to the key itself if it isn't known.
+export function tDyn(lang: Language, key: string, ...args: unknown[]): string {
+  const entry = (S as Record<string, { en: Phrase; lt: Phrase }>)[key];
+  if (!entry) return key;
+  const value = entry[lang] ?? entry.en;
+  return typeof value === "function"
+    ? (value as (...a: unknown[]) => string)(...args)
+    : value;
+}
+
 // Tiny templating: fmt("{home} placement", { home: "Lithuania" }) → "Lithuania placement".
 export function fmt(
   template: string,
@@ -351,8 +378,6 @@ export function writeLang(lang: Language): void {
   window.localStorage.setItem(LANG_STORAGE_KEY, lang);
   window.dispatchEvent(new CustomEvent(LANG_CHANGE_EVENT, { detail: lang }));
 }
-
-import { useEffect, useState } from "react";
 
 export function useLang(): Language {
   const [lang, setLang] = useState<Language>("lt");

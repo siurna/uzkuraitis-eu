@@ -4,6 +4,11 @@ import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { getCountry } from "@/lib/countries";
 import { computeRoomLeaderboard } from "@/lib/leaderboard";
 
+// A system chat message, identified by its i18n key (+ optional arg).
+// The client renders it in the *recipient's* language from meta.sysKey;
+// `body` stays null (the client never needs it for these).
+export type SystemMsg = { key: string; arg?: string };
+
 // Post a "system" chat message — the meta-narration of the room
 // ("Tomas cast their vote", "Show's underway", "Voting closed"). These
 // render centred + muted in the thread, never get reactions/replies.
@@ -12,7 +17,7 @@ import { computeRoomLeaderboard } from "@/lib/leaderboard";
 export async function postSystemMessage(
   roomCode: string,
   roomId: string,
-  body: string,
+  sys: SystemMsg,
 ): Promise<void> {
   try {
     const [row] = await db
@@ -22,7 +27,8 @@ export async function postSystemMessage(
         sessionId: "system",
         name: "system",
         kind: "system",
-        body,
+        body: null,
+        meta: { sysKey: sys.key, sysArg: sys.arg ?? null },
       })
       .returning({ id: chatMessages.id });
     await broadcastToRoom(roomCode, { type: "chat:new", id: row.id, quiet: true });
@@ -33,8 +39,8 @@ export async function postSystemMessage(
 
 // Full-width "now on stage" banner in the thread. Carries the country
 // code (+ artist/song snapshot) in meta so the client can render the
-// heart-flag chip; body is a plain-text fallback for push / non-rich
-// surfaces. Best-effort.
+// heart-flag chip in its own language; `body` is a plain-text fallback.
+// Best-effort.
 export async function postNowPlayingMessage(
   roomCode: string,
   roomId: string,
@@ -74,7 +80,7 @@ export async function postResultsMessage(
     const { hasResults, leaderboard } = await computeRoomLeaderboard(room);
     if (!hasResults || leaderboard.length === 0) {
       // No scoreable data yet — fall back to the plain announcement.
-      await postSystemMessage(roomCode, room.id, "🏆 Results are in — leaderboard's live!");
+      await postSystemMessage(roomCode, room.id, { key: "sys_results_in" });
       return;
     }
     const podium = leaderboard.slice(0, 3).map((r) => ({ name: r.name, total: r.total }));
@@ -90,20 +96,19 @@ export async function postResultsMessage(
   }
 }
 
-// Human-readable copy for show-status transitions. English only —
-// these are short status pills, not a localisation surface.
+// The i18n key for a show-status transition announcement.
 export function showStatusAnnouncement(
   status: "not_started" | "in_progress" | "break" | "ended",
-): string {
+): SystemMsg {
   switch (status) {
     case "in_progress":
-      return "🟢 The show is underway — Europe, get ready!";
+      return { key: "sys_show_started" };
     case "break":
-      return "⏸ Interval break. Stretch those legs.";
+      return { key: "sys_show_break" };
     case "ended":
-      return "🏁 Performances are over. Time to vote!";
+      return { key: "sys_show_ended" };
     case "not_started":
     default:
-      return "🎬 Doors open — the show hasn't started yet.";
+      return { key: "sys_show_doors" };
   }
 }

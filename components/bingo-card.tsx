@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import {
   buildBingoCard,
   FREE_SQUARE,
-  getTrope,
   isBingo,
   TROPE_COUNT,
   tropeEmoji,
@@ -109,7 +108,8 @@ export function BingoCard() {
 
           const wonNow = !tk.bingoFired && isBingo(buildBingoCard(tk.seed), new Set(struck));
           if (wonNow) {
-            const trope = getTrope(tropeIdx, lang);
+            // Store the trope *index* — the chat renders it in each
+            // recipient's own language.
             fetch(`/api/rooms/${code}/chat`, {
               method: "POST",
               headers: { "content-type": "application/json" },
@@ -118,7 +118,7 @@ export function BingoCard() {
                 name: name || "Anon",
                 avatarId,
                 kind: "bingo_strike",
-                meta: { trope, bingo: true },
+                meta: { tropeIndex: tropeIdx, bingo: true },
               }),
             }).catch(() => {});
             toast.success(t(lang, "bingo_you_did_it"));
@@ -128,7 +128,7 @@ export function BingoCard() {
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentTicket, name, avatarId, lang, code],
+    [currentTicket, name, avatarId, code],
   );
 
   const generate = useCallback(() => {

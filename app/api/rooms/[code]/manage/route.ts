@@ -186,9 +186,7 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     await postSystemMessage(
       newCode,
       room.id,
-      parsed.data.votingEnabled
-        ? "📣 Voting is OPEN — cast your TOP10!"
-        : "🔒 Voting is CLOSED.",
+      parsed.data.votingEnabled ? { key: "sys_voting_open" } : { key: "sys_voting_closed" },
     );
   }
   if (parsed.data.tallyEnabled === true && room.tallyEnabled !== true) {
