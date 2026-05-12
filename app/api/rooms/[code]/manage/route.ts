@@ -10,6 +10,7 @@ import {
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { pushToRoom } from "@/lib/push";
 import { getCountry } from "@/lib/countries";
+import { participantPhoto } from "@/lib/participants";
 import {
   postSystemMessage,
   postNowPlayingMessage,
@@ -123,12 +124,13 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
         room.id,
         (prefs) => !!prefs.nowPlaying,
         {
-          title: `${c?.name ?? nextNowPlaying.toUpperCase()} is on stage`,
+          title: `${c?.flag ? `${c.flag} ` : ""}${c?.name ?? nextNowPlaying.toUpperCase()} is on stage`,
           body: c?.artist
             ? `${c.artist}${c.song ? ` — ${c.song}` : ""}`
             : "Tap to open the room",
           url: `/r/${newCode}`,
           tag: `now-playing:${newCode}`,
+          image: participantPhoto(nextNowPlaying) ?? undefined,
         },
       ).catch(() => {});
       // Full-width "now on stage" banner in the room chat. Awaited so the

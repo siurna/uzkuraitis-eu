@@ -1,8 +1,12 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, type ComponentType } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Reply, Pencil, Copy, Trash2, Smile, Loader2, X, Mic, Music, Trophy } from "lucide-react";
+import {
+  Reply, Pencil, Copy, Trash2, Smile, Loader2, X, Mic, Music, Trophy,
+  Heart, Flame, PartyPopper, Star, Sparkles,
+  type LucideProps,
+} from "lucide-react";
 import { getAvatar } from "@/lib/avatars";
 import { getCountry, countryName } from "@/lib/countries";
 import { HeartFlag } from "@/components/flag";
@@ -10,7 +14,18 @@ import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { t } from "@/lib/i18n";
 
 const EDIT_WINDOW_MS = 2 * 60 * 1000;
-const REACTION_EMOJIS = ["❤️", "🔥", "😂", "😮", "🎤", "💯"] as const;
+
+// Quick-react row in the long-press menu — same Apple-Watch-style solid
+// circles as the floating reactions bar; stored as the emoji glyph so
+// the reaction strip below renders it.
+const QUICK_REACTS: { emoji: string; Icon: ComponentType<LucideProps>; bg: string; filled: boolean }[] = [
+  { emoji: "❤️", Icon: Heart, bg: "bg-[#ff2d55]", filled: true },
+  { emoji: "🔥", Icon: Flame, bg: "bg-[#ff9500]", filled: true },
+  { emoji: "🎤", Icon: Mic, bg: "bg-[#0a84ff]", filled: false },
+  { emoji: "🎉", Icon: PartyPopper, bg: "bg-[#bf5af2]", filled: false },
+  { emoji: "⭐", Icon: Star, bg: "bg-[#ffd60a]", filled: true },
+  { emoji: "✨", Icon: Sparkles, bg: "bg-[#30d158]", filled: true },
+];
 
 export type Reactions = Record<
   string,
@@ -355,7 +370,7 @@ export function ChatRow({
                 </span>
               ) : (
                 <>
-                  <span className="whitespace-pre-wrap break-words">
+                  <span className="whitespace-pre-wrap break-words allow-select">
                     {renderBody(m.body ?? "", participantNames)}
                   </span>
                   {isEdited && (
@@ -368,22 +383,27 @@ export function ChatRow({
             <AnimatePresence>
               {menuOpen && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.85, y: 8 }}
+                  initial={{ opacity: 0, scale: 0.8, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.85, y: 8 }}
-                  transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{ type: "spring", stiffness: 520, damping: 28, mass: 0.6 }}
                   onClick={(e) => e.stopPropagation()}
-                  className={`absolute bottom-full mb-1.5 z-30 flex flex-col gap-1 ${mine ? "right-0 items-end" : "left-0 items-start"}`}
+                  className={`absolute bottom-full mb-1.5 z-30 flex flex-col gap-1.5 ${mine ? "right-0 items-end" : "left-0 items-start"}`}
                 >
-                  <div className="flex items-center gap-1 p-1.5 rounded-full bg-black/80 ring-1 ring-white/12 backdrop-blur-md shadow-xl">
-                    {REACTION_EMOJIS.map((e) => (
+                  <div className="flex items-center gap-1.5 p-1.5 rounded-full bg-black/80 ring-1 ring-white/12 backdrop-blur-md shadow-xl">
+                    {QUICK_REACTS.map(({ emoji, Icon, bg, filled }) => (
                       <button
-                        key={e}
+                        key={emoji}
                         type="button"
-                        onClick={() => onReact(e)}
-                        className="h-8 w-8 rounded-full grid place-items-center hover:bg-white/10 transition text-base"
+                        onClick={() => onReact(emoji)}
+                        className={`h-9 w-9 shrink-0 rounded-full grid place-items-center ring-1 ring-white/15
+                                    shadow-[0_3px_10px_-3px_rgba(0,0,0,0.5)] transition active:scale-90 ${bg}`}
                       >
-                        {e}
+                        <Icon
+                          className="h-[18px] w-[18px] text-white"
+                          fill={filled ? "currentColor" : "none"}
+                          strokeWidth={filled ? 1.5 : 2}
+                        />
                       </button>
                     ))}
                   </div>
@@ -392,7 +412,6 @@ export function ChatRow({
                     {canEdit && <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />}
                     {m.body && <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />}
                     {mine && <MenuAction onClick={onDelete} icon={Trash2} label={t(lang, "chat_delete")} danger />}
-                    <MenuAction onClick={onCloseMenu} icon={X} label={t(lang, "cancel")} muted />
                   </div>
                 </motion.div>
               )}

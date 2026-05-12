@@ -198,24 +198,10 @@ export function BingoCard() {
   const struckCount = card.filter((tx) => tx === FREE_SQUARE || struckSet.has(tx)).length;
 
   return (
-    <main className="container mx-auto max-w-3xl px-4 py-5 flex-1 flex flex-col gap-4">
-      <header className="flex items-center gap-3">
-        <h2 className="font-display text-2xl gradient-text flex-1 text-balance">
-          {t(lang, "bingo_title")}
-        </h2>
-        <button
-          type="button"
-          onClick={generate}
-          disabled={scrambling}
-          className="rainbow-border rounded-2xl disabled:opacity-50"
-          aria-label={t(lang, "bingo_generate")}
-        >
-          <span className="flex items-center gap-1.5 px-3 h-8 rounded-[12px] bg-white text-dark-blue font-display text-xs">
-            <Plus className="h-3.5 w-3.5" />
-            {t(lang, "bingo_generate")}
-          </span>
-        </button>
-      </header>
+    <main className="container mx-auto max-w-3xl px-4 py-4 flex-1 flex flex-col gap-3">
+      <h2 className="font-display text-2xl gradient-text text-balance">
+        {t(lang, "bingo_title")}
+      </h2>
 
       {/* Ticker (other voters' strikes) */}
       <div className="min-h-[20px]">
@@ -239,35 +225,10 @@ export function BingoCard() {
         </AnimatePresence>
       </div>
 
-      {/* Ticket switcher */}
-      {tickets.length > 1 && (
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled={active === 0}
-            onClick={() => setActive((a) => Math.max(0, a - 1))}
-            className="h-9 w-9 rounded-full grid place-items-center bg-white/[0.04] ring-1 ring-white/10 disabled:opacity-30 hover:bg-white/[0.08] transition"
-            aria-label={t(lang, "back")}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <div className="flex-1 text-center text-[11px] uppercase tracking-[0.24em] text-white/55 font-display">
-            {t(lang, "bingo_ticket")} {active + 1} / {tickets.length}
-          </div>
-          <button
-            type="button"
-            disabled={active >= tickets.length - 1}
-            onClick={() => setActive((a) => Math.min(tickets.length - 1, a + 1))}
-            className="h-9 w-9 rounded-full grid place-items-center bg-white/[0.04] ring-1 ring-white/10 disabled:opacity-30 hover:bg-white/[0.08] transition"
-            aria-label={t(lang, "next")}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-
-      {/* Emoji grid — the "card". Just emoji; a scribble lands when struck. */}
-      <div className="relative overflow-hidden">
+      {/* Emoji grid — the "card". Just emoji; a scribble lands when struck.
+          overflow-x-clip keeps the slide-in/out contained sideways
+          without chopping the grid's last row. */}
+      <div className="relative overflow-x-clip">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentTicket.id}
@@ -303,14 +264,31 @@ export function BingoCard() {
         </AnimatePresence>
       </div>
 
+      {/* Ticket switcher — sits between the grid and the list. */}
       {tickets.length > 1 && (
-        <button
-          type="button"
-          onClick={() => remove(currentTicket.id)}
-          className="self-center text-xs text-white/40 hover:text-error transition"
-        >
-          {t(lang, "bingo_remove_ticket")}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={active === 0}
+            onClick={() => setActive((a) => Math.max(0, a - 1))}
+            className="h-8 w-8 rounded-full grid place-items-center bg-white/[0.04] ring-1 ring-white/10 disabled:opacity-30 hover:bg-white/[0.08] transition"
+            aria-label={t(lang, "back")}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="flex-1 text-center text-[11px] uppercase tracking-[0.24em] text-white/55 font-display">
+            {t(lang, "bingo_ticket")} {active + 1} / {tickets.length}
+          </div>
+          <button
+            type="button"
+            disabled={active >= tickets.length - 1}
+            onClick={() => setActive((a) => Math.min(tickets.length - 1, a + 1))}
+            className="h-8 w-8 rounded-full grid place-items-center bg-white/[0.04] ring-1 ring-white/10 disabled:opacity-30 hover:bg-white/[0.08] transition"
+            aria-label={t(lang, "next")}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       )}
 
       {/* The readable list — full trope text, checklist style. Tapping a
@@ -367,6 +345,31 @@ export function BingoCard() {
       </section>
 
       <p className="text-xs text-white/40 text-center pt-1 text-balance">{t(lang, "bingo_footer")}</p>
+
+      {/* Ticket actions live at the bottom, under the list. */}
+      <div className="flex items-center justify-center gap-3 pt-1">
+        <button
+          type="button"
+          onClick={generate}
+          disabled={scrambling}
+          className="rainbow-border rounded-2xl disabled:opacity-50"
+          aria-label={t(lang, "bingo_generate")}
+        >
+          <span className="flex items-center gap-1.5 px-3.5 h-9 rounded-[14px] bg-white text-dark-blue font-display text-xs">
+            <Plus className="h-3.5 w-3.5" />
+            {t(lang, "bingo_generate")}
+          </span>
+        </button>
+        {tickets.length > 1 && (
+          <button
+            type="button"
+            onClick={() => remove(currentTicket.id)}
+            className="px-3.5 h-9 rounded-2xl text-xs text-white/45 hover:text-error hover:bg-error/10 transition"
+          >
+            {t(lang, "bingo_remove_ticket")}
+          </button>
+        )}
+      </div>
     </main>
   );
 }
@@ -455,7 +458,7 @@ function Cell({
           className="h-9 w-9 sm:h-12 sm:w-12 object-contain heartbeat-loop"
         />
       ) : (
-        <span className={isStruck ? "opacity-90" : ""}>{shown}</span>
+        <span className={isStruck ? "opacity-40 grayscale" : ""}>{shown}</span>
       )}
 
       {/* Hand-drawn pen mark over a struck square (centre square exempt). */}

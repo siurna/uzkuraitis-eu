@@ -94,12 +94,12 @@ export function RoomTabBar({
                 aria-label={label}
                 aria-current={isActive ? "page" : undefined}
                 className="relative flex flex-col items-center justify-center gap-1
-                           py-2 rounded-2xl"
+                           py-2 rounded-[22px]"
               >
                 {isActive && (
                   <motion.span
                     layoutId="tab-pill"
-                    className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${gradient} ${glow}`}
+                    className={`absolute inset-0 rounded-[22px] bg-gradient-to-br ${gradient} ${glow}`}
                     transition={{ type: "spring", stiffness: 560, damping: 42 }}
                   />
                 )}

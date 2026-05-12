@@ -59,7 +59,7 @@ export function MyResults() {
   return (
     <div id="my-results" className="container mx-auto max-w-3xl px-4 scroll-mt-16">
       <div className="rainbow-border rounded-3xl">
-        <div className="rounded-[20px] bg-dark-blue-900/90 overflow-hidden">
+        <div className="rounded-[22px] bg-dark-blue-900/90 overflow-hidden">
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}

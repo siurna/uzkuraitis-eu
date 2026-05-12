@@ -27,6 +27,8 @@ export type PushPayload = {
   body?: string;
   url?: string;
   tag?: string;
+  /** Same-origin path to a hero image shown in the notification. */
+  image?: string;
 };
 
 // Fan out a payload to every subscription in a room whose `prefs`

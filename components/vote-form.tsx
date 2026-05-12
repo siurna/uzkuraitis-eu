@@ -22,7 +22,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { X, ListOrdered, Sparkles, Share2, Check, ScrollText } from "lucide-react";
+import { X, ListOrdered, Sparkles, Share2, Check, ScrollText, GripVertical } from "lucide-react";
 import { countries, getCountry, countryName } from "@/lib/countries";
 import { Flag, HeartOutline } from "@/components/flag";
 import { BonusBetsForm } from "@/components/bonus-bets-form";
@@ -704,18 +704,21 @@ function BallotSlotInner({
                       : "bg-white/[0.04] ring-1 ring-white/8"
                   }`}
     >
-      {/* Drag handle = the points chip + flag block on the left.
-          @dnd-kit listeners attach here so the whole left side feels
-          grabbable. The country text on the right is the tap-to-pick
-          surface; X on the far right clears. */}
-      <div
+      {/* Dedicated drag handle — small, touch-action:none so dnd-kit's
+          hold-to-drag works, while the rest of the row stays freely
+          scrollable + tappable. */}
+      <button
+        type="button"
         {...attributes}
         {...listeners}
-        role="button"
         aria-label={t(lang, "aria_drag_reorder")}
-        className="flex items-center gap-3 pl-2.5 pr-1 py-3 cursor-grab
-                   active:cursor-grabbing touch-pan-y select-none"
+        className="shrink-0 flex items-center pl-1.5 pr-0.5 cursor-grab
+                   active:cursor-grabbing touch-none text-white/25 hover:text-white/55 transition"
       >
+        <GripVertical className="h-4 w-4" />
+      </button>
+
+      <div className="flex items-center gap-3 pl-0.5 pr-1 py-3">
         <span
           className={`h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-xl grid place-items-center
                       font-display text-lg tabular-nums leading-none ${badgeClass}`}

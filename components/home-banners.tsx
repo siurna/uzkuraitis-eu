@@ -55,9 +55,9 @@ function Card({
 }) {
   const body = (
     <div
-      className={`relative overflow-hidden rounded-3xl ${
-        rainbow ? "" : `ring-1 ${accentRing ?? "ring-white/10"}`
-      } ${rainbow ? "" : "glass-card"}`}
+      className={`relative overflow-hidden ${
+        rainbow ? "rounded-[22px]" : `rounded-3xl ring-1 ${accentRing ?? "ring-white/10"} glass-card`
+      }`}
     >
       {bg && <div className="absolute inset-0 pointer-events-none" style={{ background: bg }} />}
       <div className="relative flex items-center gap-4 px-5 py-5 sm:px-6">
@@ -211,7 +211,7 @@ function PlayingCard({
   if (photo) {
     return (
       <button type="button" onClick={onOpen} className="w-full text-left rainbow-border rounded-3xl block">
-        <div className="relative overflow-hidden rounded-[20px] aspect-[16/10] sm:aspect-[2/1]">
+        <div className="relative overflow-hidden rounded-[22px] aspect-[16/10] sm:aspect-[2/1]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover" />
           <div
@@ -256,7 +256,7 @@ function PlayingCard({
   return (
     <button type="button" onClick={onOpen} className="w-full text-left rainbow-border rounded-3xl block">
       <div
-        className="relative overflow-hidden rounded-[20px] px-5 py-5 sm:px-6"
+        className="relative overflow-hidden rounded-[22px] px-5 py-5 sm:px-6"
         style={{
           background: `linear-gradient(125deg, ${hexA(c1, 0.28)}, ${hexA(c2, 0.18)} 55%, rgba(10,11,34,0.85))`,
         }}

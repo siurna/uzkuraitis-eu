@@ -137,7 +137,14 @@ function RoomBody({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col pb-24">
+    // The header is `fixed`, so pad the flow content down past it
+    // (+ the iOS notch). On the chat tab the panel is fixed too, so the
+    // page itself must not scroll — lock it to the viewport.
+    <div
+      className={`flex flex-col pb-24 pt-[calc(env(safe-area-inset-top)+3.5rem)] ${
+        isChat ? "h-[100dvh] overflow-hidden" : "min-h-screen"
+      }`}
+    >
       <PresenceBar />
       {children}
       {(isHome || isChat) && !composing && (

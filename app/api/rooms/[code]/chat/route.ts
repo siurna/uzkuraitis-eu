@@ -188,9 +188,11 @@ export async function POST(req: Request, { params }: RouteCtx) {
       title: data.name,
       body: data.body
         ? data.body.slice(0, 120)
-        : data.gifUrl
-          ? "Sent a GIF"
-          : "New message",
+        : data.kind === "image"
+          ? "Sent a photo"
+          : data.kind === "gif"
+            ? "Sent a GIF"
+            : "New message",
       url: `/r/${code}/chat`,
       tag: `chat:${code}`,
     },

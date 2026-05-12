@@ -50,7 +50,7 @@ export function PresenceBar() {
 
   return (
     <header
-      className="sticky top-0 z-30 backdrop-blur-md bg-dark-blue-900/70 border-b border-white/5 overflow-x-hidden"
+      className="fixed top-0 left-0 right-0 z-30 backdrop-blur-md bg-dark-blue-900/80 border-b border-white/5 overflow-x-hidden"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <div className="container mx-auto max-w-3xl px-4 h-14 flex items-center gap-3">
@@ -67,7 +67,8 @@ export function PresenceBar() {
             playing ? `What's on stage: ${playing.name}` : undefined
           }
         >
-          <div className="relative h-8 w-8 shrink-0">
+          <div className="shrink-0 flex flex-col items-center">
+          <div className="relative h-8 w-8">
             <AnimatePresence mode="wait" initial={false}>
               {playing ? (
                 <motion.div
@@ -100,6 +101,12 @@ export function PresenceBar() {
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+          {playing && (
+            <span className="mt-0.5 text-[8px] leading-none font-display tabular-nums text-white/45">
+              #{playing.order}
+            </span>
+          )}
           </div>
           <div className="min-w-0 flex flex-col leading-tight">
             <AnimatePresence mode="wait" initial={false}>

@@ -155,6 +155,18 @@
     -webkit-tap-highlight-color: oklch(70% 0.27 336 / 0.25);
     /* Kill iOS rubber-band so the sticky header never drifts on overscroll. */
     overscroll-behavior: none;
+    /* The whole app is an app, not a document — no accidental text
+       selection. Inputs + chat bubbles opt back in via .allow-select. */
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"],
+  .allow-select {
+    -webkit-user-select: text;
+    user-select: text;
   }
 
   /* Body backdrop. The participant-backdrop is grey wavy stripes; if
