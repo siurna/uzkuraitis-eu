@@ -63,7 +63,7 @@ export function VoteForm({
   const [slots, setSlots] = useState<Slot[]>(
     POINT_VALUES.map((p) => ({ points: p, countryCode: null })),
   );
-  const [homePrediction, setHomePrediction] = useState<string>("");
+  const [homePrediction, setHomePrediction] = useState<number | null>(null);
   const [bets, setBets] = useState<Bets>({});
   // Vote lifecycle. There's no submit button: the ballot auto-casts the
   // moment all 10 slots are full, and every later reorder / swap / bet
@@ -93,7 +93,6 @@ export function VoteForm({
     toY: number;
   } | null>(null);
 
-  const homeCountry = getCountry(homeCountryCode);
   const lang = useLang();
 
   const sensors = useSensors(
@@ -114,7 +113,10 @@ export function VoteForm({
       }
     }
     const storedPrediction = localStorage.getItem(PREDICTION_KEY(roomCode));
-    if (storedPrediction) setHomePrediction(storedPrediction);
+    if (storedPrediction) {
+      const n = Number(storedPrediction);
+      if (Number.isFinite(n)) setHomePrediction(n);
+    }
     const storedBets = localStorage.getItem(BETS_KEY(roomCode));
     if (storedBets) {
       try {
@@ -135,8 +137,8 @@ export function VoteForm({
   }, [slots, roomCode]);
 
   useEffect(() => {
-    if (homePrediction) {
-      localStorage.setItem(PREDICTION_KEY(roomCode), homePrediction);
+    if (homePrediction != null) {
+      localStorage.setItem(PREDICTION_KEY(roomCode), String(homePrediction));
     } else {
       localStorage.removeItem(PREDICTION_KEY(roomCode));
     }
@@ -282,9 +284,6 @@ export function VoteForm({
       const ballot = Object.fromEntries(
         slots.map((s) => [String(s.points), s.countryCode!]),
       );
-      const trimmedPrediction = homePrediction.trim();
-      const predictionInt =
-        trimmedPrediction === "" ? null : Number(trimmedPrediction);
       const res = await fetch(`/api/rooms/${roomCode}/votes`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -293,8 +292,8 @@ export function VoteForm({
           sessionId: sessionId(),
           votes: ballot,
           homePrediction:
-            predictionInt && Number.isFinite(predictionInt)
-              ? predictionInt
+            homePrediction != null && Number.isFinite(homePrediction)
+              ? homePrediction
               : null,
           bets,
         }),
@@ -434,40 +433,13 @@ export function VoteForm({
             )}
 
             {tab === "bets" && (
-              <>
-                {homeCountry && (
-                  <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
-                    <div className="flex items-center gap-3">
-                      <Flag code={homeCountry.code} size="lg" />
-                      <div className="flex-1 min-w-0">
-                        <h2 className="font-display text-xl gradient-text">
-                          {fmt(t(lang, "bet_lt_placement"), { home: countryName(homeCountry.code, lang) })}
-                        </h2>
-                        <p className="text-xs text-white/50">
-                          {fmt(t(lang, "bet_lt_placement_sub"), { home: countryName(homeCountry.code, lang) })}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={1}
-                        max={countries.length}
-                        placeholder="?"
-                        value={homePrediction}
-                        onChange={(e) => setHomePrediction(e.target.value)}
-                        className="h-14 w-20 rounded-xl border border-white/15 bg-black/30
-                                   text-center font-display text-3xl tabular-nums text-white
-                                   caret-flamingo focus:border-flamingo focus:outline-none
-                                   focus:ring-2 focus:ring-flamingo/40 transition"
-                      />
-                      <span className="text-sm text-white/40">/ {countries.length} {t(lang, "finalists")}</span>
-                    </div>
-                  </section>
-                )}
-                <BonusBetsForm homeCountryCode={homeCountryCode} bets={bets} onChange={setBets} />
-              </>
+              <BonusBetsForm
+                homeCountryCode={homeCountryCode}
+                bets={bets}
+                onChange={setBets}
+                homePrediction={homePrediction}
+                onHomePredictionChange={setHomePrediction}
+              />
             )}
 
             {tab === "rules" && <RulesPanel homeCountryCode={homeCountryCode} lang={lang} />}

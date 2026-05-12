@@ -307,7 +307,6 @@ const S = {
   selected_count:        { en: (n: number) => `${n} selected`, lt: (n: number) => `pasirinkta ${n}` },
   country_search:        { en: "Search country, artist or song", lt: "Ieškoti šalies, atlikėjo ar dainos" },
   no_matches:            { en: "No matches", lt: "Nieko nerasta" },
-  finalists:             { en: "finalists", lt: "finalistai" },
   ballot_pick_for:       { en: (pts: number) => `${pts} ${pts === 1 ? "point" : "points"} go to…`, lt: (pts: number) => `${pts} ${ltPoints(pts)} keliauja` },
   ballot_pick_hint:      { en: "Tap to assign — it'll auto-swap if the country is already in another slot.", lt: "Pasirink šalį, kad priskirtum taškus." },
   aria_drag_reorder:     { en: "Drag to reorder", lt: "Vilk perstumti" },

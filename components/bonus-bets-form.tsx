@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { ChevronRight } from "lucide-react";
 import { Flag, HeartFlag } from "@/components/flag";
 import { CountryDrawer } from "@/components/country-drawer";
-import { getCountry, countryName } from "@/lib/countries";
+import { countries, getCountry, countryName } from "@/lib/countries";
 import { BIG_5, HOST_COUNTRY, type Bets } from "@/lib/scoring";
 import { useLang, t, fmt } from "@/lib/i18n";
 
@@ -19,10 +19,15 @@ export function BonusBetsForm({
   homeCountryCode,
   bets,
   onChange,
+  homePrediction,
+  onHomePredictionChange,
 }: {
   homeCountryCode: string;
   bets: Bets;
   onChange: (next: Bets) => void;
+  /** The voter's guess for the home country's final placement (1..N). */
+  homePrediction: number | null;
+  onHomePredictionChange: (v: number | null) => void;
 }) {
   const home = getCountry(homeCountryCode);
   const lang = useLang();
@@ -37,6 +42,18 @@ export function BonusBetsForm({
 
   return (
     <div className="flex flex-col gap-3">
+      {home && (
+        <NumberRow
+          label={fmt(t(lang, "bet_lt_placement"), { home: homeName })}
+          sub={fmt(t(lang, "bet_lt_placement_sub"), { home: homeName })}
+          max={12}
+          clampMin={1}
+          clampMax={countries.length}
+          value={homePrediction}
+          onChange={onHomePredictionChange}
+        />
+      )}
+
       <CountryRow
         label={t(lang, "bet_wooden_spoon")}
         sub={t(lang, "bet_wooden_spoon_sub")}
@@ -376,12 +393,16 @@ function NumberRow({
   label,
   sub,
   max,
+  clampMin = 0,
+  clampMax = 1000,
   value,
   onChange,
 }: {
   label: string;
   sub: string;
   max?: number;
+  clampMin?: number;
+  clampMax?: number;
   value: number | null;
   onChange: (v: number | null) => void;
 }) {
@@ -391,8 +412,8 @@ function NumberRow({
       <input
         type="number"
         inputMode="numeric"
-        min={0}
-        max={1000}
+        min={clampMin}
+        max={clampMax}
         value={value ?? ""}
         onChange={(e) => {
           const v = e.target.value;
@@ -402,7 +423,7 @@ function NumberRow({
           }
           const n = Number(v);
           if (!Number.isFinite(n)) return;
-          onChange(Math.max(0, Math.min(1000, Math.round(n))));
+          onChange(Math.max(clampMin, Math.min(clampMax, Math.round(n))));
         }}
         placeholder="?"
         className="h-11 w-16 shrink-0 rounded-xl border border-white/15 bg-black/30
