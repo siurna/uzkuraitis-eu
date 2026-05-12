@@ -165,7 +165,7 @@ export function BingoCard() {
   const struckCount = card.filter((tx) => tx === FREE_SQUARE || struckSet.has(tx)).length;
 
   return (
-    <main className="container mx-auto max-w-3xl px-4 pt-6 pb-2 flex-1 flex flex-col gap-3">
+    <main className="container mx-auto max-w-3xl px-4 pt-6 pb-10 flex-1 flex flex-col gap-3">
       {/* Brand-rainbow stroke for the strike X, defined once. */}
       <svg width={0} height={0} className="absolute -z-10" aria-hidden>
         <defs>
@@ -295,10 +295,8 @@ export function BingoCard() {
         </ol>
       </section>
 
-      <p className="text-xs text-white/40 text-center pt-1 text-balance">{t(lang, "bingo_footer")}</p>
-
       {/* Ticket actions live at the bottom, under the list. */}
-      <div className="flex items-center justify-center gap-3 pt-1">
+      <div className="flex items-center justify-center gap-3 pt-3">
         <button
           type="button"
           onClick={generate}
