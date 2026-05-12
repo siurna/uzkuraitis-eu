@@ -113,11 +113,15 @@
   --color-input: oklch(40% 0.03 264 / 0.5);
   --color-border: oklch(95% 0.005 250 / 0.16);
 
-  --radius:    0.75rem;
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
+  /* Corner-radius scale — Tailwind's natural progression, kept honest
+     (it had been overridden so `rounded-xl` was *bigger* than
+     `rounded-2xl`, which is backwards). Convention across the app:
+       rounded-md  (6px)  — tiny chips, skeleton bars, code boxes
+       rounded-xl  (12px) — small tiles / avatars / pills
+       rounded-2xl (16px) — the default surface: list rows, inputs, cards
+       rounded-3xl (24px) — featured "hero" cards
+     `.rainbow-border` adds a 2px ring, so the inner element drops 2px:
+       inside rounded-2xl → rounded-[14px];  inside rounded-3xl → rounded-[22px]. */
 
   /* Soft drop shadows, no coloured glow. */
   --shadow-soft:     0 8px 24px -12px oklch(0% 0 0 / 0.6);
@@ -138,6 +142,11 @@
 @layer base {
   html {
     font-family: var(--font-sans);
+    /* Native-crisp text: render display + body type the way SF/Roboto
+       look on a real app, not the heavy default sub-pixel weight. */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   /* Tailwind v4 dropped the default cursor:pointer on buttons. */
@@ -152,7 +161,9 @@
   body {
     background-color: var(--color-dark-blue-900);
     color: var(--color-foreground);
-    -webkit-tap-highlight-color: oklch(70% 0.27 336 / 0.25);
+    /* No grey/coloured tap flash — this is an app; press states are
+       explicit (`active:` styles), not a browser overlay. */
+    -webkit-tap-highlight-color: transparent;
     /* Kill iOS rubber-band so the sticky header never drifts on overscroll. */
     overscroll-behavior: none;
     /* The whole app is an app, not a document — no accidental text
@@ -171,6 +182,16 @@
     -webkit-user-select: text;
     user-select: text;
     -webkit-touch-callout: default;
+  }
+
+  /* Chat tab: the panel is `position:fixed` and owns the whole viewport
+     between the header and the dock, so the document itself must never
+     scroll — otherwise a drag that begins on the fixed header rubber-
+     bands the page. Lock html + body to the viewport. */
+  html.tab-chat,
+  html.tab-chat body {
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 
   /* No accidental image drags / "Save Image" long-press. */
@@ -207,26 +228,10 @@
 /* ---- utility components ----------------------------------------------- */
 
 /* Title accent. Solid white display type — no rainbow fill (that was a
-   2025 disco move). Pair with .rainbow-rule for the signature 2px
-   rainbow underline below the title. */
+   2025 disco move). */
 .gradient-text {
   color: oklch(98% 0 0);
   letter-spacing: 0;
-}
-
-/* Hairline rainbow rule under section titles. Same gradient as the
-   official ESC rainbow-border, used as a Curved-Line accent. */
-.rainbow-rule {
-  position: relative;
-}
-.rainbow-rule::after {
-  content: "";
-  display: block;
-  width: 2.75rem;
-  height: 2px;
-  margin-top: 0.4rem;
-  background-image: var(--rainbow-gradient);
-  border-radius: 999px;
 }
 
 /* Signature 2px rainbow border. Drop this on a wrapper element and
@@ -279,8 +284,9 @@
   );
 }
 
-/* Make a list row feel pressable. Subtle 1px lift, quiet drop shadow,
-   border lights up white-low (NOT pink). */
+/* Make a list row feel pressable: subtle 1px lift, quiet drop shadow,
+   hairline border brightens white-low — NOT pink. (Pink is a selection
+   accent, never a hover state.) Apply only to interactive rows. */
 .list-card-hover {
   cursor: pointer;
   transition: transform 0.18s ease, border-color 0.25s ease,
@@ -300,28 +306,6 @@
   box-shadow: var(--shadow-soft);
 }
 
-/* Make a list-entry card feel pressable: subtle lift + brightening glow
-   on hover, settle on press. Apply via class to interactive rows only;
-   non-clickable cards stay still. */
-.list-card-hover {
-  transition: transform 0.18s ease, box-shadow 0.25s ease,
-              border-color 0.25s ease;
-}
-.list-card-hover:hover {
-  transform: translateY(-1px);
-  border-color: oklch(70% 0.27 336 / 0.45);
-  box-shadow:
-    0 1px 0 0 oklch(100% 0 0 / 0.08) inset,
-    0 -1px 0 0 oklch(0% 0 0 / 0.2) inset,
-    0 12px 32px -10px oklch(0% 0 0 / 0.55),
-    0 0 0 1px oklch(70% 0.27 336 / 0.15),
-    var(--shadow-glow-pink);
-}
-.list-card-hover:active {
-  transform: translateY(0);
-  transition-duration: 0.08s;
-}
-
 /* Heading reveal: fades up from below, runs once on first mount.
    No JS, just CSS. Use on h1/h2 where you want the entrance. */
 @keyframes heading-rise {
@@ -334,15 +318,6 @@
 .heading-rise-delay-1 { animation-delay: 60ms; }
 .heading-rise-delay-2 { animation-delay: 120ms; }
 .heading-rise-delay-3 { animation-delay: 180ms; }
-
-/* Section reveal: same vibe but a touch slower for content blocks. */
-@keyframes section-rise {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.section-rise {
-  animation: section-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
 
 .bg-radial-fade {
   background:
@@ -398,64 +373,7 @@
   animation: heartbeat-border 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
-@keyframes float-up {
-  0%   { transform: translateY(0)    scale(1);   opacity: 1; }
-  20%  { transform: translateY(-40px) scale(1.4); opacity: 1; }
-  100% { transform: translateY(-220px) scale(0.8); opacity: 0; }
-}
-.float-up { animation: float-up 1.6s ease-out forwards; }
-
-@keyframes ios-widget-shake {
-  0%,100% { transform: translateX(0); }
-  20%  { transform: translateX(-4px) rotate(-2deg); }
-  40%  { transform: translateX(4px)  rotate(2deg); }
-  60%  { transform: translateX(-4px) rotate(-1deg); }
-  80%  { transform: translateX(4px)  rotate(1deg); }
-}
-.ios-widget-shake { animation: ios-widget-shake 0.6s ease-in-out; }
-
-@keyframes heading-rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.heading-rise {
-  animation: heading-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.heading-rise-delay-1 { animation-delay: 60ms; }
-.heading-rise-delay-2 { animation-delay: 120ms; }
-.heading-rise-delay-3 { animation-delay: 180ms; }
-
-@keyframes section-rise {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.section-rise {
-  animation: section-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.country-list-container {
-  transition: max-height 0.5s ease-in-out;
-  overflow: hidden;
-}
-.country-item { transition: transform 0.3s ease, opacity 0.3s ease; }
-
-@keyframes slide-in-right {
-  from { transform: translateX(-20px); opacity: 0; }
-  to   { transform: translateX(0);     opacity: 1; }
-}
-.country-list-expanding .country-item {
-  animation: slide-in-right 0.3s forwards;
-  animation-delay: calc(var(--index) * 0.05s);
-  opacity: 0;
-}
-
 input, button, textarea, select {
   -webkit-appearance: none;
   appearance: none;
-}
-@media (pointer: coarse) {
-  .touch-highlight { transition: background-color 0.2s ease; }
-  .touch-highlight:active {
-    background-color: oklch(95% 0.005 250 / 0.18);
-  }
 }
