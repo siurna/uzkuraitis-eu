@@ -165,9 +165,9 @@ export function BingoCard() {
   const struckCount = card.filter((tx) => tx === FREE_SQUARE || struckSet.has(tx)).length;
 
   return (
-    <main className="container mx-auto max-w-3xl px-4 pt-4 pb-2 flex-1 flex flex-col gap-3">
+    <main className="container mx-auto max-w-3xl px-4 pt-6 pb-2 flex-1 flex flex-col gap-3">
       {/* Brand-rainbow stroke for the strike X, defined once. */}
-      <svg width={0} height={0} className="absolute" aria-hidden>
+      <svg width={0} height={0} className="absolute -z-10" aria-hidden>
         <defs>
           <linearGradient id="bingo-x" x1="0" y1="1" x2="1" y2="0">
             <stop offset="0" stopColor="#f10d59" />

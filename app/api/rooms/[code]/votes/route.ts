@@ -99,6 +99,15 @@ export async function POST(request: Request, { params }: RouteCtx) {
     used.add(code);
   }
 
+  // Is this the voter's first ballot in this room, or a re-cast? Only
+  // the first one narrates "X cast their vote" in chat.
+  const [existingVoter] = await db
+    .select({ id: voters.id })
+    .from(voters)
+    .where(and(eq(voters.roomId, room.id), eq(voters.sessionId, sessionId)))
+    .limit(1);
+  const isFirstCast = !existingVoter;
+
   // Upsert voter on (room_id, session_id). Same call persists the home
   // prediction + every side bet so the whole prediction state is saved
   // atomically alongside the ballot.
@@ -145,9 +154,12 @@ export async function POST(request: Request, { params }: RouteCtx) {
   // scoreboard immediately. No polling needed.
   await broadcastToRoom(room.code, { type: "scores:updated" });
 
-  // Meta-narrate in chat. Awaited (it swallows its own errors) so the
-  // row + chat:new broadcast complete before the lambda is frozen.
-  await postSystemMessage(room.code, room.id, { key: "sys_voted", arg: name });
+  // Meta-narrate the *first* cast in chat (not every re-save). Awaited
+  // (it swallows its own errors) so the row + chat:new broadcast
+  // complete before the lambda is frozen.
+  if (isFirstCast) {
+    await postSystemMessage(room.code, room.id, { key: "sys_voted", arg: name });
+  }
 
   return NextResponse.json({ ok: true, voterId: voter.id });
 }

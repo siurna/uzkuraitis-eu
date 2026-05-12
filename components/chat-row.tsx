@@ -114,6 +114,7 @@ export function ChatRow({
   onDelete,
   onOpenImage,
   lang,
+  nowPlayingCode,
 }: {
   message: Message;
   mine: boolean;
@@ -131,6 +132,8 @@ export function ChatRow({
   onDelete: () => void;
   onOpenImage: (url: string) => void;
   lang: "en" | "lt";
+  /** The country currently on stage — its now-playing card's heart loops. */
+  nowPlayingCode: string | null;
 }) {
   const avatar = m.avatarId ? getAvatar(m.avatarId) : null;
   const isCard = m.kind === "bingo_strike";
@@ -227,7 +230,7 @@ export function ChatRow({
         >
           <div className="flex items-start gap-3 rounded-[14px] bg-dark-blue-900/88 px-4 py-3">
             {country ? (
-              <span className="heartbeat shrink-0">
+              <span className={`shrink-0 ${cc === nowPlayingCode ? "heartbeat-loop" : ""}`}>
                 <HeartFlag code={country.code} size="md" />
               </span>
             ) : (

@@ -46,9 +46,9 @@ const TABS: TabDef[] = [
     Icon: Grid3x3,
     gradient: "from-purple via-fuchsia to-flamingo",
     // The raw `--color-purple` (≈42% L) is too dark to read as a glow
-    // against the near-black dock — like the other tabs, use a bright
-    // version of the gradient's hue.
-    glow: "shadow-[0_8px_22px_-6px_oklch(64%_0.24_320_/_0.6)]",
+    // against the near-black dock — a bright, slightly bigger glow in
+    // the gradient's hue so it pops like the others.
+    glow: "shadow-[0_10px_28px_-3px_oklch(66%_0.26_318_/_0.8)]",
   },
   {
     id: "vote",

@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
   ArrowRight,
+  MessageCircle,
   ListChecks,
   Trophy,
 } from "lucide-react";
@@ -259,7 +260,7 @@ function PlayingCard({
                 </div>
               )}
             </div>
-            <ArrowRight className="h-5 w-5 text-white/70 shrink-0 mb-1" />
+            <MessageCircle className="h-5 w-5 text-white/80 shrink-0 mb-1" />
           </div>
         </div>
       </button>
@@ -290,7 +291,7 @@ function PlayingCard({
               {country.song ? <span className="italic text-white/55"> · {country.song}</span> : null}
             </p>
           </div>
-          <ArrowRight className="h-5 w-5 text-white/55 shrink-0" />
+          <MessageCircle className="h-5 w-5 text-white/70 shrink-0" />
         </div>
       </div>
     </button>
