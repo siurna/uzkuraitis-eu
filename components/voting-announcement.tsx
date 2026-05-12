@@ -105,14 +105,6 @@ export function VotingAnnouncement() {
           ) : phase.kind === "open" ? (
             <div className="relative flex flex-col items-center gap-5">
               <WordsBurst text={t(lang, "vote_open_now")} />
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.4, duration: 0.4 }}
-                className="text-lg sm:text-2xl text-white/80 max-w-md"
-              >
-                {t(lang, "vote_open_now_sub")}
-              </motion.p>
             </div>
           ) : (
             <motion.div
@@ -128,9 +120,6 @@ export function VotingAnnouncement() {
               >
                 {t(lang, "vote_closing")}
               </motion.h2>
-              <p className="text-base sm:text-lg text-white/75 max-w-xs">
-                {t(lang, "vote_closing_sub")}
-              </p>
             </motion.div>
           )}
         </motion.div>
@@ -141,49 +130,27 @@ export function VotingAnnouncement() {
 }
 
 // "EUROPE, START VOTING NOW!" word-by-word: each word slams in with a
-// spring, staggered, in the display face with a rainbow gradient and a
-// continuous shimmer. Big — fills the viewport width on mobile.
+// spring, staggered, in the display face. Solid white — no -webkit-
+// background-clip:text gradient here: on iOS Safari a clipped-text
+// element that's also being transformed/animated paints a stray
+// rectangle, which looked broken. White + a soft glow reads clean.
 function WordsBurst({ text }: { text: string }) {
   const words = text.toUpperCase().split(/\s+/);
   return (
     <h2
-      className="relative font-display uppercase leading-[1.1] tracking-tight py-[0.05em]
+      className="relative font-display uppercase leading-[1.1] tracking-tight py-[0.12em]
                  text-[15vw] sm:text-[7rem] flex flex-wrap justify-center gap-x-[0.25em] gap-y-1
-                 drop-shadow-[0_6px_36px_rgba(0,0,0,0.45)]"
+                 text-white drop-shadow-[0_6px_36px_rgba(0,0,0,0.5)]"
     >
       {words.map((w, i) => (
         <motion.span
           key={`${w}-${i}`}
           className="inline-block"
           initial={{ opacity: 0, y: 40, scale: 0.4, rotate: i % 2 ? -6 : 6 }}
-          animate={{
-            opacity: 1,
-            y: 0,
-            scale: 1,
-            rotate: 0,
-          }}
-          transition={{
-            delay: 0.12 + i * 0.22,
-            type: "spring",
-            stiffness: 420,
-            damping: 14,
-          }}
+          animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+          transition={{ delay: 0.12 + i * 0.22, type: "spring", stiffness: 420, damping: 14 }}
         >
-          <motion.span
-            className="inline-block"
-            style={{
-              backgroundImage:
-                "linear-gradient(100deg,#ffffff,#ff5fa2,#ffd166,#4cc9f0,#b15bff,#ffffff)",
-              backgroundSize: "260% 100%",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              color: "transparent",
-            }}
-            animate={{ backgroundPositionX: ["0%", "260%"] }}
-            transition={{ duration: 2.4, ease: "linear", repeat: Infinity }}
-          >
-            {w}
-          </motion.span>
+          {w}
         </motion.span>
       ))}
     </h2>

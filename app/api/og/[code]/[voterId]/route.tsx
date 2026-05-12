@@ -7,36 +7,32 @@ import { findRoomByCode } from "@/lib/rooms";
 
 // Social share card — the voter's TOP10 ballot as a 3:4 portrait PNG
 // (good for Stories / iMessage). Inline styles only (satori doesn't
-// understand Tailwind). No room code, no domain, no "united by music".
+// understand Tailwind). No room code, no domain.
 //
-// The Eurovision display face (Singing Sans) is bundled next to this
-// route and loaded via `new URL(..., import.meta.url)` — the bundler
-// traces it, so the fetch always resolves (no flaky origin round-trip).
+// The Eurovision display face (Singing Sans) is fetched from /public over
+// HTTPS off this request's own origin — a CDN-cached static asset, so the
+// fetch is reliable. (Don't `fetch(new URL(import.meta.url))`: in the
+// Node serverless runtime that's a `file://` URL and undici's fetch
+// rejects those → no font → satori can't render → 500.) satori can't
+// read woff2, so we ship the plain `.woff`.
 //
 // URL: /api/og/<roomCode>/<voterId>
 
 export const contentType = "image/png";
 export const size = { width: 1080, height: 1440 };
 const SANS = "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+const FONT_PATH = "/fonts/Singing_Sans-BERC94M5.woff";
 
 type RouteCtx = { params: Promise<{ code: string; voterId: string }> };
 
 const POINTS = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1] as const;
 
-async function loadEurovisionFont(): Promise<ArrayBuffer | null> {
-  try {
-    const res = await fetch(new URL("./SingingSans.woff", import.meta.url));
-    if (!res.ok) return null;
-    return await res.arrayBuffer();
-  } catch {
-    return null;
-  }
-}
-
-export async function GET(_req: Request, { params }: RouteCtx) {
+export async function GET(req: Request, { params }: RouteCtx) {
   const { code, voterId } = await params;
 
   try {
+    const origin = new URL(req.url).origin;
+
     const room = await findRoomByCode(code);
     if (!room) return new Response("Not found", { status: 404 });
 
@@ -59,9 +55,10 @@ export async function GET(_req: Request, { params }: RouteCtx) {
       return { points: p, country: c };
     });
 
-    const fontData = await loadEurovisionFont();
-    // The Eurovision face first; system sans for any glyph it lacks.
-    const display = fontData ? `Singing Sans, ${SANS}` : SANS;
+    const fontRes = await fetch(`${origin}${FONT_PATH}`);
+    if (!fontRes.ok) throw new Error(`font fetch ${fontRes.status}`);
+    const fontData = await fontRes.arrayBuffer();
+    const display = `Singing Sans, ${SANS}`;
 
     return new ImageResponse(
       (
@@ -154,9 +151,8 @@ export async function GET(_req: Request, { params }: RouteCtx) {
       ),
       {
         ...size,
-        fonts: fontData
-          ? [{ name: "Singing Sans", data: fontData, weight: 400 as const, style: "normal" as const }]
-          : [],
+        emoji: "twemoji",
+        fonts: [{ name: "Singing Sans", data: fontData, weight: 400 as const, style: "normal" as const }],
       },
     );
   } catch (err) {
