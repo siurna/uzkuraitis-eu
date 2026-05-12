@@ -219,7 +219,9 @@ function RoomBody({ children }: { children: React.ReactNode }) {
           isChat ? "h-[100dvh] overflow-hidden" : "min-h-dvh"
         }`}
       >
-        <PresenceBar />
+        {/* Header hides while the chat composer is focused — keeps the
+            keyboarded-up chat panel from leaving an empty strip up top. */}
+        {!composing && <PresenceBar />}
         {/* <TabSync> + anything the route segment renders (no UI). */}
         {children}
 

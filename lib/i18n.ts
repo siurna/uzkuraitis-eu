@@ -235,9 +235,11 @@ const S = {
   // ── Now-playing strip ────────────────────────────────────────────
   now_playing:       { en: "On stage", lt: "Scenoje" },
   np_add_top10:      { en: "TOP 10", lt: "TOP 10" },
-  np_added:          { en: (n: number) => `Added to your TOP 10 at ${n} pts`, lt: (n: number) => `Įtraukta į tavo TOP 10 — ${n} t.` },
-  np_in_ballot:      { en: (n: number) => `Already in your TOP 10 (${n} pts)`, lt: (n: number) => `Jau tavo TOP 10 (${n} t.)` },
-  np_ballot_full:    { en: "Your TOP 10 is full — reorder it in the Vote tab", lt: "Tavo TOP 10 pilnas — pertvarkyk jį Balsavimo skiltyje" },
+  np_drawer_title:   { en: (c: string) => `Add ${c} to your TOP 10`, lt: (c: string) => `Įtraukti ${c} į tavo TOP 10` },
+  np_drawer_sub:     { en: "Tap a spot — the picks below it slide down a notch.", lt: "Bakstelėk vietą — žemiau esantys pasislenka per vieną." },
+  np_drawer_here:    { en: "current spot", lt: "dabar čia" },
+  np_empty:          { en: "Empty", lt: "Tuščia" },
+  np_placed:         { en: (n: number) => `Placed at ${n} points`, lt: (n: number) => `Pastatyta ${n} t.` },
 
   // ── Bingo ────────────────────────────────────────────────────────
   bingo_you_did_it:  { en: "You got bingo! 🎉", lt: "Surinkai bingo! 🎉" },

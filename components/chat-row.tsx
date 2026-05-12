@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Reply, Pencil, Copy, Trash2, Smile, Loader2, Mic, Music, Trophy, Plus,
@@ -11,45 +11,134 @@ import { optimizedSrc } from "@/lib/img";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { HeartFlag } from "@/components/flag";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { getTrope, type TropeIndex } from "@/lib/bingo-tropes";
 import { t, tDyn } from "@/lib/i18n";
 
 const EDIT_WINDOW_MS = 2 * 60 * 1000;
 
-// Drop a country straight into the (draft) TOP-10 ballot from the
-// now-playing chat card — into the most valuable empty slot. Mirrors
-// vote-form's localStorage shape; the live event lets an already-mounted
-// Vote tab pick it up without a reload.
+// ── draft TOP-10 ballot helpers (shared shape with vote-form's
+// localStorage; the live event lets an already-mounted Vote tab pick up
+// the change without a reload) ──────────────────────────────────────
 const BALLOT_POINTS = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1] as const;
-function addToBallot(roomCode: string, countryCode: string, lang: "en" | "lt") {
-  let slots: { points: number; countryCode: string | null }[] = [];
+type BSlot = { points: number; countryCode: string | null };
+
+function readBallot(roomCode: string): BSlot[] {
   try {
     const parsed = JSON.parse(localStorage.getItem(`uzk_ballot_${roomCode}`) ?? "null");
-    if (Array.isArray(parsed) && parsed.length === 10) slots = parsed;
+    if (Array.isArray(parsed) && parsed.length === 10) return parsed;
   } catch {
-    /* ignore corrupt draft */
+    /* corrupt draft */
   }
-  if (slots.length !== 10) slots = BALLOT_POINTS.map((p) => ({ points: p, countryCode: null }));
+  return BALLOT_POINTS.map((p) => ({ points: p, countryCode: null }));
+}
 
-  const already = slots.find((s) => s.countryCode === countryCode);
-  if (already) {
-    toast(t(lang, "np_in_ballot", already.points));
-    return;
-  }
-  const idx = slots.findIndex((s) => s.countryCode == null);
-  if (idx === -1) {
-    toast(t(lang, "np_ballot_full"));
-    return;
-  }
-  slots[idx] = { ...slots[idx], countryCode };
+function writeBallot(roomCode: string, slots: BSlot[]) {
   try {
     localStorage.setItem(`uzk_ballot_${roomCode}`, JSON.stringify(slots));
   } catch {
     /* private mode */
   }
   window.dispatchEvent(new CustomEvent("uzk:ballot-changed"));
-  toast.success(t(lang, "np_added", slots[idx].points));
+}
+
+// Put `code` at slot `target`. If it's already on the ballot, that's a
+// *move* — the picks between its old and new spot shift to close the gap.
+// If it isn't, that's an *insert* — everything from `target` down slides
+// one slot lower and whatever was last falls off.
+function placeInBallot(slots: BSlot[], code: string, target: number): BSlot[] {
+  const cur = slots.map((s) => s.countryCode);
+  const from = cur.indexOf(code);
+  if (from === target) return slots;
+  let next: (string | null)[];
+  if (from === -1) {
+    next = [...cur.slice(0, target), code, ...cur.slice(target, 9)];
+  } else {
+    next = [...cur];
+    next.splice(from, 1);
+    next.splice(target, 0, code);
+  }
+  return slots.map((s, i) => ({ ...s, countryCode: next[i] ?? null }));
+}
+
+// The sheet behind the now-playing card's "+ TOP 10" button: your whole
+// ballot, tap a spot to slot the on-stage country there.
+function AddTopTenSheet({
+  open,
+  onClose,
+  roomCode,
+  code,
+  lang,
+}: {
+  open: boolean;
+  onClose: () => void;
+  roomCode: string;
+  code: string;
+  lang: "en" | "lt";
+}) {
+  const [slots, setSlots] = useState<BSlot[]>([]);
+  useEffect(() => {
+    if (open) setSlots(readBallot(roomCode));
+  }, [open, roomCode]);
+
+  const country = getCountry(code);
+  const here = slots.findIndex((s) => s.countryCode === code);
+
+  const place = (target: number) => {
+    if (target === here) {
+      onClose();
+      return;
+    }
+    const next = placeInBallot(slots, code, target);
+    writeBallot(roomCode, next);
+    onClose();
+    toast.success(t(lang, "np_placed", next[target].points));
+  };
+
+  return (
+    <BottomSheet
+      open={open}
+      onClose={onClose}
+      title={t(lang, "np_drawer_title", country ? countryName(code, lang) : code.toUpperCase())}
+      sub={t(lang, "np_drawer_sub")}
+    >
+      <ol className="flex flex-col gap-1.5">
+        {slots.map((s, i) => {
+          const c = s.countryCode ? getCountry(s.countryCode) : null;
+          const isHere = i === here;
+          return (
+            <li key={s.points}>
+              <button
+                type="button"
+                onClick={() => place(i)}
+                className={`w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition transform-gpu active:scale-[0.99]
+                            ${isHere ? "bg-flamingo/15 ring-1 ring-flamingo/35" : "bg-white/[0.04] ring-1 ring-white/8 active:bg-white/[0.08]"}`}
+              >
+                <span className="h-8 w-8 shrink-0 rounded-lg grid place-items-center font-display text-sm tabular-nums bg-white/[0.07] ring-1 ring-white/12 text-white/80">
+                  {s.points}
+                </span>
+                {c ? (
+                  <span className="flex items-center gap-2 min-w-0">
+                    <HeartFlag code={c.code} size="sm" />
+                    <span className="truncate text-sm text-white/85">{countryName(c.code, lang)}</span>
+                  </span>
+                ) : (
+                  <span className="text-sm text-white/35 italic">{t(lang, "np_empty")}</span>
+                )}
+                <span className="flex-1" />
+                {isHere && (
+                  <span className="text-[10px] uppercase tracking-wider text-flamingo font-display">
+                    {t(lang, "np_drawer_here")}
+                  </span>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </BottomSheet>
+  );
 }
 
 // Quick-react row in the long-press menu — big colourful gradient
@@ -276,6 +365,7 @@ export function ChatRow({
     Date.now() - new Date(m.createdAt).getTime() < EDIT_WINDOW_MS;
 
   const deepDive = useCountryDeepDive();
+  const [addOpen, setAddOpen] = useState(false); // "+ TOP 10" sheet (now-playing card)
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longFired = useRef(false);
   const startPress = () => {
@@ -395,23 +485,32 @@ export function ChatRow({
                 </div>
               )}
             </button>
-            <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <div className="flex flex-col items-end gap-2 shrink-0">
               <span className="text-[10px] text-white/30 tabular-nums">{time}</span>
               {country && isActive && (
                 <button
                   type="button"
-                  onClick={() => addToBallot(roomCode, country.code, lang)}
-                  className="inline-flex items-center gap-1 rounded-full bg-white/12 ring-1 ring-white/20
-                             px-2 py-1 text-[11px] font-display text-white leading-none
-                             hover:bg-white/20 active:scale-95 transition"
+                  onClick={() => setAddOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white text-dark-blue
+                             px-3 h-8 font-display text-xs leading-none shadow-sm
+                             active:scale-95 transition transform-gpu"
                 >
-                  <Plus className="h-3 w-3" />
+                  <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
                   {t(lang, "np_add_top10")}
                 </button>
               )}
             </div>
           </div>
         </div>
+        {country && isActive && (
+          <AddTopTenSheet
+            open={addOpen}
+            onClose={() => setAddOpen(false)}
+            roomCode={roomCode}
+            code={country.code}
+            lang={lang}
+          />
+        )}
       </motion.li>
     );
   }
