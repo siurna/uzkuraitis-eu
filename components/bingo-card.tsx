@@ -47,18 +47,18 @@ function makeSeed(): string {
 
 type Ticker = { id: number; by: string; trope: string; bingo: boolean };
 
-// Hand-drawn "pen scribble" variants, drawn over a struck square. Each
-// is a rough stroke in viewBox 0..100; we vary the path + pen colour by
-// cell position so the page looks marked-up by an actual person, not a
-// CSS line-through.
+// Hand-drawn "pen mark" variants stamped over a struck square — a
+// confident slash / X / tick / scribble in a viewBox 0..100. The path
+// + pen colour vary by cell position so the card looks marked-up by an
+// actual person, not CSS line-through. (The FREE centre never gets one.)
 const SCRIBBLES = [
-  "M16,24 C38,30 56,44 86,82 M82,22 C58,42 40,54 14,84",
-  "M20,30 C8,56 30,82 56,72 C84,62 90,28 60,20 C34,12 24,40 42,62",
-  "M14,82 C30,56 54,40 88,16 M28,86 C44,60 66,46 92,30",
-  "M22,20 C50,32 60,60 30,82 M78,24 C52,40 40,66 70,86",
-  "M18,50 C36,28 64,30 82,50 C68,72 36,74 18,50 M30,30 C30,30 70,70 70,70",
+  "M19 27 L82 79 M82 22 L17 78",            // rough X
+  "M15 79 L85 21",                          // bold diagonal slash
+  "M20 51 L41 75 L83 25",                   // big checklist tick
+  "M16 38 L84 34 M16 60 L84 56",            // double strike-through
+  "M31 27 C14 45 27 81 53 73 C85 63 89 27 56 21 C46 19 41 30 49 41", // open loop
 ];
-const PENS = ["#e63946", "#1d4ed8", "#0e7490", "#b91c1c", "#1a1a1a"];
+const PENS = ["#ef4444", "#2563eb", "#0d9488", "#c026d3", "#e11d48"];
 
 export function BingoCard() {
   const { code } = useRoomLive();
@@ -163,14 +163,16 @@ export function BingoCard() {
   );
 
   const generate = useCallback(() => {
+    // Add the new (empty) ticket immediately and flip to it, then run
+    // the scramble. The cells render "?" first, spin through random
+    // icons, and lock in left-to-right / top-to-bottom — so it reads
+    // as the ticket "filling up", not a single pop.
     const id = makeId();
     const seed = makeSeed();
+    setTickets((prev) => [...prev, { id, seed, struck: [] }]);
+    setActive((prev) => prev + 1);
     setScrambling(true);
-    window.setTimeout(() => {
-      setTickets((prev) => [...prev, { id, seed, struck: [] }]);
-      setActive((prev) => prev + 1);
-      setScrambling(false);
-    }, 700);
+    window.setTimeout(() => setScrambling(false), 1800);
   }, []);
 
   const remove = useCallback((id: string) => {
@@ -322,46 +324,45 @@ export function BingoCard() {
           <span className="text-xs text-white/40 tabular-nums">{struckCount} / 25</span>
         </div>
         <ol className="flex flex-col gap-1.5">
-          {card.map((tropeIdx, i) => {
-            const isFree = tropeIdx === FREE_SQUARE;
-            const isStruck = isFree || struckSet.has(tropeIdx);
-            return (
-              <li key={`row-${currentTicket.id}-${i}`}>
-                <button
-                  type="button"
-                  disabled={isFree}
-                  onClick={() => toggle(tropeIdx)}
-                  className={`group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition
-                              ${
-                                isStruck
-                                  ? "bg-flamingo/10 ring-1 ring-flamingo/25"
-                                  : "bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07]"
-                              } ${isFree ? "cursor-default" : ""}`}
-                >
-                  <span
-                    className={`h-5 w-5 shrink-0 rounded-md grid place-items-center transition
+          {card
+            .map((tropeIdx, i) => ({ tropeIdx, i }))
+            .filter((c) => c.tropeIdx !== FREE_SQUARE)
+            .map(({ tropeIdx, i }) => {
+              const isStruck = struckSet.has(tropeIdx);
+              return (
+                <li key={`row-${currentTicket.id}-${i}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggle(tropeIdx)}
+                    className={`group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition
                                 ${
                                   isStruck
-                                    ? "bg-flamingo text-white"
-                                    : "ring-1 ring-white/25 text-transparent group-hover:ring-white/40"
+                                    ? "bg-flamingo/10 ring-1 ring-flamingo/25"
+                                    : "bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07]"
                                 }`}
                   >
-                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                  </span>
-                  <span className="text-lg shrink-0 leading-none">
-                    {isFree ? "❤️" : tropeEmoji(tropeIdx)}
-                  </span>
-                  <span
-                    className={`text-sm leading-snug ${
-                      isStruck ? "text-white/45 line-through decoration-flamingo/60" : "text-white/85"
-                    }`}
-                  >
-                    {isFree ? t(lang, "bingo_free") : tropeText(tropeIdx, lang)}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
+                    <span
+                      className={`h-5 w-5 shrink-0 rounded-md grid place-items-center transition
+                                  ${
+                                    isStruck
+                                      ? "bg-flamingo text-white"
+                                      : "ring-1 ring-white/25 text-transparent group-hover:ring-white/40"
+                                  }`}
+                    >
+                      <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                    </span>
+                    <span className="text-lg shrink-0 leading-none">{tropeEmoji(tropeIdx)}</span>
+                    <span
+                      className={`text-sm leading-snug ${
+                        isStruck ? "text-white/45 line-through decoration-flamingo/60" : "text-white/85"
+                      }`}
+                    >
+                      {tropeText(tropeIdx, lang)}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
         </ol>
       </section>
 
@@ -386,26 +387,45 @@ function Cell({
   onClick: () => void;
 }) {
   const [scrambleEmoji, setScrambleEmoji] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [locked, setLocked] = useState(true);
+  const interval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (!scrambling) {
+    const clear = () => {
+      if (interval.current) clearInterval(interval.current);
+      interval.current = null;
+    };
+    if (!scrambling || isFree) {
+      clear();
       setScrambleEmoji(null);
-      if (timer.current) clearInterval(timer.current);
+      setLocked(true);
       return;
     }
-    timer.current = setInterval(() => {
-      const j = Math.floor(Math.random() * TROPE_COUNT);
-      setScrambleEmoji(tropeEmoji(j));
-    }, 90);
+    // "?" first → spin random icons → lock to the real one, staggered
+    // by cell index so the ticket fills in left-to-right, top-to-bottom.
+    setLocked(false);
+    setScrambleEmoji(null);
+    const startSpin = 200 + index * 26;
+    const lockAt = 560 + index * 48;
+    const t1 = setTimeout(() => {
+      interval.current = setInterval(() => {
+        setScrambleEmoji(tropeEmoji(Math.floor(Math.random() * TROPE_COUNT)));
+      }, 75);
+    }, startSpin);
+    const t2 = setTimeout(() => {
+      clear();
+      setLocked(true);
+    }, lockAt);
     return () => {
-      if (timer.current) clearInterval(timer.current);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clear();
     };
-  }, [scrambling]);
+  }, [scrambling, isFree, index]);
 
   const scribble = SCRIBBLES[index % SCRIBBLES.length];
   const pen = PENS[(index * 3 + 1) % PENS.length];
-  const shown = scrambling && scrambleEmoji ? scrambleEmoji : emoji;
+  const shown = locked ? emoji : scrambleEmoji ?? "?";
 
   return (
     <motion.button
@@ -416,7 +436,7 @@ function Cell({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.22, delay: index * 0.012, ease: [0.22, 1, 0.36, 1] }}
       className={`relative aspect-square rounded-2xl grid place-items-center
-                  text-2xl sm:text-3xl select-none
+                  text-[1.7rem] sm:text-4xl select-none
                   transition transform-gpu duration-150 active:scale-[0.95] focus-visible:outline-none
                   ${
                     isFree
@@ -426,11 +446,21 @@ function Cell({
                         : "bg-white/[0.04] ring-1 ring-white/10 hover:bg-white/[0.08]"
                   }`}
     >
-      <span className={isStruck ? "opacity-90" : ""}>{shown}</span>
+      {isFree ? (
+        // The brand heart sits in the centre square — never crossed out.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src="/images/70-heart-sm.webp"
+          alt=""
+          className="h-9 w-9 sm:h-12 sm:w-12 object-contain heartbeat-loop"
+        />
+      ) : (
+        <span className={isStruck ? "opacity-90" : ""}>{shown}</span>
+      )}
 
-      {/* Hand-drawn pen scribble over a struck square. */}
+      {/* Hand-drawn pen mark over a struck square (centre square exempt). */}
       <AnimatePresence>
-        {isStruck && (
+        {isStruck && !isFree && (
           <motion.svg
             key="scribble"
             viewBox="0 0 100 100"
@@ -443,13 +473,13 @@ function Cell({
               d={scribble}
               fill="none"
               stroke={pen}
-              strokeWidth={7}
+              strokeWidth={7.5}
               strokeLinecap="round"
               strokeLinejoin="round"
-              initial={isFree ? { pathLength: 1 } : { pathLength: 0 }}
+              initial={{ pathLength: 0 }}
               animate={{ pathLength: 1 }}
-              transition={{ duration: 0.38, ease: "easeOut" }}
-              style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.35))" }}
+              transition={{ duration: 0.32, ease: "easeOut" }}
+              style={{ filter: "drop-shadow(0 1px 1.5px rgba(0,0,0,0.4))" }}
             />
           </motion.svg>
         )}

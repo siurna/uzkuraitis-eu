@@ -92,8 +92,10 @@ export function NameGate({ children }: { children: React.ReactNode }) {
         title={step === 1 ? t(lang, "welcome") : t(lang, "pick_avatar")}
         sub={step === 1 ? t(lang, "name_prompt") : undefined}
         footer={
-          <div className="flex items-center gap-3 w-full">
-            {step === 2 && (
+          // Step dots are absolutely centred so they don't shift when
+          // the Back button appears on step 2.
+          <div className="relative flex items-center gap-3 w-full">
+            {step === 2 ? (
               <Button
                 type="button"
                 variant="ghost"
@@ -103,8 +105,12 @@ export function NameGate({ children }: { children: React.ReactNode }) {
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
+            ) : (
+              <span className="w-9 shrink-0" aria-hidden />
             )}
-            <StepDots current={step} total={2} />
+            <span className="pointer-events-none absolute left-1/2 -translate-x-1/2">
+              <StepDots current={step} total={2} />
+            </span>
             <div className="flex-1" />
             {step === 1 ? (
               <Button
@@ -145,7 +151,7 @@ export function NameGate({ children }: { children: React.ReactNode }) {
               value={draftName}
               onChange={(e) => setDraftName(e.target.value.slice(0, 40))}
               placeholder={t(lang, "your_name")}
-              className="heartbeat-focus h-14 text-center text-[20px] font-bold
+              className="heartbeat-focus h-14 text-center text-[24px] md:text-[24px] font-bold
                          rounded-xl border border-white/15 bg-black/30
                          placeholder:text-white/30 placeholder:font-normal"
               maxLength={40}

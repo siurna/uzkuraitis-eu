@@ -55,11 +55,14 @@ let nextFloatId = 1;
 export function FloatingReactionsLayer({
   code,
   hideBarOnMobile = false,
+  liftAboveComposer = false,
 }: {
   code: string;
   /** When true (voting is open), the bottom emoji bar collapses on
    *  mobile so the sticky vote CTA owns that area. Floats keep flying. */
   hideBarOnMobile?: boolean;
+  /** When true (chat tab), lift the bar above the pinned composer. */
+  liftAboveComposer?: boolean;
 }) {
   const [floats, setFloats] = useState<Float[]>([]);
   const broadcast = useBroadcastEvent();
@@ -154,10 +157,11 @@ export function FloatingReactionsLayer({
           mobile while voting is open so the sticky vote CTA owns the
           bottom of the screen; floats themselves still render. */}
       <div
-        className={`fixed left-0 right-0 z-30 flex justify-center pointer-events-none px-2
-                    bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] ${
-          hideBarOnMobile ? "hidden sm:flex" : ""
-        }`}
+        className={`fixed left-0 right-0 z-30 flex justify-center pointer-events-none px-2 ${
+          liftAboveComposer
+            ? "bottom-[calc(env(safe-area-inset-bottom)+8.75rem)]"
+            : "bottom-[calc(env(safe-area-inset-bottom)+5.5rem)]"
+        } ${hideBarOnMobile ? "hidden sm:flex" : ""}`}
       >
         <motion.div
           initial={{ y: 80, opacity: 0 }}

@@ -23,7 +23,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { X, ListOrdered, Sparkles, Share2, Check, ScrollText } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { countries, getCountry, countryName } from "@/lib/countries";
 import { Flag, HeartOutline } from "@/components/flag";
 import { BonusBetsForm } from "@/components/bonus-bets-form";
@@ -368,120 +367,89 @@ export function VoteForm({
           </div>
         </div>
 
-        <Tabs
-          value={tab}
-          onValueChange={(v) => setTab(v as VoteTab)}
-          className="flex flex-col gap-4"
-        >
-          <TabsContent value="ballot" className="flex flex-col gap-4 mt-0 outline-none">
-            {/* TOP10 unwrapped — no glass-card container. The slots
-                sit directly on the page bg like the standings rows. */}
-            <motion.section
-              initial={{ opacity: 0, x: -16 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="flex flex-col gap-3"
-            >
-              <div className="flex items-baseline justify-between gap-3 px-1">
-                <h2 className="font-display text-xl gradient-text">
-                  {t(lang, "your_top_10")}
-                </h2>
-                <p className="text-xs text-white/40">
-                  {t(lang, "drag_hint")}
-                </p>
-              </div>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={onDragEnd}
-              >
-                <SortableContext
-                  items={slots.map((s) => `slot-${s.points}`)}
-                  strategy={rectSortingStrategy}
-                >
-                  <ul className="flex flex-col gap-2">
-                    {slots.map((slot) => (
-                      <BallotSlot
-                        key={slot.points}
-                        slot={slot}
-                        onClear={() => clearSlot(slot.points)}
-                        onPick={() => setPickingPoints(slot.points)}
-                        pulsing={pulsingPoints === slot.points}
-                      />
-                    ))}
-                  </ul>
-                </SortableContext>
-              </DndContext>
-            </motion.section>
-          </TabsContent>
-
-          <TabsContent value="bets" className="flex flex-col gap-4 mt-0 outline-none">
-            {homeCountry && (
-              <motion.section
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3"
-              >
-                <div className="flex items-center gap-3">
-                  <Flag code={homeCountry.code} size="lg" />
-                  <div className="flex-1 min-w-0">
-                    <h2 className="font-display text-xl gradient-text">
-                      {fmt(t(lang, "bet_lt_placement"), { home: countryName(homeCountry.code, lang) })}
-                    </h2>
-                    <p className="text-xs text-white/50">
-                      {fmt(t(lang, "bet_lt_placement_sub"), { home: countryName(homeCountry.code, lang) })}
-                    </p>
-                  </div>
+        {/* Tab panels — cross-fade/slide on switch (mode="wait" so the
+            outgoing panel finishes leaving before the new one arrives). */}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-col gap-4"
+          >
+            {tab === "ballot" && (
+              <section className="flex flex-col gap-3">
+                <div className="flex items-baseline justify-between gap-3 px-1">
+                  <h2 className="font-display text-xl gradient-text">{t(lang, "your_top_10")}</h2>
+                  <p className="text-xs text-white/40">{t(lang, "drag_hint")}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    max={countries.length}
-                    placeholder="?"
-                    value={homePrediction}
-                    onChange={(e) => setHomePrediction(e.target.value)}
-                    className="h-14 w-20 rounded-xl border border-white/15 bg-black/30
-                               text-center font-display text-3xl tabular-nums text-white
-                               caret-flamingo focus:border-flamingo focus:outline-none
-                               focus:ring-2 focus:ring-flamingo/40 transition"
-                  />
-                  <span className="text-sm text-white/40">
-                    / {countries.length} finalists
-                  </span>
-                </div>
-              </motion.section>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                  <SortableContext items={slots.map((s) => `slot-${s.points}`)} strategy={rectSortingStrategy}>
+                    <ul className="flex flex-col gap-2">
+                      {slots.map((slot) => (
+                        <BallotSlot
+                          key={slot.points}
+                          slot={slot}
+                          onClear={() => clearSlot(slot.points)}
+                          onPick={() => setPickingPoints(slot.points)}
+                          pulsing={pulsingPoints === slot.points}
+                        />
+                      ))}
+                    </ul>
+                  </SortableContext>
+                </DndContext>
+              </section>
             )}
 
-            <BonusBetsForm
-              homeCountryCode={homeCountryCode}
-              bets={bets}
-              onChange={setBets}
-            />
+            {tab === "bets" && (
+              <>
+                {homeCountry && (
+                  <section className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <Flag code={homeCountry.code} size="lg" />
+                      <div className="flex-1 min-w-0">
+                        <h2 className="font-display text-xl gradient-text">
+                          {fmt(t(lang, "bet_lt_placement"), { home: countryName(homeCountry.code, lang) })}
+                        </h2>
+                        <p className="text-xs text-white/50">
+                          {fmt(t(lang, "bet_lt_placement_sub"), { home: countryName(homeCountry.code, lang) })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={countries.length}
+                        placeholder="?"
+                        value={homePrediction}
+                        onChange={(e) => setHomePrediction(e.target.value)}
+                        className="h-14 w-20 rounded-xl border border-white/15 bg-black/30
+                                   text-center font-display text-3xl tabular-nums text-white
+                                   caret-flamingo focus:border-flamingo focus:outline-none
+                                   focus:ring-2 focus:ring-flamingo/40 transition"
+                      />
+                      <span className="text-sm text-white/40">/ {countries.length} finalists</span>
+                    </div>
+                  </section>
+                )}
+                <BonusBetsForm homeCountryCode={homeCountryCode} bets={bets} onChange={setBets} />
+              </>
+            )}
 
-          </TabsContent>
-
-          <TabsContent value="rules" className="flex flex-col gap-3 mt-0 outline-none">
-            <motion.section
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="flex flex-col gap-3"
-            >
-              <h2 className="font-display text-xl gradient-text text-balance px-1">
-                {t(lang, "rules_title")}
-              </h2>
-              <RuleCard title={t(lang, "rules_top10_h")} body={t(lang, "rules_top10_b")} />
-              <RuleCard title={t(lang, "rules_home_h")} body={t(lang, "rules_home_b")} />
-              <RuleCard title={t(lang, "rules_bets_h")} body={t(lang, "rules_bets_b")} />
-              <p className="text-xs text-white/40 text-center pt-1 text-balance">
-                {t(lang, "rules_footer")}
-              </p>
-            </motion.section>
-          </TabsContent>
-        </Tabs>
+            {tab === "rules" && (
+              <section className="flex flex-col gap-3">
+                <h2 className="font-display text-xl gradient-text text-balance px-1">{t(lang, "rules_title")}</h2>
+                <RuleCard title={t(lang, "rules_top10_h")} body={t(lang, "rules_top10_b")} />
+                <RuleCard title={t(lang, "rules_home_h")} body={t(lang, "rules_home_b")} />
+                <RuleCard title={t(lang, "rules_bets_h")} body={t(lang, "rules_bets_b")} />
+                <p className="text-xs text-white/40 text-center pt-1 text-balance">{t(lang, "rules_footer")}</p>
+              </section>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Bottom action area. The ballot auto-casts when full, so there's

@@ -7,7 +7,7 @@ import { useEventListener } from "@/lib/liveblocks";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { Flag } from "@/components/flag";
-import { useLang, t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n";
 
 // The orchestrated "X is on stage" takeover. Fires on every
 // now-playing:change carrying a country code: a full-screen wash in
@@ -66,15 +66,23 @@ export function NowPlayingTakeover() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
         >
-          {/* Colour wash — two radial pools in the flag colours that
-              slowly breathe. Sits over the page but under the text. */}
+          {/* Frosted backdrop — blurs the room behind without re-painting
+              the whole page (backdrop-filter is GPU-cheap). */}
+          <motion.div
+            className="absolute inset-0 backdrop-blur-md"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 1, 1, 1, 0] }}
+            transition={{ duration: HOLD_MS / 1000, times: [0, 0.12, 0.5, 0.8, 1] }}
+            style={{ backgroundColor: "rgba(6,7,22,0.5)" }}
+          />
+          {/* Colour wash — two soft radial pools in the flag colours. */}
           <motion.div
             className="absolute inset-0"
             initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.85, 0.7, 0.78, 0] }}
+            animate={{ opacity: [0, 0.75, 0.6, 0.66, 0] }}
             transition={{ duration: HOLD_MS / 1000, times: [0, 0.12, 0.5, 0.8, 1] }}
             style={{
-              background: `radial-gradient(70% 60% at 20% 25%, ${hexA(c1, 0.72)}, transparent 70%), radial-gradient(70% 60% at 85% 80%, ${hexA(c2, 0.6)}, transparent 70%), rgba(5,6,20,0.55)`,
+              background: `radial-gradient(72% 62% at 20% 22%, ${hexA(c1, 0.42)}, transparent 70%), radial-gradient(72% 62% at 84% 82%, ${hexA(c2, 0.36)}, transparent 70%)`,
             }}
           />
           {/* Faint shimmer band sweeping across, tinted with c1. */}
@@ -146,16 +154,13 @@ export function NowPlayingTakeover() {
             </motion.span>
           </motion.h1>
 
-          {/* On-stage label, then artist and song on their own lines. */}
+          {/* Artist + song, each on its own line. */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: [0, 1, 1, 0], y: [20, 0, 0, -10] }}
             transition={{ duration: HOLD_MS / 1000, times: [0, 0.26, 0.85, 1] }}
-            className="relative mt-4 flex flex-col items-center gap-1.5"
+            className="relative mt-3 flex flex-col items-center gap-1"
           >
-            <span className="text-[11px] sm:text-xs uppercase tracking-[0.42em] text-white/65 font-display">
-              {t(lang, "now_playing")}
-            </span>
             {country.artist && (
               <span className="text-2xl sm:text-3xl text-white font-display leading-tight text-balance">
                 {country.artist}

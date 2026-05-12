@@ -235,6 +235,26 @@
   box-shadow: var(--shadow-soft);
 }
 
+/* Soft-fade the top + bottom edges of a vertically scrollable region so
+   content dissolves into the chrome instead of being chopped by a hard
+   line. Use on drawer content panels, the chat list, etc. */
+.fade-scroll-y {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 16px,
+    black calc(100% - 16px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 16px,
+    black calc(100% - 16px),
+    transparent 100%
+  );
+}
+
 /* Make a list row feel pressable. Subtle 1px lift, quiet drop shadow,
    border lights up white-low (NOT pink). */
 .list-card-hover {

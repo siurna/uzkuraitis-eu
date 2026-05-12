@@ -15,12 +15,13 @@ import {
   Reply,
   Pencil,
   Smile,
-  Image as ImageIcon,
   ImagePlus,
+  Film,
   Loader2,
   Check,
   ChevronUp,
   ArrowDown,
+  ImageDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useEventListener, useOthers, useUpdateMyPresence } from "@/lib/liveblocks";
@@ -90,6 +91,8 @@ export function ChatPanel() {
   const [atBottom, setAtBottom] = useState(true);
   const [newCount, setNewCount] = useState(0);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const dragDepth = useRef(0);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
@@ -555,12 +558,49 @@ export function ChatPanel() {
     <main
       className="fixed inset-x-0 top-14 z-10 flex justify-center px-3 sm:px-4
                  bottom-[calc(env(safe-area-inset-bottom)+4.75rem)]"
+      onDragEnter={(e) => {
+        if (!Array.from(e.dataTransfer.types).includes("Files")) return;
+        e.preventDefault();
+        dragDepth.current += 1;
+        setDragOver(true);
+      }}
+      onDragOver={(e) => {
+        if (Array.from(e.dataTransfer.types).includes("Files")) e.preventDefault();
+      }}
+      onDragLeave={() => {
+        dragDepth.current = Math.max(0, dragDepth.current - 1);
+        if (dragDepth.current === 0) setDragOver(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        dragDepth.current = 0;
+        setDragOver(false);
+        const f = Array.from(e.dataTransfer.files).find((x) => x.type.startsWith("image/"));
+        if (f) sendImage(f);
+      }}
     >
       <div className="relative flex flex-col w-full max-w-3xl min-h-0">
+        <AnimatePresence>
+          {dragOver && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
+              className="absolute inset-1 z-40 grid place-items-center rounded-2xl
+                         bg-dark-blue-900/75 backdrop-blur-sm ring-2 ring-flamingo/50 pointer-events-none"
+            >
+              <span className="flex flex-col items-center gap-2 text-white/85">
+                <ImageDown className="h-8 w-8" />
+                <span className="text-sm font-display">{t(lang, "chat_drop_image")}</span>
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div
           ref={listRef}
           onScroll={onScroll}
-          className="flex-1 min-h-0 overflow-y-auto py-4 flex flex-col gap-3"
+          className="flex-1 min-h-0 overflow-y-auto py-4 flex flex-col gap-3 fade-scroll-y"
           onClick={() => menuFor && setMenuFor(null)}
         >
           {loading ? (
@@ -723,7 +763,42 @@ export function ChatPanel() {
               ) : null}
             </div>
           )}
-          <div className="flex items-end gap-2">
+          {/* Unified composer bar — photo + GIF live inside the pill. */}
+          <div className="flex items-end gap-1 rounded-2xl border border-white/15 bg-black/40 px-1.5 py-1.5 transition focus-within:border-white/30">
+            {!editing && (
+              <>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = "";
+                    if (f) sendImage(f);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  aria-label={t(lang, "chat_send_photo")}
+                  className="h-9 w-9 shrink-0 rounded-full grid place-items-center text-white/55
+                             hover:text-white hover:bg-white/10 transition active:scale-[0.92] disabled:opacity-50"
+                >
+                  {uploading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <ImagePlus className="h-[18px] w-[18px]" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGifOpen(true)}
+                  aria-label={t(lang, "gif_pick")}
+                  className="h-9 w-9 shrink-0 rounded-full grid place-items-center text-white/55
+                             hover:text-white hover:bg-white/10 transition active:scale-[0.92]"
+                >
+                  <Film className="h-[18px] w-[18px]" />
+                </button>
+              </>
+            )}
             <textarea
               ref={taRef}
               rows={1}
@@ -743,54 +818,16 @@ export function ChatPanel() {
               }}
               onBlur={editing ? undefined : clearTyping}
               placeholder={editing ? t(lang, "chat_edit_placeholder") : t(lang, "chat_placeholder")}
-              className="flex-1 max-h-[140px] resize-none rounded-2xl border border-white/15 bg-black/40
-                         px-4 py-2.5 text-base leading-snug text-white placeholder:text-white/35
-                         focus:outline-none focus:border-white/30 transition"
+              className="flex-1 max-h-[120px] resize-none bg-transparent border-0 px-1.5 py-1.5
+                         text-base leading-snug text-white placeholder:text-white/35 focus:outline-none"
               maxLength={2000}
             />
-            {!editing && (
-              <>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    e.target.value = "";
-                    if (f) sendImage(f);
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={uploading}
-                  aria-label={t(lang, "chat_send_photo")}
-                  className="h-11 w-11 shrink-0 rounded-full grid place-items-center
-                             bg-white/[0.06] ring-1 ring-white/12 text-white/75
-                             hover:bg-white/[0.1] hover:text-white transition active:scale-[0.95]
-                             disabled:opacity-50"
-                >
-                  {uploading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <ImagePlus className="h-[18px] w-[18px]" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGifOpen(true)}
-                  aria-label={t(lang, "gif_pick")}
-                  className="h-11 w-11 shrink-0 rounded-full grid place-items-center
-                             bg-white/[0.06] ring-1 ring-white/12 text-white/75
-                             hover:bg-white/[0.1] hover:text-white transition active:scale-[0.95]"
-                >
-                  <ImageIcon className="h-[18px] w-[18px]" />
-                </button>
-              </>
-            )}
             <button
               type="button"
               onClick={() => (editing ? submitEdit() : send())}
               disabled={editing ? !editBody.trim() : !body.trim()}
-              className="h-11 w-11 shrink-0 rounded-full grid place-items-center
-                         bg-white text-dark-blue disabled:opacity-40 transition active:scale-[0.95]"
+              className="h-9 w-9 shrink-0 rounded-full grid place-items-center
+                         bg-white text-dark-blue disabled:opacity-40 transition active:scale-[0.92]"
               aria-label={editing ? t(lang, "chat_save_edit") : t(lang, "chat_send")}
             >
               {editing ? <Check className="h-4 w-4" /> : <Send className="h-4 w-4" />}

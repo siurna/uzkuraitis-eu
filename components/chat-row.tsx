@@ -2,10 +2,11 @@
 
 import { useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Reply, Pencil, Copy, Trash2, Smile, Loader2, X } from "lucide-react";
+import { Reply, Pencil, Copy, Trash2, Smile, Loader2, X, Mic, Music } from "lucide-react";
 import { getAvatar } from "@/lib/avatars";
 import { getCountry, countryName } from "@/lib/countries";
 import { HeartFlag } from "@/components/flag";
+import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { t } from "@/lib/i18n";
 
 const EDIT_WINDOW_MS = 2 * 60 * 1000;
@@ -122,6 +123,7 @@ export function ChatRow({
     mine && m.kind === "text" &&
     Date.now() - new Date(m.createdAt).getTime() < EDIT_WINDOW_MS;
 
+  const deepDive = useCountryDeepDive();
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longFired = useRef(false);
   const startPress = () => {
@@ -160,30 +162,47 @@ export function ChatRow({
         transition={{ duration: 0.3 }}
         className="my-1"
       >
-        <div className="rainbow-border rounded-2xl">
-          <div className="flex items-center gap-3 rounded-[14px] bg-dark-blue-900/85 px-4 py-3">
+        <button
+          type="button"
+          disabled={!country}
+          onClick={() => country && deepDive.open(country.code)}
+          className="block w-full text-left rainbow-border rounded-2xl disabled:cursor-default"
+        >
+          <div className="flex items-start gap-3 rounded-[14px] bg-dark-blue-900/85 px-4 py-3">
             {country ? (
               <span className="heartbeat shrink-0">
                 <HeartFlag code={country.code} size="md" />
               </span>
             ) : (
-              <Smile className="h-5 w-5 text-flamingo shrink-0" />
+              <Smile className="h-5 w-5 text-flamingo shrink-0 mt-0.5" />
             )}
             <div className="min-w-0 flex-1">
               <p className="text-[10px] uppercase tracking-[0.3em] text-flamingo font-display leading-tight">
                 {t(lang, "now_playing")}
               </p>
-              <p className="text-sm text-white truncate">
-                <span className="font-display">
-                  {country ? countryName(country.code, lang) : (cc ?? "").toUpperCase()}
-                </span>
-                {country?.artist && <span className="text-white/70"> — {country.artist}</span>}
-                {country?.song && <span className="text-white/45 italic"> · {country.song}</span>}
+              <p className="text-sm font-display text-white truncate">
+                {country ? countryName(country.code, lang) : (cc ?? "").toUpperCase()}
               </p>
+              {(country?.artist || country?.song) && (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {country?.artist && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.07] ring-1 ring-white/12 px-2 py-0.5 text-[11px] text-white/85">
+                      <Mic className="h-3 w-3 text-white/55" />
+                      {country.artist}
+                    </span>
+                  )}
+                  {country?.song && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.07] ring-1 ring-white/12 px-2 py-0.5 text-[11px] italic text-white/70">
+                      <Music className="h-3 w-3 text-white/45" />
+                      {country.song}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             <span className="text-[10px] text-white/30 tabular-nums shrink-0">{time}</span>
           </div>
-        </div>
+        </button>
       </motion.li>
     );
   }
@@ -253,9 +272,13 @@ export function ChatRow({
                 else if (!mine && info.offset.x > 44) onReply();
               }}
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                // After a long-press the menu is already open; swallow the
+                // trailing click so it doesn't bubble to the list's
+                // "tap-empty-space-to-close" handler.
                 if (longFired.current) {
                   longFired.current = false;
+                  e.stopPropagation();
                   return;
                 }
                 if (isMedia && m.gifUrl) onOpenImage(m.gifUrl);

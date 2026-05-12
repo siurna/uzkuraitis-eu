@@ -7,7 +7,7 @@ import {
   Home,
   MessageCircle,
   Grid3x3,
-  Vote,
+  ListChecks,
   type LucideProps,
 } from "lucide-react";
 import type { Route } from "next";
@@ -55,7 +55,7 @@ const TABS: TabDef[] = [
   {
     href: (code) => `/r/${code}/vote` as Route,
     labelKey: "tab_vote",
-    Icon: Vote,
+    Icon: ListChecks,
     gradient: "from-yellow via-orange to-fuchsia",
     glow: "shadow-[0_8px_22px_-6px_oklch(95%_0.19_108_/_0.55)]",
     match: (p, code) => p.startsWith(`/r/${code}/vote`),

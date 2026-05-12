@@ -128,8 +128,13 @@ function RoomBody({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col pb-24">
       <PresenceBar />
       {children}
-      {isHome && (
-        <FloatingReactionsLayer code={code} hideBarOnMobile={false} />
+      {(isHome || isChat) && (
+        <FloatingReactionsLayer
+          code={code}
+          hideBarOnMobile={false}
+          // On the chat tab, ride above the pinned composer.
+          liftAboveComposer={isChat}
+        />
       )}
       <RoomTabBar code={code} chatUnread={unread} />
     </div>

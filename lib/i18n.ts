@@ -159,6 +159,7 @@ const S = {
   chat_send_photo:   { en: "Send a photo", lt: "Siųsti nuotrauką" },
   chat_image_too_big: { en: "Image is too large (max 8 MB).", lt: "Nuotrauka per didelė (maks. 8 MB)." },
   chat_image_failed: { en: "Couldn't upload that image.", lt: "Nepavyko įkelti nuotraukos." },
+  chat_drop_image:   { en: "Drop the image to send it", lt: "Nuvilk nuotrauką, kad išsiųstum" },
   gif_pick:          { en: "Pick a GIF", lt: "Pasirink GIF" },
   gif_search:        { en: "Search GIFs", lt: "Ieškoti GIF" },
   gif_hint:          { en: 'Try "omg", "yes", "fire"…', lt: "Bandyk „omg“, „taip“, „fire“…" },
