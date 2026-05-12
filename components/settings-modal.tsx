@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "motion/react";
 import { Share2, Check, LogOut, ChevronRight, Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -147,20 +148,28 @@ export function SettingsModal({
 
           <Section label={t(lang, "language")}>
             <div className="grid grid-cols-2 gap-1 rounded-2xl bg-black/30 ring-1 ring-white/10 p-1">
-              {LANGUAGES.map((code) => (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => setLang(code)}
-                  className={`h-11 rounded-xl font-display text-base transition ${
-                    lang === code
-                      ? "bg-white text-dark-blue"
-                      : "text-white/65 hover:text-white"
-                  }`}
-                >
-                  {LANGUAGE_NAMES[code]}
-                </button>
-              ))}
+              {LANGUAGES.map((code) => {
+                const active = lang === code;
+                return (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => setLang(code)}
+                    className="relative h-11 rounded-xl font-display text-base"
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="lang-pill"
+                        className="absolute inset-0 rounded-xl bg-white"
+                        transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                      />
+                    )}
+                    <span className={`relative transition-colors ${active ? "text-dark-blue" : "text-white/65"}`}>
+                      {LANGUAGE_NAMES[code]}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </Section>
 

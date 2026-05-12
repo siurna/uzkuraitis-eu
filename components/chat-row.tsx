@@ -3,29 +3,30 @@
 import { useMemo, useRef, type ComponentType } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Reply, Pencil, Copy, Trash2, Smile, Loader2, X, Mic, Music, Trophy,
+  Reply, Pencil, Copy, Trash2, Smile, Loader2, Mic, Music, Trophy,
   Heart, Flame, PartyPopper, Star, Sparkles,
   type LucideProps,
 } from "lucide-react";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { getCountry, countryName } from "@/lib/countries";
+import { countryColors } from "@/lib/country-colors";
 import { HeartFlag } from "@/components/flag";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { t } from "@/lib/i18n";
 
 const EDIT_WINDOW_MS = 2 * 60 * 1000;
 
-// Quick-react row in the long-press menu — same Apple-Watch-style solid
-// circles as the floating reactions bar; stored as the emoji glyph so
-// the reaction strip below renders it.
+// Quick-react row in the long-press menu — Apple-Watch-style circles,
+// each a soft gradient of its hue. Stored as the emoji glyph so the
+// reaction strip below renders it.
 const QUICK_REACTS: { emoji: string; Icon: ComponentType<LucideProps>; bg: string; filled: boolean }[] = [
-  { emoji: "❤️", Icon: Heart, bg: "bg-[#ff2d55]", filled: true },
-  { emoji: "🔥", Icon: Flame, bg: "bg-[#ff9500]", filled: true },
-  { emoji: "🎤", Icon: Mic, bg: "bg-[#0a84ff]", filled: false },
-  { emoji: "🎉", Icon: PartyPopper, bg: "bg-[#bf5af2]", filled: false },
-  { emoji: "⭐", Icon: Star, bg: "bg-[#ffd60a]", filled: true },
-  { emoji: "✨", Icon: Sparkles, bg: "bg-[#30d158]", filled: true },
+  { emoji: "❤️", Icon: Heart, bg: "from-[#ff5a7a] to-[#e0123f]", filled: true },
+  { emoji: "🔥", Icon: Flame, bg: "from-[#ffb13d] to-[#ef7400]", filled: true },
+  { emoji: "🎤", Icon: Mic, bg: "from-[#4aa3ff] to-[#0064d6]", filled: false },
+  { emoji: "🎉", Icon: PartyPopper, bg: "from-[#d28bf7] to-[#9b35e6]", filled: false },
+  { emoji: "⭐", Icon: Star, bg: "from-[#ffe14d] to-[#f0b400]", filled: true },
+  { emoji: "✨", Icon: Sparkles, bg: "from-[#5be08a] to-[#1eb84f]", filled: true },
 ];
 
 export type Reactions = Record<
@@ -208,6 +209,7 @@ export function ChatRow({
   if (isNowPlaying) {
     const cc = (m.meta as { code?: string } | null)?.code;
     const country = cc ? getCountry(cc) : null;
+    const [c1, c2] = countryColors(cc ?? "");
     return (
       <motion.li
         initial={{ opacity: 0, scale: 0.97 }}
@@ -219,9 +221,10 @@ export function ChatRow({
           type="button"
           disabled={!country}
           onClick={() => country && deepDive.open(country.code)}
-          className="block w-full text-left rainbow-border rounded-2xl disabled:cursor-default"
+          className="block w-full text-left p-[2px] rounded-2xl disabled:cursor-default"
+          style={{ background: `linear-gradient(120deg, ${c1}, ${c2})` }}
         >
-          <div className="flex items-start gap-3 rounded-[14px] bg-dark-blue-900/85 px-4 py-3">
+          <div className="flex items-start gap-3 rounded-[14px] bg-dark-blue-900/88 px-4 py-3">
             {country ? (
               <span className="heartbeat shrink-0">
                 <HeartFlag code={country.code} size="md" />
@@ -315,14 +318,23 @@ export function ChatRow({
           )}
 
           <div className="relative">
+            {/* The reply arrow that peeks out from the swipe side. */}
+            <span
+              aria-hidden
+              className={`pointer-events-none absolute inset-y-0 grid place-items-center text-flamingo/70
+                          ${mine ? "right-1" : "left-1"}`}
+            >
+              <Reply className="h-4 w-4" />
+            </span>
             <motion.button
               drag="x"
               dragSnapToOrigin
-              dragConstraints={{ left: mine ? -64 : 0, right: mine ? 0 : 64 }}
-              dragElastic={0.35}
+              dragConstraints={{ left: mine ? -72 : 0, right: mine ? 0 : 72 }}
+              dragElastic={0.18}
+              onDragStart={cancelPress}
               onDragEnd={(_, info) => {
-                if (mine && info.offset.x < -44) onReply();
-                else if (!mine && info.offset.x > 44) onReply();
+                const past = mine ? info.offset.x < -40 : info.offset.x > 40;
+                if (past) onReply();
               }}
               type="button"
               onClick={(e) => {
@@ -347,7 +359,11 @@ export function ChatRow({
                 longFired.current = true;
                 onOpenMenu();
               }}
-              className={`relative text-left rounded-2xl text-sm leading-snug transition touch-none cursor-pointer overflow-hidden
+              // touch-pan-y (not touch-none) so a vertical drag still
+              // scrolls the list when it starts on a bubble; framer
+              // captures the horizontal for swipe-to-reply. transition-
+              // colors only — a transform transition would lag the drag.
+              className={`relative text-left rounded-2xl text-sm leading-snug transition-colors touch-pan-y cursor-pointer overflow-hidden
                           ${isMedia ? "p-0" : "px-3.5 py-2"}
                           ${
                             isCard
@@ -371,7 +387,7 @@ export function ChatRow({
                 </span>
               ) : (
                 <>
-                  <span className="whitespace-pre-wrap break-words allow-select">
+                  <span className="whitespace-pre-wrap break-words">
                     {renderBody(m.body ?? "", participantNames)}
                   </span>
                   {isEdited && (
@@ -392,20 +408,25 @@ export function ChatRow({
                   className={`absolute bottom-full mb-1.5 z-30 flex flex-col gap-1.5 ${mine ? "right-0 items-end" : "left-0 items-start"}`}
                 >
                   <div className="flex items-center gap-1.5 p-1.5 rounded-full bg-black/80 ring-1 ring-white/12 backdrop-blur-md shadow-xl">
-                    {QUICK_REACTS.map(({ emoji, Icon, bg, filled }) => (
-                      <button
+                    {QUICK_REACTS.map(({ emoji, Icon, bg, filled }, i) => (
+                      <motion.button
                         key={emoji}
                         type="button"
                         onClick={() => onReact(emoji)}
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ delay: 0.04 + i * 0.035, type: "spring", stiffness: 620, damping: 20 }}
                         className={`h-9 w-9 shrink-0 rounded-full grid place-items-center ring-1 ring-white/15
-                                    shadow-[0_3px_10px_-3px_rgba(0,0,0,0.5)] transition active:scale-90 ${bg}`}
+                                    bg-gradient-to-br ${bg}
+                                    shadow-[0_3px_10px_-3px_rgba(0,0,0,0.5)] transition-transform active:scale-90`}
                       >
                         <Icon
-                          className="h-[18px] w-[18px] text-white"
+                          className="h-[18px] w-[18px] text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
                           fill={filled ? "currentColor" : "none"}
                           strokeWidth={filled ? 1.5 : 2}
                         />
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
                   <div className="flex flex-col rounded-2xl bg-black/80 ring-1 ring-white/12 backdrop-blur-md overflow-hidden shadow-xl min-w-[10rem]">

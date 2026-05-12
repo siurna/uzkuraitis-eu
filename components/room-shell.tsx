@@ -8,7 +8,6 @@ import {
   useState,
 } from "react";
 import { RoomProvider, useEventListener } from "@/lib/liveblocks";
-import { FloatingReactionsLayer } from "@/components/floating-reactions";
 import { PresenceBar } from "@/components/presence-bar";
 import { NameGate } from "@/components/name-gate";
 import { RoomTabBar } from "@/components/room-tab-bar";
@@ -129,8 +128,8 @@ export function RoomShell({
 // keep it mounted so re-entering is instant and stateful — like a
 // native view controller stack). Inactive in-flow panels collapse to
 // `display:none`; the chat panel is `position:fixed` and hides itself
-// via its `active` prop. The reaction emoji bar shows on Home + Chat
-// only. The unread-chat counter lives here so the tab bar can badge it.
+// via its `active` prop. The unread-chat counter lives here so the tab
+// bar can badge it.
 function RoomBody({ children }: { children: React.ReactNode }) {
   const { code } = useRoomLive();
   const [tab, setTabState] = useState<RoomTab>("home");
@@ -138,8 +137,8 @@ function RoomBody({ children }: { children: React.ReactNode }) {
     () => new Set<RoomTab>(["home"]),
   );
   const [unread, setUnread] = useState(0);
-  // Hide the bottom dock + reactions bar while the chat composer is
-  // focused — on iOS the keyboard otherwise stacks them over the input.
+  // Hide the bottom dock while the chat composer is focused — on iOS the
+  // keyboard otherwise stacks it over the input.
   const [composing, setComposing] = useState(false);
 
   const isHome = tab === "home";
@@ -233,14 +232,6 @@ function RoomBody({ children }: { children: React.ReactNode }) {
         {/* Chat is `position:fixed` — it manages its own visibility. */}
         {visited.has("chat") && <ChatPanel active={isChat} />}
 
-        {(isHome || isChat) && !composing && (
-          <FloatingReactionsLayer
-            code={code}
-            hideBarOnMobile={false}
-            // On the chat tab, ride above the pinned composer.
-            liftAboveComposer={isChat}
-          />
-        )}
         {!composing && <RoomTabBar chatUnread={unread} />}
       </div>
     </RoomTabContext.Provider>
@@ -268,31 +259,32 @@ function NowPlayingSwarm() {
     if (!next || typeof window === "undefined") return;
     const w = window.innerWidth;
     const h = window.innerHeight;
-    // A clean "release of balloons": hearts rise from just below the
-    // fold and float straight up off the top with only a gentle sway.
-    // Two calm size bands (small / medium) — the bigger ones drift a
-    // touch slower for a light parallax. Spawn X is centre-weighted so
-    // it reads as a burst from the stage, not random screen noise.
+    // A big "release of balloons": hearts launch from below the fold and
+    // shoot most of the way up the screen (and beyond) before they fade —
+    // not a polite little fizzle near the bottom. Wide size + speed bands
+    // for parallax; spawn X is centre-weighted so it reads as a burst
+    // from the stage, with a generous sway as they climb.
     const rng = (a: number, b: number) => a + Math.random() * (b - a);
     const fire = (n: number) =>
       particles.spawnMany(
         Array.from({ length: n }, () => {
-          const big = Math.random() < 0.32;
-          const size = big ? rng(40, 54) : rng(22, 32);
-          const duration = big ? rng(3000, 3800) : rng(2200, 2900);
-          // Centre 70% of the width, then a little extra jitter.
+          const big = Math.random() < 0.35;
+          const size = big ? rng(56, 88) : rng(30, 52);
+          const duration = big ? rng(2200, 3000) : rng(1400, 2200);
+          // Centre 80% of the width, plus a bit of jitter.
           const fromX = Math.min(
             w - 10,
-            Math.max(10, w * 0.5 + (Math.random() - 0.5) * w * 0.7 + (Math.random() - 0.5) * 40),
+            Math.max(10, w * 0.5 + (Math.random() - 0.5) * w * 0.8 + (Math.random() - 0.5) * 50),
           );
           return {
             asset: { type: "country" as const, code: next },
             from: { x: fromX, y: h + rng(20, 80) },
-            // Float up and off the top — gentle horizontal sway only.
-            to: { x: fromX + (Math.random() - 0.5) * 70, y: -rng(80, 220) },
+            // Climb 75–130% of the viewport height past the top — they
+            // travel the whole screen — with a wide sideways drift.
+            to: { x: fromX + (Math.random() - 0.5) * 130, y: -rng(h * 0.75, h * 1.3) },
             size,
             durationMs: duration,
-            rotate: big ? rng(-12, 12) : rng(-22, 22),
+            rotate: big ? rng(-14, 14) : rng(-26, 26),
           };
         }),
       );

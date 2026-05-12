@@ -3,13 +3,11 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
   ArrowRight,
-  MessageCircle,
   Grid3x3,
   ListChecks,
   Trophy,
 } from "lucide-react";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
-import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { participantPhoto } from "@/lib/participants";
@@ -88,7 +86,6 @@ function Card({
 export function HomeBanners() {
   const { code, votingEnabled, tallyEnabled, nowPlayingCode, showStatus } = useRoomLive();
   const lang = useLang();
-  const deepDive = useCountryDeepDive();
   const { setTab } = useRoomTab();
   const [voted, setVoted] = useState(false);
   const [bingoStruck, setBingoStruck] = useState<number | null>(null);
@@ -113,7 +110,7 @@ export function HomeBanners() {
     <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">
       {/* 1 — who's on stage right now (the hero card) */}
       {playing && (
-        <PlayingCard country={playing} lang={lang} onOpen={() => deepDive.open(playing.code)} />
+        <PlayingCard country={playing} lang={lang} onOpen={() => setTab("chat")} />
       )}
 
       {/* 2 — voting */}
@@ -178,15 +175,6 @@ export function HomeBanners() {
             t(lang, "home_bingo_sub")
           )
         }
-      />
-
-      {/* 5 — chat */}
-      <Card
-        onClick={() => setTab("chat")}
-        icon={<MessageCircle className="h-6 w-6 text-turquoise" />}
-        bg="linear-gradient(120deg, rgba(64,224,208,0.10), transparent 60%)"
-        title={t(lang, "home_chat")}
-        sub={t(lang, "home_chat_sub")}
       />
     </div>
   );

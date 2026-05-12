@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { voters, votes } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
