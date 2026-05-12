@@ -3,8 +3,9 @@
 import { useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Reply, Pencil, Copy, Trash2, Smile, Loader2, Mic, Music, Trophy,
+  Reply, Pencil, Copy, Trash2, Smile, Loader2, Mic, Music, Trophy, Plus,
 } from "lucide-react";
+import { toast } from "sonner";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { getCountry, countryName } from "@/lib/countries";
@@ -15,6 +16,41 @@ import { getTrope, type TropeIndex } from "@/lib/bingo-tropes";
 import { t, tDyn } from "@/lib/i18n";
 
 const EDIT_WINDOW_MS = 2 * 60 * 1000;
+
+// Drop a country straight into the (draft) TOP-10 ballot from the
+// now-playing chat card — into the most valuable empty slot. Mirrors
+// vote-form's localStorage shape; the live event lets an already-mounted
+// Vote tab pick it up without a reload.
+const BALLOT_POINTS = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1] as const;
+function addToBallot(roomCode: string, countryCode: string, lang: "en" | "lt") {
+  let slots: { points: number; countryCode: string | null }[] = [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(`uzk_ballot_${roomCode}`) ?? "null");
+    if (Array.isArray(parsed) && parsed.length === 10) slots = parsed;
+  } catch {
+    /* ignore corrupt draft */
+  }
+  if (slots.length !== 10) slots = BALLOT_POINTS.map((p) => ({ points: p, countryCode: null }));
+
+  const already = slots.find((s) => s.countryCode === countryCode);
+  if (already) {
+    toast(t(lang, "np_in_ballot", already.points));
+    return;
+  }
+  const idx = slots.findIndex((s) => s.countryCode == null);
+  if (idx === -1) {
+    toast(t(lang, "np_ballot_full"));
+    return;
+  }
+  slots[idx] = { ...slots[idx], countryCode };
+  try {
+    localStorage.setItem(`uzk_ballot_${roomCode}`, JSON.stringify(slots));
+  } catch {
+    /* private mode */
+  }
+  window.dispatchEvent(new CustomEvent("uzk:ballot-changed"));
+  toast.success(t(lang, "np_added", slots[idx].points));
+}
 
 // Quick-react row in the long-press menu — big colourful gradient
 // circles, very Eurovision-fan energy: love it / haha / what the hell /
@@ -202,6 +238,7 @@ export function ChatRow({
   onOpenImage,
   lang,
   nowPlayingCode,
+  roomCode,
 }: {
   message: Message;
   mine: boolean;
@@ -219,8 +256,10 @@ export function ChatRow({
   onDelete: () => void;
   onOpenImage: (url: string) => void;
   lang: "en" | "lt";
-  /** The country currently on stage — its now-playing card's heart loops. */
+  /** The country currently on stage — its now-playing card's heart loops
+   *  and gets the "+ TOP 10" shortcut (older now-playing cards don't). */
   nowPlayingCode: string | null;
+  roomCode: string;
 }) {
   const avatar = m.avatarId ? getAvatar(m.avatarId) : null;
   const isCard = m.kind === "bingo_strike";
@@ -307,6 +346,7 @@ export function ChatRow({
     const cc = (m.meta as { code?: string } | null)?.code;
     const country = cc ? getCountry(cc) : null;
     const [c1, c2] = countryColors(cc ?? "");
+    const isActive = !!cc && cc === nowPlayingCode;
     return (
       <motion.li
         initial={{ opacity: 0, scale: 0.97 }}
@@ -314,22 +354,24 @@ export function ChatRow({
         transition={{ duration: 0.3 }}
         className="my-1"
       >
-        <button
-          type="button"
-          disabled={!country}
-          onClick={() => country && deepDive.open(country.code)}
-          className="block w-full text-left p-[2px] rounded-2xl disabled:cursor-default"
+        <div
+          className="p-[2px] rounded-2xl"
           style={{ background: `linear-gradient(120deg, ${c1}, ${c2})` }}
         >
           <div className="flex items-start gap-3 rounded-[14px] bg-dark-blue-900/88 px-4 py-3">
             {country ? (
-              <span className={`shrink-0 ${cc === nowPlayingCode ? "heartbeat-loop" : ""}`}>
+              <span className={`shrink-0 ${isActive ? "heartbeat-loop" : ""}`}>
                 <HeartFlag code={country.code} size="md" />
               </span>
             ) : (
               <Smile className="h-5 w-5 text-flamingo shrink-0 mt-0.5" />
             )}
-            <div className="min-w-0 flex-1">
+            <button
+              type="button"
+              disabled={!country}
+              onClick={() => country && deepDive.open(country.code)}
+              className="min-w-0 flex-1 text-left disabled:cursor-default"
+            >
               <p className="text-[10px] uppercase tracking-[0.3em] text-flamingo font-display leading-tight">
                 {t(lang, "now_playing")}
               </p>
@@ -352,10 +394,24 @@ export function ChatRow({
                   )}
                 </div>
               )}
+            </button>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <span className="text-[10px] text-white/30 tabular-nums">{time}</span>
+              {country && isActive && (
+                <button
+                  type="button"
+                  onClick={() => addToBallot(roomCode, country.code, lang)}
+                  className="inline-flex items-center gap-1 rounded-full bg-white/12 ring-1 ring-white/20
+                             px-2 py-1 text-[11px] font-display text-white leading-none
+                             hover:bg-white/20 active:scale-95 transition"
+                >
+                  <Plus className="h-3 w-3" />
+                  {t(lang, "np_add_top10")}
+                </button>
+              )}
             </div>
-            <span className="text-[10px] text-white/30 tabular-nums shrink-0">{time}</span>
           </div>
-        </button>
+        </div>
       </motion.li>
     );
   }

@@ -130,6 +130,16 @@ const S = {
   home_vote_done:      { en: "Your vote's in — reorder it anytime", lt: "Tavo balsas užfiksuotas" },
   home_vote_done_eyebrow: { en: "Voted", lt: "Balsuota" },
   home_vote_done_sub:  { en: "Place bets, share your TOP 10, or tweak.", lt: "Dalyvauk spėlionėje, pasidalink TOP 10." },
+  home_vote_soon:      { en: "Voting opens soon", lt: "Balsavimas netrukus" },
+  home_vote_soon_sub:  { en: "Line up your TOP 10 — you can lock it the moment lines open.", lt: "Susidėliok TOP 10 — užfiksuosi vos atsidarius linijoms." },
+  home_bonus_placed:   { en: (n: number) => `${n} side ${n === 1 ? "bet" : "bets"} placed`, lt: (n: number) => `pastatyta ${n}` },
+  home_bonus_none:     { en: "Place your side bets", lt: "Sudaryk savo statymus" },
+  home_bonus_sub:      { en: "Wooden spoon, jury winner, nul points… each pays out only if you call it.", lt: "Paskutinė vieta, žiuri nugalėtojas, nulis taškų… užskaitoma tik pataikius." },
+  home_vs_room:        { en: "You vs the room", lt: "Tu prieš kitus" },
+  home_vs_room_rank:   { en: (n: number) => `Your #1 — the room ranks it #${n}`, lt: (n: number) => `Tavo Nr.1 — kiti vertina ją #${n}` },
+  home_vs_room_pending:{ en: "Your #1 — waiting for more ballots", lt: "Tavo Nr.1 — laukiam daugiau balsų" },
+  home_vs_room_empty_title: { en: "How do you stack up?", lt: "Kaip atrodai prieš kitus?" },
+  home_vs_room_empty_sub:   { en: "Cast your TOP 10 to compare with the room.", lt: "Balsuok ir palygink savo TOP 10 su kitais." },
   home_results:        { en: "Results are in", lt: "Rezultatai jau čia" },
   home_results_sub:    { en: "See your score and the full breakdown", lt: "Pažiūrėk savo rezultatą ir visą išskaidymą" },
   home_bingo_sub:      { en: "Tick off the clichés as they happen", lt: "Žymėk klišes, kai jos įvyksta" },
@@ -222,6 +232,10 @@ const S = {
 
   // ── Now-playing strip ────────────────────────────────────────────
   now_playing:       { en: "On stage", lt: "Scenoje" },
+  np_add_top10:      { en: "TOP 10", lt: "TOP 10" },
+  np_added:          { en: (n: number) => `Added to your TOP 10 at ${n} pts`, lt: (n: number) => `Įtraukta į tavo TOP 10 — ${n} t.` },
+  np_in_ballot:      { en: (n: number) => `Already in your TOP 10 (${n} pts)`, lt: (n: number) => `Jau tavo TOP 10 (${n} t.)` },
+  np_ballot_full:    { en: "Your TOP 10 is full — reorder it in the Vote tab", lt: "Tavo TOP 10 pilnas — pertvarkyk jį Balsavimo skiltyje" },
 
   // ── Bingo ────────────────────────────────────────────────────────
   bingo_you_did_it:  { en: "You got bingo! 🎉", lt: "Surinkai bingo! 🎉" },

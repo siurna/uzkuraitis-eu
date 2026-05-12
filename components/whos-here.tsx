@@ -67,21 +67,25 @@ export function WhosHere() {
   return (
     <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">
       <h2 className="font-display text-xl gradient-text px-1">{t(lang, "whos_here_title", people.length)}</h2>
-      <div className="rainbow-border rounded-3xl block">
-        <div className="relative overflow-hidden rounded-[22px] bg-dark-blue-900/85 px-4 py-6">
-          {/* teal→violet wash — its own corner of the palette */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{ background: "linear-gradient(120deg, rgba(0,212,204,0.12), rgba(146,87,255,0.08) 55%, transparent)" }}
-          />
-          <ul className="relative flex flex-wrap items-start justify-center gap-x-2 gap-y-1">
-            {people.map((p, i) => (
-              <li key={p.key} className={i % 2 ? "mt-4" : ""}>
-                <Bubble person={p} index={i} />
-              </li>
-            ))}
-          </ul>
-        </div>
+      <div
+        className="relative overflow-hidden rounded-3xl px-4 py-6"
+        style={{ background: "linear-gradient(135deg, #0d9488 0%, #134e4a 100%)" }}
+      >
+        {/* a faint dotted constellation behind the bubbles */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.16]"
+          style={{
+            backgroundImage: "radial-gradient(rgba(255,255,255,0.7) 1px, transparent 1px)",
+            backgroundSize: "22px 22px",
+          }}
+        />
+        <ul className="relative flex flex-wrap items-start justify-center gap-x-2 gap-y-1">
+          {people.map((p, i) => (
+            <li key={p.key} className={i % 2 ? "mt-4" : ""}>
+              <Bubble person={p} index={i} />
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
