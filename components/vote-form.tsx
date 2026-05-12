@@ -409,9 +409,9 @@ export function VoteForm({
                                disabled:opacity-60 font-display text-sm"
                   >
                     {sharing ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-white/70" />
+                      <Loader2 className="h-4 w-4 animate-spin text-dark-blue-200" />
                     ) : (
-                      <Share2 className="h-4 w-4 text-white/70" />
+                      <Share2 className="h-4 w-4 text-dark-blue-200" />
                     )}
                     {sharing ? t(lang, "share_preparing") : t(lang, "share_picks")}
                   </button>
@@ -540,9 +540,9 @@ export function VoteForm({
                      transition disabled:opacity-60 font-display text-base"
         >
           {sharing ? (
-            <Loader2 className="h-4 w-4 animate-spin text-white/70" />
+            <Loader2 className="h-4 w-4 animate-spin text-dark-blue-200" />
           ) : (
-            <Share2 className="h-4 w-4 text-white/70" />
+            <Share2 className="h-4 w-4 text-dark-blue-200" />
           )}
           {sharing ? t(lang, "share_preparing") : t(lang, "share_picks")}
         </button>

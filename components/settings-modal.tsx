@@ -212,7 +212,7 @@ export function SettingsModal({
                   </p>
                 )}
               </div>
-              <ChevronRight className="h-4 w-4 text-white/30 shrink-0" />
+              <ChevronRight className="h-4 w-4 text-dark-blue-300 shrink-0" />
             </button>
           </Section>
 
@@ -223,9 +223,9 @@ export function SettingsModal({
               className="flex items-center gap-3 rounded-2xl px-4 py-3
                          bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition text-left"
             >
-              <Bell className="h-4 w-4 text-white/55 shrink-0" />
+              <Bell className="h-4 w-4 text-dark-blue-200 shrink-0" />
               <span className="flex-1">{t(lang, "notifications")}</span>
-              <ChevronRight className="h-4 w-4 text-white/30 shrink-0" />
+              <ChevronRight className="h-4 w-4 text-dark-blue-300 shrink-0" />
             </button>
             <button
               type="button"

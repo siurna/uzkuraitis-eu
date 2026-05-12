@@ -58,7 +58,7 @@ export function SharePicks() {
           <p className="font-display text-lg text-white leading-tight">{sharing ? t(lang, "share_preparing") : t(lang, "share_picks")}</p>
           <p className="text-sm text-white/55 leading-snug mt-0.5">{t(lang, "share_picks_sub")}</p>
         </div>
-        <ArrowRight className="relative h-5 w-5 text-white/35 shrink-0" />
+        <ArrowRight className="relative h-5 w-5 text-dark-blue-300 shrink-0" />
       </div>
     </button>
   );

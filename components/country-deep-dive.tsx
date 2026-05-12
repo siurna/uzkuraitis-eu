@@ -96,12 +96,12 @@ function CountryDeepDiveSheet({
           )}
 
           {country.artist && (
-            <Row icon={<Mic className="h-4 w-4 text-white/70" />}
+            <Row icon={<Mic className="h-4 w-4 text-dark-blue-200" />}
                  label={t(lang, "deep_artist")}
                  value={country.artist} />
           )}
           {country.song && (
-            <Row icon={<Music className="h-4 w-4 text-white/70" />}
+            <Row icon={<Music className="h-4 w-4 text-dark-blue-200" />}
                  label={t(lang, "deep_song")}
                  value={country.song}
                  italic />

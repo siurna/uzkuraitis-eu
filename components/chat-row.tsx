@@ -252,13 +252,13 @@ export function ChatRow({
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {country?.artist && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.07] ring-1 ring-white/12 px-2 py-0.5 text-[11px] text-white/85">
-                      <Mic className="h-3 w-3 text-white/55" />
+                      <Mic className="h-3 w-3 text-dark-blue-200" />
                       {country.artist}
                     </span>
                   )}
                   {country?.song && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.07] ring-1 ring-white/12 px-2 py-0.5 text-[11px] italic text-white/70">
-                      <Music className="h-3 w-3 text-white/45" />
+                      <Music className="h-3 w-3 text-dark-blue-200" />
                       {country.song}
                     </span>
                   )}
