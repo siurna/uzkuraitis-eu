@@ -9,8 +9,9 @@ import { findRoomByCode } from "@/lib/rooms";
 // (good for Stories / iMessage). Inline styles only (satori doesn't
 // understand Tailwind). No room code, no domain, no "united by music".
 //
-// Uses next/og's bundled font — no custom-font fetch (that path was
-// flaky and could 500 the function). System sans is fine here.
+// The Eurovision display face (Singing Sans) is bundled next to this
+// route and loaded via `new URL(..., import.meta.url)` — the bundler
+// traces it, so the fetch always resolves (no flaky origin round-trip).
 //
 // URL: /api/og/<roomCode>/<voterId>
 
@@ -21,6 +22,16 @@ const SANS = "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-se
 type RouteCtx = { params: Promise<{ code: string; voterId: string }> };
 
 const POINTS = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1] as const;
+
+async function loadEurovisionFont(): Promise<ArrayBuffer | null> {
+  try {
+    const res = await fetch(new URL("./SingingSans.woff", import.meta.url));
+    if (!res.ok) return null;
+    return await res.arrayBuffer();
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(_req: Request, { params }: RouteCtx) {
   const { code, voterId } = await params;
@@ -48,6 +59,10 @@ export async function GET(_req: Request, { params }: RouteCtx) {
       return { points: p, country: c };
     });
 
+    const fontData = await loadEurovisionFont();
+    // The Eurovision face first; system sans for any glyph it lacks.
+    const display = fontData ? `Singing Sans, ${SANS}` : SANS;
+
     return new ImageResponse(
       (
         <div
@@ -68,23 +83,23 @@ export async function GET(_req: Request, { params }: RouteCtx) {
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div
               style={{
-                fontSize: 26,
+                fontSize: 28,
                 letterSpacing: 12,
                 textTransform: "uppercase",
-                fontWeight: 700,
+                fontFamily: display,
                 color: "rgba(255,255,255,0.55)",
                 display: "flex",
               }}
             >
               EUROVISION 2026
             </div>
-            <div style={{ fontSize: 96, fontWeight: 800, lineHeight: 1.05, marginTop: 6, display: "flex" }}>
+            <div style={{ fontSize: 100, fontFamily: display, lineHeight: 1.05, marginTop: 8, display: "flex" }}>
               {voter.name}
             </div>
             <div
               style={{
-                fontSize: 56,
-                fontWeight: 800,
+                fontSize: 60,
+                fontFamily: display,
                 letterSpacing: 2,
                 textTransform: "uppercase",
                 backgroundImage: "linear-gradient(90deg,#ffd166,#ff5fa2,#b15bff,#4cc9f0)",
@@ -118,9 +133,9 @@ export async function GET(_req: Request, { params }: RouteCtx) {
                 >
                   <span
                     style={{
-                      fontWeight: 800,
-                      fontSize: top ? 50 : 40,
-                      width: 86,
+                      fontFamily: display,
+                      fontSize: top ? 52 : 42,
+                      width: 90,
                       display: "flex",
                       color: top ? "#ffd60a" : "rgba(255,255,255,0.85)",
                     }}
@@ -128,7 +143,7 @@ export async function GET(_req: Request, { params }: RouteCtx) {
                     {points}
                   </span>
                   <span style={{ fontSize: 50, display: "flex" }}>{country?.flag ?? "🏳️"}</span>
-                  <span style={{ fontWeight: 600, fontSize: 42, display: "flex", flex: 1, overflow: "hidden" }}>
+                  <span style={{ fontFamily: display, fontSize: 44, display: "flex", flex: 1, overflow: "hidden" }}>
                     {country?.name ?? "—"}
                   </span>
                 </div>
@@ -137,7 +152,12 @@ export async function GET(_req: Request, { params }: RouteCtx) {
           </div>
         </div>
       ),
-      { ...size },
+      {
+        ...size,
+        fonts: fontData
+          ? [{ name: "Singing Sans", data: fontData, weight: 400 as const, style: "normal" as const }]
+          : [],
+      },
     );
   } catch (err) {
     console.error("og card failed", err);
