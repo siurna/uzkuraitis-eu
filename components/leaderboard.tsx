@@ -21,6 +21,7 @@ type Row = {
   home: number;
   bets: BetBreakdown;
   betsTotal: number;
+  highlights: number;
   total: number;
 };
 
@@ -168,6 +169,7 @@ export function Leaderboard({ code }: { code: string }) {
                         <> + {row.home} {home?.name ?? "home"}</>
                       )}
                       {row.betsTotal > 0 && <> + {row.betsTotal} {t(lang, "bonuses_label")}</>}
+                      {row.highlights > 0 && <> + {row.highlights} ✨</>}
                     </p>
                   </div>
                   <div className="text-right">
@@ -209,6 +211,7 @@ export function Leaderboard({ code }: { code: string }) {
                           topTen={row.topTen}
                           home={row.home}
                           bets={row.bets}
+                          highlights={row.highlights}
                           total={row.total}
                           homeName={countryName(homeCountryCode, lang)}
                         />

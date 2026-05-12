@@ -19,6 +19,7 @@ type Row = {
   topTen: number;
   home: number;
   bets: BetBreakdown;
+  highlights: number;
   total: number;
 };
 
@@ -162,6 +163,7 @@ export function MyResults() {
                 topTen={me.topTen}
                 home={me.home}
                 bets={me.bets}
+                highlights={me.highlights}
                 total={me.total}
                 homeName={countryName(homeCountryCode, lang)}
               />

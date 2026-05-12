@@ -318,6 +318,7 @@ const S = {
   finished:          { en: "finished", lt: "užėmė" },
   ballot_label:      { en: "ballot", lt: "balsas" },
   bonuses_label:     { en: "bonuses", lt: "statymai" },
+  breakdown_highlights: { en: "Chat highlights", lt: "Pokalbio akcentai" },
   breakdown_total:   { en: "Total", lt: "Iš viso" },
 
   // ── Reactions / honeycomb ────────────────────────────────────────
