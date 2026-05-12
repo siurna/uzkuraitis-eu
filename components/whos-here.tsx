@@ -65,11 +65,10 @@ export function WhosHere() {
   if (people.length === 0) return null;
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">
-      <h2 className="font-display text-xl gradient-text px-1">{t(lang, "whos_here_title", people.length)}</h2>
+    <div className="container mx-auto max-w-3xl px-4">
       <div
-        className="relative overflow-hidden rounded-3xl px-4 py-6"
-        style={{ background: "linear-gradient(135deg, #0d9488 0%, #134e4a 100%)" }}
+        className="relative overflow-hidden rounded-3xl px-4 pt-4 pb-6"
+        style={{ background: "radial-gradient(130% 130% at 12% -10%, #00b8b0 0%, #0a5a66 38%, #07303f 100%)" }}
       >
         {/* a faint dotted constellation behind the bubbles */}
         <div
@@ -79,6 +78,9 @@ export function WhosHere() {
             backgroundSize: "22px 22px",
           }}
         />
+        <p className="relative text-[10px] uppercase tracking-[0.3em] font-display text-white/75 mb-3">
+          {t(lang, "whos_here_title", people.length)}
+        </p>
         <ul className="relative flex flex-wrap items-start justify-center gap-x-2 gap-y-1">
           {people.map((p, i) => (
             <li key={p.key} className={i % 2 ? "mt-4" : ""}>

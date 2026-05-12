@@ -142,6 +142,17 @@ export function VoteForm({
     return () => window.removeEventListener("uzk:ballot-changed", reread);
   }, [roomCode]);
 
+  // A Home banner deep-linked into a specific sub-tab (e.g. the Bonus
+  // bets card → the Bets toggle).
+  useEffect(() => {
+    const onVoteTab = (e: Event) => {
+      const sub = (e as CustomEvent).detail;
+      if (sub === "ballot" || sub === "bets" || sub === "rules") setTab(sub);
+    };
+    window.addEventListener("uzk:vote-tab", onVoteTab);
+    return () => window.removeEventListener("uzk:vote-tab", onVoteTab);
+  }, []);
+
   useEffect(() => {
     if (homePrediction != null) {
       localStorage.setItem(PREDICTION_KEY(roomCode), String(homePrediction));

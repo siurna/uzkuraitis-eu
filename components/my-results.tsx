@@ -80,8 +80,8 @@ export function MyResults() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="relative block w-full overflow-hidden rounded-3xl text-left transform-gpu transition duration-150 active:scale-[0.99]"
-          style={{ background: "linear-gradient(135deg, #d97706 0%, #7c2d12 100%)" }}
+          className="relative block w-full overflow-hidden rounded-3xl text-left"
+          style={{ background: "linear-gradient(135deg, #f5a302 0%, #d61570 48%, #4c0a54 100%)" }}
         >
           {/* podium artwork bleeding off the right — middle block tallest */}
           <div className="pointer-events-none absolute inset-y-0 -right-4 flex items-end gap-1.5 pb-6 opacity-90">

@@ -48,8 +48,8 @@ export function SharePicks() {
       type="button"
       onClick={share}
       disabled={sharing}
-      className="relative block w-full overflow-hidden rounded-3xl text-left transform-gpu transition duration-150 active:scale-[0.99] disabled:opacity-60"
-      style={{ background: "linear-gradient(135deg, #db2777 0%, #6d1242 100%)" }}
+      className="relative block w-full overflow-hidden rounded-3xl text-left disabled:opacity-60"
+      style={{ background: "linear-gradient(135deg, #ff3ede 0%, #c41475 50%, #6020c6 100%)" }}
     >
       {/* the rendered TOP10 card, tilted, bleeding off the right edge */}
       <div className="pointer-events-none absolute -right-4 top-1/2 -translate-y-1/2 h-[7.5rem] w-[5.625rem] rotate-[8deg] overflow-hidden rounded-xl ring-1 ring-white/25 bg-black/30 shadow-xl">

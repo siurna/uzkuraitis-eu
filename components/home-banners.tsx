@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode, type CSSProperties } from "react";
-import { ArrowRight, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
@@ -12,12 +12,13 @@ import { HeartFlag } from "@/components/flag";
 import { useLang, t } from "@/lib/i18n";
 
 // ─────────────────────────────────────────────────────────────────────
-// Home banners — full-width, but each one its own *object*: a bold
-// colour fill (Monzo-card energy, not a dark panel with a faint wash),
-// a feature-specific graphic that bleeds off the right edge for depth,
-// and the copy laid over the left. No shared rainbow frame — the shape
-// + the artwork carry the identity, the colour just reinforces it. The
-// "now playing" hero is the photo headline up top; the rest follow.
+// Home banners — full-width, but each its own object: a bold, multi-hue
+// ESC-poster fill (the official site never uses a flat mono panel — it's
+// blue→purple→fuchsia sweeps, golden→pink sunsets, deep-navy radials), a
+// feature-specific graphic that bleeds off the right edge, copy laid over
+// the left. Different fills, different heights, different artwork — no
+// shared chrome, nothing to make them read interchangeable. The "now
+// playing" hero is the photo headline up top; the rest follow.
 
 // "#rrggbb" + alpha → "rgba(...)".
 function hexA(hex: string, a: number): string {
@@ -27,20 +28,24 @@ function hexA(hex: string, a: number): string {
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
 }
 
-// A `.rainbow-border`-style stroke, but in a country's own flag colours.
+// A thick stroke in a country's own flag colours — the now-playing hero
+// wears it instead of the generic rainbow.
 function countryBorderStyle(c1: string, c2: string): CSSProperties {
-  return {
-    padding: "var(--rainbow-thickness)",
-    backgroundImage: `linear-gradient(135deg, ${c1}, ${c2})`,
-  };
+  return { padding: "4px", backgroundImage: `linear-gradient(135deg, ${c1}, ${c2})` };
 }
 
-// The shared *shape* (deliberately spare so each banner's own artwork
-// does the differentiating): a coloured fill, an artwork that bleeds
-// off the right, copy on the left over a soft dark scrim, a trailing
-// chevron. White-on-colour.
+const SIZE_MIN_H: Record<"sm" | "md" | "lg", string> = {
+  sm: "min-h-[5.5rem]",
+  md: "min-h-[6.75rem]",
+  lg: "min-h-[8.75rem]",
+};
+
+// The shared *shape* (deliberately spare so each banner's own fill +
+// artwork do the differentiating). White-on-colour. No press scale / no
+// hover state — they're surfaces, not buttons-pretending-to-be-cards.
 function Banner({
   fill,
+  size = "md",
   eyebrow,
   title,
   sub,
@@ -48,44 +53,33 @@ function Banner({
   onClick,
   dim = false,
 }: {
-  /** CSS background for the fill (a linear-gradient). */
   fill: string;
+  size?: "sm" | "md" | "lg";
   eyebrow: ReactNode;
   title: ReactNode;
   sub: ReactNode;
-  /** Decorative graphic — positioned to bleed off the right edge. */
   artwork: ReactNode;
   onClick: () => void;
-  /** A quieter, "nothing to do here yet" state. */
   dim?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`relative block w-full overflow-hidden rounded-3xl text-left
-                  transform-gpu transition duration-150 active:scale-[0.99]
-                  ${dim ? "opacity-80" : ""}`}
+      className={`relative block w-full overflow-hidden rounded-3xl text-left ${dim ? "opacity-85" : ""}`}
       style={{ background: fill }}
     >
-      {/* the artwork bleeds off the right; copy sits over a left-anchored
-          scrim so it stays legible whatever the graphic does. */}
-      <div className="pointer-events-none absolute inset-y-0 -right-6 flex items-center">
-        {artwork}
-      </div>
+      <div className="pointer-events-none absolute inset-y-0 -right-6 flex items-center">{artwork}</div>
       <div
         className="pointer-events-none absolute inset-0"
-        style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.42) 0%, rgba(8,9,28,0.18) 38%, transparent 64%)" }}
+        style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.46) 0%, rgba(8,9,28,0.2) 38%, transparent 64%)" }}
       />
-      <div className="relative flex items-center gap-3 px-5 py-5 min-h-[7rem]">
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/75 mb-1 flex items-center gap-1.5">
-            {eyebrow}
-          </p>
-          <p className="font-display text-xl text-white leading-tight drop-shadow-sm">{title}</p>
-          <p className="text-sm text-white/70 leading-snug mt-0.5">{sub}</p>
-        </div>
-        <ArrowRight className="relative h-5 w-5 text-white/70 shrink-0" />
+      <div className={`relative flex flex-col justify-center gap-1 px-5 py-5 ${SIZE_MIN_H[size]}`}>
+        <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/75 flex items-center gap-1.5">
+          {eyebrow}
+        </p>
+        <p className="font-display text-xl text-white leading-tight drop-shadow-sm">{title}</p>
+        <p className="text-sm text-white/70 leading-snug">{sub}</p>
       </div>
     </button>
   );
@@ -113,6 +107,14 @@ const GRAND_FINAL_ACTS = 26;
 // Side-bet artwork: a fanned spread of bet-flavour emoji "chips".
 const BET_CHIPS = ["🏆", "🥄", "🎤", "⭐", "🎯"];
 
+// Jump to a sub-tab inside the Vote screen (it owns its own ballot/bets/
+// rules toggle). Small delay so the panel — lazily mounted on first
+// visit — has attached its listener before the event fires.
+function openVoteTab(setTab: (t: "vote") => void, sub: "ballot" | "bets" | "rules") {
+  setTab("vote");
+  window.setTimeout(() => window.dispatchEvent(new CustomEvent("uzk:vote-tab", { detail: sub })), 60);
+}
+
 export function HomeBanners() {
   const { code, votingEnabled, tallyEnabled, nowPlayingCode, showStatus, runningOrderPos } = useRoomLive();
   const lang = useLang();
@@ -121,13 +123,11 @@ export function HomeBanners() {
   const [voted, setVoted] = useState(false);
   const [betsCount, setBetsCount] = useState(0);
   const [bingo, setBingo] = useState<{ best: number; won: boolean } | null>(null);
-  // "You vs the room": your #1 pick + where the room's aggregate ranks it.
   const [vs, setVs] = useState<{ topCode: string; roomRank: number | null } | null>(null);
 
   useEffect(() => {
     setVoted(localStorage.getItem(`uzk_voted_${code}`) === "1");
 
-    // bingo — best progress across all tickets + any bingo hit
     try {
       const tickets = JSON.parse(localStorage.getItem(`uzk_bingo_tickets_${code}`) ?? "[]") as {
         struck?: unknown[];
@@ -143,7 +143,6 @@ export function HomeBanners() {
       /* ignore */
     }
 
-    // bonus bets count
     try {
       const bets = JSON.parse(localStorage.getItem(`uzk_bets_${code}`) ?? "{}") as Record<string, unknown>;
       let n = 0;
@@ -158,7 +157,6 @@ export function HomeBanners() {
       /* ignore */
     }
 
-    // your #1 ballot pick → fetch the room aggregate to see where it sits
     try {
       const ballot = JSON.parse(localStorage.getItem(`uzk_ballot_${code}`) ?? "[]") as {
         points?: number;
@@ -183,6 +181,16 @@ export function HomeBanners() {
   const playing =
     showStatus === "in_progress" && nowPlayingCode ? getCountry(nowPlayingCode) : null;
   const vsCountry = vs ? getCountry(vs.topCode) : null;
+  const vsRank = vs?.roomRank ?? null;
+  const vsSub = !vsCountry
+    ? t(lang, "home_vs_room_empty_sub")
+    : vsRank == null
+      ? t(lang, "home_vs_room_pending")
+      : vsRank === 1
+        ? t(lang, "home_vs_room_agree")
+        : vsRank >= 12
+          ? t(lang, "home_vs_room_bold", vsRank)
+          : t(lang, "home_vs_room_rank", vsRank);
 
   return (
     <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">
@@ -191,9 +199,10 @@ export function HomeBanners() {
         <PlayingCard country={playing} lang={lang} pos={runningOrderPos} onOpen={() => setTab("chat")} />
       )}
 
-      {/* Vote — a teal→blue card with a cascade of "douze points" pills */}
+      {/* Vote — electric-blue → purple, a cascade of "douze points" pills */}
       <Banner
-        fill="linear-gradient(135deg, #0d9488 0%, #1d4ed8 100%)"
+        fill="linear-gradient(135deg, #0040ee 0%, #6020c6 55%, #7d1f9a 100%)"
+        size="lg"
         eyebrow={
           voted
             ? t(lang, "home_vote_done_eyebrow")
@@ -224,9 +233,10 @@ export function HomeBanners() {
         }
       />
 
-      {/* Bingo — violet, the ticket grid bleeding off the edge */}
+      {/* Bingo — purple → magenta, the ticket grid bleeding off the edge */}
       <Banner
-        fill="linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)"
+        fill="linear-gradient(135deg, #5a22a9 0%, #9b1690 50%, #c91475 100%)"
+        size="lg"
         eyebrow="BINGO"
         title={t(lang, "bingo_widget_title")}
         sub={
@@ -255,21 +265,22 @@ export function HomeBanners() {
         }
       />
 
-      {/* Bonus bets — flamingo, a fanned spread of bet "chips" */}
+      {/* Bonus bets — magenta → ESC pink, a fanned spread of bet "chips" */}
       <Banner
-        fill="linear-gradient(135deg, #f6339a 0%, #a3115f 100%)"
+        fill="linear-gradient(135deg, #bc1475 0%, #f10d59 100%)"
+        size="sm"
         eyebrow={t(lang, "rules_bets_h")}
         title={betsCount > 0 ? t(lang, "home_bonus_placed", betsCount) : t(lang, "home_bonus_none")}
         sub={t(lang, "home_bonus_sub")}
-        onClick={() => setTab("vote")}
+        onClick={() => openVoteTab(setTab, "bets")}
         artwork={
-          <span className="relative block w-32 h-24 pr-6">
+          <span className="relative block w-32 h-20 pr-6">
             {BET_CHIPS.map((c, i) => (
               <span
                 key={c}
-                className="absolute top-1/2 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-2xl shadow-md"
+                className="absolute top-1/2 grid h-11 w-11 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-xl shadow-md"
                 style={{
-                  left: `${i * 18}px`,
+                  left: `${i * 17}px`,
                   transform: `translateY(-50%) rotate(${(i - 2) * 7}deg)`,
                   zIndex: i,
                 }}
@@ -281,33 +292,23 @@ export function HomeBanners() {
         }
       />
 
-      {/* You vs the room — indigo, your #1 flag + where the room ranks it */}
+      {/* You vs the room — deep-space radial, your #1 flag + a two-bar chart */}
       <Banner
-        fill="linear-gradient(135deg, #4f46e5 0%, #312e81 100%)"
+        fill="radial-gradient(150% 130% at 88% -8%, #2a17e6 0%, #0a0d52 28%, #060a3e 55%, #3e0f54 88%)"
+        size="md"
         dim={!vsCountry}
         eyebrow={t(lang, "home_vs_room")}
-        title={
-          vsCountry
-            ? countryName(vsCountry.code, lang)
-            : t(lang, "home_vs_room_empty_title")
-        }
-        sub={
-          vsCountry
-            ? vs?.roomRank != null
-              ? t(lang, "home_vs_room_rank", vs.roomRank)
-              : t(lang, "home_vs_room_pending")
-            : t(lang, "home_vs_room_empty_sub")
-        }
+        title={vsCountry ? countryName(vsCountry.code, lang) : t(lang, "home_vs_room_empty_title")}
+        sub={vsSub}
         onClick={() => setTab("vote")}
         artwork={
           vsCountry ? (
             <span className="flex items-center gap-3 pr-9">
-              {/* a tiny "you vs them" two-bar chart */}
               <span className="flex items-end gap-1.5 h-16">
                 <span className="w-3 rounded-t bg-white" style={{ height: "100%" }} title="your #1" />
                 <span
                   className="w-3 rounded-t bg-white/35"
-                  style={{ height: `${Math.max(14, 100 - ((vs?.roomRank ?? 10) - 1) * 9)}%` }}
+                  style={{ height: `${Math.max(14, 100 - ((vsRank ?? 10) - 1) * 9)}%` }}
                   title="the room"
                 />
               </span>
@@ -327,9 +328,10 @@ export function HomeBanners() {
 }
 
 // The "now playing" hero — a press-kit photo with a flag-colour gradient,
-// the heart-flag chip + name + artist/song over it, and a thin progress
-// bar (running order) along the bottom. Tap → chat. Falls back to a
-// colour-wash layout when there's no photo.
+// the heart-flag chip + name + artist/song over it, and a progress bar
+// (running order) along the bottom. Tap → chat. Falls back to a
+// colour-wash layout when there's no photo. Wears a thick flag-colour
+// stroke.
 function PlayingCard({
   country,
   lang,
@@ -343,15 +345,19 @@ function PlayingCard({
 }) {
   const [c1, c2] = countryColors(country.code);
   const photo = participantPhoto(country.code);
-  const prog = pos != null ? Math.min(pos / GRAND_FINAL_ACTS, 1) : null;
+  const prog = pos != null ? Math.min(Math.max(pos, 0) / GRAND_FINAL_ACTS, 1) : 0;
   const eyebrow =
     pos != null ? `${t(lang, "now_playing")} · ${pos} / ${GRAND_FINAL_ACTS}` : t(lang, "now_playing");
-  const progressBar =
-    prog != null ? (
-      <div className="absolute inset-x-0 bottom-0 h-[3px] bg-white/12">
-        <div className="h-full bg-gradient-to-r from-flamingo to-fuchsia" style={{ width: `${prog * 100}%` }} />
-      </div>
-    ) : null;
+  // Always-present track so the "progress lives here" affordance reads,
+  // even before the host sets the running-order position (then it's 0%).
+  const progressBar = (
+    <div className="absolute inset-x-0 bottom-0 h-1 bg-black/35">
+      <div
+        className="h-full bg-gradient-to-r from-flamingo to-fuchsia shadow-[0_0_12px_oklch(70.55%_0.2725_336.19_/_0.7)]"
+        style={{ width: `${prog * 100}%` }}
+      />
+    </div>
+  );
 
   if (photo) {
     return (
@@ -361,7 +367,7 @@ function PlayingCard({
         className="w-full text-left rounded-3xl block"
         style={countryBorderStyle(c1, c2)}
       >
-        <div className="relative overflow-hidden rounded-[22px] aspect-[16/10] sm:aspect-[2/1]">
+        <div className="relative overflow-hidden rounded-[20px] aspect-[16/10] sm:aspect-[2/1]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={optimizedSrc(photo, 1200)} alt="" className="absolute inset-0 h-full w-full object-cover" />
           <div
@@ -370,7 +376,7 @@ function PlayingCard({
               background: `linear-gradient(110deg, ${hexA(c1, 0.5)}, ${hexA(c2, 0.28)} 45%, transparent 70%), linear-gradient(0deg, rgba(8,9,28,0.92), rgba(8,9,28,0.1) 55%, transparent)`,
             }}
           />
-          <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 flex items-end gap-3">
+          <div className="absolute inset-x-0 bottom-0 p-4 pb-5 sm:p-5 sm:pb-6 flex items-end gap-3">
             <span className="heartbeat shrink-0">
               <HeartFlag code={country.code} size="md" />
             </span>
@@ -412,7 +418,7 @@ function PlayingCard({
       style={countryBorderStyle(c1, c2)}
     >
       <div
-        className="relative overflow-hidden rounded-[22px] px-5 py-5 sm:px-6"
+        className="relative overflow-hidden rounded-[20px] px-5 pt-5 pb-6 sm:px-6"
         style={{
           background: `linear-gradient(125deg, ${hexA(c1, 0.28)}, ${hexA(c2, 0.18)} 55%, rgba(10,11,34,0.85))`,
         }}
