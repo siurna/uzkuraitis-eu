@@ -13,7 +13,8 @@ import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { HeartFlag } from "@/components/flag";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
-import { t } from "@/lib/i18n";
+import { getTrope, type TropeIndex } from "@/lib/bingo-tropes";
+import { t, tDyn } from "@/lib/i18n";
 
 const EDIT_WINDOW_MS = 2 * 60 * 1000;
 
@@ -264,9 +265,11 @@ export function ChatRow({
   }
 
   if (isSystem) {
+    const sys = m.meta as { sysKey?: string; sysArg?: string | null } | null;
+    const text = sys?.sysKey ? tDyn(lang, sys.sysKey, sys.sysArg ?? undefined) : m.body;
     return (
       <motion.li initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center">
-        <span className="text-[11px] text-white/40 px-3 py-1 rounded-full bg-white/[0.03]">{m.body}</span>
+        <span className="text-[11px] text-white/40 px-3 py-1 rounded-full bg-white/[0.03]">{text}</span>
       </motion.li>
     );
   }
@@ -374,7 +377,7 @@ export function ChatRow({
                           } ${m.pending ? "opacity-75" : ""}`}
             >
               {isCard ? (
-                <BingoCardMessage meta={m.meta} />
+                <BingoCardMessage meta={m.meta} lang={lang} />
               ) : isMedia ? (
                 <span className="relative block">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -499,8 +502,10 @@ function MenuAction({
   );
 }
 
-function BingoCardMessage({ meta }: { meta: Record<string, unknown> | null }) {
-  const trope = (meta?.trope as string) ?? "";
+function BingoCardMessage({ meta, lang }: { meta: Record<string, unknown> | null; lang: "en" | "lt" }) {
+  const idx = meta?.tropeIndex;
+  const trope =
+    typeof idx === "number" ? getTrope(idx as TropeIndex, lang) : ((meta?.trope as string) ?? "");
   const won = !!meta?.bingo;
   return (
     <span className="inline-flex items-center gap-2">
