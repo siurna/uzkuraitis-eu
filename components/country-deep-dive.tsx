@@ -3,7 +3,7 @@
 import { useState, useMemo, createContext, useContext } from "react";
 import { Mic, Music, Instagram, Youtube, Globe, Disc3, Music4 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { HeartFlag, Flag } from "@/components/flag";
+import { Flag } from "@/components/flag";
 import { getCountry, countryName } from "@/lib/countries";
 import { participantPhoto } from "@/lib/participants";
 import { artistSocials, type ArtistSocials } from "@/lib/socials";
@@ -90,10 +90,7 @@ function CountryDeepDiveSheet({
                 alt=""
                 className="absolute inset-0 h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-dark-blue-900/80 via-dark-blue-900/5 to-transparent" />
-              <div className="absolute bottom-3 left-3">
-                <HeartFlag code={country.code} size="md" />
-              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-dark-blue-900/45 to-transparent" />
             </div>
           )}
 
