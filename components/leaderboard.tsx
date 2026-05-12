@@ -4,9 +4,10 @@ import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Crown, Trophy, ChevronDown, Sparkles } from "lucide-react";
 import { useEventListener } from "@/lib/liveblocks";
-import { getCountry } from "@/lib/countries";
+import { getCountry, countryName } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 import { ResultsReveal } from "@/components/results-reveal";
+import { ScoreBreakdown } from "@/components/score-breakdown";
 import { ensureSessionId } from "@/lib/use-identity";
 import type { BetBreakdown } from "@/lib/scoring";
 import { useLang, t } from "@/lib/i18n";
@@ -203,7 +204,15 @@ export function Leaderboard({ code }: { code: string }) {
                       transition={{ duration: 0.22, ease: "easeOut" }}
                       className="overflow-hidden border-t border-white/5"
                     >
-                      <Breakdown row={row} home={home?.name ?? null} lang={lang} />
+                      <div className="px-4 py-3">
+                        <ScoreBreakdown
+                          topTen={row.topTen}
+                          home={row.home}
+                          bets={row.bets}
+                          total={row.total}
+                          homeName={countryName(homeCountryCode, lang)}
+                        />
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -213,57 +222,5 @@ export function Leaderboard({ code }: { code: string }) {
         </AnimatePresence>
       </ol>
     </section>
-  );
-}
-
-// Per-row score breakdown shown in the expanded state.
-function Breakdown({
-  row,
-  home,
-  lang,
-}: {
-  row: Row;
-  home: string | null;
-  lang: "en" | "lt";
-}) {
-  const lines: { label: string; pts: number }[] = [
-    { label: "Top 10 ballot", pts: row.topTen },
-    { label: `${home ?? "Home"} placement guess`, pts: row.home },
-    { label: `${home ?? "Home"} total points guess`, pts: row.bets.ltTotalPoints },
-    { label: "Wooden spoon", pts: row.bets.woodenSpoon },
-    { label: `12 from ${home ?? "home"}`, pts: row.bets.lt12To },
-    { label: "Highest Big 5", pts: row.bets.highestBig5 },
-    { label: "Jury winner", pts: row.bets.juryWinner },
-    { label: "Televote winner", pts: row.bets.televoteWinner },
-    { label: "Nul-points televote", pts: row.bets.nulTelevote },
-    { label: "Host top 3", pts: row.bets.hostTop3 },
-    { label: "Solo winner", pts: row.bets.winnerSolo },
-  ];
-  return (
-    <ul className="px-4 py-3 flex flex-col gap-1 text-sm">
-      {lines.map((l) => (
-        <li
-          key={l.label}
-          className={`flex items-center justify-between py-1 ${
-            l.pts === 0 ? "text-white/35" : "text-white/80"
-          }`}
-        >
-          <span className="truncate pr-2">{l.label}</span>
-          <span
-            className={`font-display tabular-nums shrink-0 ${
-              l.pts > 0 ? "text-flamingo" : "text-white/30"
-            }`}
-          >
-            {l.pts > 0 ? `+${l.pts}` : "—"}
-          </span>
-        </li>
-      ))}
-      <li className="flex items-center justify-between pt-2 mt-1 border-t border-white/5">
-        <span className="font-display">{t(lang, "breakdown_total")}</span>
-        <span className="font-display text-flamingo tabular-nums">
-          {row.total}
-        </span>
-      </li>
-    </ul>
   );
 }

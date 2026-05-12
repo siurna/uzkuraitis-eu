@@ -3,6 +3,7 @@ import { HoneycombPresence } from "@/components/honeycomb-presence";
 import { SharePicks } from "@/components/share-picks";
 import { NotificationsCta } from "@/components/notification-toggles";
 import { HomeBanners } from "@/components/home-banners";
+import { MyResults } from "@/components/my-results";
 
 // Home tab. Layout owns the room context, presence bar, tab bar,
 // particle layer and reactions overlay. This page is a stack of
@@ -15,6 +16,7 @@ export default function RoomHomePage() {
     <div className="flex flex-col gap-5 pt-3 pb-2">
       <HoneycombPresence />
       <HomeBanners />
+      <MyResults />
       <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">
         <NotificationsCta />
         <SharePicks />

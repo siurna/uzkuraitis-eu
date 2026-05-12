@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { chatMessages } from "@/lib/db/schema";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { getCountry } from "@/lib/countries";
+import { computeRoomLeaderboard } from "@/lib/leaderboard";
 
 // Post a "system" chat message — the meta-narration of the room
 // ("Tomas cast their vote", "Show's underway", "Voting closed"). These
@@ -56,6 +57,34 @@ export async function postNowPlayingMessage(
       })
       .returning({ id: chatMessages.id });
     await broadcastToRoom(roomCode, { type: "chat:new", id: row.id, quiet: true });
+  } catch {
+    /* not worth a 500 */
+  }
+}
+
+// "🏆 Results are in" podium card — posted when the host flips the
+// tally toggle on. Computes the leaderboard and carries the top 3 in
+// `meta` so the client renders a podium. NOT quiet — this one's worth
+// a chat badge. Pass the *post-flip* tallyEnabled (true).
+export async function postResultsMessage(
+  roomCode: string,
+  room: { id: string; homeCountryCode: string; tallyEnabled: boolean },
+): Promise<void> {
+  try {
+    const { hasResults, leaderboard } = await computeRoomLeaderboard(room);
+    if (!hasResults || leaderboard.length === 0) {
+      // No scoreable data yet — fall back to the plain announcement.
+      await postSystemMessage(roomCode, room.id, "🏆 Results are in — leaderboard's live!");
+      return;
+    }
+    const podium = leaderboard.slice(0, 3).map((r) => ({ name: r.name, total: r.total }));
+    const body =
+      "🏆 " + podium.map((p, i) => `${i + 1}. ${p.name} (${p.total})`).join(" · ");
+    const [row] = await db
+      .insert(chatMessages)
+      .values({ roomId: room.id, sessionId: "system", name: "system", kind: "results", body, meta: { podium } })
+      .returning({ id: chatMessages.id });
+    await broadcastToRoom(roomCode, { type: "chat:new", id: row.id });
   } catch {
     /* not worth a 500 */
   }

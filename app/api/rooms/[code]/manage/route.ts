@@ -13,6 +13,7 @@ import { getCountry } from "@/lib/countries";
 import {
   postSystemMessage,
   postNowPlayingMessage,
+  postResultsMessage,
   showStatusAnnouncement,
 } from "@/lib/chat-system";
 
@@ -189,7 +190,12 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     );
   }
   if (parsed.data.tallyEnabled === true && room.tallyEnabled !== true) {
-    await postSystemMessage(newCode, room.id, "🏆 Results are in — leaderboard's live!");
+    await postResultsMessage(newCode, {
+      id: room.id,
+      homeCountryCode: room.homeCountryCode,
+      tallyEnabled: true,
+    });
+    await broadcastToRoom(newCode, { type: "leaderboard:updated" });
   }
   return NextResponse.json({ ok: true, code: newCode });
 }

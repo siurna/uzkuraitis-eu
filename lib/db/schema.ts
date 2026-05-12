@@ -233,7 +233,8 @@ export type ChatMessageKind =
   | "image"
   | "bingo_strike"
   | "system"
-  | "now_playing";
+  | "now_playing"
+  | "results";
 
 export const chatMessages = pgTable(
   "chat_messages",

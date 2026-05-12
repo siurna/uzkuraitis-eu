@@ -162,7 +162,10 @@ export function HomeBanners() {
       {tallyEnabled && (
         <Card
           onClick={() =>
-            document.getElementById("standings")?.scrollIntoView({ behavior: "smooth", block: "start" })
+            (document.getElementById("my-results") ?? document.getElementById("standings"))?.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            })
           }
           icon={<Trophy className="h-6 w-6 text-gold" />}
           accentRing="ring-gold/25"

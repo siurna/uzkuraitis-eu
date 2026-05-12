@@ -2,7 +2,7 @@
 
 import { useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Reply, Pencil, Copy, Trash2, Smile, Loader2, X, Mic, Music } from "lucide-react";
+import { Reply, Pencil, Copy, Trash2, Smile, Loader2, X, Mic, Music, Trophy } from "lucide-react";
 import { getAvatar } from "@/lib/avatars";
 import { getCountry, countryName } from "@/lib/countries";
 import { HeartFlag } from "@/components/flag";
@@ -23,7 +23,8 @@ export type MessageKind =
   | "image"
   | "bingo_strike"
   | "system"
-  | "now_playing";
+  | "now_playing"
+  | "results";
 
 export type Message = {
   id: string;
@@ -117,6 +118,7 @@ export function ChatRow({
   const isCard = m.kind === "bingo_strike";
   const isSystem = m.kind === "system";
   const isNowPlaying = m.kind === "now_playing";
+  const isResults = m.kind === "results";
   const isMedia = (m.kind === "gif" || m.kind === "image") && m.gifUrl;
   const isEdited = (m.meta as { edited?: boolean } | null)?.edited === true;
   const canEdit =
@@ -127,7 +129,7 @@ export function ChatRow({
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longFired = useRef(false);
   const startPress = () => {
-    if (isSystem || isNowPlaying) return;
+    if (isSystem || isNowPlaying || isResults) return;
     longFired.current = false;
     pressTimer.current = setTimeout(() => {
       longFired.current = true;
@@ -151,6 +153,41 @@ export function ChatRow({
       return "";
     }
   }, [m.createdAt]);
+
+  if (isResults) {
+    const podium = ((m.meta as { podium?: { name: string; total: number }[] } | null)?.podium ?? []).slice(0, 3);
+    const medals = ["🥇", "🥈", "🥉"];
+    return (
+      <motion.li
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3 }}
+        className="my-1"
+      >
+        <div className="rainbow-border rounded-2xl">
+          <div className="rounded-[14px] bg-dark-blue-900/85 px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-gold font-display leading-tight flex items-center gap-1.5">
+              <Trophy className="h-3 w-3" />
+              {t(lang, "home_results")}
+            </p>
+            <ol className="mt-2 flex flex-col gap-1">
+              {podium.length > 0 ? (
+                podium.map((p, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm">
+                    <span className="text-base shrink-0">{medals[i] ?? "•"}</span>
+                    <span className="font-display text-white truncate flex-1">{p.name}</span>
+                    <span className="tabular-nums text-white/70 shrink-0">{p.total}</span>
+                  </li>
+                ))
+              ) : (
+                <li className="text-sm text-white/60">{m.body}</li>
+              )}
+            </ol>
+          </div>
+        </div>
+      </motion.li>
+    );
+  }
 
   if (isNowPlaying) {
     const cc = (m.meta as { code?: string } | null)?.code;
