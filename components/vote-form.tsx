@@ -677,17 +677,18 @@ function BallotSlotInner({
     useSortable({ id });
 
   const country = slot.countryCode ? getCountry(slot.countryCode) : null;
-  // The 12/10/8 slots get a coloured points badge instead of a tinted
-  // border so the row borders stay consistent with the rest of the app
-  // (one design system, fewer competing border colours).
-  const pointsColor =
+  // The top point values get a filled, gradient "douze points" chip;
+  // the rest a quiet neutral one. The 12-row also gets a faint gold
+  // wash once it's filled — it's the one everyone fights over.
+  const isTop = slot.points === 12;
+  const badgeClass =
     slot.points === 12
-      ? "text-gold"
+      ? "bg-gradient-to-br from-gold to-orange text-dark-blue shadow-[0_3px_10px_-3px_oklch(85%_0.16_85_/_0.6)]"
       : slot.points === 10
-        ? "text-flamingo"
+        ? "bg-gradient-to-br from-flamingo to-fuchsia text-white"
         : slot.points === 8
-          ? "text-orange"
-          : "text-flamingo/80";
+          ? "bg-gradient-to-br from-orange to-flamingo text-white"
+          : "bg-white/[0.07] text-white/65 ring-1 ring-white/12";
 
   return (
     <li
@@ -699,16 +700,15 @@ function BallotSlotInner({
       }}
       // min-h pre-allocates the picked-state height so the row doesn't
       // jump taller the moment a country is chosen.
-      // Whole row reads as one hover surface — including the drag
-      // handle on the left. Used to be split (handle had no hover bg,
-      // text button had its own) which made the right side flash and
-      // the left stay quiet. min-h pre-allocates the picked-state
-      // height so the row doesn't jump on first pick.
-      className="group flex items-stretch rounded-2xl min-h-[4.5rem]
-                 bg-white/[0.04] ring-1 ring-white/8
-                 hover:bg-white/[0.07] hover:ring-white/18 transition"
+      className={`group flex items-stretch rounded-2xl min-h-[4.75rem] transition
+                  hover:ring-white/20
+                  ${
+                    country && isTop
+                      ? "bg-gold/[0.07] ring-1 ring-gold/25"
+                      : "bg-white/[0.04] ring-1 ring-white/8"
+                  }`}
     >
-      {/* Drag handle = the points-number + flag block on the left.
+      {/* Drag handle = the points chip + flag block on the left.
           @dnd-kit listeners attach here so the whole left side feels
           grabbable. The country text on the right is the tap-to-pick
           surface; X on the far right clears. */}
@@ -717,11 +717,12 @@ function BallotSlotInner({
         {...listeners}
         role="button"
         aria-label="Drag to reorder"
-        className="flex items-center gap-3 pl-3 pr-1 py-3 cursor-grab
+        className="flex items-center gap-3 pl-2.5 pr-1 py-3 cursor-grab
                    active:cursor-grabbing touch-none select-none"
       >
         <span
-          className={`w-10 text-center font-display text-2xl ${pointsColor} tabular-nums shrink-0`}
+          className={`h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-xl grid place-items-center
+                      font-display text-lg tabular-nums leading-none ${badgeClass}`}
         >
           {slot.points}
         </span>
@@ -776,7 +777,7 @@ function BallotSlotInner({
               className="flex-1 min-w-0"
             >
               <p className="font-display truncate leading-tight">
-                {country.name}
+                {countryName(country.code, lang)}
               </p>
               <p className="text-xs text-white/55 truncate leading-tight">
                 {country.artist}
