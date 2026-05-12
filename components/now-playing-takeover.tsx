@@ -111,9 +111,10 @@ export function NowPlayingTakeover() {
             />
           </motion.div>
 
-          {/* The country name — auto-sized to fit, display face, animated
-              gradient sweep through the flag colours + white. Rises from
-              below. */}
+          {/* The country name — auto-sized to fit, display face, solid
+              white. (No -webkit-background-clip:text gradient: iOS Safari
+              paints a stray rectangle when a clipped-text element is also
+              being transformed/animated.) Rises from below. */}
           <motion.h1
             initial={{ opacity: 0, y: 90, scale: 0.85 }}
             animate={{
@@ -127,31 +128,11 @@ export function NowPlayingTakeover() {
               ease: [0.18, 0.9, 0.25, 1],
             }}
             className="relative font-display uppercase leading-[1.12] tracking-tight
-                       max-w-[94vw] text-balance px-[0.06em] py-[0.05em]
-                       drop-shadow-[0_8px_40px_rgba(0,0,0,0.45)]"
-            style={{
-              fontSize: `clamp(2rem, ${nameVw}vw, 11rem)`,
-              backgroundImage: `linear-gradient(100deg, #ffffff, ${c1}, ${c2}, #ffffff, ${c1})`,
-              backgroundSize: "260% 100%",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              color: "transparent",
-            }}
+                       max-w-[94vw] text-balance px-[0.06em] py-[0.12em] text-white
+                       drop-shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
+            style={{ fontSize: `clamp(2rem, ${nameVw}vw, 11rem)` }}
           >
-            <motion.span
-              className="inline-block"
-              animate={{ backgroundPositionX: ["0%", "260%"] }}
-              transition={{ duration: 2.6, ease: "linear", repeat: Infinity }}
-              style={{
-                backgroundImage: "inherit",
-                backgroundSize: "inherit",
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                color: "transparent",
-              }}
-            >
-              {name}
-            </motion.span>
+            {name}
           </motion.h1>
 
           {/* Artist + song, each on its own line. */}

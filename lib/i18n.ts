@@ -92,8 +92,8 @@ const S = {
 
   // ── VoteForm ─────────────────────────────────────────────────────
   cast_your_vote:    { en: "Cast your vote", lt: "Balsuok" },
-  your_top_10:       { en: "Your TOP10", lt: "Tavo TOP10" },
-  tap_to_pick:       { en: "Tap to pick", lt: "Bakstelėk ir pasirink šalį" },
+  your_top_10:       { en: "My TOP10", lt: "Mano TOP10" },
+  tap_to_pick:       { en: "Pick", lt: "Pasirink" },
   drag_hint:         { en: "Tap a slot to pick, drag to reorder.", lt: "Bakstelėk norėdamas pasirinkti, vilk - pakeisti tvarką." },
   submit_12:         { en: "Submit my 12 points", lt: "Siųsti mano balus" },
   pick_n_more:       { en: (n: number) => `Pick ${n} more`, lt: (n: number) => `Dar ${n}` },
@@ -213,6 +213,9 @@ const S = {
   // ── Social share ─────────────────────────────────────────────────
   share_picks:        { en: "Share my TOP10", lt: "Pasidalink savo TOP10" },
   share_picks_caption: { en: "Cast my Eurovision 2026 TOP10", lt: "Mano Eurovizijos 2026 TOP10" },
+  share_preparing:    { en: "Preparing image…", lt: "Ruošiamas paveikslėlis…" },
+  share_image_copied: { en: "Image copied — paste it anywhere", lt: "Paveikslėlis nukopijuotas — įklijuok bet kur" },
+  share_failed:       { en: "Couldn't prepare the share image", lt: "Nepavyko paruošti paveikslėlio" },
 
   // ── Now-playing strip ────────────────────────────────────────────
   now_playing:       { en: "On stage", lt: "Scenoje" },
