@@ -4,15 +4,14 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "motion/react";
 import {
   ChevronDown,
-  ChevronUp,
   Mic,
   Music,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { countries, getCountry, countryName } from "@/lib/countries";
 import { useEventListener } from "@/lib/liveblocks";
 import { HeartFlag, MetaPill } from "@/components/flag";
-import { Leaderboard } from "@/components/leaderboard";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { useLang, t } from "@/lib/i18n";
@@ -35,26 +34,9 @@ export function Standings() {
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [loading, setLoading] = useState(true);
   // Show-all is a GLOBAL preference (persisted to localStorage), not
-  // per-room — once you've expanded the table once you probably want it
-  // expanded everywhere.
-  const [showAll, setShowAllState] = useState(false);
+  // Home shows just the fans' top 5; the rest lives behind "See all".
+  const [seeAllOpen, setSeeAllOpen] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
-
-  useEffect(() => {
-    setShowAllState(localStorage.getItem("uzk_show_all") === "1");
-  }, []);
-
-  const setShowAll = useCallback((next: boolean | ((p: boolean) => boolean)) => {
-    setShowAllState((prev) => {
-      const v = typeof next === "function" ? next(prev) : next;
-      try {
-        localStorage.setItem("uzk_show_all", v ? "1" : "0");
-      } catch {
-        /* private mode etc. */
-      }
-      return v;
-    });
-  }, []);
 
   const prevScores = useRef<Map<string, number>>(new Map());
   // Per-country running queue of "+N" point pops, keyed by an ever-
@@ -121,7 +103,7 @@ export function Standings() {
       });
   })();
 
-  const visible = showAll ? allWithZero : scores.slice(0, 5);
+  const visible = scores.slice(0, 5);
 
   // Point deltas: queue a fly-up "+N" pop for any country whose score
   // changed since the previous render. Skip the first-ever render
@@ -152,80 +134,73 @@ export function Standings() {
   }, [visible]);
 
   return (
-    <main className="container mx-auto max-w-3xl px-4 py-6 flex-1 flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
-        {loading ? (
-          // Skeleton rows match the real CountryRow shape so the layout
-          // doesn't jump when scores arrive. No spinner.
-          <ul className="flex flex-col gap-2">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <li
-                key={i}
-                className="glass-card rounded-2xl px-3 py-2.5 flex items-center gap-3 opacity-60"
-              >
-                <span className="h-9 w-9 rounded-full bg-white/8 animate-pulse" />
-                <span className="h-7 w-24 rounded-full bg-white/8 animate-pulse" />
-                <span className="flex-1" />
-                <span className="h-7 w-10 rounded-md bg-white/8 animate-pulse" />
-              </li>
-            ))}
-          </ul>
-        ) : visible.length === 0 ? (
-          <NoVotesYet votingEnabled={votingEnabled} lang={lang} hasVoted={hasVoted} />
-        ) : (
-          // LayoutGroup so rank-changes animate cleanly across rows.
-          // AnimatePresence mode="popLayout" so expanding from 5 -> 35
-          // doesn't herd every layout transform at once. Stagger via
-          // variants so 30 rows don't all enter on the same frame.
-          <LayoutGroup>
-            <motion.ol
-              className="flex flex-col gap-2"
-              initial={false}
-              animate="show"
-              variants={{
-                show: { transition: { staggerChildren: 0.015 } },
-              }}
+    <main className="container mx-auto max-w-3xl px-4 pt-2 pb-6 flex flex-col gap-3">
+      <h2 className="font-display text-xl gradient-text px-1">{t(lang, "fan_top5")}</h2>
+      {loading ? (
+        // Skeleton rows match the real CountryRow shape so the layout
+        // doesn't jump when scores arrive. No spinner.
+        <ul className="flex flex-col gap-2">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <li
+              key={i}
+              className="glass-card rounded-2xl px-3 py-2.5 flex items-center gap-3 opacity-60"
             >
-              <AnimatePresence initial={false} mode="popLayout">
-                {visible.map((s, i) => (
-                  <CountryRow
-                    key={s.code}
-                    score={s}
-                    index={i}
-                    lang={lang}
-                    pops={pointPops.filter((p) => p.code === s.code)}
-                  />
-                ))}
-              </AnimatePresence>
-            </motion.ol>
-          </LayoutGroup>
-        )}
-
-        {scores.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setShowAll((v) => !v)}
-            className="self-center mt-1 px-4 h-9 rounded-full font-display text-sm
-                       text-white/80 hover:text-white
-                       bg-white/5 hover:bg-white/10
-                       ring-1 ring-white/10 hover:ring-white/25
-                       transition flex items-center gap-1.5"
+              <span className="h-9 w-9 rounded-full bg-white/8 animate-pulse" />
+              <span className="h-7 w-24 rounded-full bg-white/8 animate-pulse" />
+              <span className="flex-1" />
+              <span className="h-7 w-10 rounded-md bg-white/8 animate-pulse" />
+            </li>
+          ))}
+        </ul>
+      ) : visible.length === 0 ? (
+        <NoVotesYet votingEnabled={votingEnabled} lang={lang} hasVoted={hasVoted} />
+      ) : (
+        <LayoutGroup>
+          <motion.ol
+            className="flex flex-col gap-2"
+            initial={false}
+            animate="show"
+            variants={{ show: { transition: { staggerChildren: 0.015 } } }}
           >
-            {showAll ? (
-              <>
-                <ChevronUp className="h-4 w-4" /> {t(lang, "show_top_5")}
-              </>
-            ) : (
-              <>
-                <ChevronDown className="h-4 w-4" /> {t(lang, "show_all")}{" "}
-                {countries.length}
-              </>
-            )}
-          </button>
-        )}
-      </section>
+            <AnimatePresence initial={false} mode="popLayout">
+              {visible.map((s, i) => (
+                <CountryRow
+                  key={s.code}
+                  score={s}
+                  index={i}
+                  lang={lang}
+                  pops={pointPops.filter((p) => p.code === s.code)}
+                />
+              ))}
+            </AnimatePresence>
+          </motion.ol>
+        </LayoutGroup>
+      )}
 
-      <Leaderboard code={code} />
+      {scores.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setSeeAllOpen(true)}
+          className="self-center mt-1 px-4 h-9 rounded-full font-display text-sm
+                     text-white/80 hover:text-white bg-white/5 hover:bg-white/10
+                     ring-1 ring-white/10 hover:ring-white/25 transition"
+        >
+          {t(lang, "see_all")} ({countries.length})
+        </button>
+      )}
+
+      {/* Full standings — all competing countries, 0-vote ones included. */}
+      <BottomSheet
+        open={seeAllOpen}
+        onClose={() => setSeeAllOpen(false)}
+        title={t(lang, "standings")}
+      >
+        <ol className="flex flex-col gap-2">
+          {allWithZero.map((s, i) => (
+            <CountryRow key={s.code} score={s} index={i} lang={lang} pops={[]} />
+          ))}
+        </ol>
+      </BottomSheet>
     </main>
   );
 }
