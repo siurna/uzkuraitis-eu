@@ -3,22 +3,23 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Copy, Check, Mic, Trophy } from "lucide-react";
+import { Copy, Check, Mic, Trophy, Eraser } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { RoomLiveControls, type ShowStatus } from "@/components/room-live-controls";
 
-// Strip-down magic admin page. Two toggles:
-//   1. Voting open  — voters can submit / update their ballot.
-//   2. Tally bets    — leaderboard + scoring goes live for this room.
-//
-// Both are persisted on rooms.* and pushed to every connected client
-// over Liveblocks the moment they flip, so spectators see the change
-// without a refresh.
+// Magic-link host page. Three blocks:
+//   1. Live — show status + country-on-stage controls (also on
+//      /admin/rooms/[code]; the host gets it here without a passkey).
+//   2. Voting / tally toggles.
+//   3. Admin link + clean-out.
 type Room = {
   code: string;
   name: string;
   votingEnabled: boolean;
   tallyEnabled: boolean;
+  nowPlayingCode: string | null;
+  showStatus: ShowStatus;
 };
 
 export function RoomManage({
@@ -33,6 +34,7 @@ export function RoomManage({
   const [tally, setTally] = useState(room.tallyEnabled);
   const [pending, start] = useTransition();
   const [copied, setCopied] = useState(false);
+  const [confirmClean, setConfirmClean] = useState(false);
 
   const headers = {
     "content-type": "application/json",
@@ -66,6 +68,22 @@ export function RoomManage({
     patch({ tallyEnabled: next });
   };
 
+  const cleanOut = () => {
+    start(async () => {
+      const res = await fetch(`/api/rooms/${room.code}/manage`, {
+        method: "DELETE",
+        headers,
+      });
+      if (!res.ok) {
+        toast.error("Couldn't clean out the room.");
+        return;
+      }
+      toast.success("Room cleaned out.");
+      setConfirmClean(false);
+      router.refresh();
+    });
+  };
+
   const adminUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/r/${room.code}/manage?key=${adminToken}`
@@ -88,6 +106,27 @@ export function RoomManage({
           {room.code}
         </code>
       </header>
+
+      {/* Live show controls for THIS room. (The global /admin/live page
+          can broadcast to every room at once; this is the per-room
+          host's own override.) */}
+      <section className="w-full max-w-md glass-card rounded-2xl p-4 flex flex-col gap-3">
+        <header>
+          <h2 className="font-display text-lg">Live</h2>
+        </header>
+        <RoomLiveControls
+          initialStatus={room.showStatus}
+          initialNowPlaying={room.nowPlayingCode}
+          apply={async (patch) => {
+            const res = await fetch(`/api/rooms/${room.code}/manage`, {
+              method: "PATCH",
+              headers,
+              body: JSON.stringify(patch),
+            });
+            return res.ok;
+          }}
+        />
+      </section>
 
       <div className="w-full max-w-md flex flex-col gap-3">
         <ToggleCard
@@ -117,32 +156,63 @@ export function RoomManage({
         />
       </div>
 
-      <section className="glass-card w-full max-w-md rounded-2xl p-4 flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-widest text-white/55">
-          Admin link
-        </p>
-        <p className="text-xs text-white/45 leading-relaxed">
-          Bookmark this URL to manage the room any time. Sharing it gives
-          full admin to whoever has the link.
-        </p>
-        <div className="flex items-center gap-2 pt-1">
-          <code className="flex-1 truncate text-xs bg-black/30 rounded-md px-3 py-2 font-mono">
-            {adminUrl || "loading…"}
-          </code>
-          <Button size="sm" variant="outline" onClick={copy}>
-            {copied ? (
-              <>
-                <Check className="h-4 w-4 mr-1.5" />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4 mr-1.5" />
-                Copy
-              </>
-            )}
-          </Button>
-        </div>
+      <section className="glass-card w-full max-w-md rounded-2xl p-4 flex items-center gap-2">
+        <code className="flex-1 truncate text-xs bg-black/30 rounded-md px-3 py-2 font-mono">
+          {adminUrl || "loading…"}
+        </code>
+        <Button size="sm" variant="outline" onClick={copy}>
+          {copied ? (
+            <>
+              <Check className="h-4 w-4 mr-1.5" />
+              Copied
+            </>
+          ) : (
+            <>
+              <Copy className="h-4 w-4 mr-1.5" />
+              Copy
+            </>
+          )}
+        </Button>
+      </section>
+
+      {/* Clean out — wipes every voter + their ballots from this room
+          (room itself stays). Two-tap confirm. */}
+      <section className="w-full max-w-md flex flex-col gap-2">
+        {confirmClean ? (
+          <div className="flex items-center gap-2 rounded-2xl bg-error/10 ring-1 ring-error/30 px-4 py-3">
+            <p className="flex-1 text-sm text-white/85">
+              Kick everyone? Removes every voter and ballot.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setConfirmClean(false)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={cleanOut}
+              disabled={pending}
+              className="bg-error text-white hover:bg-error/90"
+            >
+              <Eraser className="h-4 w-4 mr-1.5" />
+              Yes, kick
+            </Button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmClean(true)}
+            className="flex items-center justify-center gap-2 rounded-2xl px-4 py-3
+                       bg-white/[0.03] ring-1 ring-white/10 hover:ring-error/40
+                       text-error/80 hover:text-error text-sm transition"
+          >
+            <Eraser className="h-4 w-4" />
+            Clean out room
+          </button>
+        )}
       </section>
     </main>
   );
@@ -171,7 +241,7 @@ function ToggleCard({
       onClick={onChange}
       disabled={disabled}
       whileTap={{ scale: 0.99 }}
-      className={`text-left list-entry-gradient list-card-hover glass-card rounded-2xl p-5
+      className={`text-left list-card-hover glass-card rounded-2xl p-5
                   flex items-center gap-4 transition
                   ${on ? "ring-1 ring-flamingo/50 shadow-glow-pink" : ""}`}
     >

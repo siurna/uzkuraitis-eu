@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { Toaster } from "sonner";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = {
   title: {
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark">
       <body className="min-h-screen antialiased">
-        {children}
+        <PageTransition>{children}</PageTransition>
         <Toaster
           theme="dark"
           position="top-center"

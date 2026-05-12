@@ -6,6 +6,7 @@ import { voters, votes } from "@/lib/db/schema";
 import { findRoomByCode, touchRoom } from "@/lib/rooms";
 import { countries } from "@/lib/countries";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { postSystemMessage } from "@/lib/chat-system";
 
 const POINT_KEYS = ["12", "10", "8", "7", "6", "5", "4", "3", "2", "1"] as const;
 
@@ -33,7 +34,6 @@ const VotesSchema = z.object({
       // (matches NUL_TELEVOTE_MAX_PICKS in lib/scoring.ts) so a voter
       // can't carpet-bomb every country to guarantee a top score.
       nulTelevote: z.array(z.string().min(2).max(4)).max(5).nullable().optional(),
-      sameWinners: z.boolean().nullable().optional(),
       hostTop3: z.boolean().nullable().optional(),
       winnerSolo: z.boolean().nullable().optional(),
       ltTotalPoints: z.number().int().min(0).max(1000).nullable().optional(),
@@ -113,7 +113,9 @@ export async function POST(request: Request, { params }: RouteCtx) {
     betJuryWinner: bets.juryWinner ?? null,
     betTelevoteWinner: bets.televoteWinner ?? null,
     betNulTelevote: bets.nulTelevote ?? null,
-    betSameWinners: bets.sameWinners ?? null,
+    // betSameWinners column is intentionally not written: the bet was
+    // removed (it duplicates jury+televote winner picks).
+    betSameWinners: null,
     betHostTop3: bets.hostTop3 ?? null,
     betWinnerSolo: bets.winnerSolo ?? null,
     betLtTotalPoints: bets.ltTotalPoints ?? null,
@@ -142,6 +144,10 @@ export async function POST(request: Request, { params }: RouteCtx) {
   // Push a realtime hint so every connected client refetches their
   // scoreboard immediately. No polling needed.
   await broadcastToRoom(room.code, { type: "scores:updated" });
+
+  // Meta-narrate in chat. Awaited (it swallows its own errors) so the
+  // row + chat:new broadcast complete before the lambda is frozen.
+  await postSystemMessage(room.code, room.id, `🗳️ ${name} cast their vote`);
 
   return NextResponse.json({ ok: true, voterId: voter.id });
 }

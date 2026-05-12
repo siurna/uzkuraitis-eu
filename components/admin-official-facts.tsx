@@ -177,7 +177,7 @@ function CountryFact({
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
-          className="list-entry-gradient list-card-hover glass-card rounded-xl p-3 flex items-center gap-3 text-left w-full"
+          className="list-card-hover glass-card rounded-xl p-3 flex items-center gap-3 text-left w-full"
         >
           <div className="flex-1 min-w-0">
             <p className="font-display">{fact.label}</p>
@@ -239,7 +239,7 @@ function CountryFact({
       <button
         type="button"
         onClick={() => setDrawerOpen(true)}
-        className="list-entry-gradient list-card-hover glass-card rounded-xl p-3 flex items-center gap-3 text-left w-full"
+        className="list-card-hover glass-card rounded-xl p-3 flex items-center gap-3 text-left w-full"
       >
         <div className="flex-1 min-w-0">
           <p className="font-display">{fact.label}</p>
@@ -286,7 +286,7 @@ function NumberFact({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="list-entry-gradient glass-card rounded-xl p-3 flex items-center gap-3">
+    <div className="glass-card rounded-xl p-3 flex items-center gap-3">
       <div className="flex-1 min-w-0">
         <p className="font-display truncate">{fact.label}</p>
         <p className="text-xs text-white/55 leading-relaxed">{fact.sub}</p>
@@ -315,7 +315,7 @@ function BooleanFact({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="list-entry-gradient glass-card rounded-xl p-3 flex items-center gap-3">
+    <div className="glass-card rounded-xl p-3 flex items-center gap-3">
       <div className="flex-1 min-w-0">
         <p className="font-display truncate">{fact.label}</p>
         <p className="text-xs text-white/55 truncate">{fact.sub}</p>

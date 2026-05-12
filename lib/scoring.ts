@@ -105,7 +105,6 @@ export type Bets = {
   juryWinner?: string | null;
   televoteWinner?: string | null;
   nulTelevote?: string[] | null;
-  sameWinners?: boolean | null;
   hostTop3?: boolean | null;
   winnerSolo?: boolean | null;
   /** Voter's guess for the home country's final total points (0..1000). */
@@ -119,7 +118,6 @@ export type BetBreakdown = {
   juryWinner: number;
   televoteWinner: number;
   nulTelevote: number;
-  sameWinners: number;
   hostTop3: number;
   winnerSolo: number;
   ltTotalPoints: number;
@@ -207,13 +205,6 @@ export function scoreBets(input: {
     }
   }
 
-  // Same winners (jury == televote): +2 if voter's Y/N matches the truth.
-  let sameWinners = 0;
-  if (bets.sameWinners != null && juryWinner && teleWinner) {
-    const truth = juryWinner === teleWinner;
-    if (bets.sameWinners === truth) sameWinners = 2;
-  }
-
   // Host (Austria) top 3: +3.
   let hostTop3 = 0;
   if (bets.hostTop3 != null) {
@@ -262,7 +253,6 @@ export function scoreBets(input: {
     juryWinner: juryW,
     televoteWinner: teleW,
     nulTelevote: nulT,
-    sameWinners,
     hostTop3,
     winnerSolo: winnerSoloPts,
     ltTotalPoints: ltTotalPts,
@@ -277,7 +267,6 @@ export function totalBetPoints(b: BetBreakdown): number {
     b.juryWinner +
     b.televoteWinner +
     b.nulTelevote +
-    b.sameWinners +
     b.hostTop3 +
     b.winnerSolo +
     b.ltTotalPoints

@@ -129,7 +129,7 @@ export function AdminOfficialResults({
         {rows.map((row) => (
           <li
             key={row.placement}
-            className="list-entry-gradient glass-card rounded-xl p-3 flex items-center gap-3"
+            className="glass-card rounded-xl p-3 flex items-center gap-3"
           >
             <span
               className={`shrink-0 w-10 text-center font-display text-2xl tabular-nums ${

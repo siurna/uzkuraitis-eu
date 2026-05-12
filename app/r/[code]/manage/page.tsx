@@ -34,6 +34,12 @@ export default async function RoomManagePage({
         name: room.name,
         votingEnabled: room.votingEnabled,
         tallyEnabled: room.tallyEnabled,
+        nowPlayingCode: room.nowPlayingCode,
+        showStatus: room.showStatus as
+          | "not_started"
+          | "in_progress"
+          | "break"
+          | "ended",
       }}
     />
   );

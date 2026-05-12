@@ -1,15 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Share2, Check } from "lucide-react";
+import { Share2, Check, LogOut, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useUpdateMyPresence } from "@/lib/liveblocks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { AvatarPicker } from "@/components/avatar-picker";
+import { SelectedAvatarCard } from "@/components/selected-avatar-card";
+import { NotificationToggles } from "@/components/notification-toggles";
+import { getAvatar } from "@/lib/avatars";
 import {
   LANGUAGES,
+  LANGUAGE_NAMES,
   readLang,
   writeLang,
   t,
@@ -18,10 +23,13 @@ import {
 
 const NAME_KEY = "uzk_name";
 const AVATAR_KEY = "uzk_avatar";
+const LAST_ROOM_KEY = "uzk_last_room";
 
-// Bottom-sheet that lets the user re-edit their identity (name + avatar
-// + language) AND share the room link, in one place. Replaces the old
-// header share button.
+// Settings drawer: edit name / avatar / language, share the room
+// link, leave the room. The avatar section collapses to a single
+// summary card; tapping opens a separate avatar-picker bottom-sheet
+// on top — keeps the settings drawer scannable instead of dumping
+// the whole 42-tile grid inline.
 export function SettingsModal({
   open,
   onClose,
@@ -32,13 +40,14 @@ export function SettingsModal({
   shareUrl: string;
 }) {
   const updatePresence = useUpdateMyPresence();
+  const router = useRouter();
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
-  const [lang, setLang] = useState<Language>("en");
+  const [lang, setLang] = useState<Language>("lt");
   const [copied, setCopied] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
 
-  // Hydrate from localStorage on every open, so cancel-without-saving
-  // really cancels (we don't carry stale draft state across opens).
   useEffect(() => {
     if (!open) return;
     setName(localStorage.getItem(NAME_KEY) ?? "");
@@ -50,11 +59,11 @@ export function SettingsModal({
   const save = (e?: React.FormEvent) => {
     e?.preventDefault();
     const clean = name.trim().slice(0, 40);
-    if (!clean) return;
+    if (!clean || !avatar) return;
     localStorage.setItem(NAME_KEY, clean);
-    if (avatar) localStorage.setItem(AVATAR_KEY, avatar);
-    else localStorage.removeItem(AVATAR_KEY);
+    localStorage.setItem(AVATAR_KEY, avatar);
     writeLang(lang);
+    window.dispatchEvent(new Event("uzk:avatar-change"));
     updatePresence({ name: clean, avatar });
     toast.success(t(lang, "save"));
     onClose();
@@ -62,110 +71,232 @@ export function SettingsModal({
 
   const share = async () => {
     if (!shareUrl) return;
-    const payload = { title: t(lang, "share_link"), url: shareUrl };
-    if (navigator.share) {
+    // Native share sheet first (iOS/Android/Edge), fallback to clipboard.
+    if (typeof navigator !== "undefined" && "share" in navigator) {
       try {
-        await navigator.share(payload);
+        await navigator.share({ title: t(lang, "share_link"), url: shareUrl });
         return;
       } catch {
-        /* user cancelled */
+        /* user cancelled; fall through to clipboard */
       }
     }
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
-      toast.success("Link copied");
+      toast.success(t(lang, "link_copied"));
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      toast.error("Couldn't copy link");
+      toast.error(t(lang, "couldnt_copy"));
     }
   };
 
+  const leaveRoom = () => {
+    localStorage.removeItem(LAST_ROOM_KEY);
+    router.push("/?leave=1");
+  };
+
+  const selectedAvatar = getAvatar(avatar);
+
   return (
-    <BottomSheet
-      open={open}
-      onClose={onClose}
-      title={t(lang, "settings")}
-      footer={
-        <>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onClose}
-            className="text-white/60"
-          >
-            {t(lang, "cancel")}
-          </Button>
-          <div className="flex-1" />
-          <Button
-            type="submit"
-            form="settings-form"
-            disabled={!name.trim()}
-            className="bg-white text-dark-blue hover:bg-dark-blue-50"
-          >
-            {t(lang, "save")}
-          </Button>
-        </>
-      }
-    >
-      <form
-        id="settings-form"
-        onSubmit={save}
-        className="flex flex-col gap-5"
+    <>
+      <BottomSheet
+        open={open}
+        onClose={onClose}
+        title={t(lang, "settings")}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={share}
+              className="text-white/75 gap-1.5"
+            >
+              {copied ? <Check className="h-4 w-4 text-success" /> : <Share2 className="h-4 w-4" />}
+              {copied ? t(lang, "link_copied") : t(lang, "share_link")}
+            </Button>
+            <div className="flex-1" />
+            <Button
+              type="submit"
+              form="settings-form"
+              disabled={!name.trim() || !avatar}
+              className="font-display rounded-2xl
+                         bg-white text-dark-blue hover:bg-dark-blue-50
+                         disabled:opacity-40"
+            >
+              {t(lang, "save")}
+            </Button>
+          </>
+        }
       >
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span className="text-white/70">{t(lang, "your_name")}</span>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value.slice(0, 40))}
-            className="h-11"
-            maxLength={40}
-          />
-        </label>
+        <form
+          id="settings-form"
+          onSubmit={save}
+          className="flex flex-col gap-5"
+        >
+          <Section label={t(lang, "your_name")}>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value.slice(0, 40))}
+              className="heartbeat-focus h-14 text-center text-[24px] md:text-[24px] font-bold rounded-xl
+                         border border-white/15 bg-black/30 placeholder:text-white/30 placeholder:font-normal"
+              maxLength={40}
+            />
+          </Section>
 
-        <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm text-white/70">{t(lang, "language")}</legend>
-          <div className="inline-flex items-center gap-1 rounded-full bg-black/30 p-1 self-start">
-            {LANGUAGES.map((code) => (
-              <button
-                key={code}
-                type="button"
-                onClick={() => setLang(code)}
-                className={`px-4 py-1.5 rounded-full text-sm font-display uppercase tracking-widest transition ${
-                  lang === code
-                    ? "bg-flamingo text-white shadow-glow-pink"
-                    : "text-white/60 hover:text-white"
-                }`}
-              >
-                {code}
-              </button>
-            ))}
-          </div>
-        </fieldset>
+          <Section label={t(lang, "language")}>
+            <div className="inline-flex items-center gap-1 rounded-full bg-black/30 p-1 self-start">
+              {LANGUAGES.map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setLang(code)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-display transition ${
+                    lang === code
+                      ? "bg-white text-dark-blue"
+                      : "text-white/60 hover:text-white"
+                  }`}
+                >
+                  {LANGUAGE_NAMES[code]}
+                </button>
+              ))}
+            </div>
+          </Section>
 
-        <AvatarPicker value={avatar} onChange={setAvatar} />
+          <Section label={t(lang, "pick_avatar")}>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="flex items-center gap-3 rounded-2xl px-3 py-2.5
+                         bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition text-left"
+            >
+              {selectedAvatar?.photo ? (
+                <span className="relative h-12 w-12 rounded-xl overflow-hidden ring-1 ring-white/15 shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selectedAvatar.photo}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                    style={{
+                      objectPosition: selectedAvatar.focal
+                        ? `${selectedAvatar.focal.x}% ${selectedAvatar.focal.y}%`
+                        : "50% 30%",
+                    }}
+                  />
+                </span>
+              ) : (
+                <span className="h-12 w-12 rounded-xl bg-white/8 ring-1 ring-white/15 shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                {selectedAvatar ? (
+                  <>
+                    <p className="font-display truncate">{selectedAvatar.artist}</p>
+                    <p className="text-xs text-white/55 truncate">
+                      {selectedAvatar.year} ·{" "}
+                      <span className="italic">{selectedAvatar.song}</span>
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-white/55 italic">
+                    {t(lang, "tap_to_pick")}
+                  </p>
+                )}
+              </div>
+              <ChevronRight className="h-4 w-4 text-white/30 shrink-0" />
+            </button>
+          </Section>
 
-        <div className="border-t border-white/5 pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={share}
-          >
-            {copied ? (
-              <>
-                <Check className="h-4 w-4 mr-1.5" />
-                Copied
-              </>
-            ) : (
-              <>
-                <Share2 className="h-4 w-4 mr-1.5" />
-                {t(lang, "share_link")}
-              </>
-            )}
-          </Button>
+          <Section label={t(lang, "notifications")}>
+            <NotificationToggles />
+          </Section>
+
+          <Section label="">
+            <button
+              type="button"
+              onClick={() => setLeaveSheetOpen(true)}
+              className="flex items-center gap-2 rounded-2xl px-4 py-3
+                         bg-white/5 ring-1 ring-white/10 hover:bg-white/10
+                         text-error/90 hover:text-error text-sm transition"
+            >
+              <LogOut className="h-4 w-4" />
+              {t(lang, "leave_room")}
+            </button>
+          </Section>
+        </form>
+      </BottomSheet>
+
+      {/* Separate sheet for the avatar grid — opens on top of the
+          settings drawer, no inline grid blowing up the layout. */}
+      <BottomSheet
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        title={t(lang, "pick_avatar")}
+        footer={
+          <>
+            <div className="flex-1" />
+            <Button
+              type="button"
+              onClick={() => setPickerOpen(false)}
+              disabled={!avatar}
+              className="font-display rounded-2xl
+                         bg-white text-dark-blue hover:bg-dark-blue-50
+                         disabled:opacity-40"
+            >
+              {t(lang, "done")}
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3 min-h-[55dvh]">
+          <AvatarPicker value={avatar} onChange={setAvatar} />
+          <SelectedAvatarCard avatarId={avatar} sticky />
         </div>
-      </form>
-    </BottomSheet>
+      </BottomSheet>
+
+      {/* Leave-room confirmation — a deliberate second step so a stray
+          tap doesn't yank you out of an in-progress show. */}
+      <BottomSheet
+        open={leaveSheetOpen}
+        onClose={() => setLeaveSheetOpen(false)}
+        title={t(lang, "leave_confirm")}
+        sub={t(lang, "leave_confirm_sub")}
+        footer={
+          <>
+            <Button type="button" variant="ghost" onClick={() => setLeaveSheetOpen(false)} className="text-white/70">
+              {t(lang, "cancel")}
+            </Button>
+            <div className="flex-1" />
+            <Button
+              type="button"
+              onClick={leaveRoom}
+              className="bg-error text-white hover:bg-error/90 rounded-2xl"
+            >
+              <LogOut className="h-4 w-4 mr-1.5" />
+              {t(lang, "leave_yes")}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-white/60 leading-relaxed">{t(lang, "leave_confirm_body")}</p>
+      </BottomSheet>
+    </>
+  );
+}
+
+function Section({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-2">
+      {label && (
+        <h3 className="text-[11px] uppercase tracking-[0.2em] text-white/45 font-display">
+          {label}
+        </h3>
+      )}
+      {children}
+    </section>
   );
 }

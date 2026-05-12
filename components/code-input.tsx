@@ -52,6 +52,10 @@ export function CodeInput({
   };
 
   const handleKey = (index: number) => (e: KeyboardEvent<HTMLInputElement>) => {
+    // Don't intercept modifier combos (Cmd+V, Ctrl+V, Cmd+A, etc.) — let
+    // the browser deliver the paste / select-all / shortcut natively.
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+
     if (e.key === "Backspace") {
       e.preventDefault();
       const current = cells[index];

@@ -6,36 +6,26 @@ import { motion, AnimatePresence, LayoutGroup } from "motion/react";
 import {
   ChevronDown,
   ChevronUp,
-  Loader2,
-  TrendingUp,
-  TrendingDown,
+  Mic,
+  Music,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { countries, getCountry } from "@/lib/countries";
+import { countries, getCountry, countryName } from "@/lib/countries";
 import { useEventListener } from "@/lib/liveblocks";
-import { Flag } from "@/components/flag";
+import { HeartFlag, MetaPill } from "@/components/flag";
 import { Leaderboard } from "@/components/leaderboard";
 import { useRoomLive } from "@/components/room-shell";
+import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { useLang, t } from "@/lib/i18n";
 
 type ScoreRow = {
   code: string;
   name: string;
-  flag: string;
   totalPoints: number;
-  points12: number;
-  points10: number;
-};
-
-type VoterRow = {
-  id: string;
-  name: string;
-  votes: Record<string, string>;
 };
 
 type ScoresResponse = {
   scores: ScoreRow[];
-  voters: VoterRow[];
 };
 
 export function Standings() {
@@ -44,14 +34,30 @@ export function Standings() {
   const lang = useLang();
 
   const [scores, setScores] = useState<ScoreRow[]>([]);
-  const [voters, setVoters] = useState<VoterRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAll, setShowAll] = useState(false);
+  // Show-all is a GLOBAL preference (persisted to localStorage), not
+  // per-room — once you've expanded the table once you probably want it
+  // expanded everywhere.
+  const [showAll, setShowAllState] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
 
-  const prevRanks = useRef<Map<string, number>>(new Map());
+  useEffect(() => {
+    setShowAllState(localStorage.getItem("uzk_show_all") === "1");
+  }, []);
+
+  const setShowAll = useCallback((next: boolean | ((p: boolean) => boolean)) => {
+    setShowAllState((prev) => {
+      const v = typeof next === "function" ? next(prev) : next;
+      try {
+        localStorage.setItem("uzk_show_all", v ? "1" : "0");
+      } catch {
+        /* private mode etc. */
+      }
+      return v;
+    });
+  }, []);
+
   const prevScores = useRef<Map<string, number>>(new Map());
-  const [rankDeltas, setRankDeltas] = useState<Record<string, number>>({});
   // Per-country running queue of "+N" point pops, keyed by an ever-
   // incrementing id so multiple in-flight pops on the same country
   // can each animate independently.
@@ -67,7 +73,6 @@ export function Standings() {
       if (!res.ok) return;
       const data = (await res.json()) as ScoresResponse;
       setScores(data.scores);
-      setVoters(data.voters);
     } finally {
       setLoading(false);
     }
@@ -104,10 +109,7 @@ export function Standings() {
         map.get(c.code) ?? {
           code: c.code,
           name: c.name,
-          flag: c.flag,
           totalPoints: 0,
-          points12: 0,
-          points10: 0,
         },
       )
       .sort((a, b) => {
@@ -122,17 +124,10 @@ export function Standings() {
 
   const visible = showAll ? allWithZero : scores.slice(0, 5);
 
+  // Point deltas: queue a fly-up "+N" pop for any country whose score
+  // changed since the previous render. Skip the first-ever render
+  // (prevScores empty) so we don't spam pops on initial load.
   useEffect(() => {
-    // Rank deltas (visible badge "+3" / "-2").
-    const deltas: Record<string, number> = {};
-    visible.forEach((row, i) => {
-      const prev = prevRanks.current.get(row.code);
-      if (prev !== undefined && prev !== i) deltas[row.code] = prev - i;
-    });
-
-    // Point deltas: queue a fly-up "+N" pop for any country whose score
-    // changed since the previous render. Skip the first-ever render
-    // (prevScores empty) so we don't spam pops on initial load.
     const hadPrev = prevScores.current.size > 0;
     if (hadPrev) {
       const pops: Array<{ id: number; code: string; delta: number }> = [];
@@ -146,24 +141,12 @@ export function Standings() {
       }
       if (pops.length > 0) {
         setPointPops((prev) => [...prev, ...pops]);
-        // Clean up after the animation finishes.
         const stale = pops.map((p) => p.id);
         setTimeout(() => {
           setPointPops((prev) => prev.filter((p) => !stale.includes(p.id)));
         }, 1700);
       }
     }
-
-    if (Object.keys(deltas).length > 0) {
-      setRankDeltas(deltas);
-      const t = setTimeout(() => setRankDeltas({}), 2400);
-      visible.forEach((row, i) => prevRanks.current.set(row.code, i));
-      visible.forEach((row) =>
-        prevScores.current.set(row.code, row.totalPoints),
-      );
-      return () => clearTimeout(t);
-    }
-    visible.forEach((row, i) => prevRanks.current.set(row.code, i));
     visible.forEach((row) =>
       prevScores.current.set(row.code, row.totalPoints),
     );
@@ -173,17 +156,23 @@ export function Standings() {
     <main className="container mx-auto max-w-3xl px-4 py-6 flex-1 flex flex-col gap-8">
       <section className="flex flex-col gap-4">
         {loading ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="h-10 w-10 animate-spin text-flamingo" />
-          </div>
+          // Skeleton rows match the real CountryRow shape so the layout
+          // doesn't jump when scores arrive. No spinner.
+          <ul className="flex flex-col gap-2">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <li
+                key={i}
+                className="glass-card rounded-2xl px-3 py-2.5 flex items-center gap-3 opacity-60"
+              >
+                <span className="h-9 w-9 rounded-full bg-white/8 animate-pulse" />
+                <span className="h-7 w-24 rounded-full bg-white/8 animate-pulse" />
+                <span className="flex-1" />
+                <span className="h-7 w-10 rounded-md bg-white/8 animate-pulse" />
+              </li>
+            ))}
+          </ul>
         ) : visible.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass-card rounded-xl p-8 text-center text-white/60 font-display"
-          >
-            {t(lang, "no_votes_yet")}
-          </motion.div>
+          <NoVotesYet code={code} votingEnabled={votingEnabled} lang={lang} hasVoted={hasVoted} />
         ) : (
           // LayoutGroup so rank-changes animate cleanly across rows.
           // AnimatePresence mode="popLayout" so expanding from 5 -> 35
@@ -204,7 +193,7 @@ export function Standings() {
                     key={s.code}
                     score={s}
                     index={i}
-                    delta={rankDeltas[s.code]}
+                    lang={lang}
                     pops={pointPops.filter((p) => p.code === s.code)}
                   />
                 ))}
@@ -214,119 +203,146 @@ export function Standings() {
         )}
 
         {scores.length > 0 && (
-          <Button
-            variant="ghost"
+          <button
+            type="button"
             onClick={() => setShowAll((v) => !v)}
-            className="mt-1 text-flamingo hover:text-flamingo/80 font-display"
+            className="self-center mt-1 px-4 h-9 rounded-full font-display text-sm
+                       text-white/80 hover:text-white
+                       bg-white/5 hover:bg-white/10
+                       ring-1 ring-white/10 hover:ring-white/25
+                       transition flex items-center gap-1.5"
           >
             {showAll ? (
               <>
-                <ChevronUp className="h-4 w-4 mr-2" /> {t(lang, "show_top_5")}
+                <ChevronUp className="h-4 w-4" /> {t(lang, "show_top_5")}
               </>
             ) : (
               <>
-                <ChevronDown className="h-4 w-4 mr-2" /> {t(lang, "show_all")}{" "}
+                <ChevronDown className="h-4 w-4" /> {t(lang, "show_all")}{" "}
                 {countries.length}
               </>
             )}
-          </Button>
+          </button>
         )}
       </section>
 
       <Leaderboard code={code} />
-
-      {voters.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h3 className="text-2xl font-display gradient-text">{t(lang, "votes_cast")}</h3>
-          <div className="flex flex-wrap gap-2 justify-center">
-            <AnimatePresence initial={false}>
-              {voters.map((v) => {
-                const top = v.votes["12"] ? getCountry(v.votes["12"]) : null;
-                return (
-                  <motion.span
-                    key={v.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.6 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.6 }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 400,
-                      damping: 24,
-                    }}
-                    className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full text-sm
-                               bg-gradient-to-r from-flamingo/30 to-turquoise/20 border border-white/10"
-                  >
-                    {top && <Flag code={top.code} size="sm" />}
-                    {v.name}
-                  </motion.span>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-        </section>
-      )}
-
-      {/* Activity-style cast-vote CTA: ONLY rendered when voting is
-          open. When the admin closes voting, the button disappears
-          entirely (rather than rendering disabled), so the room reads
-          as "watching mode, react with emotions" by default. */}
-      <AnimatePresence>
-        {votingEnabled && (
-          <motion.div
-            key="vote-cta"
-            initial={{ opacity: 0, y: 12, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.96 }}
-            transition={{ type: "spring", stiffness: 320, damping: 28 }}
-          >
-            {/* Hero CTA: ESC's filled poster button (white bg, dark-blue
-                text) wrapped in the signature 2px rainbow stroke so it
-                reads as the brand's "Curved Line" leitmotif. No neon
-                glow, no pulse keyframes — the rainbow border + a small
-                fuchsia ping pip carry all the energy. */}
-            <Link href={`/r/${code}/vote`} className="block rainbow-border">
-              <Button
-                className="relative w-full h-14 text-lg font-display
-                           bg-white text-dark-blue hover:bg-dark-blue-50"
-              >
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-fuchsia opacity-75 animate-ping" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-fuchsia" />
-                  </span>
-                  <span className="text-[11px] uppercase tracking-widest text-dark-blue/70">
-                    {t(lang, "live")}
-                  </span>
-                </span>
-                {hasVoted ? t(lang, "update_vote") : t(lang, "cast_vote")}
-              </Button>
-            </Link>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </main>
+  );
+}
+
+function NoVotesYet({
+  code,
+  votingEnabled,
+  lang,
+  hasVoted,
+}: {
+  code: string;
+  votingEnabled: boolean;
+  lang: "en" | "lt";
+  hasVoted: boolean;
+}) {
+  // Three placeholder rows hint at the standings shape so the layout
+  // doesn't visually empty out before the first vote lands.
+  const placeholders = [0, 1, 2];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      className="flex flex-col gap-5 py-6"
+    >
+      <div className="flex flex-col items-center text-center gap-3">
+        <motion.div
+          animate={{ scale: [1, 1.18, 1, 1.1, 1] }}
+          transition={{
+            duration: 1.1,
+            times: [0, 0.18, 0.36, 0.5, 1],
+            repeat: Infinity,
+            repeatDelay: 0.5,
+            ease: "easeInOut",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/70-heart.webp"
+            alt=""
+            className="h-20 w-20 object-contain drop-shadow-[0_0_24px_rgba(255,46,222,0.35)]"
+          />
+        </motion.div>
+        <h3 className="font-display text-2xl text-white/90">
+          {t(lang, "no_votes_yet")}
+        </h3>
+        <p className="text-sm text-white/50 max-w-xs">
+          {t(lang, "no_votes_sub")}
+        </p>
+      </div>
+
+      {/* Ghost rows: hint at the standings shape so the page doesn't
+          look empty before the first vote lands. */}
+      <ul className="flex flex-col gap-2">
+        {placeholders.map((i) => (
+          <motion.li
+            key={i}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.15 + i * 0.08, duration: 0.4 }}
+            className="glass-card rounded-2xl px-3 py-2.5 flex items-center gap-3
+                       opacity-50"
+          >
+            <span className="h-9 w-9 rounded-full bg-white/8" />
+            <span className="h-7 flex-1 max-w-[8rem] rounded-full bg-white/8" />
+            <span className="h-6 w-8 rounded-md bg-white/8" />
+          </motion.li>
+        ))}
+      </ul>
+
+      {votingEnabled && (
+        <Link
+          href={`/r/${code}/vote`}
+          className="rainbow-border rounded-2xl mx-auto w-full max-w-xs"
+        >
+          <Button
+            className="w-full h-12 text-base font-display rounded-[14px]
+                       bg-white text-dark-blue hover:bg-dark-blue-50"
+          >
+            {hasVoted ? t(lang, "update_vote") : t(lang, "be_the_first")}
+          </Button>
+        </Link>
+      )}
+    </motion.div>
   );
 }
 
 function CountryRow({
   score,
   index,
-  delta,
+  lang,
   pops,
 }: {
   score: ScoreRow;
   index: number;
-  delta?: number;
+  lang: "en" | "lt";
   pops?: Array<{ id: number; code: string; delta: number }>;
 }) {
   const detail = getCountry(score.code);
-  const badge = (() => {
-    if (index === 0) return "bg-gold text-black";
-    if (index === 1) return "bg-white/80 text-black";
-    if (index === 2) return "bg-orange text-black";
-    return "bg-flamingo/80 text-white";
-  })();
+  const deepDive = useCountryDeepDive();
+  // Top-3 get a richer treatment: bigger row padding, gold/silver/bronze
+  // ring + brand glow, and the score in the brand colour. Keeps the
+  // ordered list semantic but lets the eye land on the podium fast.
+  const podium =
+    index === 0
+      ? "ring-2 ring-yellow shadow-[0_0_24px_-8px_oklch(95%_0.19_108_/_0.65)]"
+      : index === 1
+        ? "ring-2 ring-white/70 shadow-[0_0_18px_-10px_rgba(255,255,255,0.55)]"
+        : index === 2
+          ? "ring-2 ring-orange shadow-[0_0_18px_-10px_oklch(70%_0.19_42_/_0.6)]"
+          : "";
+  const scoreColor =
+    index === 0 ? "oklch(95% 0.19 108)"
+      : index === 1 ? "oklch(98% 0 0)"
+        : index === 2 ? "oklch(70% 0.19 42)"
+          : "oklch(70.55% 0.2725 336.19)";
 
   return (
     <motion.li
@@ -339,51 +355,39 @@ function CountryRow({
         layout: { type: "spring", stiffness: 320, damping: 30 },
         opacity: { duration: 0.25 },
       }}
-      className="relative list-entry-gradient list-card-hover glass-card rounded-xl p-3 flex items-center gap-3"
+      onClick={() => deepDive.open(score.code)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          deepDive.open(score.code);
+        }
+      }}
+      className={`relative list-card-hover glass-card rounded-2xl flex items-center gap-3 cursor-pointer
+                  ${index < 3 ? "px-3.5 py-3.5" : "px-3 py-2.5"} ${podium}`}
     >
-      <motion.div
-        layout="position"
-        className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center font-display text-base ${badge}`}
-      >
-        {index + 1}
-      </motion.div>
-      <Flag code={score.code} size="row" alt={`${score.name} flag`} />
-      <div className="flex-1 min-w-0">
-        <p className="font-display text-lg truncate">{score.name}</p>
-        {detail && (detail.artist || detail.song) && (
-          <p className="text-xs text-white/55 truncate">
-            {detail.artist}, <span className="italic">{detail.song}</span>
-          </p>
+      <HeartFlag
+        code={score.code}
+        name={countryName(score.code, lang)}
+        size={index === 0 ? "lg" : "md"}
+      />
+      <div className="hidden sm:flex flex-1 min-w-0 items-center gap-1.5 overflow-hidden">
+        {detail?.artist && (
+          <MetaPill icon={Mic} className="truncate max-w-[12rem]">
+            <span className="truncate">{detail.artist}</span>
+          </MetaPill>
+        )}
+        {detail?.song && (
+          <MetaPill icon={Music} className="truncate max-w-[14rem]">
+            <span className="truncate italic">{detail.song}</span>
+          </MetaPill>
         )}
       </div>
-      <div className="text-right">
-        <ScoreNumber value={score.totalPoints} />
-        <p className="text-[10px] uppercase tracking-widest text-white/40">
-          pts
-        </p>
+      <div className="flex-1 sm:hidden" />
+      <div className="shrink-0">
+        <ScoreNumber value={score.totalPoints} color={scoreColor} />
       </div>
-
-      <AnimatePresence>
-        {delta !== undefined && delta !== 0 && (
-          <motion.span
-            key="delta"
-            initial={{ opacity: 0, scale: 0.4, y: 0 }}
-            animate={{ opacity: 1, scale: 1, y: -28 }}
-            exit={{ opacity: 0, y: -48 }}
-            transition={{ type: "spring", stiffness: 320, damping: 22 }}
-            className={`absolute -top-1 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full
-                        text-xs font-display tabular-nums shadow-lg
-                        ${delta > 0 ? "bg-success text-black" : "bg-error text-white"}`}
-          >
-            {delta > 0 ? (
-              <TrendingUp className="h-3 w-3" />
-            ) : (
-              <TrendingDown className="h-3 w-3" />
-            )}
-            {delta > 0 ? `+${delta}` : delta}
-          </motion.span>
-        )}
-      </AnimatePresence>
 
       {/* Live "+N" point pops: each one floats up off the score number
           when somebody else's vote bumps this country's total. Fan
@@ -418,12 +422,18 @@ function CountryRow({
   );
 }
 
-function ScoreNumber({ value }: { value: number }) {
+function ScoreNumber({
+  value,
+  color = "oklch(70.55% 0.2725 336.19)",
+}: {
+  value: number;
+  color?: string;
+}) {
   return (
     <motion.p
       key={value}
       initial={{ scale: 1.4, color: "oklch(78.49% 0.135563 189.949)" }}
-      animate={{ scale: 1, color: "oklch(70.55% 0.2725 336.19)" }}
+      animate={{ scale: 1, color }}
       transition={{
         type: "spring",
         stiffness: 360,

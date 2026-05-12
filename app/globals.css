@@ -155,9 +155,11 @@
     -webkit-tap-highlight-color: oklch(70% 0.27 336 / 0.25);
   }
 
-  /* Body backdrop, restored to the loud purple-top + flamingo-bottom
-     bloom over the participant texture. Fixed to the viewport so it
-     never stretches with content. */
+  /* Body backdrop. The participant-backdrop is grey wavy stripes; if
+     we multiply it onto dark-blue we lose all the texture, then the
+     blooms wash out what's left. Soft-light keeps the curves visible
+     as subtle highlights/shadows over the brand bloom. Bloom alpha
+     dialled down so the texture isn't drowned. */
   html::before {
     content: "";
     position: fixed;
@@ -165,11 +167,11 @@
     z-index: -2;
     pointer-events: none;
     background:
-      radial-gradient(ellipse at top, oklch(28% 0.12 290 / 0.6), transparent 60%),
-      radial-gradient(ellipse at bottom, oklch(40% 0.18 336 / 0.35), transparent 70%),
-      url("/images/participant-backdrop.webp") center/cover no-repeat,
+      radial-gradient(ellipse at top, oklch(28% 0.12 290 / 0.32), transparent 65%),
+      radial-gradient(ellipse at bottom, oklch(40% 0.18 336 / 0.22), transparent 70%),
+      url("/images/participant-backdrop@2x.webp") center/cover no-repeat,
       var(--color-dark-blue-900);
-    background-blend-mode: screen, screen, multiply;
+    background-blend-mode: screen, screen, soft-light;
   }
 
   h1, h2, h3, .font-display {
@@ -203,36 +205,24 @@
   border-radius: 999px;
 }
 
-/* Signature 2px rainbow border. Drop this on any element to get the
-   ESC Curved-Line treatment as a clean stroke (not a glow). Matches
-   eurovision.com's `.rainbow-border` rule exactly via conic-mask
-   composite. */
+/* Signature 2px rainbow border. Drop this on a wrapper element and
+   nest the actual content inside; the gradient is painted as the
+   wrapper's background and the 2px padding leaves a visible rainbow
+   ring around the inner content. The host sets its own border-radius
+   (e.g. via `rounded-2xl`) so corners stay flush — no mask hackery,
+   no stacking context bugs hiding the stroke behind the inner bg. */
 .rainbow-border {
-  position: relative;
-  border-radius: var(--radius-xl);
-}
-.rainbow-border::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
   padding: var(--rainbow-thickness);
-  border-radius: inherit;
-  background: var(--rainbow-gradient);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-          mask-composite: exclude;
+  background-image: var(--rainbow-gradient);
+  display: block;
 }
 
 /* Glass surface, intentionally cool + quiet. Hairline white-low border,
-   restrained drop shadow, no inset bevels, no flamingo glow. */
+   restrained drop shadow, no inset bevels, no flamingo glow.
+   No `position` here — that fights Tailwind's positioning utilities
+   (the bottom-sheet uses `fixed` and we want that to win). Callers
+   that need a positioning context should add `relative` themselves. */
 .glass-card {
-  position: relative;
   background:
     linear-gradient(
       180deg,
@@ -243,6 +233,26 @@
   backdrop-filter: blur(14px) saturate(1.05);
   -webkit-backdrop-filter: blur(14px) saturate(1.05);
   box-shadow: var(--shadow-soft);
+}
+
+/* Soft-fade the top + bottom edges of a vertically scrollable region so
+   content dissolves into the chrome instead of being chopped by a hard
+   line. Use on drawer content panels, the chat list, etc. */
+.fade-scroll-y {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 16px,
+    black calc(100% - 16px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 16px,
+    black calc(100% - 16px),
+    transparent 100%
+  );
 }
 
 /* Make a list row feel pressable. Subtle 1px lift, quiet drop shadow,
@@ -262,21 +272,52 @@
   transition-duration: 0.08s;
 }
 
-/* Per-row gradient sweep (used on standings, ballot slots, leaderboard).
-   Matches the spec the user provided earlier. Subtle blue → white-low
-   horizontal wash. Replaces any neon overlay. */
-.list-entry-gradient {
-  background-image: linear-gradient(
-    90deg,
-    #0334de66 16.83%,
-    #7a33d800 40.87%,
-    #af33d50a 60.1%,
-    #f0f6 98.56%
-  );
-}
-
 .glow-pink {
   box-shadow: var(--shadow-soft);
+}
+
+/* Make a list-entry card feel pressable: subtle lift + brightening glow
+   on hover, settle on press. Apply via class to interactive rows only;
+   non-clickable cards stay still. */
+.list-card-hover {
+  transition: transform 0.18s ease, box-shadow 0.25s ease,
+              border-color 0.25s ease;
+}
+.list-card-hover:hover {
+  transform: translateY(-1px);
+  border-color: oklch(70% 0.27 336 / 0.45);
+  box-shadow:
+    0 1px 0 0 oklch(100% 0 0 / 0.08) inset,
+    0 -1px 0 0 oklch(0% 0 0 / 0.2) inset,
+    0 12px 32px -10px oklch(0% 0 0 / 0.55),
+    0 0 0 1px oklch(70% 0.27 336 / 0.15),
+    var(--shadow-glow-pink);
+}
+.list-card-hover:active {
+  transform: translateY(0);
+  transition-duration: 0.08s;
+}
+
+/* Heading reveal: fades up from below, runs once on first mount.
+   No JS, just CSS. Use on h1/h2 where you want the entrance. */
+@keyframes heading-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.heading-rise {
+  animation: heading-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.heading-rise-delay-1 { animation-delay: 60ms; }
+.heading-rise-delay-2 { animation-delay: 120ms; }
+.heading-rise-delay-3 { animation-delay: 180ms; }
+
+/* Section reveal: same vibe but a touch slower for content blocks. */
+@keyframes section-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.section-rise {
+  animation: section-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .bg-radial-fade {
@@ -291,16 +332,46 @@
 
 /* ---- animations ------------------------------------------------------- */
 
+/* Two-beat lub-dub, run twice. The first beat is sharper than the
+   second so it reads as a real cardiac pulse — strong contraction,
+   short pause, weaker contraction, long rest. */
 @keyframes heartbeat {
   0%   { transform: scale(1);    }
-  20%  { transform: scale(1.08); }
-  35%  { transform: scale(0.99); }
-  55%  { transform: scale(1.05); }
+  10%  { transform: scale(1.22); }
+  22%  { transform: scale(0.96); }
+  32%  { transform: scale(1.12); }
+  44%  { transform: scale(1);    }
+  56%  { transform: scale(1.18); }
+  68%  { transform: scale(0.97); }
+  78%  { transform: scale(1.08); }
   100% { transform: scale(1);    }
 }
 .heartbeat {
-  animation: heartbeat 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: heartbeat 1.1s cubic-bezier(0.45, 0, 0.55, 1);
   transform-origin: center;
+}
+.heartbeat-loop {
+  animation: heartbeat 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  animation-delay: 0.4s;
+  transform-origin: center;
+}
+
+/* Heartbeat-shaped focus state for inputs: the brand red border
+   pulses with a soft outer glow that follows the same lub-dub rhythm
+   as .heartbeat. Apply via class="heartbeat-focus". */
+@keyframes heartbeat-border {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(61.3% 0.2412 13.09 / 0); }
+  10%      { box-shadow: 0 0 0 8px oklch(61.3% 0.2412 13.09 / 0.28); }
+  22%      { box-shadow: 0 0 0 0 oklch(61.3% 0.2412 13.09 / 0); }
+  32%      { box-shadow: 0 0 0 5px oklch(61.3% 0.2412 13.09 / 0.18); }
+  44%      { box-shadow: 0 0 0 0 oklch(61.3% 0.2412 13.09 / 0); }
+}
+.heartbeat-focus { transition: border-color 0.18s ease; }
+.heartbeat-focus:focus,
+.heartbeat-focus:focus-visible {
+  outline: none;
+  border-color: var(--color-fuchsia);
+  animation: heartbeat-border 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
 @keyframes float-up {

@@ -28,14 +28,33 @@ export function Logo2026({ className }: { className?: string }) {
         }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       >
-        <Image
-          src="/images/70-logo@2x.webp"
-          alt="Eurovision Song Contest"
-          width={420}
-          height={140}
-          priority
-          className="w-full max-w-[280px] h-auto drop-shadow-[0_0_24px_rgba(124,224,216,0.25)]"
-        />
+        {/* Native aspect of /images/70-logo@2x.webp is 1162×806
+            (≈1.44:1). The previous declaration (420×140 ≈ 3:1)
+            squashed the heart. Pass the real natural dims and let
+            CSS handle the responsive width. The whole mark gets a
+            real heartbeat (two-beat lub-dub) so the brand actually
+            pulses instead of sitting flat. */}
+        <motion.div
+          animate={{ scale: [1, 1.06, 1, 1.04, 1] }}
+          transition={{
+            duration: 1.1,
+            times: [0, 0.18, 0.36, 0.5, 1],
+            repeat: Infinity,
+            repeatDelay: 0.6,
+            ease: "easeInOut",
+          }}
+          className="origin-bottom"
+        >
+          <Image
+            src="/images/70-logo@2x.webp"
+            alt="Eurovision Song Contest"
+            width={1162}
+            height={806}
+            priority
+            sizes="(min-width: 640px) 280px, 240px"
+            className="w-full max-w-[280px] h-auto object-contain drop-shadow-[0_0_24px_rgba(124,224,216,0.25)]"
+          />
+        </motion.div>
       </motion.div>
       <motion.div
         variants={{
@@ -62,18 +81,5 @@ export function Logo2026({ className }: { className?: string }) {
         Vienna 2026
       </motion.p>
     </motion.div>
-  );
-}
-
-// Compact version for nav bars / sticky headers.
-export function HeartMark({ size = 24 }: { size?: number }) {
-  return (
-    <Image
-      src="/images/70-heart-sm.webp"
-      alt=""
-      width={size}
-      height={size}
-      className="shrink-0"
-    />
   );
 }

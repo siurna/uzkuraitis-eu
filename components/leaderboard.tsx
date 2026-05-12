@@ -2,15 +2,19 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Crown, Trophy, ChevronDown } from "lucide-react";
+import { Crown, Trophy, ChevronDown, Sparkles } from "lucide-react";
 import { useEventListener } from "@/lib/liveblocks";
-import { getCountry } from "@/lib/countries";
+import { getCountry, countryName } from "@/lib/countries";
 import { Flag } from "@/components/flag";
+import { ResultsReveal } from "@/components/results-reveal";
+import { ScoreBreakdown } from "@/components/score-breakdown";
+import { ensureSessionId } from "@/lib/use-identity";
 import type { BetBreakdown } from "@/lib/scoring";
 import { useLang, t } from "@/lib/i18n";
 
 type Row = {
   voterId: string;
+  sessionId: string;
   name: string;
   homePrediction: number | null;
   topTen: number;
@@ -39,7 +43,13 @@ export function Leaderboard({ code }: { code: string }) {
   const [data, setData] = useState<Response | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [revealOpen, setRevealOpen] = useState(false);
+  const [session, setSession] = useState<string>("");
   const lang = useLang();
+
+  useEffect(() => {
+    setSession(ensureSessionId());
+  }, []);
 
   const fetchLeaderboard = useCallback(async () => {
     try {
@@ -74,11 +84,11 @@ export function Leaderboard({ code }: { code: string }) {
 
   const topTotal = leaderboard[0]?.total ?? 0;
   const home = getCountry(homeCountryCode);
+  const myRow = leaderboard.find((r) => r.sessionId === session) ?? null;
 
   return (
     <section className="flex flex-col gap-3">
       <header className="flex items-center gap-2">
-        <Trophy className="h-5 w-5 text-gold" />
         <h3 className="text-2xl font-display gradient-text">{t(lang, "leaderboard")}</h3>
         {home && homeCountryOfficialPlacement != null && (
           <span className="ml-auto text-xs text-white/50 inline-flex items-center gap-1.5">
@@ -87,6 +97,32 @@ export function Leaderboard({ code }: { code: string }) {
           </span>
         )}
       </header>
+
+      {/* Personal reveal — appears once the leaderboard is live and the
+          voter has a row. Tapping plays the full bet-by-bet reveal. */}
+      {myRow && (
+        <button
+          type="button"
+          onClick={() => setRevealOpen(true)}
+          className="rainbow-border rounded-2xl block"
+        >
+          <span className="block w-full h-12 rounded-[14px]
+                           bg-white text-dark-blue font-display
+                           inline-flex items-center justify-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            {t(lang, "reveal_cta")}
+          </span>
+        </button>
+      )}
+
+      {myRow && (
+        <ResultsReveal
+          row={myRow}
+          homeName={home?.name ?? "Home"}
+          open={revealOpen}
+          onClose={() => setRevealOpen(false)}
+        />
+      )}
 
       <ol className="flex flex-col gap-2">
         <AnimatePresence initial={false}>
@@ -102,7 +138,7 @@ export function Leaderboard({ code }: { code: string }) {
                 transition={{
                   layout: { type: "spring", stiffness: 320, damping: 30 },
                 }}
-                className="list-entry-gradient list-card-hover glass-card rounded-xl overflow-hidden"
+                className="list-card-hover glass-card rounded-xl overflow-hidden"
               >
                 <button
                   type="button"
@@ -168,7 +204,15 @@ export function Leaderboard({ code }: { code: string }) {
                       transition={{ duration: 0.22, ease: "easeOut" }}
                       className="overflow-hidden border-t border-white/5"
                     >
-                      <Breakdown row={row} home={home?.name ?? null} lang={lang} />
+                      <div className="px-4 py-3">
+                        <ScoreBreakdown
+                          topTen={row.topTen}
+                          home={row.home}
+                          bets={row.bets}
+                          total={row.total}
+                          homeName={countryName(homeCountryCode, lang)}
+                        />
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -178,58 +222,5 @@ export function Leaderboard({ code }: { code: string }) {
         </AnimatePresence>
       </ol>
     </section>
-  );
-}
-
-// Per-row score breakdown shown in the expanded state.
-function Breakdown({
-  row,
-  home,
-  lang,
-}: {
-  row: Row;
-  home: string | null;
-  lang: "en" | "lt";
-}) {
-  const lines: { label: string; pts: number }[] = [
-    { label: "Top 10 ballot", pts: row.topTen },
-    { label: `${home ?? "Home"} placement guess`, pts: row.home },
-    { label: `${home ?? "Home"} total points guess`, pts: row.bets.ltTotalPoints },
-    { label: "Wooden spoon", pts: row.bets.woodenSpoon },
-    { label: `12 from ${home ?? "home"}`, pts: row.bets.lt12To },
-    { label: "Highest Big 5", pts: row.bets.highestBig5 },
-    { label: "Jury winner", pts: row.bets.juryWinner },
-    { label: "Televote winner", pts: row.bets.televoteWinner },
-    { label: "Nul-points televote", pts: row.bets.nulTelevote },
-    { label: "Same winner (jury+tv)", pts: row.bets.sameWinners },
-    { label: "Host top 3", pts: row.bets.hostTop3 },
-    { label: "Solo winner", pts: row.bets.winnerSolo },
-  ];
-  return (
-    <ul className="px-4 py-3 flex flex-col gap-1 text-sm">
-      {lines.map((l) => (
-        <li
-          key={l.label}
-          className={`flex items-center justify-between py-1 ${
-            l.pts === 0 ? "text-white/35" : "text-white/80"
-          }`}
-        >
-          <span className="truncate pr-2">{l.label}</span>
-          <span
-            className={`font-display tabular-nums shrink-0 ${
-              l.pts > 0 ? "text-flamingo" : "text-white/30"
-            }`}
-          >
-            {l.pts > 0 ? `+${l.pts}` : "—"}
-          </span>
-        </li>
-      ))}
-      <li className="flex items-center justify-between pt-2 mt-1 border-t border-white/5">
-        <span className="font-display">{t(lang, "breakdown_total")}</span>
-        <span className="font-display text-flamingo tabular-nums">
-          {row.total}
-        </span>
-      </li>
-    </ul>
   );
 }

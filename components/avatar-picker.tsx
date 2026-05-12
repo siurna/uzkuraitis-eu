@@ -1,104 +1,68 @@
 "use client";
 
-import { motion, AnimatePresence } from "motion/react";
+import { Check } from "lucide-react";
 import { Flag } from "@/components/flag";
-import { AVATARS, getAvatar, type Avatar } from "@/lib/avatars";
-import { useLang, t } from "@/lib/i18n";
+import { AVATARS, type Avatar } from "@/lib/avatars";
 
-// Pick-an-avatar grid + a selection summary panel below it. Tile size
-// bumped from the previous tiny grid; people kept missing it. Selected
-// tile glows pink, scales up, and the panel below names the artist.
+// Pick-an-avatar grid. Apple-Watch-style rounded-square tiles with a
+// face-cropped photo inside; selection is shown as a fuchsia ring +
+// check pip in the corner. Picking is required to continue, so there's
+// no "clear" affordance — pick a different one to change.
+//
+// `pulseSelected` makes the chosen tile heartbeat so the user gets
+// immediate "yep, that one" feedback before submitting.
 export function AvatarPicker({
   value,
   onChange,
+  pulseSelected = false,
 }: {
   value: string | null;
-  onChange: (id: string | null) => void;
+  onChange: (id: string) => void;
+  pulseSelected?: boolean;
 }) {
-  const selected = getAvatar(value);
-  const lang = useLang();
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-white/60">{t(lang, "pick_avatar")}</p>
-        {value && (
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            className="text-xs text-white/40 hover:text-white/70 transition"
-          >
-            {t(lang, "clear")}
-          </button>
-        )}
-      </div>
-      {/* No inner scroll: lets the parent BottomSheet handle vertical
-          scrolling. Two scroll containers on the same page is exactly
-          why the drawer "didn't work" — touches got captured by the
-          inner picker and never reached the outer sheet. */}
-      <ul className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-        {AVATARS.map((a) => (
-          <Tile
-            key={a.id}
-            avatar={a}
-            selected={value === a.id}
-            onPick={() => onChange(a.id)}
-          />
-        ))}
-      </ul>
-
-      {/* Selection summary: the artist's name + country + year + song.
-          Slides in / out so it's clear what was picked. */}
-      <AnimatePresence initial={false}>
-        {selected && (
-          <motion.div
-            key={selected.id}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.18 }}
-            className="overflow-hidden"
-          >
-            <div className="list-entry-gradient glass-card rounded-xl px-4 py-3 flex items-center gap-3">
-              <Flag code={selected.country} size="lg" />
-              <div className="flex-1 min-w-0">
-                <p className="font-display truncate">{selected.artist}</p>
-                <p className="text-xs text-white/55 truncate">
-                  {selected.country.toUpperCase()} · {selected.year} ·{" "}
-                  <span className="italic">{selected.song}</span>
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+    <ul className="grid grid-cols-4 gap-2.5">
+      {AVATARS.map((a) => (
+        <Tile
+          key={a.id}
+          avatar={a}
+          selected={value === a.id}
+          pulse={pulseSelected && value === a.id}
+          onPick={() => onChange(a.id)}
+        />
+      ))}
+    </ul>
   );
 }
 
 function Tile({
   avatar,
   selected,
+  pulse,
   onPick,
 }: {
   avatar: Avatar;
   selected: boolean;
+  pulse: boolean;
   onPick: () => void;
 }) {
   return (
-    <motion.li layout>
-      <motion.button
+    <li>
+      <button
         type="button"
-        whileTap={{ scale: 0.92 }}
         onClick={onPick}
         title={`${avatar.artist} · ${avatar.country.toUpperCase()} ${avatar.year}`}
         aria-label={`${avatar.artist}, ${avatar.country.toUpperCase()} ${avatar.year}`}
-        className={`relative aspect-square w-full rounded-xl overflow-hidden
-                    transition transform-gpu duration-150
+        aria-pressed={selected}
+        className={`relative aspect-square w-full rounded-2xl overflow-hidden
+                    transition-[box-shadow,outline-color,transform] duration-150 ease-out
+                    active:scale-[0.96] focus-visible:outline-none
+                    outline outline-2 outline-offset-[-2px]
                     ${
                       selected
-                        ? "ring-2 ring-flamingo shadow-glow-pink scale-[1.06]"
-                        : "ring-1 ring-white/10 hover:ring-white/30 hover:scale-[1.03]"
-                    }`}
+                        ? "outline-fuchsia shadow-[0_0_0_3px_oklch(61.3%_0.2412_13.09_/_0.35)]"
+                        : "outline-white/10 hover:outline-white/35"
+                    } ${pulse ? "heartbeat-loop" : ""}`}
       >
         {avatar.photo ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -106,6 +70,11 @@ function Tile({
             src={avatar.photo}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
+            style={{
+              objectPosition: avatar.focal
+                ? `${avatar.focal.x}% ${avatar.focal.y}%`
+                : "50% 30%",
+            }}
             loading="lazy"
           />
         ) : (
@@ -122,7 +91,15 @@ function Tile({
         >
           &apos;{avatar.year.toString().slice(2)}
         </span>
-      </motion.button>
-    </motion.li>
+        {selected && (
+          <span
+            className="absolute top-1 right-1 h-5 w-5 rounded-full bg-fuchsia
+                       grid place-items-center shadow"
+          >
+            <Check className="h-3 w-3 text-white" strokeWidth={3} />
+          </span>
+        )}
+      </button>
+    </li>
   );
 }

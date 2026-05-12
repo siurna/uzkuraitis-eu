@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { ChevronRight } from "lucide-react";
-import { Flag } from "@/components/flag";
+import { Flag, HeartFlag } from "@/components/flag";
 import { CountryDrawer } from "@/components/country-drawer";
 import { countries, getCountry } from "@/lib/countries";
 import { BIG_5, HOST_COUNTRY, type Bets } from "@/lib/scoring";
@@ -98,15 +98,6 @@ export function BonusBetsForm({
       )}
 
       <YesNoRow
-        label={t(lang, "bet_same_winner")}
-        sub={t(lang, "bet_same_winner_sub")}
-        max={2}
-        value={bets.sameWinners ?? null}
-        onChange={(v) => set("sameWinners", v)}
-        lang={lang}
-      />
-
-      <YesNoRow
         label={fmt(t(lang, "bet_host_top3"), { host: hostName })}
         sub={fmt(t(lang, "bet_host_top3_sub"), { host: hostName })}
         max={3}
@@ -137,8 +128,8 @@ export function BonusBetsForm({
       />
       {home && (
         <CountryDrawer
-          title={`12 from ${home.name} to`}
-          sub={`Pick the country you think ${home.name} will award 12 points to. Exact +5.`}
+          title={fmt(t(lang, "bet_lt_12_to"), { home: homeName })}
+          sub={fmt(t(lang, "bet_lt_12_to_sub"), { home: homeName })}
           open={drawerKey === "lt12To"}
           onClose={() => setDrawerKey(null)}
           selected={bets.lt12To ? [bets.lt12To] : []}
@@ -146,8 +137,8 @@ export function BonusBetsForm({
         />
       )}
       <CountryDrawer
-        title="Highest-placed Big 5"
-        sub="Of UK, Germany, France, Italy, Spain — which finishes best? +3."
+        title={t(lang, "bet_big5")}
+        sub={t(lang, "bet_big5_sub")}
         open={drawerKey === "highestBig5"}
         onClose={() => setDrawerKey(null)}
         selected={bets.highestBig5 ? [bets.highestBig5] : []}
@@ -157,8 +148,8 @@ export function BonusBetsForm({
         options={BIG_5 as readonly string[]}
       />
       <CountryDrawer
-        title="Jury winner"
-        sub="Country that wins the jury vote. Exact +5."
+        title={t(lang, "bet_jury_winner")}
+        sub={t(lang, "bet_jury_winner_sub")}
         open={drawerKey === "juryWinner"}
         onClose={() => setDrawerKey(null)}
         selected={bets.juryWinner ? [bets.juryWinner] : []}
@@ -167,8 +158,8 @@ export function BonusBetsForm({
         }
       />
       <CountryDrawer
-        title="Televote winner"
-        sub="Country that wins the public televote. Exact +5."
+        title={t(lang, "bet_televote_winner")}
+        sub={t(lang, "bet_televote_winner_sub")}
         open={drawerKey === "televoteWinner"}
         onClose={() => setDrawerKey(null)}
         selected={bets.televoteWinner ? [bets.televoteWinner] : []}
@@ -177,8 +168,8 @@ export function BonusBetsForm({
         }
       />
       <CountryDrawer
-        title="Nul points (televote)"
-        sub="Pick any number of countries you think get zero from the public. Add 'No country' if you think nobody does. +4 per correct, max +12."
+        title={t(lang, "bet_nul")}
+        sub={t(lang, "bet_nul_sub")}
         open={drawerKey === "nulTelevote"}
         onClose={() => setDrawerKey(null)}
         selected={bets.nulTelevote ?? []}
@@ -192,6 +183,10 @@ export function BonusBetsForm({
 
 // ---------------------------------------------------------------------------
 
+// Cleaner row frame: drop the loud horizontal gradient + heavy
+// glass-card stack in favour of a quiet bg-white/[0.03] tile with a
+// hairline ring that lights up on hover. The "+N" max badge moves
+// inline with the label as a small flamingo chip; sub text under it.
 function RowFrame({
   children,
   onOpen,
@@ -201,16 +196,19 @@ function RowFrame({
   onOpen?: () => void;
   asButton: boolean;
 }) {
-  const className = `w-full text-left list-entry-gradient glass-card ${
-    asButton ? "list-card-hover" : ""
-  } rounded-xl p-3 flex items-center gap-3`;
+  const className =
+    "w-full text-left rounded-2xl px-4 py-3.5 flex items-center gap-3 " +
+    "bg-white/[0.04] ring-1 ring-white/8 transition";
   if (asButton) {
     return (
       <motion.button
         type="button"
         onClick={onOpen}
-        whileTap={{ scale: 0.985 }}
-        className={className}
+        whileTap={{ scale: 0.99 }}
+        className={
+          className +
+          " hover:bg-white/[0.07] hover:ring-white/20 active:bg-white/[0.05]"
+        }
       >
         {children}
       </motion.button>
@@ -228,20 +226,19 @@ function HeaderText({
   sub: string;
   max?: number;
 }) {
-  // No useLang here: this lives inside a button so re-using parent's
-  // lang would be cleaner, but the "max +N" label is so short and
-  // numeric that the same string works in both languages.
   return (
     <div className="flex-1 min-w-0">
-      <div className="flex items-center gap-2 flex-wrap">
-        <p className="font-display">{label}</p>
+      <div className="flex items-center gap-2">
+        <p className="font-display text-[15px] truncate">{label}</p>
         {max != null && (
-          <span className="text-[10px] uppercase tracking-widest text-flamingo">
+          <span className="shrink-0 text-[10px] font-display tabular-nums tracking-wider
+                           px-1.5 py-0.5 rounded-full
+                           bg-flamingo/15 text-flamingo ring-1 ring-flamingo/30">
             +{max}
           </span>
         )}
       </div>
-      <p className="text-xs text-white/55 leading-relaxed">{sub}</p>
+      <p className="text-xs text-white/50 leading-snug mt-0.5">{sub}</p>
     </div>
   );
 }
@@ -263,22 +260,17 @@ function CountryRow({
   return (
     <RowFrame asButton onOpen={onOpen}>
       <HeaderText label={label} sub={sub} max={max} />
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1.5 shrink-0">
         {c ? (
-          <span className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-flamingo/20 border border-flamingo/40">
-            <Flag code={c.code} size="sm" />
-            <span className="text-sm font-display max-w-[7rem] truncate">
-              {c.name}
-            </span>
-          </span>
+          <HeartFlag code={c.code} name={c.name} size="sm" />
         ) : value === NONE_TOKEN ? (
-          <span className="text-sm text-white/70 px-2.5 py-1 rounded-full bg-white/10">
+          <span className="text-xs font-display text-white/80 px-3 py-1 rounded-full bg-white/10">
             No country
           </span>
         ) : (
-          <span className="text-xs text-white/40 italic">tap to pick</span>
+          <span className="text-xs text-white/35 italic">pick</span>
         )}
-        <ChevronRight className="h-4 w-4 text-white/30" />
+        <ChevronRight className="h-4 w-4 text-white/25" />
       </div>
     </RowFrame>
   );
@@ -352,7 +344,7 @@ function YesNoRow({
   return (
     <RowFrame asButton={false}>
       <HeaderText label={label} sub={sub} max={max} />
-      <div className="flex items-center gap-1 rounded-full bg-black/30 p-1 shrink-0 text-xs">
+      <div className="flex items-center gap-0.5 rounded-full bg-black/40 p-1 shrink-0 text-xs ring-1 ring-white/8">
         {(["yes", "no", "skip"] as const).map((opt) => {
           const active =
             (opt === "yes" && value === true) ||
@@ -369,10 +361,10 @@ function YesNoRow({
               onClick={() =>
                 onChange(opt === "yes" ? true : opt === "no" ? false : null)
               }
-              className={`px-3 py-1 rounded-full transition ${
+              className={`px-3 py-1 rounded-full font-display transition ${
                 active
-                  ? "bg-flamingo text-white shadow-glow-pink"
-                  : "text-white/60 hover:text-white"
+                  ? "bg-white text-dark-blue"
+                  : "text-white/55 hover:text-white"
               }`}
             >
               {optLabel}
@@ -417,10 +409,9 @@ function NumberRow({
           onChange(Math.max(0, Math.min(1000, Math.round(n))));
         }}
         placeholder="?"
-        className="h-12 w-20 shrink-0 rounded-md border border-white/15 bg-black/30
-                   text-center font-display text-2xl tabular-nums text-white
-                   caret-flamingo focus:border-flamingo focus:outline-none
-                   focus:ring-2 focus:ring-flamingo/40 transition"
+        className="h-11 w-16 shrink-0 rounded-xl bg-black/40 ring-1 ring-white/10
+                   text-center font-display text-xl tabular-nums text-white
+                   caret-flamingo focus:ring-flamingo focus:outline-none transition"
       />
     </RowFrame>
   );

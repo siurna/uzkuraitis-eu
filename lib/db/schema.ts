@@ -8,6 +8,7 @@ import {
   uuid,
   index,
   uniqueIndex,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -27,6 +28,16 @@ export const rooms = pgTable(
     // ISO 3166-1 alpha-2 lowercase. Used to ask voters where they think
     // this country will finish, scored separately from the top-10 ballot.
     homeCountryCode: text("home_country_code").notNull().default("lt"),
+    // ISO 3166-1 alpha-2 lowercase of the country currently performing.
+    // Admin-set; clients render a top-of-screen strip + spawn a swarm
+    // of heart-flag particles whenever this flips. NULL = no country
+    // is highlighted right now.
+    nowPlayingCode: text("now_playing_code"),
+    // Coarse-grained show state for the room. The admin flips this
+    // through the room-manage page; voters see different copy in the
+    // header + tabs depending on the value. "not_started" → "in_progress"
+    // → "break" → "ended" → "not_started" (next semi/final).
+    showStatus: text("show_status").notNull().default("not_started"),
     // Long random token granting per-room admin rights. Anyone with the
     // token can manage *this* room (rename, toggle voting, edit results,
     // change the join code) without a global passkey. Generated on room
@@ -211,6 +222,114 @@ export const votersRelations = relations(voters, ({ one, many }) => ({
 export const votesRelations = relations(votes, ({ one }) => ({
   voter: one(voters, { fields: [votes.voterId], references: [voters.id] }),
 }));
+
+// Chat messages. Persistent so users see history when they re-open the
+// room. `kind` discriminates plain text from special cards (GIF, bingo
+// strike, future system messages). `meta` is a free-form jsonb bag so
+// adding new kinds doesn't need a migration.
+export type ChatMessageKind =
+  | "text"
+  | "gif"
+  | "image"
+  | "bingo_strike"
+  | "system"
+  | "now_playing"
+  | "results";
+
+export const chatMessages = pgTable(
+  "chat_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    sessionId: text("session_id").notNull(),
+    name: text("name").notNull(),
+    avatarId: text("avatar_id"),
+    kind: text("kind").$type<ChatMessageKind>().notNull().default("text"),
+    body: text("body"),
+    gifUrl: text("gif_url"),
+    replyTo: uuid("reply_to"),
+    meta: jsonb("meta").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("chat_room_created_idx").on(t.roomId, t.createdAt),
+  ],
+);
+
+// One row per (message, session, emoji). Lets the same user react with
+// multiple emojis on the same message but not the same emoji twice.
+export const chatReactions = pgTable(
+  "chat_reactions",
+  {
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => chatMessages.id, { onDelete: "cascade" }),
+    sessionId: text("session_id").notNull(),
+    name: text("name").notNull(),
+    emoji: text("emoji").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.messageId, t.sessionId, t.emoji] }),
+    index("chat_react_msg_idx").on(t.messageId),
+  ],
+);
+
+// GIF search cache. Klipy's free tier is enough for a busy room but
+// repeated identical searches still cost a quota burn; the cache key
+// is the lowercased query, TTL handled in the API route (24h).
+export const gifCache = pgTable("gif_cache", {
+  q: text("q").primaryKey(),
+  results: jsonb("results").notNull(),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// Web Push subscriptions. One row per (room, session, endpoint) so a
+// voter can opt into notifications from multiple rooms; deleting a
+// row unsubscribes that subscription. `prefs` is a jsonb bag of bool
+// toggles — chatAll / chatReplies / nowPlaying / votingState /
+// resultsTallied — so adding categories doesn't need a migration.
+export type PushPrefs = {
+  chatAll?: boolean;
+  chatReplies?: boolean;
+  nowPlaying?: boolean;
+  votingState?: boolean;
+  resultsTallied?: boolean;
+};
+
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    sessionId: text("session_id").notNull(),
+    voterName: text("voter_name"),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    prefs: jsonb("prefs").$type<PushPrefs>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("push_subs_room_idx").on(t.roomId),
+    uniqueIndex("push_subs_endpoint_unique").on(t.roomId, t.endpoint),
+  ],
+);
 
 // WebAuthn / passkey credentials for the single admin user. Initial enrollment
 // is gated by the ADMIN_BOOTSTRAP_SECRET env var; once at least one credential

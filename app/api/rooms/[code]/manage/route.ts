@@ -8,6 +8,14 @@ import {
   changeRoomCode,
 } from "@/lib/rooms";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { pushToRoom } from "@/lib/push";
+import { getCountry } from "@/lib/countries";
+import {
+  postSystemMessage,
+  postNowPlayingMessage,
+  postResultsMessage,
+  showStatusAnnouncement,
+} from "@/lib/chat-system";
 
 // Per-room admin endpoint. All actions require an "X-Admin-Token" header
 // matching the room's stored token. The token is generated at room
@@ -26,6 +34,12 @@ const PatchSchema = z.object({
   tallyEnabled: z.boolean().optional(),
   homeCountryCode: z.string().length(2).optional(),
   code: z.string().min(6).max(6).optional(),
+  // Now-playing country (ISO-2 lowercase) or null to clear.
+  nowPlayingCode: z.string().length(2).nullable().optional(),
+  // Show state.
+  showStatus: z
+    .enum(["not_started", "in_progress", "break", "ended"])
+    .optional(),
 });
 
 async function requireRoomAdmin(req: Request, code: string) {
@@ -49,6 +63,8 @@ export async function GET(req: Request, { params }: RouteCtx) {
       votingEnabled: room.votingEnabled,
       tallyEnabled: room.tallyEnabled,
       homeCountryCode: room.homeCountryCode,
+      nowPlayingCode: room.nowPlayingCode,
+      showStatus: room.showStatus,
     },
   });
 }
@@ -64,11 +80,15 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  const { code: nextCode, ...rest } = parsed.data;
+  const { code: nextCode, nowPlayingCode: nextNowPlaying, ...rest } = parsed.data;
+  const nowPlayingChanged =
+    nextNowPlaying !== undefined && nextNowPlaying !== room.nowPlayingCode;
 
   // Apply non-code fields first.
-  if (Object.keys(rest).length > 0) {
-    await db.update(rooms).set(rest).where(eq(rooms.id, room.id));
+  const updates: Record<string, unknown> = { ...rest };
+  if (nextNowPlaying !== undefined) updates.nowPlayingCode = nextNowPlaying;
+  if (Object.keys(updates).length > 0) {
+    await db.update(rooms).set(updates).where(eq(rooms.id, room.id));
   }
 
   // Code change goes through changeRoomCode for collision check.
@@ -84,10 +104,99 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     newCode = updated.code;
   }
 
-  // Two broadcasts so connected clients pick up both the room props
-  // change AND any leaderboard-affecting flip (tallyEnabled).
+  // Broadcasts: room props change always, leaderboard if tally flipped,
+  // and now-playing:change when the host moves the active country (the
+  // event carries the new code so clients can swarm immediately without
+  // a refetch race).
   await broadcastToRoom(newCode, { type: "room:updated" });
   await broadcastToRoom(newCode, { type: "leaderboard:updated" });
+  if (nowPlayingChanged) {
+    await broadcastToRoom(newCode, {
+      type: "now-playing:change",
+      countryCode: nextNowPlaying ?? null,
+    });
+    // Push: anyone with nowPlaying=true gets a system-level nudge so
+    // they don't miss the country change when the app is backgrounded.
+    if (nextNowPlaying) {
+      const c = getCountry(nextNowPlaying);
+      pushToRoom(
+        room.id,
+        (prefs) => !!prefs.nowPlaying,
+        {
+          title: `${c?.name ?? nextNowPlaying.toUpperCase()} is on stage`,
+          body: c?.artist
+            ? `${c.artist}${c.song ? ` — ${c.song}` : ""}`
+            : "Tap to open the room",
+          url: `/r/${newCode}`,
+          tag: `now-playing:${newCode}`,
+        },
+      ).catch(() => {});
+      // Full-width "now on stage" banner in the room chat. Awaited so the
+      // insert + broadcast actually complete before the lambda is frozen.
+      await postNowPlayingMessage(newCode, room.id, nextNowPlaying);
+    }
+  }
+  if (parsed.data.votingEnabled !== undefined) {
+    pushToRoom(
+      room.id,
+      (prefs) => !!prefs.votingState,
+      {
+        title: parsed.data.votingEnabled
+          ? "Voting is open"
+          : "Voting just closed",
+        body: parsed.data.votingEnabled
+          ? "Cast your TOP10 before the show kicks off."
+          : "Results coming in shortly.",
+        url: `/r/${newCode}/vote`,
+        tag: `voting:${newCode}`,
+      },
+    ).catch(() => {});
+  }
+  if (parsed.data.tallyEnabled === true) {
+    pushToRoom(
+      room.id,
+      (prefs) => !!prefs.resultsTallied,
+      {
+        title: "Results are tallied",
+        body: "Open the leaderboard to see how you did.",
+        url: `/r/${newCode}`,
+        tag: `results:${newCode}`,
+      },
+    ).catch(() => {});
+  }
+
+  // Meta-narrate state changes in chat. Awaited (postSystemMessage
+  // swallows its own errors) so the rows land before the lambda freezes.
+  if (
+    parsed.data.showStatus !== undefined &&
+    parsed.data.showStatus !== room.showStatus
+  ) {
+    await postSystemMessage(
+      newCode,
+      room.id,
+      showStatusAnnouncement(parsed.data.showStatus),
+    );
+  }
+  if (
+    parsed.data.votingEnabled !== undefined &&
+    parsed.data.votingEnabled !== room.votingEnabled
+  ) {
+    await postSystemMessage(
+      newCode,
+      room.id,
+      parsed.data.votingEnabled
+        ? "📣 Voting is OPEN — cast your TOP10!"
+        : "🔒 Voting is CLOSED.",
+    );
+  }
+  if (parsed.data.tallyEnabled === true && room.tallyEnabled !== true) {
+    await postResultsMessage(newCode, {
+      id: room.id,
+      homeCountryCode: room.homeCountryCode,
+      tallyEnabled: true,
+    });
+    await broadcastToRoom(newCode, { type: "leaderboard:updated" });
+  }
   return NextResponse.json({ ok: true, code: newCode });
 }
 

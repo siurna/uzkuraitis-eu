@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Trophy, Settings, Vote, LogOut } from "lucide-react";
+import type { Route } from "next";
+import { Trophy, Settings, Vote, LogOut, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-const navItems = [
-  { path: "/admin",          label: "Rooms",    icon: Vote },
-  { path: "/admin/results",  label: "Results",  icon: Trophy },
-  { path: "/admin/settings", label: "Settings", icon: Settings },
-] as const;
+const navItems: { path: Route; label: string; icon: typeof Vote }[] = [
+  { path: "/admin/live" as Route,     label: "Live",     icon: Radio },
+  { path: "/admin" as Route,          label: "Rooms",    icon: Vote },
+  { path: "/admin/results" as Route,  label: "Results",  icon: Trophy },
+  { path: "/admin/settings" as Route, label: "Settings", icon: Settings },
+];
 
 export function AdminNav() {
   const pathname = usePathname();
@@ -34,7 +36,13 @@ export function AdminNav() {
         </Link>
         <nav className="ml-auto flex items-center gap-1">
           {navItems.map(({ path, label, icon: Icon }) => {
-            const active = pathname === path;
+            // Treat /admin/rooms/[code] as part of the Rooms tab so the
+            // "Rooms" link stays highlighted when drilled into a single
+            // room. Other tabs use exact match.
+            const active =
+              path === "/admin"
+                ? pathname === "/admin" || pathname.startsWith("/admin/rooms")
+                : pathname === path;
             return (
               <Link
                 key={path}

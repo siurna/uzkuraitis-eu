@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useUpdateMyPresence } from "@/lib/liveblocks";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { AvatarPicker } from "@/components/avatar-picker";
+import { SelectedAvatarCard } from "@/components/selected-avatar-card";
 import {
   LANGUAGES,
+  LANGUAGE_NAMES,
   readLang,
   writeLang,
   t,
@@ -17,115 +20,183 @@ import {
 const NAME_KEY = "uzk_name";
 const AVATAR_KEY = "uzk_avatar";
 
-// Bottom-sheet "welcome" gate that asks for name + avatar + language on
-// first room entry. Once dismissed, the chosen identity is persisted to
-// localStorage and mirrored into Liveblocks presence; subsequent visits
-// skip the sheet entirely.
+// Two-step welcome gate:
+//   step 1 — name + language. Drawer stays compact (auto-height).
+//   step 2 — avatar grid. Drawer expands to ~78dvh so the grid scrolls.
+//
+// On step 2 we render a sticky "selected artist" card just above the
+// footer so the picked face stays visible while the user scrolls the
+// grid. No avatar pulse — the check pip + outline are enough.
 export function NameGate({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [step, setStep] = useState<1 | 2>(1);
   const [draftName, setDraftName] = useState("");
   const [draftAvatar, setDraftAvatar] = useState<string | null>(null);
-  const [lang, setLang] = useState<Language>("en");
+  const [lang, setLang] = useState<Language>("lt");
   const updatePresence = useUpdateMyPresence();
 
   useEffect(() => {
     const storedName = localStorage.getItem(NAME_KEY);
     const storedAvatar = localStorage.getItem(AVATAR_KEY);
-    if (storedName) setName(storedName);
-    if (storedAvatar) setAvatar(storedAvatar);
+    if (storedName) {
+      setName(storedName);
+      setDraftName(storedName);
+    }
+    if (storedAvatar) {
+      setAvatar(storedAvatar);
+      setDraftAvatar(storedAvatar);
+    }
     setLang(readLang());
+    if (storedName && !storedAvatar) setStep(2);
     setHydrated(true);
   }, []);
 
-  // Mirror name + avatar into Liveblocks presence so the rest of the room
-  // sees the right tile against your initial.
   useEffect(() => {
     if (name) updatePresence({ name, avatar });
   }, [name, avatar, updatePresence]);
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const advance = (e?: React.FormEvent) => {
+    e?.preventDefault();
     const cleanName = draftName.trim().slice(0, 40);
     if (!cleanName) return;
-    localStorage.setItem(NAME_KEY, cleanName);
-    if (draftAvatar) {
-      localStorage.setItem(AVATAR_KEY, draftAvatar);
-    } else {
-      localStorage.removeItem(AVATAR_KEY);
-    }
     writeLang(lang);
+    setStep(2);
+  };
+
+  const finish = () => {
+    const cleanName = draftName.trim().slice(0, 40);
+    if (!cleanName || !draftAvatar) return;
+    localStorage.setItem(NAME_KEY, cleanName);
+    localStorage.setItem(AVATAR_KEY, draftAvatar);
+    writeLang(lang);
+    window.dispatchEvent(new Event("uzk:avatar-change"));
     setName(cleanName);
     setAvatar(draftAvatar);
   };
 
   if (!hydrated) return null;
 
-  // Sheet stays mounted but only opens when no name is on file. Once
-  // the user submits, the parent updates `name` and the sheet closes.
-  // dismissible=false because the room is unusable without a name.
+  const open = !name || !avatar;
+
   return (
     <>
       {children}
       <BottomSheet
-        open={!name}
+        open={open}
         onClose={() => {
           /* not dismissible without submit */
         }}
         dismissible={false}
-        title={t(lang, "welcome")}
-        sub={t(lang, "name_prompt")}
+        title={step === 1 ? t(lang, "welcome") : t(lang, "pick_avatar")}
+        sub={step === 1 ? t(lang, "name_prompt") : undefined}
         footer={
-          <Button
-            type="submit"
-            form="name-gate-form"
-            disabled={!draftName.trim()}
-            className="w-full font-display
-                       bg-gradient-to-r from-gold via-flamingo to-purple
-                       text-white shadow-glow-pink
-                       disabled:opacity-40 disabled:bg-none disabled:bg-white/10"
-          >
-            {t(lang, "join_party")}
-          </Button>
+          // Step dots are absolutely centred so they don't shift when
+          // the Back button appears on step 2.
+          <div className="relative flex items-center gap-3 w-full">
+            {step === 2 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setStep(1)}
+                className="text-white/70 px-2 shrink-0"
+                aria-label={t(lang, "back")}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            ) : (
+              <span className="w-9 shrink-0" aria-hidden />
+            )}
+            <span className="pointer-events-none absolute left-1/2 -translate-x-1/2">
+              <StepDots current={step} total={2} />
+            </span>
+            <div className="flex-1" />
+            {step === 1 ? (
+              <Button
+                type="submit"
+                form="name-gate-step1"
+                disabled={!draftName.trim()}
+                className="font-display rounded-2xl
+                           bg-white text-dark-blue hover:bg-dark-blue-50
+                           disabled:opacity-40"
+              >
+                {t(lang, "next")}
+                <ArrowRight className="h-4 w-4 ml-1.5" />
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={finish}
+                disabled={!draftAvatar}
+                className="font-display rounded-2xl
+                           bg-white text-dark-blue hover:bg-dark-blue-50
+                           disabled:opacity-40"
+              >
+                {t(lang, "join_party")}
+              </Button>
+            )}
+          </div>
         }
       >
-        <form
-          id="name-gate-form"
-          onSubmit={submit}
-          className="flex flex-col gap-4"
-        >
-          <Input
-            autoFocus
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value.slice(0, 40))}
-            placeholder={t(lang, "your_name")}
-            className="h-12 text-center text-base"
-            maxLength={40}
-          />
-
-          {/* Language toggle. Persists to localStorage; everywhere else
-              in the user-facing app reads it via t(). */}
-          <div className="flex items-center justify-center gap-1 rounded-full bg-black/30 p-1 self-center">
-            {LANGUAGES.map((code) => (
-              <button
-                key={code}
-                type="button"
-                onClick={() => setLang(code)}
-                className={`px-4 py-1 rounded-full text-xs font-display uppercase tracking-widest transition ${
-                  lang === code
-                    ? "bg-flamingo text-white shadow-glow-pink"
-                    : "text-white/60 hover:text-white"
-                }`}
-              >
-                {code}
-              </button>
-            ))}
+        {step === 1 ? (
+          // Compact — sheet auto-sizes to content. No min-h.
+          <form
+            id="name-gate-step1"
+            onSubmit={advance}
+            className="flex flex-col gap-5 pt-2"
+          >
+            <Input
+              autoFocus
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value.slice(0, 40))}
+              placeholder={t(lang, "your_name")}
+              className="heartbeat-focus h-14 text-center text-[24px] md:text-[24px] font-bold
+                         rounded-xl border border-white/15 bg-black/30
+                         placeholder:text-white/30 placeholder:font-normal"
+              maxLength={40}
+            />
+            <div className="flex items-center justify-center gap-1 rounded-full bg-black/30 p-1 self-center">
+              {LANGUAGES.map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setLang(code)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-display transition ${
+                    lang === code
+                      ? "bg-white text-dark-blue"
+                      : "text-white/60 hover:text-white"
+                  }`}
+                >
+                  {LANGUAGE_NAMES[code]}
+                </button>
+              ))}
+            </div>
+          </form>
+        ) : (
+          // Step 2 expands the sheet; grid scrolls inside the existing
+          // overflow container, the selected-card sticks to the bottom.
+          <div className="flex flex-col gap-3 min-h-[60dvh] pb-2">
+            <AvatarPicker value={draftAvatar} onChange={setDraftAvatar} />
+            <SelectedAvatarCard avatarId={draftAvatar} sticky />
           </div>
-
-          <AvatarPicker value={draftAvatar} onChange={setDraftAvatar} />
-        </form>
+        )}
       </BottomSheet>
     </>
+  );
+}
+
+function StepDots({ current, total }: { current: number; total: number }) {
+  return (
+    <div className="flex items-center justify-center gap-1.5 shrink-0">
+      {Array.from({ length: total }, (_, i) => (
+        <span
+          key={i}
+          className={`h-1.5 rounded-full transition-all ${
+            i + 1 === current ? "w-5 bg-white" : "w-1.5 bg-white/25"
+          }`}
+        />
+      ))}
+    </div>
   );
 }

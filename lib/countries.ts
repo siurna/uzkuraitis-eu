@@ -13,12 +13,70 @@
 export type Country = {
   code: string;
   name: string;
+  /** Lithuanian translation. Used in the LT-mode UI; falls back to
+   *  `name` when missing. */
+  nameLt?: string;
   flag: string;
   artist: string;
   song: string;
   /** Running-order position in the grand final, if known. Used as a tiebreaker. */
   order: number;
 };
+
+// Lookup table for localised country names. Keyed on ISO 3166-1
+// alpha-2 lowercase.
+export const COUNTRY_NAMES_LT: Record<string, string> = {
+  al: "Albanija",
+  am: "Armėnija",
+  au: "Australija",
+  at: "Austrija",
+  az: "Azerbaidžanas",
+  be: "Belgija",
+  bg: "Bulgarija",
+  hr: "Kroatija",
+  cy: "Kipras",
+  cz: "Čekija",
+  dk: "Danija",
+  ee: "Estija",
+  fi: "Suomija",
+  fr: "Prancūzija",
+  ge: "Sakartvelas",
+  de: "Vokietija",
+  gr: "Graikija",
+  il: "Izraelis",
+  it: "Italija",
+  lv: "Latvija",
+  lt: "Lietuva",
+  lu: "Liuksemburgas",
+  mt: "Malta",
+  md: "Moldova",
+  me: "Juodkalnija",
+  no: "Norvegija",
+  pl: "Lenkija",
+  pt: "Portugalija",
+  ro: "Rumunija",
+  sm: "San Marinas",
+  rs: "Serbija",
+  se: "Švedija",
+  ch: "Šveicarija",
+  ua: "Ukraina",
+  gb: "Jungtinė Karalystė",
+  // Big-5 / non-finalist helpers — used by bonus-bet copy.
+  es: "Ispanija",
+  nl: "Nyderlandai",
+  ie: "Airija",
+  is: "Islandija",
+};
+
+// Localised country-name lookup. Falls back to the English `name` if
+// the LT translation is missing.
+export function countryName(code: string, lang: "en" | "lt"): string {
+  const c = countries.find((x) => x.code === code);
+  if (lang === "lt") {
+    return COUNTRY_NAMES_LT[code] ?? c?.name ?? code.toUpperCase();
+  }
+  return c?.name ?? code.toUpperCase();
+}
 
 export const countries: Country[] = [
   { code: "al", name: "Albania",        flag: "🇦🇱", artist: "Alis",                                  song: "Nân",                  order: 1  },
