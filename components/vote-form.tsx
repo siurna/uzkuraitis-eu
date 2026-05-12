@@ -77,8 +77,11 @@ export function VoteForm({
   const [tab, setTab] = useState<VoteTab>("ballot");
   // Which ballot slot is currently being edited via the country drawer.
   const [pickingPoints, setPickingPoints] = useState<Points | null>(null);
-  // Slot that just got filled, gets a one-shot heartbeat pulse.
+  // Slot that just got filled / moved into — gets a one-shot heartbeat
+  // pulse. `flashedSlots` are the rows a drag shuffled past — they
+  // flamingo-flash briefly so it's obvious what just rearranged.
   const [pulsingPoints, setPulsingPoints] = useState<Points | null>(null);
+  const [flashedSlots, setFlashedSlots] = useState<ReadonlySet<Points>>(() => new Set());
   // One-shot heart particle that flies from screen centre into the
   // freshly-filled slot's heart spot. Spawned after assign().
   const [flyingHeart, setFlyingHeart] = useState<{
@@ -253,6 +256,16 @@ export function VoteForm({
       newIndex,
     );
     setSlots(slots.map((s, i) => ({ ...s, countryCode: reorderedCountries[i] })));
+    // Make the change legible: the country you dragged heartbeats in its
+    // new home, and every row it shuffled past flamingo-flashes briefly.
+    const lo = Math.min(oldIndex, newIndex);
+    const hi = Math.max(oldIndex, newIndex);
+    setFlashedSlots(new Set(slots.slice(lo, hi + 1).map((s) => s.points)));
+    setPulsingPoints(slots[newIndex].points);
+    window.setTimeout(() => {
+      setFlashedSlots(new Set());
+      setPulsingPoints(null);
+    }, 1100);
   };
 
   const castVote = async (isUpdate: boolean) => {
@@ -385,6 +398,7 @@ export function VoteForm({
                           slot={slot}
                           onPick={() => setPickingPoints(slot.points)}
                           pulsing={pulsingPoints === slot.points}
+                          flash={flashedSlots.has(slot.points)}
                         />
                       ))}
                     </ul>
@@ -618,29 +632,37 @@ function BallotSlot({
   slot,
   onPick,
   pulsing,
+  flash,
 }: {
   slot: Slot;
   onPick: () => void;
   pulsing: boolean;
+  flash: boolean;
 }) {
   const lang = useLang();
-  return <BallotSlotInner slot={slot} onPick={onPick} pulsing={pulsing} lang={lang} />;
+  return <BallotSlotInner slot={slot} onPick={onPick} pulsing={pulsing} flash={flash} lang={lang} />;
 }
 
 function BallotSlotInner({
   slot,
   onPick,
   pulsing,
+  flash,
   lang,
 }: {
   slot: Slot;
   onPick: () => void;
   pulsing: boolean;
+  flash: boolean;
   lang: "en" | "lt";
 }) {
   const id = `slot-${slot.points}`;
+  // Empty slots aren't draggable — there's nothing to reorder until a
+  // country lands in them, and a phantom drag handle on a placeholder
+  // row just reads as broken.
+  const draggable = !!slot.countryCode;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id });
+    useSortable({ id, disabled: !draggable });
 
   const country = slot.countryCode ? getCountry(slot.countryCode) : null;
   // The top point values get a filled, gradient "douze points" chip;
@@ -672,32 +694,40 @@ function BallotSlotInner({
       }}
       // min-h pre-allocates the picked-state height so the row doesn't
       // jump taller the moment a country is chosen.
-      className={`group flex items-stretch rounded-2xl min-h-[4.75rem] transition-colors
+      className={`group flex items-stretch rounded-2xl min-h-[4.75rem] transition-colors duration-300
                   hover:ring-white/20
                   ${
-                    country && isTop
-                      ? "bg-gold/[0.07] ring-1 ring-gold/25"
-                      : "bg-white/[0.04] ring-1 ring-white/8"
+                    flash
+                      ? "bg-flamingo/[0.14] ring-1 ring-flamingo/45"
+                      : country && isTop
+                        ? "bg-gold/[0.07] ring-1 ring-gold/25"
+                        : "bg-white/[0.04] ring-1 ring-white/8"
                   }`}
     >
       {/* Dedicated drag handle — small, touch-action:none so dnd-kit's
           hold-to-drag works, while the rest of the row stays freely
-          scrollable + tappable. */}
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        aria-label={t(lang, "aria_drag_reorder")}
-        className="shrink-0 flex items-center pl-1.5 pr-0.5 cursor-grab
-                   active:cursor-grabbing touch-none text-white/25 hover:text-white/55 transition"
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
+          scrollable + tappable. Hidden (but space kept) on empty rows. */}
+      {draggable ? (
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label={t(lang, "aria_drag_reorder")}
+          className="shrink-0 flex items-center pl-1.5 pr-0.5 cursor-grab
+                     active:cursor-grabbing touch-none text-white/25 hover:text-white/55 transition"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      ) : (
+        <span className="shrink-0 flex items-center pl-1.5 pr-0.5 text-white/10" aria-hidden>
+          <GripVertical className="h-4 w-4" />
+        </span>
+      )}
 
       <div className="flex items-center gap-3 pl-0.5 pr-1 py-3">
         <span
-          className={`h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-xl grid place-items-center
-                      font-display text-lg tabular-nums leading-none ${badgeClass}`}
+          className={`h-10 w-10 sm:h-11 sm:w-11 shrink-0 rounded-xl grid place-items-center
+                      font-display text-xl tabular-nums leading-none pt-px ${badgeClass}`}
         >
           {slot.points}
         </span>
