@@ -111,10 +111,12 @@ export function NowPlayingTakeover() {
             />
           </motion.div>
 
-          {/* The country name — auto-sized to fit, display face, solid
-              white. (No -webkit-background-clip:text gradient: iOS Safari
-              paints a stray rectangle when a clipped-text element is also
-              being transformed/animated.) Rises from below. */}
+          {/* The country name — auto-sized to fit, display face, with a
+              rainbow shimmer through the flag colours. The entrance
+              transform stays on the <h1>; the clipped-text span sits
+              still on its own GPU layer (translateZ(0) + the other
+              fixes) and the sweep is a CSS keyframe — that's what keeps
+              iOS Safari from painting the stray rectangle. */}
           <motion.h1
             initial={{ opacity: 0, y: 90, scale: 0.85 }}
             animate={{
@@ -128,11 +130,26 @@ export function NowPlayingTakeover() {
               ease: [0.18, 0.9, 0.25, 1],
             }}
             className="relative font-display uppercase leading-[1.12] tracking-tight
-                       max-w-[94vw] text-balance px-[0.06em] py-[0.12em] text-white
+                       max-w-[94vw] text-balance px-[0.06em] py-[0.12em]
                        drop-shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
             style={{ fontSize: `clamp(2rem, ${nameVw}vw, 11rem)` }}
           >
-            {name}
+            <span
+              className="inline-block text-shimmer"
+              style={{
+                backgroundImage: `linear-gradient(100deg, #ffffff, ${c1}, ${c2}, #ffffff, ${c1})`,
+                backgroundSize: "260% 100%",
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+                WebkitTextFillColor: "transparent",
+                transform: "translateZ(0)",
+                isolation: "isolate",
+                paddingBottom: "0.08em",
+              }}
+            >
+              {name}
+            </span>
           </motion.h1>
 
           {/* Artist + song, each on its own line. */}
