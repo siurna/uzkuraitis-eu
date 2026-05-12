@@ -133,6 +133,7 @@ const S = {
   home_results_sub:    { en: "See your score and the full breakdown", lt: "Pažiūrėk savo rezultatą ir visą išskaidymą" },
   home_bingo_sub:      { en: "Tick off the clichés as they happen", lt: "Žymėk klišes, kai jos įvyksta" },
   home_bingo_progress: { en: (n: number) => `${n} / 25 ticked`, lt: (n: number) => `pažymėta ${n} / 25` },
+  bingo_widget_title:  { en: "Play bingo!", lt: "Žaisk bingo!" },
   home_my_results:     { en: "Your results", lt: "Tavo rezultatai" },
   home_my_results_rank: { en: (rank: number, total: number) => `Ranked ${rank} of ${total} — tap for the breakdown`, lt: (rank: number, total: number) => `${rank} vieta iš ${total} — bakstelėk išskaidymui` },
 
