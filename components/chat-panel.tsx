@@ -86,6 +86,10 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [gifOpen, setGifOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // An image the user picked but hasn't confirmed yet — shown as a
+  // preview chip above the composer so they can eyeball it (and bail)
+  // before it goes out.
+  const [pendingImage, setPendingImage] = useState<{ file: File; url: string } | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [newCount, setNewCount] = useState(0);
   const [lightbox, setLightbox] = useState<string | null>(null);
@@ -552,6 +556,33 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     }
   };
 
+  // Stage an image for preview-then-send (validates first so we never
+  // show a chip for something that'd bounce anyway).
+  const queueImage = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error(t(lang, "chat_image_too_big"));
+      return;
+    }
+    setPendingImage((prev) => {
+      if (prev) URL.revokeObjectURL(prev.url);
+      return { file, url: URL.createObjectURL(file) };
+    });
+  };
+  const cancelPendingImage = () => {
+    setPendingImage((prev) => {
+      if (prev) URL.revokeObjectURL(prev.url);
+      return null;
+    });
+  };
+  const confirmPendingImage = () => {
+    if (!pendingImage) return;
+    const { file, url } = pendingImage;
+    setPendingImage(null);
+    URL.revokeObjectURL(url); // sendImage makes its own preview URL
+    void sendImage(file);
+  };
+
   const onPaste = (e: React.ClipboardEvent) => {
     const item = Array.from(e.clipboardData.items).find((i) =>
       i.type.startsWith("image/"),
@@ -559,7 +590,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     const file = item?.getAsFile();
     if (file) {
       e.preventDefault();
-      sendImage(file);
+      queueImage(file);
     }
   };
 
@@ -730,7 +761,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         dragDepth.current = 0;
         setDragOver(false);
         const f = Array.from(e.dataTransfer.files).find((x) => x.type.startsWith("image/"));
-        if (f) sendImage(f);
+        if (f) queueImage(f);
       }}
     >
       <div className="relative flex flex-col w-full max-w-3xl min-h-0">
@@ -948,6 +979,28 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
               ) : null}
             </div>
           )}
+          {pendingImage && !editing && (
+            <div className="mb-2 flex items-center gap-3 px-2.5 py-2 rounded-xl bg-white/[0.04] ring-1 ring-white/10">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={pendingImage.url} alt="" className="h-14 w-14 rounded-lg object-cover ring-1 ring-white/12 shrink-0" />
+              <span className="flex-1 min-w-0 text-xs text-white/55 truncate">{pendingImage.file.name}</span>
+              <button
+                type="button"
+                onClick={cancelPendingImage}
+                className="shrink-0 h-8 px-3 rounded-full text-xs text-white/60 hover:text-white hover:bg-white/10 transition"
+              >
+                {t(lang, "cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={confirmPendingImage}
+                disabled={uploading}
+                className="shrink-0 h-8 px-3.5 rounded-full font-display text-xs bg-white text-dark-blue hover:bg-dark-blue-50 transition disabled:opacity-50"
+              >
+                {t(lang, "chat_image_send")}
+              </button>
+            </div>
+          )}
           {/* Composer pill. No send button — Enter (or the keyboard's
               "send" key) sends. Photo + GIF sit on the right. */}
           <div className="flex items-end gap-1 rounded-2xl border border-white/15 bg-black/40 px-1.5 py-1.5 transition focus-within:border-white/30">
@@ -991,7 +1044,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     e.target.value = "";
-                    if (f) sendImage(f);
+                    if (f) queueImage(f);
                   }}
                 />
                 <button

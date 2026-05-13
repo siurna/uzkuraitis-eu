@@ -443,7 +443,7 @@ export function ChatRow({
     pressTimer.current = setTimeout(() => {
       longFired.current = true;
       onOpenMenu();
-    }, 320);
+    }, 230);
   };
   const cancelPress = () => {
     if (pressTimer.current) {
