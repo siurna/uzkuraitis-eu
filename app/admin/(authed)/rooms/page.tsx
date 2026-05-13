@@ -6,6 +6,7 @@ import { rooms, voters } from "@/lib/db/schema";
 import { AdminRoomToggle } from "@/components/admin-room-toggle";
 import { AdminCreateRoom } from "@/components/admin-create-room";
 import { AdminPageTitle } from "@/components/admin-page-title";
+import { timeAgo } from "@/lib/utils";
 
 // One-shot SQL query: every room with its vote count + last-active timestamp.
 async function loadRooms() {
@@ -23,17 +24,6 @@ async function loadRooms() {
     })
     .from(rooms)
     .orderBy(desc(rooms.lastActiveAt));
-}
-
-function timeAgo(d: Date): string {
-  const ms = Date.now() - d.getTime();
-  const m = Math.round(ms / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const days = Math.round(h / 24);
-  return `${days}d ago`;
 }
 
 export default async function AdminRoomsPage() {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Megaphone, Bell, Vote, Dices, Medal, Sparkles, Loader2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { timeAgo } from "@/lib/utils";
 
 type Kind = "notifications" | "vote" | "bet" | "top3" | "final";
 
@@ -56,17 +57,6 @@ const SHOTS: {
     fill: "linear-gradient(135deg, #5a22a9 0%, #9b1690 50%, #c91475 100%)",
   },
 ];
-
-function timeAgo(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  const m = Math.round(ms / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.round(h / 24);
-  return `${d}d ago`;
-}
 
 // Admin › Live: each broadcast is its own big tappable widget — same
 // shape language as the now-playing hero. Tap the card to fire it. Shows

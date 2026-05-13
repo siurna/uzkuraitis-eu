@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Trash2, Loader2, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
+import { timeAgo } from "@/lib/utils";
 
 // Per-participant moderation strip: a handful of their most-recent chat
 // messages with a delete button each. Lives in the admin participants
@@ -18,17 +19,6 @@ export type AdminMessageRow = {
   gifUrl: string | null;
   createdAt: string;
 };
-
-function timeAgo(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  const m = Math.round(ms / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.round(h / 24);
-  return `${d}d ago`;
-}
 
 export function AdminParticipantMessages({
   code,

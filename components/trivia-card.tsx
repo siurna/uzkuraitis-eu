@@ -37,7 +37,7 @@ type Phase =
     };
 
 export function TriviaCard() {
-  const { code, nowPlayingCode, tallyEnabled } = useRoomLive();
+  const { code, nowPlayingCode, showStatus, tallyEnabled } = useRoomLive();
   const { sessionId: getSession } = useIdentity();
   const lang = useLang();
   const session = getSession();
@@ -58,10 +58,16 @@ export function TriviaCard() {
     }
   }, [code]);
 
-  // Schedule a card when a new country hits the stage.
+  // Schedule a card when a new country hits the stage. Three gates:
+  //   1. there must be a country on the stage (nowPlayingCode);
+  //   2. the show must actually be live (not break/ended/not_started) —
+  //      otherwise a stale nowPlayingCode would fire trivia in dead air;
+  //   3. results haven't been revealed yet (tallyEnabled flips that
+  //      branch into Rezultatai).
   useEffect(() => {
     if (!nowPlayingCode) return;
-    if (tallyEnabled) return; // results phase, no trivia
+    if (showStatus !== "in_progress") return;
+    if (tallyEnabled) return;
     const country = nowPlayingCode;
     if (!getTrivia(country)) return;
     if (scheduled.current.has(country)) return;
@@ -79,7 +85,7 @@ export function TriviaCard() {
     return () => {
       window.clearTimeout(id);
     };
-  }, [nowPlayingCode, code, tallyEnabled]);
+  }, [nowPlayingCode, code, showStatus, tallyEnabled]);
 
   // Auto-dismiss timer.
   useEffect(() => {

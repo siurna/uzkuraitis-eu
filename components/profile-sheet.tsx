@@ -8,7 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { MessageCircle, Heart, Flame, Sparkles, Dices, HelpCircle, Lock } from "lucide-react";
+import { MessageCircle, Heart, Flame, Sparkles, Dices, HelpCircle as TriviaIcon, Lock } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Flag, HeartFlag } from "@/components/flag";
 import { getAvatar } from "@/lib/avatars";
@@ -72,6 +72,8 @@ type ProfileData = {
     highlights: number;
     bingoStrikes: number;
     bets: number;
+    triviaCorrect: number;
+    triviaTotal: number;
   };
   ballot: BallotPick[] | null;
   ballotHidden: boolean;
@@ -187,7 +189,18 @@ function ProfileSheet({
             <StatTile icon={Flame} label={t(lang, "profile_stat_highlights")} value={data.stats.highlights} fillIcon />
             <StatTile icon={Sparkles} label={t(lang, "profile_stat_bingo")} value={data.stats.bingoStrikes} />
             <StatTile icon={Dices} label={t(lang, "profile_stat_bets")} value={data.stats.bets} />
-            <StatTile icon={Heart} label={t(lang, "profile_stat_given")} value={data.stats.reactionsGiven} muted />
+            {/* Trivia: show "correct / total" so the denominator gives
+                context. Hidden if the player hasn't attempted any. */}
+            {data.stats.triviaTotal > 0 ? (
+              <StatTile
+                icon={TriviaIcon}
+                label={t(lang, "profile_stat_trivia")}
+                value={data.stats.triviaCorrect}
+                suffix={`/${data.stats.triviaTotal}`}
+              />
+            ) : (
+              <StatTile icon={Heart} label={t(lang, "profile_stat_given")} value={data.stats.reactionsGiven} muted />
+            )}
           </div>
 
           {/* Top highlight */}
@@ -232,12 +245,15 @@ function StatTile({
   icon: Icon,
   label,
   value,
+  suffix,
   fillIcon,
   muted,
 }: {
   icon: typeof MessageCircle;
   label: string;
   value: number;
+  /** Appended after the value (e.g. "/7" for trivia "3 / 7"). */
+  suffix?: string;
   fillIcon?: boolean;
   muted?: boolean;
 }) {
@@ -247,7 +263,10 @@ function StatTile({
                   ${muted ? "bg-white/[0.025] ring-1 ring-white/8 text-white/55" : "bg-white/[0.04] ring-1 ring-white/8 text-white/85"}`}
     >
       <Icon className="h-4 w-4" {...(fillIcon ? { fill: "currentColor" } : {})} />
-      <span className="font-display text-xl tabular-nums leading-none">{value}</span>
+      <span className="font-display text-xl tabular-nums leading-none">
+        {value}
+        {suffix && <span className="text-white/55 text-sm">{suffix}</span>}
+      </span>
       <span className="text-[10px] uppercase tracking-[0.15em] text-white/45 font-display leading-none text-center">
         {label}
       </span>

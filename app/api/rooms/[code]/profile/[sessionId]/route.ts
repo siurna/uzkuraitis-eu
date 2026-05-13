@@ -8,6 +8,7 @@ import {
   chatReactions,
   officialResults,
   roomResults,
+  triviaAnswers,
 } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
 import {
@@ -113,6 +114,19 @@ export async function GET(req: Request, { params }: RouteCtx) {
       eq(chatMessages.kind, "bingo_strike"),
     ));
 
+  // Trivia: total tries + correct answers, so the profile can show
+  // "got 4 of 7 right" without overpromising.
+  const [triviaStats] = await db
+    .select({
+      total: sql<number>`COUNT(*)::int`,
+      correct: sql<number>`COUNT(*) FILTER (WHERE ${triviaAnswers.correct})::int`,
+    })
+    .from(triviaAnswers)
+    .where(and(
+      eq(triviaAnswers.roomId, room.id),
+      eq(triviaAnswers.sessionId, sessionId),
+    ));
+
   // The hottest message they authored — drives the "top moment" chip.
   const [topRow] = await db
     .select({
@@ -183,6 +197,8 @@ export async function GET(req: Request, { params }: RouteCtx) {
       highlights: highlightRows.length,
       bingoStrikes: bingoStrikes ?? 0,
       bets: betsPlaced,
+      triviaCorrect: triviaStats?.correct ?? 0,
+      triviaTotal: triviaStats?.total ?? 0,
     },
     ballot,
     ballotHidden: !!voterRow && !canSeeBallot,
