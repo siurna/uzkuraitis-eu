@@ -45,9 +45,17 @@ export function AdminRoomDangerZone({ code }: { code: string }) {
 
   return (
     <section className="rounded-xl border border-error/30 bg-error/5 p-5 flex flex-col gap-4">
-      <header className="flex items-center gap-2">
-        <AlertTriangle className="h-4 w-4 text-error" />
-        <h2 className="font-display text-xl">Danger zone</h2>
+      <header className="flex items-start gap-3">
+        {/* Same icon-tile pattern as the sister Links card — different
+            tint (error red vs. flamingo) because this section IS the
+            wipe button and should read that way. */}
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-error/15 ring-1 ring-error/35 text-error">
+          <AlertTriangle className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="font-display text-xl leading-tight">Danger zone</h2>
+          <p className="text-xs text-white/45 mt-0.5">Irreversible. Read the small print.</p>
+        </div>
       </header>
 
       <div className="flex flex-col sm:flex-row gap-3">

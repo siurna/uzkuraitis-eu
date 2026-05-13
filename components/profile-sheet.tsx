@@ -180,14 +180,16 @@ function ProfileSheet({
   const isSelf = !!sessionId && sessionId === mySession;
 
   return (
-    <BottomSheet open={!!sessionId} onClose={onClose} title={view?.name ?? ""}>
+    // No title prop — the identity hero below carries the name in big
+    // type so a sheet header would just repeat it.
+    <BottomSheet open={!!sessionId} onClose={onClose}>
       {loading && !view && (
         <p className="text-sm text-white/45 text-center py-6">{t(lang, "profile_loading")}</p>
       )}
       {view && (
         <div className="flex flex-col gap-4">
-          {/* Identity hero */}
-          <div className="flex items-center gap-3 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3">
+          {/* Identity hero — name lives here (and ONLY here). */}
+          <div className="flex items-center gap-3">
             <span className="h-16 w-16 shrink-0 rounded-2xl overflow-hidden ring-1 ring-white/15 bg-white/[0.06]">
               {avatar?.photo ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -208,41 +210,40 @@ function ProfileSheet({
               )}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="font-display text-lg truncate flex items-center gap-1.5">
+              <p className="font-display text-2xl truncate gradient-text leading-tight">
                 {view.name}
+              </p>
+              <p className="text-xs text-white/55 leading-snug truncate flex items-center gap-1.5 mt-0.5">
                 {isSelf && (
                   <span className="text-[10px] uppercase tracking-[0.2em] text-flamingo font-display">
                     {t(lang, "profile_you")}
                   </span>
                 )}
+                {avatar && (
+                  <span className="truncate">
+                    {t(lang, "profile_picked_artist")} · {avatar.artist} · {avatar.year}
+                  </span>
+                )}
               </p>
-              {avatar && (
-                <p className="text-xs text-white/55 leading-snug truncate">
-                  {t(lang, "profile_picked_artist")} · {avatar.artist} · {avatar.year}
-                </p>
-              )}
             </div>
           </div>
 
-          {/* Stats grid */}
+          {/* Stats grid — all icons filled + a hair larger for legibility.
+              Trivia tile always renders; "—/—" is fine and reads as
+              "hasn't played any" rather than absence. */}
           <div className="grid grid-cols-3 gap-2">
             <StatTile icon={MessageCircle} label={t(lang, "profile_stat_messages")} value={view.stats.messages} />
-            <StatTile icon={Heart} label={t(lang, "profile_stat_loves")} value={view.stats.reactionsReceived} fillIcon />
-            <StatTile icon={Flame} label={t(lang, "profile_stat_highlights")} value={view.stats.highlights} fillIcon />
+            <StatTile icon={Heart} label={t(lang, "profile_stat_loves")} value={view.stats.reactionsReceived} />
+            <StatTile icon={Flame} label={t(lang, "profile_stat_highlights")} value={view.stats.highlights} />
             <StatTile icon={Sparkles} label={t(lang, "profile_stat_bingo")} value={view.stats.bingoStrikes} />
             <StatTile icon={Dices} label={t(lang, "profile_stat_bets")} value={view.stats.bets} />
-            {/* Trivia: show "correct / total" so the denominator gives
-                context. Hidden if the player hasn't attempted any. */}
-            {view.stats.triviaTotal > 0 ? (
-              <StatTile
-                icon={TriviaIcon}
-                label={t(lang, "profile_stat_trivia")}
-                value={view.stats.triviaCorrect}
-                suffix={`/${view.stats.triviaTotal}`}
-              />
-            ) : (
-              <StatTile icon={Heart} label={t(lang, "profile_stat_given")} value={view.stats.reactionsGiven} muted />
-            )}
+            <StatTile
+              icon={TriviaIcon}
+              label={t(lang, "profile_stat_trivia")}
+              value={view.stats.triviaCorrect}
+              suffix={view.stats.triviaTotal > 0 ? `/${view.stats.triviaTotal}` : null}
+              muted={view.stats.triviaTotal === 0}
+            />
           </div>
 
           {/* Top highlight */}
@@ -288,26 +289,27 @@ function StatTile({
   label,
   value,
   suffix,
-  fillIcon,
   muted,
 }: {
   icon: typeof MessageCircle;
   label: string;
   value: number;
   /** Appended after the value (e.g. "/7" for trivia "3 / 7"). */
-  suffix?: string;
-  fillIcon?: boolean;
+  suffix?: string | null;
   muted?: boolean;
 }) {
   return (
+    // Bigger tile, bigger icon, ALL icons filled. The previous
+    // mix-of-outlined-and-filled read inconsistent — locking everything
+    // to filled makes the row of tiles feel like one stat strip.
     <div
-      className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-3
-                  ${muted ? "bg-white/[0.025] ring-1 ring-white/8 text-white/55" : "bg-white/[0.04] ring-1 ring-white/8 text-white/85"}`}
+      className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-4
+                  ${muted ? "bg-white/[0.025] ring-1 ring-white/8 text-white/55" : "bg-white/[0.04] ring-1 ring-white/8 text-white/90"}`}
     >
-      <Icon className="h-4 w-4" {...(fillIcon ? { fill: "currentColor" } : {})} />
-      <span className="font-display text-xl tabular-nums leading-none">
+      <Icon className="h-6 w-6" fill="currentColor" strokeWidth={1.5} />
+      <span className="font-display text-2xl tabular-nums leading-none">
         {value}
-        {suffix && <span className="text-white/55 text-sm">{suffix}</span>}
+        {suffix && <span className="text-white/55 text-base">{suffix}</span>}
       </span>
       <span className="text-[10px] uppercase tracking-[0.15em] text-white/45 font-display leading-none text-center">
         {label}

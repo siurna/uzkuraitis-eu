@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Copy, Check, RotateCw, Trophy, Link as LinkIcon } from "lucide-react";
+import { Copy, Check, RotateCw, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -60,14 +60,18 @@ export function AdminRoomManageLink({
 
   return (
     <section className="glass-card rounded-xl p-5 flex flex-col gap-4">
-      <header className="flex items-center gap-2">
-        <LinkIcon className="h-4 w-4 text-flamingo" />
-        <h2 className="font-display text-xl">Links</h2>
+      <header className="flex items-start gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+          <LinkIcon className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="font-display text-xl leading-tight">Links</h2>
+          <p className="text-xs text-white/45 mt-0.5">Copy URLs the host + voters need.</p>
+        </div>
       </header>
 
       <div className="flex flex-col gap-2">
         <p className="text-xs uppercase tracking-widest text-white/50">
-          <Trophy className="inline h-3 w-3 mr-1 -mt-0.5" />
           Per-room admin (host)
         </p>
         <div className="flex items-center gap-2">

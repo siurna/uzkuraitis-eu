@@ -105,9 +105,20 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   // visible — i.e. above the on-screen keyboard). The chat panel is
   // sized to this directly, so the composer always sits flush above the
   // keyboard with no dead gap. `composerFocused` toggles whether we
-  // reserve space for the bottom dock (it's hidden while typing).
+  // reserve space for the bottom dock (it's hidden while typing on
+  // mobile). On desktop the dock stays visible no matter what, so we
+  // ALSO check whether a keyboard is actually up — focused without a
+  // keyboard (i.e. desktop) keeps the dock-reserve.
   const [viewport, setViewport] = useState<{ h: number; top: number } | null>(null);
   const [composerFocused, setComposerFocused] = useState(false);
+  // A keyboard is "up" when the visual viewport is meaningfully shorter
+  // than the window's layout viewport (≈100px of difference catches
+  // virtually every mobile keyboard while ignoring the few-pixel jitter
+  // that desktop sometimes produces when an input focuses).
+  const keyboardUp =
+    !!viewport &&
+    typeof window !== "undefined" &&
+    window.innerHeight - viewport.h > 100;
   const dragDepth = useRef(0);
 
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -839,14 +850,19 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     // mounted, scroll + state intact) when off the chat tab.
     <main
       className={`fixed inset-x-0 z-10 flex justify-center px-3 sm:px-4 ${
-        composerFocused
+        composerFocused && keyboardUp
           ? "pt-[env(safe-area-inset-top)]"
           : "pt-[calc(env(safe-area-inset-top)+3.5rem)]"
       }`}
       style={{
         top: viewport?.top ?? 0,
+        // The "consume the full visual viewport" mode is for the
+        // mobile-keyboard-up case (chat hugs the keyboard top, dock is
+        // CSS-hidden below md). On desktop, focus doesn't summon a
+        // keyboard, so we keep reserving the dock space — otherwise
+        // the dock overlaps the composer.
         height: viewport
-          ? composerFocused
+          ? composerFocused && keyboardUp
             ? viewport.h
             : `calc(${viewport.h}px - env(safe-area-inset-bottom) - 4.75rem)`
           : "calc(100dvh - env(safe-area-inset-bottom) - 4.75rem)",

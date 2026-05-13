@@ -161,11 +161,13 @@ export function GifPicker({
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-dark-blue-200 pointer-events-none" />
                 <input
                   ref={inputRef}
-                  // type="search" gives us the native clear pill on some
-                  // platforms; we render our own X regardless. name/auto*
-                  // explicitly block the phone's "username / email"
-                  // autofill prompt that fires on plain text inputs.
-                  type="search"
+                  // type="text" not "search" — the native ::-webkit-
+                  // search-cancel-button was drawing a second X on top
+                  // of ours (the "double X" we keep hearing about). We
+                  // render our own clear control so we don't need the
+                  // browser's. name/auto* block the phone's "username/
+                  // email" autofill prompt that fires on text inputs.
+                  type="text"
                   name="gif-search"
                   autoComplete="off"
                   autoCorrect="off"
@@ -180,21 +182,29 @@ export function GifPicker({
                              focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 transition"
                   autoFocus
                 />
-                {query.length > 0 && (
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      setQuery("");
-                      inputRef.current?.focus();
-                    }}
-                    aria-label={t(lang, "clear")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center
-                               rounded-full text-white/55 hover:text-white hover:bg-white/10 transition"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
+                {/* Our clear-X — animated in/out so it doesn't pop. */}
+                <AnimatePresence>
+                  {query.length > 0 && (
+                    <motion.button
+                      key="clear"
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setQuery("");
+                        inputRef.current?.focus();
+                      }}
+                      aria-label={t(lang, "clear")}
+                      initial={{ opacity: 0, scale: 0.6 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.6 }}
+                      transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center
+                                 rounded-full text-white/55 hover:text-white hover:bg-white/10 transition"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </motion.button>
+                  )}
+                </AnimatePresence>
               </div>
               <button
                 type="button"

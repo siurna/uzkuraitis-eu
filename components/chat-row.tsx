@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Reply, Pencil, Copy, Trash2, Smile, Loader2, Mic, Music, Trophy, Plus,
+  Reply, Pencil, Copy, Trash2, Smile, Loader2, Mic, Music, Trophy, Plus, ChevronRight,
 } from "lucide-react";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
@@ -11,6 +11,8 @@ import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { HeartFlag } from "@/components/flag";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { ChatBroadcastCard } from "@/components/chat-broadcast-cards";
+import { useRoomTab } from "@/components/room-shell";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { useProfile } from "@/components/profile-sheet";
 import { useParticles } from "@/components/particle-layer";
@@ -307,6 +309,7 @@ export function ChatRow({
   const deepDive = useCountryDeepDive();
   const profile = useProfile();
   const particles = useParticles();
+  const roomTab = useRoomTab();
   const translateOn = useTranslateEnabled();
   const lastTap = useRef(0); // for double-tap-a-text-bubble → ❤️
   // Bot rows (the commentator) don't open a profile — there's no DB row
@@ -334,6 +337,7 @@ export function ChatRow({
     onReact(emoji);
   };
   const [addOpen, setAddOpen] = useState(false); // "+ TOP 10" sheet (now-playing card)
+  const [reactorsOpen, setReactorsOpen] = useState(false); // "who reacted?" sheet
   // For the *active* now-playing card: where this country sits in your
   // draft TOP 10 (1-based), or null if it isn't on your ballot. Drives
   // the badge ("#3" vs "+ TOP 10"); re-reads on uzk:ballot-changed.
@@ -404,27 +408,67 @@ export function ChatRow({
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="my-1"
+        className="my-1 px-1"
       >
         <div className="rainbow-border rounded-2xl">
-          <div className="rounded-[14px] bg-dark-blue-900/85 px-4 py-3">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-gold font-display leading-tight flex items-center gap-1.5">
-              <Trophy className="h-3 w-3" />
-              {t(lang, "home_results")}
-            </p>
-            <ol className="mt-2 flex flex-col gap-1">
+          <div
+            className="rounded-[14px] p-5 flex flex-col gap-4
+                       bg-gradient-to-br from-yellow/25 via-flamingo/25 to-purple/40
+                       shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
+          >
+            <header className="flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-yellow" fill="currentColor" />
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white/85 font-display leading-tight">
+                {t(lang, "home_results")}
+              </p>
+            </header>
+
+            <ol className="flex flex-col gap-1.5">
               {podium.length > 0 ? (
                 podium.map((p, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm">
-                    <span className="text-base shrink-0">{medals[i] ?? "•"}</span>
+                  <li
+                    key={i}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2
+                                ${i === 0 ? "bg-white/15 ring-1 ring-white/25" : "bg-white/[0.06] ring-1 ring-white/10"}`}
+                  >
+                    <span className="text-xl shrink-0 w-7 text-center">{medals[i] ?? "•"}</span>
                     <span className="font-display text-white truncate flex-1">{p.name}</span>
-                    <span className="tabular-nums text-white/70 shrink-0">{p.total}</span>
+                    <span className="tabular-nums font-display text-white shrink-0">{p.total}</span>
                   </li>
                 ))
               ) : (
-                <li className="text-sm text-white/60">{m.body}</li>
+                <li className="text-sm text-white/85">{m.body}</li>
               )}
             </ol>
+
+            {/* Two CTAs — "see your breakdown" + "see the full list".
+                Both jump to the Results tab; the second flips to the
+                board sub-tab via the same event the home banner uses. */}
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => roomTab.setTab("vote")}
+                className="flex-1 h-10 rounded-xl bg-white text-dark-blue font-display text-sm
+                           active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+              >
+                {t(lang, "sys_cta_results_breakdown")}
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  roomTab.setTab("vote");
+                  window.dispatchEvent(
+                    new CustomEvent("uzk:results-tab", { detail: "board" }),
+                  );
+                }}
+                className="flex-1 h-10 rounded-xl bg-white/15 ring-1 ring-white/25 text-white font-display text-sm
+                           active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+              >
+                {t(lang, "sys_cta_results_board")}
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </motion.li>
@@ -528,32 +572,30 @@ export function ChatRow({
   }
 
   if (isSystem) {
-    const sys = m.meta as { sysKey?: string; sysArg?: string | null } | null;
-    const text = sys?.sysKey ? tDyn(lang, sys.sysKey, sys.sysArg ?? undefined) : m.body;
-    // Host CTAs ("Lines are open!", "Turn on notifications", "Don't
-    // forget bonus bets", "Leading the room right now…") get a full-
-    // width call-out: rainbow-stroked, centred text, big enough to
-    // actually catch the eye in a busy chat. Other system lines
-    // (someone voted, show transitions) stay as the small muted pill.
+    const sys = (m.meta ?? null) as {
+      sysKey?: string;
+      sysArg?: string | null;
+      codes?: string[];
+    } | null;
     const isCta = !!sys?.sysKey && sys.sysKey.startsWith("sys_cta_");
     if (isCta) {
+      // Each host CTA gets a tailored card in chat-broadcast-cards.tsx.
+      // The cards wrap themselves in `rainbow-border` + are full-width;
+      // we just give them an `<li>` slot here.
       return (
         <motion.li
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          className="rainbow-border rounded-2xl"
+          className="px-1"
         >
-          <div
-            className="rounded-[14px] px-4 py-3 text-center
-                       bg-gradient-to-br from-dark-blue-800/95 to-dark-blue-900/95
-                       text-white font-display text-sm leading-snug text-balance"
-          >
-            {text}
-          </div>
+          <ChatBroadcastCard meta={sys} lang={lang} />
         </motion.li>
       );
     }
+    // Non-CTA system lines (someone voted, show transitions) stay as
+    // the tiny muted pill — they're meta-narration, not a host shout.
+    const text = sys?.sysKey ? tDyn(lang, sys.sysKey, sys.sysArg ?? undefined) : m.body;
     return (
       <motion.li initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center">
         <span className="text-[11px] text-white/40 px-3 py-1 rounded-full bg-white/[0.03]">{text}</span>
@@ -761,22 +803,40 @@ export function ChatRow({
                     className={`absolute bottom-full mb-2 z-30 ${mine ? "right-0" : "left-0"}`}
                   >
                     <div className="flex items-center gap-2 p-2 rounded-full bg-black/80 ring-1 ring-white/12 backdrop-blur-md shadow-xl">
-                      {QUICK_REACTS.map(({ emoji, bg }, i) => (
-                        <motion.button
-                          key={emoji}
-                          type="button"
-                          onClick={(e) => reactWithRain(e, emoji)}
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0, opacity: 0 }}
-                          transition={{ delay: i * 0.012, type: "spring", stiffness: 1000, damping: 24 }}
-                          className={`h-11 w-11 shrink-0 rounded-full grid place-items-center text-xl leading-none
-                                      ring-1 ring-white/20 bg-gradient-to-br ${bg}
-                                      shadow-[0_4px_12px_-3px_rgba(0,0,0,0.55)] transition-transform active:scale-90`}
-                        >
-                          <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">{emoji}</span>
-                        </motion.button>
-                      ))}
+                      {QUICK_REACTS.map(({ emoji, bg }, i) => {
+                        const picked = !!m.reactions[emoji]?.mine;
+                        // Anything I've already reacted with: full-colour
+                        // and ringed in flamingo. Anything I haven't:
+                        // greyscaled + dimmed so my current choice
+                        // reads at a glance.
+                        return (
+                          <motion.button
+                            key={emoji}
+                            type="button"
+                            onClick={(e) => reactWithRain(e, emoji)}
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0, opacity: 0 }}
+                            transition={{ delay: i * 0.012, type: "spring", stiffness: 1000, damping: 24 }}
+                            className={`relative h-11 w-11 shrink-0 rounded-full grid place-items-center text-xl leading-none
+                                        bg-gradient-to-br ${bg}
+                                        shadow-[0_4px_12px_-3px_rgba(0,0,0,0.55)] transition-transform active:scale-90
+                                        ${
+                                          picked
+                                            ? "ring-2 ring-flamingo brightness-110"
+                                            : "ring-1 ring-white/20 grayscale opacity-65 hover:opacity-100 hover:grayscale-0"
+                                        }`}
+                          >
+                            <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">{emoji}</span>
+                            {picked && (
+                              <span
+                                className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-flamingo ring-2 ring-black/80"
+                                aria-hidden
+                              />
+                            )}
+                          </motion.button>
+                        );
+                      })}
                     </div>
                   </motion.div>
                   {/* actions — below the bubble */}
@@ -789,7 +849,19 @@ export function ChatRow({
                     onClick={(e) => e.stopPropagation()}
                     className={`absolute top-full mt-2 z-30 ${mine ? "right-0" : "left-0"}`}
                   >
-                    <div className="flex flex-col rounded-2xl bg-black/80 ring-1 ring-white/12 backdrop-blur-md overflow-hidden shadow-xl min-w-[10rem]">
+                    {/* Glassy actions menu — slightly translucent black
+                        with a stronger saturating backdrop blur, a
+                        gradient inner gloss on the top edge, and a
+                        subtle white inner border. Reads as one solid
+                        pill while letting the chat behind it glow
+                        through. */}
+                    <div
+                      className="flex flex-col rounded-2xl overflow-hidden min-w-[10.5rem]
+                                 bg-gradient-to-b from-white/12 to-white/[0.04]
+                                 ring-1 ring-white/15
+                                 backdrop-blur-xl backdrop-saturate-150
+                                 shadow-[0_18px_44px_-12px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.18)]"
+                    >
                       <MenuAction onClick={onReply} icon={Reply} label={t(lang, "chat_reply")} />
                       {canEdit && <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />}
                       {m.body && <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />}
@@ -806,7 +878,7 @@ export function ChatRow({
           )}
 
           {Object.keys(m.reactions).length > 0 && (
-            <div className={`flex flex-wrap gap-1 ${mine ? "self-end" : "self-start"}`}>
+            <div className={`flex flex-wrap items-center gap-1 ${mine ? "self-end" : "self-start"}`}>
               {Object.entries(m.reactions).map(([emoji, info]) => (
                 <button
                   key={emoji}
@@ -824,8 +896,47 @@ export function ChatRow({
                   <span className="tabular-nums">{info.count}</span>
                 </button>
               ))}
+              {/* Lightweight "who reacted?" — opens a sheet listing each
+                  emoji with the names behind it. Hidden when the only
+                  reactor is the viewer (their own list is trivial). */}
+              {reactionTotal > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setReactorsOpen(true)}
+                  aria-label={t(lang, "chat_who_reacted")}
+                  className="h-6 px-2 rounded-full text-[10px] uppercase tracking-[0.12em] font-display
+                             text-white/55 hover:text-white hover:bg-white/[0.08] transition"
+                >
+                  {t(lang, "chat_who_reacted")}
+                </button>
+              )}
             </div>
           )}
+
+          <BottomSheet
+            open={reactorsOpen}
+            onClose={() => setReactorsOpen(false)}
+            title={t(lang, "chat_reactors_title")}
+          >
+            <ul className="flex flex-col gap-3">
+              {Object.entries(m.reactions).map(([emoji, info]) => (
+                <li
+                  key={emoji}
+                  className="flex items-start gap-3 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3"
+                >
+                  <span className="text-2xl leading-none shrink-0">{emoji}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/45 font-display mb-1 tabular-nums">
+                      {info.count}
+                    </p>
+                    <p className="text-sm text-white/85 leading-snug break-words">
+                      {info.names.join(", ")}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </BottomSheet>
 
           {mine && seenBy > 0 && (
             <span className="text-[10px] text-white/35 self-end">

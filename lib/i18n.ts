@@ -53,7 +53,6 @@ const S = {
   // ── Auto-translate to English (Settings) ─────────────────────────
   settings_translate_h:    { en: "Auto-translate to English", lt: "Auto-vertimas į anglų" },
   settings_translate_sub:  { en: "We'll pop a clean English rendering under any Lithuanian message — slang, cultural beats, all of it.", lt: "Po lietuvišku tekstu paberiama angliška versija." },
-  translate_eyebrow:       { en: "in English", lt: "angliškai" },
 
   // ── NameGate / SettingsModal ─────────────────────────────────────
   welcome:           { en: "Welcome", lt: "Labas!" },
@@ -193,6 +192,8 @@ const S = {
   chat_reply:        { en: "Reply", lt: "Atsakyti" },
   chat_delete:       { en: "Delete", lt: "Ištrinti" },
   chat_card:         { en: "card", lt: "kortelė" },
+  chat_who_reacted:  { en: "Who reacted?", lt: "Kas reagavo?" },
+  chat_reactors_title: { en: "Reactions", lt: "Reakcijos" },
   // System (meta-narration) chat messages, rendered in the recipient's
   // language from meta.sysKey. The server still stores the EN text in
   // `body` for back-compat / debuggability.
@@ -205,10 +206,26 @@ const S = {
   sys_show_doors:    { en: "🎬 Doors open, the show hasn't started yet.", lt: "🎬 Durys atvertos, šou dar neprasidėjo." },
   sys_results_in:    { en: "🏆 Results are in, leaderboard's live!", lt: "🏆 Rezultatai jau čia, lyderių lentelė gyva!" },
   sys_cta_notifications: { en: "🔔 Turn on notifications so you don't miss a beat (tap your avatar).", lt: "🔔 Įsijunk pranešimus, kad nieko nepražiopsotum (bakstelėk savo avatarą)." },
+  sys_cta_notifications_title: { en: "Notifications", lt: "Pranešimai" },
+  sys_cta_notifications_sub: { en: "Stay in the loop while the show runs.", lt: "Likite kurse, kol vyksta šou." },
+  sys_cta_notifications_on:  { en: "On", lt: "Įjungta" },
+  sys_cta_notifications_off: { en: "Off", lt: "Išjungta" },
+  sys_cta_notifications_unsupported: { en: "Unsupported", lt: "Nepalaikoma" },
   sys_cta_vote:      { en: "🗳️ Lines are open, get your TOP 10 in!", lt: "🗳️ Linijos atviros, užfiksuok savo TOP 10!" },
+  sys_cta_vote_title: { en: "Lines are open", lt: "Balsavimas pradėtas" },
+  sys_cta_vote_sub_empty:    { en: "Drop your TOP 10 — every spot is points.", lt: "Užfiksuok TOP 10 — kiekviena vieta — taškai." },
+  sys_cta_vote_sub_progress: { en: (n: number) => `Your ballot is ${n}/10. Finish it off.`, lt: (n: number) => `Tavo balsas: ${n}/10. Užbaik.` },
+  sys_cta_vote_sub_done:     { en: "All 10 in — tap to tweak.", lt: "Visi 10 vietoje — bakstelėk pakeisti." },
   sys_cta_bet:      { en: "🎲 Don't forget your bonus bets, every one is free points if you call it.", lt: "🎲 Nepamiršk bonus statymų, kiekvienas pataikytas, tai nemokami taškai." },
+  sys_cta_bet_title_suggest: { en: "Bonus bet idea", lt: "Bonus statymo idėja" },
+  sys_cta_bet_title_done:    { en: "All bets in", lt: "Visi statymai pateikti" },
+  sys_cta_bet_suggest_sub:   { en: (label: string) => `You haven't placed: ${label}`, lt: (label: string) => `Dar neuždėjai: ${label}` },
+  sys_cta_bet_sub_done:      { en: "Nice. Now relax and wait for the points.", lt: "Šaunu. Dabar atsipalaiduok ir lauk taškų." },
   sys_cta_top3:      { en: (arg: string) => `🏆 Leading the room right now: ${arg}`, lt: (arg: string) => `🏆 Šiuo metu pirmauja: ${arg}` },
+  sys_cta_top3_eyebrow: { en: "Top 3 right now", lt: "Šiuo metu pirmauja" },
   sys_cta_top3_empty:{ en: "🏆 No votes yet, be the first!", lt: "🏆 Dar nebalsuota, būk pirmas!" },
+  sys_cta_results_breakdown: { en: "Your breakdown", lt: "Tavo išklotinė" },
+  sys_cta_results_board:     { en: "Full list", lt: "Visa lentelė" },
   chat_edit:         { en: "Edit", lt: "Redaguoti" },
   chat_edited:       { en: "edited", lt: "redaguota" },
   chat_editing:      { en: "Editing your message", lt: "Redaguoji žinutę" },

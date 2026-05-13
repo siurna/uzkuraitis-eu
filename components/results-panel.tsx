@@ -187,6 +187,17 @@ export function ResultsPanel() {
     loadBallot();
   }, [load, loadBallot]);
 
+  // Lets the chat broadcast "Results are in" card jump straight to the
+  // board sub-tab without exposing this component's state.
+  useEffect(() => {
+    const onSubTab = (e: Event) => {
+      const sub = (e as CustomEvent).detail;
+      if (sub === "me" || sub === "board") setTab(sub);
+    };
+    window.addEventListener("uzk:results-tab", onSubTab);
+    return () => window.removeEventListener("uzk:results-tab", onSubTab);
+  }, []);
+
   useEventListener(({ event }) => {
     if (event.type === "leaderboard:updated") {
       load();

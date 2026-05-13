@@ -38,18 +38,29 @@ export async function POST(req: Request) {
     // in" line if nothing's scoreable yet).
     await postResultsMessage(room.code, { id: room.id, homeCountryCode: room.homeCountryCode, tallyEnabled: true });
   } else {
-    // top3 — the live fan aggregate.
+    // top3 — the live fan aggregate. We pass the country CODES in
+    // `data.codes` so the client can render its own podium (heart-flags,
+    // names in the viewer's language), and keep the formatted string as
+    // `arg` so older clients fall back to plain text.
     const rows = await db.execute<{ country_code: string; total_points: number }>(sql`
       SELECT v.country_code AS country_code, COALESCE(SUM(v.points), 0)::int AS total_points
       FROM ${votes} v INNER JOIN ${voters} vt ON vt.id = v.voter_id
       WHERE vt.room_id = ${room.id}
       GROUP BY v.country_code ORDER BY total_points DESC LIMIT 3`);
-    const list = rows.rows.map((r) => {
-      const c = countries.find((x) => x.code === r.country_code);
-      return c ? `${c.flag} ${c.name}` : r.country_code.toUpperCase();
-    });
-    if (list.length === 0) await postSystemMessage(room.code, room.id, { key: "sys_cta_top3_empty" });
-    else await postSystemMessage(room.code, room.id, { key: "sys_cta_top3", arg: list.join(" · ") });
+    const codes = rows.rows.map((r) => r.country_code);
+    if (codes.length === 0) {
+      await postSystemMessage(room.code, room.id, { key: "sys_cta_top3_empty" });
+    } else {
+      const list = codes.map((cc) => {
+        const c = countries.find((x) => x.code === cc);
+        return c ? `${c.flag} ${c.name}` : cc.toUpperCase();
+      });
+      await postSystemMessage(room.code, room.id, {
+        key: "sys_cta_top3",
+        arg: list.join(" · "),
+        data: { codes },
+      });
+    }
   }
   return NextResponse.json({ ok: true });
 }
