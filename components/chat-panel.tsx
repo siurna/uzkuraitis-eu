@@ -28,6 +28,7 @@ import { GifPicker } from "@/components/gif-picker";
 import { ChatRow, type Message } from "@/components/chat-row";
 import { Lightbox } from "@/components/chat-lightbox";
 import { useLang, t } from "@/lib/i18n";
+import { haptic } from "@/lib/haptics";
 
 // How many messages we keep in the DOM. The API already windows to the
 // last ~50 per fetch; this is the cap once "load earlier" pages kick in.
@@ -302,6 +303,8 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     atBottomRef.current = near;
     setAtBottom(near);
     if (near) setNewCount(0);
+    // Reached the top → pull in the previous page.
+    if (hasMore && !loadingMore && el.scrollTop < 80) void loadEarlier();
   };
 
   const scrollToBottom = (smooth = true) => {
@@ -448,6 +451,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const send = async () => {
     const text = body.trim();
     if (!text) return;
+    haptic(6);
     const reply = replyTo?.id ?? null;
     const mentions = participantNames.filter((n) => mentionsName(text, n));
     const optimistic = makeOptimistic({ kind: "text", body: text });
@@ -750,6 +754,11 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         <div
           ref={listRef}
           onScroll={onScroll}
+          // Scrolling the history with a finger dismisses the keyboard,
+          // the way every native chat does.
+          onTouchMove={() => {
+            if (document.activeElement === taRef.current) taRef.current?.blur();
+          }}
           className="flex-1 min-h-0 overflow-y-auto py-4 flex flex-col gap-3 fade-scroll-y"
           onClick={() => menuFor && setMenuFor(null)}
         >
