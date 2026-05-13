@@ -2,25 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  closestCenter,
-} from "@dnd-kit/core";
+import { DndContext, closestCenter } from "@dnd-kit/core";
 import { motion, AnimatePresence } from "motion/react";
 import {
   SortableContext,
-  arrayMove,
   verticalListSortingStrategy,
-  sortableKeyboardCoordinates,
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useDragDropBallot } from "@/lib/use-drag-drop-ballot";
 import { ListOrdered, Sparkles, Share2, ScrollText, GripVertical, Loader2 } from "lucide-react";
 import { countries, getCountry, countryName } from "@/lib/countries";
 import { Flag, HeartOutline } from "@/components/flag";
@@ -79,19 +69,18 @@ export function VoteForm({
   // Which ballot slot is currently being edited via the country drawer.
   const [pickingPoints, setPickingPoints] = useState<Points | null>(null);
   // Slot that just got filled / moved into — gets a one-shot heartbeat
-  // pulse. `flashedSlots` are the rows a drag shuffled past — they
-  // flamingo-flash briefly so it's obvious what just rearranged.
+  // pulse. `flashedSlots` (owned by useDragDropBallot) are the rows a
+  // drag shuffled past so they can flamingo-flash briefly.
   const [pulsingPoints, setPulsingPoints] = useState<Points | null>(null);
-  const [flashedSlots, setFlashedSlots] = useState<ReadonlySet<Points>>(() => new Set());
 
   const homeCountry = getCountry(homeCountryCode);
   const lang = useLang();
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
+  const { sensors, onDragEnd, flashedSlots } = useDragDropBallot<Points>({
+    slots,
+    setSlots,
+    setPulsingPoints,
+  });
 
   // Restore previous ballot / prediction / bets on mount.
   useEffect(() => {
@@ -223,32 +212,6 @@ export function VoteForm({
     );
     setPulsingPoints(points);
     window.setTimeout(() => setPulsingPoints(null), 1100);
-  };
-
-  const onDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id) return;
-    const oldIndex = slots.findIndex((s) => `slot-${s.points}` === active.id);
-    const newIndex = slots.findIndex((s) => `slot-${s.points}` === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-    // We move country assignments, not the point values themselves — points
-    // stay fixed at 12,10,8,...,1. arrayMove on the country slice is what
-    // the user actually sees and wants.
-    const reorderedCountries = arrayMove(
-      slots.map((s) => s.countryCode),
-      oldIndex,
-      newIndex,
-    );
-    setSlots(slots.map((s, i) => ({ ...s, countryCode: reorderedCountries[i] })));
-    // Make the change legible: the country you dragged heartbeats in its
-    // new home, and every row it shuffled past flamingo-flashes briefly.
-    const lo = Math.min(oldIndex, newIndex);
-    const hi = Math.max(oldIndex, newIndex);
-    setFlashedSlots(new Set(slots.slice(lo, hi + 1).map((s) => s.points)));
-    setPulsingPoints(slots[newIndex].points);
-    window.setTimeout(() => {
-      setFlashedSlots(new Set());
-      setPulsingPoints(null);
-    }, 1100);
   };
 
   const castVote = async (isUpdate: boolean) => {

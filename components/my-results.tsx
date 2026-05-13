@@ -46,7 +46,7 @@ export function MyResults() {
   }, [tallyEnabled, load]);
 
   useEventListener(({ event }) => {
-    if ((event as { type?: string }).type === "leaderboard:updated") load();
+    if (event.type === "leaderboard:updated") load();
   });
 
   if (!tallyEnabled || !rows || rows.length === 0) return null;

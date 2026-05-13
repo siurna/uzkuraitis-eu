@@ -8,6 +8,7 @@ import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { pushToRoom } from "@/lib/push";
 import { guardSession } from "@/lib/server-session";
 import { checkAndIncrement } from "@/lib/rate-limit";
+import { toChatPayload } from "@/lib/chat-system";
 
 // Per-room chat. GET returns a window of messages with their reactions
 // folded in; POST inserts a new message and fans-out chat:new +
@@ -195,18 +196,7 @@ export async function POST(req: Request, { params }: RouteCtx) {
   await broadcastToRoom(code, {
     type: "chat:new",
     id: row.id,
-    message: {
-      id: row.id,
-      sessionId: row.sessionId,
-      name: row.name,
-      avatarId: row.avatarId,
-      kind: row.kind,
-      body: row.body,
-      gifUrl: row.gifUrl,
-      replyTo: row.replyTo,
-      meta: row.meta,
-      createdAt: row.createdAt.toISOString(),
-    },
+    message: toChatPayload(row),
   });
 
   // Push: chatAll subscribers OR (chatReplies && replyTo author === them).

@@ -13,6 +13,9 @@ import {
 } from "@/lib/db/schema";
 import {
   scoreVoter,
+  HIGHLIGHT_THRESHOLD,
+  HIGHLIGHT_POINTS_PER,
+  HIGHLIGHT_POINTS_MAX,
   type Ballot,
   type OfficialPlacements,
   type OfficialFacts,
@@ -26,16 +29,9 @@ import { TRIVIA_POINTS } from "@/lib/trivia";
 // API route AND by the "results are in" chat card. Per-room result
 // overrides take precedence over the global official tables.
 
-// "Chat highlights" bonus: a small social kicker layered on top of the
-// contest score (which stays pure in lib/scoring.ts). A message that
-// drew ≥ HIGHLIGHT_THRESHOLD reactions is a highlight; each one a voter
-// authored is worth HIGHLIGHT_POINTS_PER, capped per voter at
-// HIGHLIGHT_POINTS_MAX. It's read off the current reaction counts at
-// leaderboard-compute time (i.e. once results are entered the show is
-// over and it's effectively frozen).
-const HIGHLIGHT_THRESHOLD = 5;
-const HIGHLIGHT_POINTS_PER = 2;
-export const HIGHLIGHT_POINTS_MAX = 12;
+// Re-export for callers that already pull HIGHLIGHT_POINTS_MAX from this
+// module (kept for compatibility while the dust settles).
+export { HIGHLIGHT_POINTS_MAX };
 
 export type LeaderboardRow = {
   voterId: string;

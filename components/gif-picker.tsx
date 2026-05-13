@@ -210,7 +210,7 @@ export function GifPicker({
               {loading && results.length === 0 ? (
                 <div className="grid grid-cols-2 gap-2">
                   {[0, 1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="aspect-video rounded-xl bg-white/[0.05] animate-pulse" />
+                    <div key={i} className="aspect-video rounded-xl bg-white/[0.05] skeleton" />
                   ))}
                 </div>
               ) : results.length === 0 ? (

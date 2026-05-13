@@ -10,11 +10,31 @@ import {
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { getCountry } from "@/lib/countries";
 import { computeRoomLeaderboard } from "@/lib/leaderboard";
+import type { ChatMessagePayload, JsonObject } from "@/lib/liveblocks";
 
 // A system chat message, identified by its i18n key (+ optional arg).
 // The client renders it in the *recipient's* language from meta.sysKey;
 // `body` stays null (the client never needs it for these).
 export type SystemMsg = { key: string; arg?: string };
+
+// Row-out-of-Drizzle → broadcast-shaped payload. `meta` is a jsonb bag
+// the inserter built — opaque to TS — so we cast it at the boundary.
+export function toChatPayload(
+  row: typeof chatMessages.$inferSelect,
+): ChatMessagePayload {
+  return {
+    id: row.id,
+    sessionId: row.sessionId,
+    name: row.name,
+    avatarId: row.avatarId,
+    kind: row.kind,
+    body: row.body,
+    gifUrl: row.gifUrl,
+    replyTo: row.replyTo,
+    meta: row.meta as JsonObject | null,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
 
 // Post a "system" chat message — the meta-narration of the room
 // ("Tomas cast their vote", "Show's underway", "Voting closed"). These
@@ -42,18 +62,7 @@ export async function postSystemMessage(
       type: "chat:new",
       id: row.id,
       quiet: true,
-      message: {
-        id: row.id,
-        sessionId: row.sessionId,
-        name: row.name,
-        avatarId: row.avatarId,
-        kind: row.kind,
-        body: row.body,
-        gifUrl: row.gifUrl,
-        replyTo: row.replyTo,
-        meta: row.meta,
-        createdAt: row.createdAt.toISOString(),
-      },
+      message: toChatPayload(row),
     });
   } catch {
     /* a missing announcement is not worth a 500 */
@@ -89,18 +98,7 @@ export async function postNowPlayingMessage(
       type: "chat:new",
       id: row.id,
       quiet: true,
-      message: {
-        id: row.id,
-        sessionId: row.sessionId,
-        name: row.name,
-        avatarId: row.avatarId,
-        kind: row.kind,
-        body: row.body,
-        gifUrl: row.gifUrl,
-        replyTo: row.replyTo,
-        meta: row.meta,
-        createdAt: row.createdAt.toISOString(),
-      },
+      message: toChatPayload(row),
     });
   } catch {
     /* not worth a 500 */
@@ -132,18 +130,7 @@ export async function postResultsMessage(
     await broadcastToRoom(roomCode, {
       type: "chat:new",
       id: row.id,
-      message: {
-        id: row.id,
-        sessionId: row.sessionId,
-        name: row.name,
-        avatarId: row.avatarId,
-        kind: row.kind,
-        body: row.body,
-        gifUrl: row.gifUrl,
-        replyTo: row.replyTo,
-        meta: row.meta,
-        createdAt: row.createdAt.toISOString(),
-      },
+      message: toChatPayload(row),
     });
   } catch {
     /* not worth a 500 */
@@ -191,18 +178,7 @@ export async function postCommentatorMessage(
       type: "chat:new",
       id: row.id,
       quiet: true,
-      message: {
-        id: row.id,
-        sessionId: row.sessionId,
-        name: row.name,
-        avatarId: row.avatarId,
-        kind: row.kind,
-        body: row.body,
-        gifUrl: row.gifUrl,
-        replyTo: row.replyTo,
-        meta: row.meta,
-        createdAt: row.createdAt.toISOString(),
-      },
+      message: toChatPayload(row),
     });
   } catch {
     /* a missing commentary line is not worth a 500 */

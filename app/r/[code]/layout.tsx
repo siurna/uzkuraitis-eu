@@ -8,7 +8,7 @@ import { RoomShell } from "@/components/room-shell";
 // home country to a single client shell that owns:
 //   - <NameGate/> first-run identity drawer
 //   - <PresenceBar/> top header with brand mark + avatar tile
-//   - <NowPlaying/> strip (TODO when feature lands)
+//   - <NowPlayingTakeover/> full-screen flash when a country goes on stage
 //   - <RoomTabBar/> sticky bottom nav (mobile) / sticky top (desktop)
 //   - <ParticleLayer/> the one place flying hearts / emoji / swarms live
 //   - room live context (props that flip when admin toggles)

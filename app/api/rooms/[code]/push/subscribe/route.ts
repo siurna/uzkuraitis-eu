@@ -184,3 +184,5 @@ export async function DELETE(req: Request, { params }: RouteCtx) {
   }
   return NextResponse.json({ ok: true });
 }
+
+export const dynamic = "force-dynamic";

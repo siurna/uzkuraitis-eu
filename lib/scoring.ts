@@ -20,6 +20,15 @@ export const BIG_5 = ["gb", "de", "fr", "it", "es"] as const;
 export const HOST_COUNTRY = "at"; // 2026 host
 export const NONE_TOKEN = "NONE";  // sentinel for nul-points "no country" bet
 
+// "Chat highlights" bonus: a small social kicker layered on top of the
+// contest score. A message with ≥ HIGHLIGHT_THRESHOLD reactions is a
+// highlight; each one a voter authored is worth HIGHLIGHT_POINTS_PER,
+// capped per voter at HIGHLIGHT_POINTS_MAX. Lives here so leaderboard.ts
+// and the profile route share one source.
+export const HIGHLIGHT_THRESHOLD = 5;
+export const HIGHLIGHT_POINTS_PER = 2;
+export const HIGHLIGHT_POINTS_MAX = 12;
+
 // Eurovision points scale, matched up with placement.
 export const POINTS_BY_PLACEMENT: Record<number, number> = {
   1: 12, 2: 10, 3: 8, 4: 7, 5: 6, 6: 5, 7: 4, 8: 3, 9: 2, 10: 1,

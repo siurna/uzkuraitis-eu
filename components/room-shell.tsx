@@ -192,9 +192,8 @@ function RoomBody({ children }: { children: React.ReactNode }) {
   }, [isChat]);
 
   useEventListener(({ event }) => {
-    const ev = event as { type?: string; quiet?: boolean };
-    if (ev.type !== "chat:new") return;
-    if (ev.quiet) return; // meta/system lines (now-playing, "X voted"…) don't badge
+    if (event.type !== "chat:new") return;
+    if (event.quiet) return; // meta/system lines (now-playing, "X voted"…) don't badge
     if (isChat) return; // already looking at it
     setUnread((n) => Math.min(99, n + 1));
   });
@@ -305,13 +304,12 @@ function RoomLiveProvider({
   }, [refetch]);
 
   useEventListener(({ event }) => {
-    const ev = event as { type?: string; countryCode?: string | null };
-    if (ev.type === "room:updated") {
+    if (event.type === "room:updated") {
       refetch();
-    } else if (ev.type === "now-playing:change") {
+    } else if (event.type === "now-playing:change") {
       setState((prev) => ({
         ...prev,
-        nowPlayingCode: ev.countryCode ?? null,
+        nowPlayingCode: event.countryCode ?? null,
       }));
     }
   });

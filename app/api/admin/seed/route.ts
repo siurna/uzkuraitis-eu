@@ -168,6 +168,7 @@ export async function POST(req: Request) {
   // highlights — a few chat messages, each with enough reactions (>=5)
   // to surface on Home.
   const npCode = room.nowPlayingCode ?? null;
+  const inserted: string[] = [];
   for (let i = 0; i < count; i++) {
     // ~25% of highlights happen "in the interval" — no country attached.
     const npForThis = Math.random() < 0.25 ? null : npCode ?? pick(codes);
@@ -183,6 +184,7 @@ export async function POST(req: Request) {
       })
       .returning({ id: chatMessages.id });
     if (!msg) continue;
+    inserted.push(msg.id);
     // 3–5 distinct emojis × 2–4 people each → at least 6 reactions.
     for (const emoji of shuffled(HL_EMOJIS).slice(0, 3 + Math.floor(Math.random() * 3))) {
       const n = 2 + Math.floor(Math.random() * 3);
@@ -194,7 +196,12 @@ export async function POST(req: Request) {
       }
     }
   }
-  await broadcastToRoom(room.code, { type: "chat:new", quiet: true });
-  await broadcastToRoom(room.code, { type: "chat:react" });
+  // Nudge listeners (highlights tile, chat panel) per inserted message —
+  // each event carries the real id so chat-side updaters can fetch only
+  // what they need rather than refetching the world.
+  for (const id of inserted) {
+    await broadcastToRoom(room.code, { type: "chat:new", id, quiet: true });
+    await broadcastToRoom(room.code, { type: "chat:react", id });
+  }
   return NextResponse.json({ ok: true, created: count });
 }

@@ -116,7 +116,7 @@ export function NotificationToggles() {
   // settings sheet doesn't lurch when this section materialises.
   if (state === null) {
     return (
-      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 h-[3.25rem] animate-pulse" />
+      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 h-[3.25rem] skeleton" />
     );
   }
 

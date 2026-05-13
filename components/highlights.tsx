@@ -49,8 +49,13 @@ export function Highlights() {
   }, [load]);
 
   useEventListener(({ event }) => {
-    const ev = (event as { type?: string }).type;
-    if (ev === "chat:react" || ev === "chat:new" || ev === "chat:delete") load();
+    if (
+      event.type === "chat:react" ||
+      event.type === "chat:new" ||
+      event.type === "chat:delete"
+    ) {
+      load();
+    }
   });
 
   if (items.length === 0) return null;

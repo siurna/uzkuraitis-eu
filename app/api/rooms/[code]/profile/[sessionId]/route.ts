@@ -13,6 +13,7 @@ import {
 import { findRoomByCode } from "@/lib/rooms";
 import {
   scoreTopTenBreakdown,
+  HIGHLIGHT_THRESHOLD,
   type Ballot,
   type TopTenPickBreakdown,
 } from "@/lib/scoring";
@@ -26,8 +27,6 @@ import {
 // and chat avatars.
 
 type RouteCtx = { params: Promise<{ code: string; sessionId: string }> };
-
-const HIGHLIGHT_THRESHOLD = 5;
 
 export async function GET(req: Request, { params }: RouteCtx) {
   const { code, sessionId } = await params;

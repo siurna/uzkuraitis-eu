@@ -29,8 +29,8 @@ export function NowPlayingTakeover() {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEventListener(({ event }) => {
-    if ((event as { type?: string }).type !== "now-playing:change") return;
-    const next = (event as { countryCode: string | null }).countryCode;
+    if (event.type !== "now-playing:change") return;
+    const next = event.countryCode;
     if (!next) {
       // Cleared — drop any showing takeover.
       if (timer.current) clearTimeout(timer.current);

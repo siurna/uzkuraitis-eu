@@ -84,17 +84,18 @@ export type NowPlayingChangeEvent = {
 // status…) — clients still render it, but it shouldn't bump the
 // unread-chat badge on the tab bar.
 
-// Recursive JSON type that satisfies Liveblocks' Json constraint —
-// chatMessages.meta is `Record<string, unknown>` in Drizzle's typing
-// but in practice it's always JSON, so callers cast at the broadcast
-// boundary.
-type LbJson =
+// chat_messages.meta is a free-form jsonb bag (Drizzle types it as
+// Record<string, unknown>). The payload uses a JSON-shaped recursive
+// alias so it satisfies Liveblocks' Json constraint — callers do a
+// single `as JsonObject` at the broadcast boundary.
+export type JsonValue =
   | string
   | number
   | boolean
   | null
-  | LbJson[]
-  | { [k: string]: LbJson };
+  | JsonValue[]
+  | { [k: string]: JsonValue };
+export type JsonObject = { [k: string]: JsonValue };
 
 export type ChatMessagePayload = {
   id: string;
@@ -105,7 +106,7 @@ export type ChatMessagePayload = {
   body: string | null;
   gifUrl: string | null;
   replyTo: string | null;
-  meta: LbJson | null;
+  meta: JsonObject | null;
   createdAt: string;
 };
 export type ChatNewEvent = {

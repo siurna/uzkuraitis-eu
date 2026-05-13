@@ -420,6 +420,18 @@
   70%      { transform: scaleY(1);    }
 }
 
+/* Loading skeletons: a slow opacity fade that's deliberately calmer than
+   the heartbeat. `animate-pulse` from Tailwind would also work, but we
+   want a distinct motion language — hearts pulse, skeletons breathe —
+   so the brand reads clean. Apply with className="skeleton". */
+@keyframes uzk-skeleton {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.85; }
+}
+.skeleton {
+  animation: uzk-skeleton 1.8s ease-in-out infinite;
+}
+
 input, button, textarea, select {
   -webkit-appearance: none;
   appearance: none;

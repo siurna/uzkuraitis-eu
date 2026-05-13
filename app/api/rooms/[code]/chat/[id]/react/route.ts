@@ -6,6 +6,7 @@ import { chatMessages, chatReactions } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { guardSession } from "@/lib/server-session";
+import { checkAndIncrement } from "@/lib/rate-limit";
 
 // Toggle a reaction: if (msg, session, emoji) exists, delete it;
 // otherwise insert. Returns ok:true with `added` so clients can update
@@ -33,6 +34,20 @@ export async function POST(req: Request, { params }: RouteCtx) {
 
   const guard = await guardSession(session);
   if (guard) return guard;
+
+  // 60 reactions/min per session — quick double-taps fine, scripted
+  // spam capped.
+  const limited = await checkAndIncrement(
+    `chatreact:${room.id}:${session}`,
+    60,
+    60_000,
+  );
+  if (limited) {
+    return NextResponse.json(
+      { error: "Slow down — too many reactions." },
+      { status: 429 },
+    );
+  }
 
   // Make sure the message exists and is in this room.
   const [msg] = await db
@@ -79,3 +94,5 @@ export async function POST(req: Request, { params }: RouteCtx) {
   await broadcastToRoom(code, { type: "chat:react", id });
   return NextResponse.json({ ok: true, added });
 }
+
+export const dynamic = "force-dynamic";

@@ -6,6 +6,8 @@ import { z } from "zod";
 // from `zod/v4` (a parallel export the package ships alongside the v3
 // API we use for everything else).
 import * as zv4 from "zod/v4";
+import { readSignedSessionId } from "@/lib/server-session";
+import { checkAndIncrement } from "@/lib/rate-limit";
 
 // POST /api/translate
 //
@@ -89,6 +91,18 @@ export async function POST(req: Request) {
 
   const cached = cacheGet(text);
   if (cached) return NextResponse.json(cached);
+
+  // Identify the caller. Falls back to a coarse IP bucket so anonymous
+  // hits can't bypass the limit. Cache hits above don't count against
+  // the budget — only fresh model calls do.
+  const session = await readSignedSessionId();
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const bucket = `translate:${session ?? `ip:${ip}`}`;
+  const limited = await checkAndIncrement(bucket, 60, 60_000);
+  if (limited) {
+    return NextResponse.json({ translate: false, text: "" }, { status: 429 });
+  }
 
   const client = getClient();
   if (!client) {
