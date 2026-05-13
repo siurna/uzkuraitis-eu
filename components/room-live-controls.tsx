@@ -74,6 +74,32 @@ export function RoomLiveControls({
   const curOrder = countries.find((c) => c.code === nowPlaying)?.order ?? 0;
   const nextCountry = countries.find((c) => c.order === curOrder + 1) ?? null;
 
+  // Tapping a country other than "the next one" is almost always a fat
+  // finger — confirm before jumping the running order around.
+  const pickFromList = (c: { code: string; name: string }) => {
+    if (c.code === nowPlaying) return;
+    if (nextCountry && c.code !== nextCountry.code) {
+      if (!window.confirm(`Put ${c.name} on stage? That's not the next act in the running order.`)) return;
+    }
+    setNowPlayingDirect(c.code);
+  };
+
+  const nextUpButton = status === "in_progress" && nextCountry && (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => setNowPlayingDirect(nextCountry.code)}
+      className="flex items-center gap-2.5 h-11 rounded-xl bg-white text-dark-blue font-display text-sm px-3.5
+                 disabled:opacity-60 active:scale-[0.99] transition"
+    >
+      <HeartFlag code={nextCountry.code} size="sm" />
+      <span className="truncate">Next up → {nextCountry.name}</span>
+      {nextCountry.order != null && (
+        <span className="ml-auto text-[11px] tabular-nums text-dark-blue/50">#{nextCountry.order}</span>
+      )}
+    </button>
+  );
+
   return (
     <section className="flex flex-col gap-3">
       {scopeLabel && (
@@ -81,7 +107,7 @@ export function RoomLiveControls({
           Applies to {scopeLabel}
         </p>
       )}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-4 gap-1.5">
         {STATUS_DEFS.map(({ id, label, Icon }) => {
           const active = status === id;
           return (
@@ -90,8 +116,8 @@ export function RoomLiveControls({
               type="button"
               disabled={pending}
               onClick={() => setStatus(id)}
-              className={`flex items-center justify-center gap-1.5 h-10 rounded-xl
-                          font-display text-sm transition
+              className={`flex flex-col items-center justify-center gap-1 h-14 rounded-xl px-1
+                          font-display text-[10.5px] leading-tight text-center transition
                           ${
                             active
                               ? "bg-flamingo text-white shadow-[0_4px_14px_-4px_oklch(70%_0.27_336_/_0.55)]"
@@ -105,22 +131,6 @@ export function RoomLiveControls({
         })}
       </div>
 
-      {status === "in_progress" && nextCountry && (
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => setNowPlayingDirect(nextCountry.code)}
-          className="flex items-center gap-2.5 h-11 rounded-xl bg-white text-dark-blue font-display text-sm px-3.5
-                     disabled:opacity-60 active:scale-[0.99] transition"
-        >
-          <HeartFlag code={nextCountry.code} size="sm" />
-          <span className="truncate">Next up → {nextCountry.name}</span>
-          {nextCountry.order != null && (
-            <span className="ml-auto text-[11px] tabular-nums text-dark-blue/50">#{nextCountry.order}</span>
-          )}
-        </button>
-      )}
-
       {status === "in_progress" && (
         <div className="flex flex-col gap-1.5 max-h-[55vh] overflow-y-auto -mx-1 px-1">
           <p className="text-[10px] uppercase tracking-widest text-white/45 font-display px-1 pt-1 pb-1">
@@ -133,7 +143,7 @@ export function RoomLiveControls({
                 key={c.code}
                 type="button"
                 disabled={pending}
-                onClick={() => setNowPlayingDirect(c.code)}
+                onClick={() => pickFromList(c)}
                 className={`flex items-center gap-3 rounded-xl px-2.5 py-2 text-left transition
                             ${
                               isActive
@@ -169,6 +179,9 @@ export function RoomLiveControls({
           })}
         </div>
       )}
+
+      {/* "Next up" jump — below the list, so it's the natural "advance" tap */}
+      {nextUpButton}
     </section>
   );
 }

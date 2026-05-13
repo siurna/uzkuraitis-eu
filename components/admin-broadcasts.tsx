@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Megaphone, Bell, Vote, Dices, Medal, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Kind = "notifications" | "vote" | "bet" | "top3" | "final";
+
+const ROOM_STORAGE_KEY = "uzk_admin_broadcast_room";
 
 const SHOTS: { kind: Kind; icon: LucideIcon; title: string; desc: string }[] = [
   { kind: "notifications", icon: Bell, title: "Turn on notifications", desc: "Nudge the room to enable push." },
@@ -22,6 +24,20 @@ const SHOTS: { kind: Kind; icon: LucideIcon; title: string; desc: string }[] = [
 export function AdminBroadcasts({ rooms }: { rooms: { code: string; name: string }[] }) {
   const [room, setRoom] = useState(rooms[0]?.code ?? "");
   const [busy, setBusy] = useState<Kind | null>(null);
+
+  // Remember the last room the host broadcast to across reloads.
+  useEffect(() => {
+    const saved = localStorage.getItem(ROOM_STORAGE_KEY);
+    if (saved && rooms.some((r) => r.code === saved)) setRoom(saved);
+  }, [rooms]);
+  const chooseRoom = (code: string) => {
+    setRoom(code);
+    try {
+      localStorage.setItem(ROOM_STORAGE_KEY, code);
+    } catch {
+      /* ignore */
+    }
+  };
 
   const fire = async (kind: Kind) => {
     if (!room) {
@@ -64,7 +80,7 @@ export function AdminBroadcasts({ rooms }: { rooms: { code: string; name: string
         ) : (
           <select
             value={room}
-            onChange={(e) => setRoom(e.target.value)}
+            onChange={(e) => chooseRoom(e.target.value)}
             className="h-10 rounded-lg bg-black/30 border border-white/15 px-3 text-sm text-white
                        focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 w-full"
           >
