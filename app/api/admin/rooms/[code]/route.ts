@@ -18,7 +18,6 @@ const PatchSchema = z.object({
   code: z.string().length(6).optional(),
   /** NULL or 0 = unlimited answers per question. */
   triviaMaxAnswerers: z.number().int().min(0).max(1000).nullable().optional(),
-  beginnerModeEnabled: z.boolean().optional(),
 });
 
 async function requireAdmin() {

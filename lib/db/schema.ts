@@ -52,15 +52,10 @@ export const rooms = pgTable(
     // trivia feel like a race (first 5 players, etc.) rather than a
     // group exercise. Server enforces in /api/rooms/[code]/trivia.
     triviaMaxAnswerers: integer("trivia_max_answerers"),
-    // Beginner mode: room-wide toggle that, when on, makes the chat
-    // surface "what's this Eurovision joke about?" tooltips under any
-    // message that references a past act, host country, voting block,
-    // etc. Mirrors translate mode's shape (Anthropic call per text,
-    // cached server-side, rendered as a small bubble under the
-    // message). Default off — most rooms know the contest.
-    beginnerModeEnabled: boolean("beginner_mode_enabled")
-      .notNull()
-      .default(false),
+    // Beginner mode is a PER-USER preference (localStorage toggle,
+    // same shape as translate mode), not a per-room setting. No
+    // column lives on `rooms` for it. The shared `chat_helper_cache`
+    // table further down handles durable caching of the explanations.
     // Long random token granting per-room admin rights. Anyone with the
     // token can manage *this* room (rename, toggle voting, edit results,
     // change the join code) without a global passkey. Generated on room
