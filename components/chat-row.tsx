@@ -455,6 +455,14 @@ export function ChatRow({
   // recognised swipe cancels any pending long-press.
   const swipe = useSwipeToReply({ dir: mine ? -1 : 1, onCommit: onReply, onLock: cancelPress });
 
+  // The long-press menu fans out above (reactions) and below (actions)
+  // the bubble — make sure there's room for both by centring the message
+  // when it opens.
+  useEffect(() => {
+    if (menuOpen) swipe.ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menuOpen]);
+
   const time = useMemo(() => {
     try {
       return new Date(m.createdAt).toLocaleTimeString(undefined, {
@@ -768,39 +776,54 @@ export function ChatRow({
 
             <AnimatePresence>
               {menuOpen && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.85, y: -8 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: -6 }}
-                  transition={{ type: "spring", stiffness: 900, damping: 30, mass: 0.4 }}
-                  onClick={(e) => e.stopPropagation()}
-                  className={`absolute top-full mt-2 z-30 flex flex-col gap-2 ${mine ? "right-0 items-end" : "left-0 items-start"}`}
-                >
-                  <div className="flex items-center gap-2 p-2 rounded-full bg-black/80 ring-1 ring-white/12 backdrop-blur-md shadow-xl">
-                    {QUICK_REACTS.map(({ emoji, bg }, i) => (
-                      <motion.button
-                        key={emoji}
-                        type="button"
-                        onClick={(e) => reactWithRain(e, emoji)}
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0, opacity: 0 }}
-                        transition={{ delay: i * 0.012, type: "spring", stiffness: 1000, damping: 24 }}
-                        className={`h-11 w-11 shrink-0 rounded-full grid place-items-center text-xl leading-none
-                                    ring-1 ring-white/20 bg-gradient-to-br ${bg}
-                                    shadow-[0_4px_12px_-3px_rgba(0,0,0,0.55)] transition-transform active:scale-90`}
-                      >
-                        <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">{emoji}</span>
-                      </motion.button>
-                    ))}
-                  </div>
-                  <div className="flex flex-col rounded-2xl bg-black/80 ring-1 ring-white/12 backdrop-blur-md overflow-hidden shadow-xl min-w-[10rem]">
-                    <MenuAction onClick={onReply} icon={Reply} label={t(lang, "chat_reply")} />
-                    {canEdit && <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />}
-                    {m.body && <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />}
-                    {mine && <MenuAction onClick={onDelete} icon={Trash2} label={t(lang, "chat_delete")} danger />}
-                  </div>
-                </motion.div>
+                <>
+                  {/* reaction toolbar — sits ABOVE the bubble (iMessage-style) */}
+                  <motion.div
+                    key="reacts"
+                    initial={{ opacity: 0, scale: 0.85, y: 8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: 6 }}
+                    transition={{ type: "spring", stiffness: 900, damping: 30, mass: 0.4 }}
+                    onClick={(e) => e.stopPropagation()}
+                    className={`absolute bottom-full mb-2 z-30 ${mine ? "right-0" : "left-0"}`}
+                  >
+                    <div className="flex items-center gap-2 p-2 rounded-full bg-black/80 ring-1 ring-white/12 backdrop-blur-md shadow-xl">
+                      {QUICK_REACTS.map(({ emoji, bg }, i) => (
+                        <motion.button
+                          key={emoji}
+                          type="button"
+                          onClick={(e) => reactWithRain(e, emoji)}
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          transition={{ delay: i * 0.012, type: "spring", stiffness: 1000, damping: 24 }}
+                          className={`h-11 w-11 shrink-0 rounded-full grid place-items-center text-xl leading-none
+                                      ring-1 ring-white/20 bg-gradient-to-br ${bg}
+                                      shadow-[0_4px_12px_-3px_rgba(0,0,0,0.55)] transition-transform active:scale-90`}
+                        >
+                          <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">{emoji}</span>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </motion.div>
+                  {/* actions — below the bubble */}
+                  <motion.div
+                    key="actions"
+                    initial={{ opacity: 0, scale: 0.9, y: -8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: -6 }}
+                    transition={{ type: "spring", stiffness: 900, damping: 30, mass: 0.4 }}
+                    onClick={(e) => e.stopPropagation()}
+                    className={`absolute top-full mt-2 z-30 ${mine ? "right-0" : "left-0"}`}
+                  >
+                    <div className="flex flex-col rounded-2xl bg-black/80 ring-1 ring-white/12 backdrop-blur-md overflow-hidden shadow-xl min-w-[10rem]">
+                      <MenuAction onClick={onReply} icon={Reply} label={t(lang, "chat_reply")} />
+                      {canEdit && <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />}
+                      {m.body && <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />}
+                      {mine && <MenuAction onClick={onDelete} icon={Trash2} label={t(lang, "chat_delete")} danger />}
+                    </div>
+                  </motion.div>
+                </>
               )}
             </AnimatePresence>
           </div>
