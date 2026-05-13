@@ -13,6 +13,7 @@ import { HeartFlag } from "@/components/flag";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { useParticles } from "@/components/particle-layer";
+import { haptic } from "@/lib/haptics";
 import { getTrope, type TropeIndex } from "@/lib/bingo-tropes";
 import { t, tDyn } from "@/lib/i18n";
 
@@ -367,8 +368,10 @@ export function ChatRow({
 
   const deepDive = useCountryDeepDive();
   const particles = useParticles();
+  const lastTap = useRef(0); // for double-tap-a-text-bubble → ❤️
   // React + a little burst of that emoji floating up from the tap point.
-  const reactWithRain = (e: React.MouseEvent, emoji: string) => {
+  const reactWithRain = (e: { currentTarget: Element }, emoji: string) => {
+    haptic(12);
     const r = e.currentTarget.getBoundingClientRect();
     const n = 5 + Math.floor(Math.random() * 3);
     particles.spawnMany(
@@ -668,7 +671,21 @@ export function ChatRow({
                   e.stopPropagation();
                   return;
                 }
-                if (isMedia && m.gifUrl) onOpenImage(m.gifUrl);
+                if (isMedia && m.gifUrl) {
+                  onOpenImage(m.gifUrl);
+                  return;
+                }
+                // Double-tap a plain message → ❤️ it (Instagram-style:
+                // only adds, never un-likes on re-double-tap).
+                if (m.kind === "text") {
+                  const now = Date.now();
+                  if (now - lastTap.current < 320) {
+                    lastTap.current = 0;
+                    if (!m.reactions["❤️"]?.mine) reactWithRain(e, "❤️");
+                  } else {
+                    lastTap.current = now;
+                  }
+                }
               }}
               onContextMenu={(e) => {
                 e.preventDefault();
