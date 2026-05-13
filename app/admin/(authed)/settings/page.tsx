@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
-import { adminCredentials } from "@/lib/db/schema";
+import { adminCredentials, commentator } from "@/lib/db/schema";
 import { AdminPasskeysPanel } from "@/components/admin-passkeys-panel";
 import { AdminSeed } from "@/components/admin-seed";
+import { AdminCommentator } from "@/components/admin-commentator";
 
 export default async function AdminSettingsPage() {
   const creds = await db
@@ -12,6 +13,8 @@ export default async function AdminSettingsPage() {
       lastUsedAt: adminCredentials.lastUsedAt,
     })
     .from(adminCredentials);
+  const commentaryRows = await db.select().from(commentator);
+  const commentary = Object.fromEntries(commentaryRows.map((r) => [r.countryCode, r.text]));
 
   return (
     <div className="flex flex-col gap-8">
@@ -30,6 +33,8 @@ export default async function AdminSettingsPage() {
           lastUsedAt: c.lastUsedAt?.toISOString() ?? null,
         }))}
       />
+
+      <AdminCommentator initial={commentary} />
 
       <AdminSeed />
 

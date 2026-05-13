@@ -165,6 +165,22 @@ export const officialResults = pgTable("official_results", {
     .defaultNow(),
 });
 
+// Live commentator: one editable line per country, plus the bot's name
+// + photo stored under the reserved keys '__name__' / '__photo__'. When
+// a country goes on stage, the bot posts that country's line to chat.
+// Global to the installation (one commentator). See `commentatorKeys`.
+export const commentator = pgTable("commentator", {
+  countryCode: text("country_code").primaryKey(),
+  text: text("text").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// Reserved `commentator.country_code` keys for the bot's own identity.
+export const COMMENTATOR_NAME_KEY = "__name__";
+export const COMMENTATOR_PHOTO_KEY = "__photo__";
+
 // Generic key-value bag for "facts" the admin enters (jury winner,
 // televote winner, nul-points country, etc.) used to score side bets
 // against. Extending the bet menu later doesn't require a new column.

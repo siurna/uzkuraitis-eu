@@ -596,7 +596,12 @@ export function ChatRow({
       <div className={`relative max-w-[82%] sm:max-w-[68%] flex gap-2 ${mine ? "flex-row-reverse" : "flex-row"}`}>
         {!mine && (
           <div className={`h-9 w-9 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/[0.04] ${showHeader ? "" : "invisible"}`}>
-            {avatar?.photo ? (
+            {m.meta && typeof m.meta.commentatorPhoto === "string" && m.meta.commentatorPhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={m.meta.commentatorPhoto} alt="" className="h-full w-full object-cover" />
+            ) : m.meta?.commentator ? (
+              <div className="h-full w-full grid place-items-center text-sm leading-none">🎙️</div>
+            ) : avatar?.photo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={optimizedSrc(avatar.photo, 128)}

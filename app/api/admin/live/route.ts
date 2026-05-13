@@ -10,6 +10,7 @@ import { participantPhoto } from "@/lib/participants";
 import {
   postSystemMessage,
   postNowPlayingMessage,
+  postCommentatorMessage,
   showStatusAnnouncement,
 } from "@/lib/chat-system";
 
@@ -94,6 +95,7 @@ export async function POST(req: Request) {
         });
         if (nowPlayingCode) {
           await postNowPlayingMessage(code, id, nowPlayingCode);
+          await postCommentatorMessage(code, id, nowPlayingCode);
           const c = getCountry(nowPlayingCode);
           await pushToRoom(
             id,
