@@ -15,6 +15,7 @@
     "avatars:upload": "node --env-file-if-exists=.env.local scripts/upload-avatars.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.96.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^8.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -40,7 +41,7 @@
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
     "web-push": "^3.6.7",
-    "zod": "^3.24.1"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
