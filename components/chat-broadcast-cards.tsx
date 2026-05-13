@@ -175,25 +175,24 @@ function VoteOpenCard({ lang }: { lang: Language }) {
   const pct = Math.min(100, (filled / 10) * 100);
   const done = filled >= 10;
   return (
-    // Repurposes the Home Vote-hero language: same flamingo→fuchsia→
-    // purple gradient + an equalizer-style stack of bars on the right.
-    // The progress bar lives below the eyebrow so "this is a CTA and
-    // you're 6/10 of the way through" reads in one glance.
-    <motion.button
-      type="button"
-      onClick={() => setTab("vote")}
+    // Border tinted to the card's own gradient (flamingo) instead of
+    // the rainbow-border, so each broadcast card feels like its own
+    // surface — not "another rainbow message in chat".
+    <motion.div
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      className="rainbow-border rounded-3xl w-full block text-left text-balance"
+      className="rounded-3xl ring-1 ring-flamingo/50 shadow-[0_18px_44px_-18px_oklch(58%_0.22_336_/_0.55)] overflow-hidden text-balance"
     >
       <div
-        className="relative overflow-hidden rounded-[22px] px-5 pt-5 pb-5 min-h-[8.5rem] flex flex-col gap-3"
+        className="relative overflow-hidden px-5 pt-5 pb-5 flex flex-col gap-3"
         style={{ background: "linear-gradient(125deg, #f10d59 0%, #ff3ede 46%, #6020c6 100%)" }}
       >
-        {/* Equalizer art — fixed bars off the right, behind the wash. */}
-        <div className="pointer-events-none absolute inset-y-0 -right-3 flex items-end gap-1.5 pb-7 opacity-95">
-          {[20, 56, 38, 72, 30].map((h, i) => (
+        {/* Equalizer bars: now genuinely anchored to the bottom edge
+            of the card (no pb padding) so they read as a stage chart
+            rising from the floor. */}
+        <div className="pointer-events-none absolute bottom-0 right-0 flex items-end gap-1.5 h-2/3 px-3 opacity-95">
+          {[28, 64, 42, 88, 36].map((h, i) => (
             <span
               key={i}
               className="w-2 rounded-t-full bg-white/85 shadow-[0_0_10px_rgba(255,255,255,0.35)]"
@@ -203,23 +202,24 @@ function VoteOpenCard({ lang }: { lang: Language }) {
         </div>
         <div
           className="pointer-events-none absolute inset-0"
-          style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.5) 0%, rgba(8,9,28,0.22) 38%, transparent 66%)" }}
+          style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.55) 0%, rgba(8,9,28,0.22) 38%, transparent 60%)" }}
         />
-        <div className="relative flex flex-col gap-1.5 pr-[28%]">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-white/85 font-display leading-tight flex items-center gap-1.5">
+        <div className="relative flex flex-col gap-1.5 pr-[30%]">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-white/90 font-display leading-tight flex items-center gap-1.5">
             <ListChecks className="h-3 w-3" />
             {t(lang, "sys_cta_vote_title")}
           </p>
           <p className="font-display text-xl sm:text-2xl text-white leading-tight drop-shadow">
             {done
-              ? t(lang, "sys_cta_vote_sub_done")
+              ? t(lang, "sys_cta_vote_done_headline")
               : filled > 0
                 ? tDyn(lang, "sys_cta_vote_sub_progress", filled)
                 : t(lang, "sys_cta_vote_sub_empty")}
           </p>
         </div>
-        {/* Progress bar — caps at 10 picks. */}
-        <div className="relative">
+        {/* Progress bar + count. Width capped at 70% so it never crosses
+            into the equalizer bars to the right. */}
+        <div className="relative max-w-[70%]">
           <div className="h-2 rounded-full bg-white/20 overflow-hidden">
             <motion.div
               className="absolute inset-y-0 left-0 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.55)]"
@@ -232,8 +232,20 @@ function VoteOpenCard({ lang }: { lang: Language }) {
             {filled}/10
           </p>
         </div>
+        {/* Explicit CTA button. Reads as an action, not a subtitle. */}
+        <button
+          type="button"
+          onClick={() => setTab("vote")}
+          className="relative self-start mt-1 inline-flex items-center gap-1.5 rounded-xl bg-white text-dark-blue
+                     font-display text-sm h-10 px-4 active:scale-[0.97] transition transform-gpu"
+        >
+          {done
+            ? t(lang, "sys_cta_vote_btn_adjust")
+            : t(lang, "sys_cta_vote_btn_cast")}
+          <ChevronRight className="h-4 w-4" />
+        </button>
       </div>
-    </motion.button>
+    </motion.div>
   );
 }
 
@@ -270,8 +282,8 @@ function BonusBetCard({ lang }: { lang: Language }) {
   const labelResolved = fmt(labelTemplate, { home: homeName, host: hostName });
 
   return (
-    // Repurposes the Home Bonus-bets banner: same magenta→ESC-pink
-    // wash with a marching strip of bet-flavour chips off the right.
+    // Magenta-tinted border to match the card's own gradient (was
+    // rainbow-border before).
     <motion.button
       type="button"
       onClick={() => {
@@ -282,21 +294,26 @@ function BonusBetCard({ lang }: { lang: Language }) {
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      className="rainbow-border rounded-3xl w-full block text-left text-balance"
+      className="rounded-3xl w-full block text-left text-balance ring-1 ring-fuchsia/50
+                 shadow-[0_18px_44px_-18px_oklch(58%_0.24_335_/_0.55)] overflow-hidden"
     >
       <div
-        className="relative overflow-hidden rounded-[22px] px-5 pt-5 pb-5 min-h-[7.5rem] flex items-center gap-4"
+        className="relative overflow-hidden px-5 pt-5 pb-5 min-h-[7.5rem] flex items-center gap-4"
         style={{ background: "linear-gradient(135deg, #bc1475 0%, #f10d59 100%)" }}
       >
-        {/* Chip strip — two counter-rotating short marquees, masked
-            on either side. Same pattern as the Home banner. */}
+        {/* Chip strips — two counter-rotating marquees stacked tight in
+            the centre (top+bottom anchoring with no gap was making the
+            strip read as two split rows clinging to the card edges).
+            Vertically-stacked + centred so they sit as one cohesive
+            block off the right. */}
         <span
           className="pointer-events-none absolute inset-y-0 -right-3 w-40 overflow-hidden
-                     [mask-image:linear-gradient(90deg,transparent,#000_22%,#000_82%,transparent)]"
+                     [mask-image:linear-gradient(90deg,transparent,#000_22%,#000_82%,transparent)]
+                     flex flex-col justify-center gap-1.5"
           aria-hidden
         >
           <span
-            className="absolute top-2 left-0 flex w-max"
+            className="flex w-max"
             style={{ animation: "uzk-marquee 22s linear infinite" }}
           >
             {["🏆", "🎯", "🎲", "🎤", "🥄", "🎙️", "🎺"].concat(["🏆", "🎯", "🎲", "🎤", "🥄", "🎙️", "🎺"]).map((c, i) => (
@@ -309,7 +326,7 @@ function BonusBetCard({ lang }: { lang: Language }) {
             ))}
           </span>
           <span
-            className="absolute bottom-2 left-0 flex w-max"
+            className="flex w-max"
             style={{ animation: "uzk-marquee 28s linear infinite reverse" }}
           >
             {["💎", "🎼", "🍿", "📺", "🔮", "🌟", "✨"].concat(["💎", "🎼", "🍿", "📺", "🔮", "🌟", "✨"]).map((c, i) => (
@@ -363,68 +380,89 @@ function Top3PodiumCard({
   const third = codes[2] ?? null;
 
   return (
+    // Redesign: spotlight on the #1 (its flag is the hero), with #2 and
+    // #3 as smaller chips on either side. The podium "step blocks" are
+    // gone — they were cute but visually flat; the spotlight + flag
+    // sizes already encode the ranking. Border tinted gold to match.
     <motion.div
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      className="rainbow-border rounded-2xl"
+      className="rounded-3xl ring-1 ring-yellow/45 shadow-[0_18px_44px_-18px_oklch(72%_0.18_85_/_0.5)] overflow-hidden"
     >
-      <div className="rounded-[14px] p-5 flex flex-col gap-3 bg-gradient-to-br from-yellow/25 via-flamingo/25 to-purple/40">
-        <header className="flex items-center gap-2">
-          <Medal className="h-4 w-4 text-yellow" fill="currentColor" />
-          <p className="text-[10px] uppercase tracking-[0.3em] font-display text-white/80">
+      <div className="relative overflow-hidden p-5 flex flex-col gap-4 bg-gradient-to-br from-yellow/30 via-orange/20 to-purple/55">
+        {/* Spotlight cone behind the #1 flag. */}
+        <span
+          className="pointer-events-none absolute inset-x-0 top-0 h-full"
+          style={{
+            background:
+              "radial-gradient(60% 70% at 50% 0%, oklch(95% 0.19 95 / 0.45) 0%, transparent 70%)",
+          }}
+          aria-hidden
+        />
+        <header className="relative flex items-center justify-between">
+          <p className="text-[10px] uppercase tracking-[0.3em] font-display text-white/85 flex items-center gap-1.5">
+            <Medal className="h-3 w-3 text-yellow" fill="currentColor" />
             {t(lang, "sys_cta_top3_eyebrow")}
           </p>
+          <span className="text-2xl leading-none">🏆</span>
         </header>
-        <div className="flex items-end justify-around gap-3 pt-1">
-          {/* 2nd */}
-          {second ? (
-            <PodiumStep code={second} rank={2} lang={lang} />
-          ) : (
-            <span className="flex-1" />
-          )}
-          {/* 1st (centre, taller) */}
-          {first && <PodiumStep code={first} rank={1} lang={lang} />}
-          {/* 3rd */}
-          {third ? (
-            <PodiumStep code={third} rank={3} lang={lang} />
-          ) : (
-            <span className="flex-1" />
-          )}
-        </div>
+
+        {/* #1 — hero row. Large heart-flag + country name + gold pill. */}
+        {first && (
+          <div className="relative flex items-center gap-4">
+            <span className="shrink-0">
+              <HeartFlag code={first} size="lg" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-yellow font-display flex items-center gap-1">
+                <span className="text-base leading-none">🥇</span>
+                {t(lang, "sys_cta_top3_first")}
+              </p>
+              <p className="font-display text-2xl text-white leading-tight truncate drop-shadow">
+                {countryName(first, lang) ?? first.toUpperCase()}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* #2 + #3 chips. */}
+        {(second || third) && (
+          <div className="relative grid grid-cols-2 gap-2">
+            {second ? (
+              <PodiumChip code={second} rank={2} lang={lang} />
+            ) : (
+              <span />
+            )}
+            {third ? (
+              <PodiumChip code={third} rank={3} lang={lang} />
+            ) : (
+              <span />
+            )}
+          </div>
+        )}
       </div>
     </motion.div>
   );
 }
 
-function PodiumStep({
+function PodiumChip({
   code,
   rank,
   lang,
 }: {
   code: string;
-  rank: 1 | 2 | 3;
+  rank: 2 | 3;
   lang: Language;
 }) {
-  const c = getCountry(code);
-  const heights = { 1: "h-20", 2: "h-14", 3: "h-10" } as const;
-  const medals = { 1: "🥇", 2: "🥈", 3: "🥉" } as const;
-  const blocks = {
-    1: "bg-gradient-to-b from-yellow to-gold",
-    2: "bg-gradient-to-b from-white/55 to-white/30",
-    3: "bg-gradient-to-b from-orange/70 to-orange/40",
-  } as const;
+  const medal = rank === 2 ? "🥈" : "🥉";
   return (
-    <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-      <span className="text-base leading-none">{medals[rank]}</span>
+    <div className="flex items-center gap-2 rounded-xl bg-white/[0.08] ring-1 ring-white/15 px-3 py-2 min-w-0">
+      <span className="text-base leading-none shrink-0">{medal}</span>
       <HeartFlag code={code} size="sm" />
-      <span className="text-[11px] font-display text-white truncate max-w-full text-center">
-        {c ? countryName(code, lang) : code.toUpperCase()}
+      <span className="text-xs font-display text-white truncate flex-1">
+        {countryName(code, lang) ?? code.toUpperCase()}
       </span>
-      <span
-        className={`w-full max-w-[5rem] rounded-t-md ring-2 ring-white/30 ${heights[rank]} ${blocks[rank]}
-                    shadow-[inset_0_2px_0_rgba(255,255,255,0.35)]`}
-      />
     </div>
   );
 }

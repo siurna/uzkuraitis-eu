@@ -300,13 +300,12 @@ export function HomeBanners() {
   //   - someone on stage   → the now-playing hero
   //   - else, lines open   → a Vote hero (cast OR adjust, copy adapts)
   //   - else nothing
-  // We deliberately keep the hero up after you've voted: tweaking the
-  // ballot during the show IS the game, so it should stay one tap away
-  // until the host pulls the lines.
   const showVoteHero = !playing && votingEnabled;
-  // The regular small Vote banner only shows when the hero isn't, and we
-  // never show the "voting opens soon" prompt once lines have been pulled.
-  const showVoteBanner = (votingEnabled || voted) && !showVoteHero;
+  // "Your vote is in" small banner: ONLY when the user has actually
+  // cast a ballot. (Previously it also fired the "Lines are open!"
+  // copy whenever voting was on regardless of whether they'd voted,
+  // which doubled up with the Vote hero above.)
+  const showVoteBanner = voted && !showVoteHero;
   // Hide the "place your bets" prompt once voting's off (nothing to do),
   // but keep showing it if you've already got bets down.
   const showBonusBanner = betsCount > 0 || votingEnabled;

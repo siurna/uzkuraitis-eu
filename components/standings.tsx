@@ -24,7 +24,7 @@ type ScoresResponse = {
 };
 
 export function Standings() {
-  const { code, votingEnabled } = useRoomLive();
+  const { code, votingEnabled, tallyEnabled } = useRoomLive();
   const lang = useLang();
 
   const [scores, setScores] = useState<ScoreRow[]>([]);
@@ -70,6 +70,12 @@ export function Standings() {
   })();
 
   const visible = scores.slice(0, 5);
+
+  // Fan TOP 5 only makes sense while there's something to react to:
+  // either voting is open (live aggregate of in-progress ballots) OR
+  // the host has revealed the official results. Outside those windows
+  // the widget is just a stale snapshot and clutters Home.
+  if (!votingEnabled && !tallyEnabled) return null;
 
   return (
     <main className="container mx-auto max-w-3xl px-4 pt-2 pb-6 flex flex-col gap-3">

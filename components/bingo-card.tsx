@@ -171,10 +171,11 @@ export function BingoCard() {
   const struckCount = card.filter((tx) => tx === FREE_SQUARE || struckSet.has(tx)).length;
 
   return (
-    // pt-8 (was pt-6) gives the top row of the ticket enough breathing
-    // room below the fixed header — previously the strike-X ring on the
-    // top emoji was getting clipped by the header's bottom edge.
-    <main className="container mx-auto max-w-3xl px-4 pt-8 pb-10 flex-1 flex flex-col gap-3">
+    // pt-12 + extra mt-2 on the ticket itself so the rounded ring +
+    // strike-X overflow on the top tiles has room to breathe under
+    // the fixed header. The previous pt-8 still let the top-row ring
+    // graze the header's bottom edge on some viewport sizes.
+    <main className="container mx-auto max-w-3xl px-4 pt-12 pb-10 flex-1 flex flex-col gap-3">
       {/* Brand-rainbow stroke for the strike X, defined once. */}
       <svg width={0} height={0} className="absolute -z-10" aria-hidden>
         <defs>

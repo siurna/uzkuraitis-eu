@@ -17,6 +17,7 @@ import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { useProfile } from "@/components/profile-sheet";
 import { useParticles } from "@/components/particle-layer";
 import { TranslationBubble } from "@/components/translation-bubble";
+import { ChatTriviaCard } from "@/components/chat-trivia-inline";
 import { useTranslateEnabled } from "@/lib/translate-client";
 import { useSwipeToReply } from "@/lib/use-swipe-to-reply";
 import { haptic } from "@/lib/haptics";
@@ -174,7 +175,8 @@ export type MessageKind =
   | "bingo_strike"
   | "system"
   | "now_playing"
-  | "results";
+  | "results"
+  | "trivia";
 
 export type Message = {
   id: string;
@@ -297,6 +299,7 @@ export function ChatRow({
   const isSystem = m.kind === "system";
   const isNowPlaying = m.kind === "now_playing";
   const isResults = m.kind === "results";
+  const isTrivia = m.kind === "trivia";
   const isMedia = (m.kind === "gif" || m.kind === "image") && m.gifUrl;
   // A message that's pulled enough reactions glows — it's a "highlight".
   const reactionTotal = Object.values(m.reactions).reduce((n, r) => n + r.count, 0);
@@ -400,22 +403,35 @@ export function ChatRow({
     }
   }, [m.createdAt]);
 
+  if (isTrivia) {
+    const cc = (m.meta as { countryCode?: string } | null)?.countryCode;
+    if (!cc) return null;
+    return (
+      <motion.li
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        className="my-1 px-1"
+      >
+        <ChatTriviaCard countryCode={cc} roomCode={roomCode} lang={lang} />
+      </motion.li>
+    );
+  }
+
   if (isResults) {
     const podium = ((m.meta as { podium?: { name: string; total: number }[] } | null)?.podium ?? []).slice(0, 3);
     const medals = ["🥇", "🥈", "🥉"];
-    // Re-order for the pedestal: 2nd left, 1st centre, 3rd right.
-    const order: (typeof podium[number] | null)[] = [
-      podium[1] ?? null,
-      podium[0] ?? null,
-      podium[2] ?? null,
-    ];
-    const rankOrder: (1 | 2 | 3)[] = [2, 1, 3];
-    const heights = { 1: "h-24", 2: "h-16", 3: "h-12" } as const;
-    const blocks = {
-      1: "bg-gradient-to-b from-yellow to-gold",
-      2: "bg-gradient-to-b from-white/55 to-white/30",
-      3: "bg-gradient-to-b from-orange/70 to-orange/40",
-    } as const;
+    // Bar widths scale relative to the #1's score so the eye can read
+    // "how close are 2nd/3rd to the leader" without doing math.
+    const top = podium[0]?.total ?? 1;
+    const widthFor = (n: number) =>
+      `${Math.max(20, Math.min(100, (n / top) * 100))}%`;
+    // "Your breakdown" makes no sense if you didn't cast a ballot;
+    // disable it. Local-only check via the localStorage flag the vote
+    // form sets.
+    const hasVoted =
+      typeof window !== "undefined" &&
+      window.localStorage.getItem(`uzk_voted_${roomCode}`) === "1";
     return (
       <motion.li
         initial={{ opacity: 0, scale: 0.97 }}
@@ -423,41 +439,63 @@ export function ChatRow({
         transition={{ duration: 0.3 }}
         className="my-1 px-1"
       >
-        <div className="rainbow-border rounded-3xl">
+        {/* Different gradient + theme-tinted border (was rainbow). Cool
+            turquoise → indigo → flamingo wash distinguishes the
+            "results dropped" beat from the other broadcast cards. */}
+        <div className="rounded-3xl ring-1 ring-turquoise/45 shadow-[0_18px_44px_-18px_oklch(70%_0.15_190_/_0.5)] overflow-hidden">
           <div
-            className="relative overflow-hidden rounded-[22px] p-5 flex flex-col gap-4
-                       bg-gradient-to-br from-yellow/25 via-flamingo/30 to-purple/55
+            className="relative overflow-hidden p-5 flex flex-col gap-4
                        shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+            style={{
+              background:
+                "linear-gradient(135deg, #00b8b0 0%, #2a17e6 50%, #f10d59 100%)",
+            }}
           >
             <header className="flex items-center gap-2">
               <Trophy className="h-4 w-4 text-yellow" fill="currentColor" />
-              <p className="text-[10px] uppercase tracking-[0.3em] text-white/85 font-display leading-tight">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white/90 font-display leading-tight">
                 {t(lang, "home_results")}
               </p>
             </header>
 
             {podium.length > 0 ? (
-              <div className="flex items-end justify-around gap-2 pt-1">
-                {order.map((p, i) => {
-                  if (!p) return <span key={i} className="flex-1" />;
-                  const rank = rankOrder[i];
-                  return (
-                    <div key={i} className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                      <span className="text-lg leading-none">{medals[rank - 1]}</span>
-                      <span className="text-[11px] font-display text-white truncate max-w-full text-center">
+              <ol className="flex flex-col gap-2">
+                {podium.map((p, i) => (
+                  <li key={i} className="relative">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-base leading-none shrink-0">{medals[i]}</span>
+                      {/* Bigger name as the user asked: text-base
+                          (was text-sm) + drop-shadow for legibility on
+                          the gradient bar that sits behind it. */}
+                      <span className="font-display text-base text-white truncate flex-1 drop-shadow-sm">
                         {p.name}
                       </span>
-                      <span className="text-[11px] font-display text-white/90 tabular-nums">
+                    </div>
+                    <div className="relative h-7 rounded-lg overflow-hidden bg-white/15">
+                      <motion.div
+                        className={`absolute inset-y-0 left-0 rounded-lg
+                                    ${
+                                      i === 0
+                                        ? "bg-gradient-to-r from-yellow to-orange shadow-[0_0_18px_rgba(245,163,2,0.5)]"
+                                        : i === 1
+                                          ? "bg-white/55"
+                                          : "bg-orange/60"
+                                    }`}
+                        initial={{ width: 0 }}
+                        animate={{ width: widthFor(p.total) }}
+                        transition={{ duration: 0.7, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                      />
+                      {/* Score lives ON the bar — embedded in the chip
+                          itself rather than floating to the right, so
+                          the bar's width carries the "how far ahead"
+                          signal cleanly. */}
+                      <span className="absolute inset-y-0 right-2 flex items-center font-display tabular-nums text-sm text-white drop-shadow-sm">
                         {p.total}
                       </span>
-                      <span
-                        className={`w-full max-w-[5.5rem] rounded-t-md ring-2 ring-white/30
-                                    shadow-[inset_0_2px_0_rgba(255,255,255,0.4)] ${heights[rank]} ${blocks[rank]}`}
-                      />
                     </div>
-                  );
-                })}
-              </div>
+                  </li>
+                ))}
+              </ol>
             ) : (
               <p className="text-sm text-white/85">{m.body}</p>
             )}
@@ -465,9 +503,15 @@ export function ChatRow({
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => roomTab.setTab("vote")}
-                className="flex-1 h-10 rounded-xl bg-white text-dark-blue font-display text-sm
-                           active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+                onClick={() => hasVoted && roomTab.setTab("vote")}
+                disabled={!hasVoted}
+                className={`flex-1 h-10 rounded-xl font-display text-sm transition flex items-center justify-center gap-1.5
+                            ${
+                              hasVoted
+                                ? "bg-white text-dark-blue active:scale-[0.98]"
+                                : "bg-white/20 text-white/45 cursor-not-allowed"
+                            }`}
+                title={hasVoted ? undefined : t(lang, "sys_cta_results_breakdown_disabled")}
               >
                 {t(lang, "sys_cta_results_breakdown")}
                 <ChevronRight className="h-4 w-4" />
@@ -673,7 +717,7 @@ export function ChatRow({
           })()
         )}
 
-        <div className="min-w-0 flex flex-col items-stretch gap-1">
+        <div className={`min-w-0 flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}>
           {showHeader && !mine && (
             <span className="text-[11px] font-display text-white/55 truncate flex items-center gap-1.5">
               {m.name}
@@ -836,14 +880,13 @@ export function ChatRow({
                     <div className="flex items-center gap-2 p-2 rounded-full bg-black/80 ring-1 ring-white/12 backdrop-blur-md shadow-xl">
                       {QUICK_REACTS.map(({ emoji, bg }, i) => {
                         const picked = !!m.reactions[emoji]?.mine;
-                        // Anything I've already reacted with: full-colour
-                        // and ringed in flamingo. Anything I haven't:
-                        // greyscaled + dimmed (or, if NO emoji is picked
-                        // yet on this message, EVERY emoji is grey so
-                        // tapping any of them registers as "my first
-                        // pick" rather than "switching from a default").
                         const anyPicked = Object.values(m.reactions).some((r) => r.mine);
-                        const showGray = !anyPicked || !picked;
+                        // Three states:
+                        // - You picked this one     → flamingo ring + dot (full colour)
+                        // - You picked SOMETHING ELSE → grey this one out
+                        // - You haven't picked any  → ALL emojis stay full colour
+                        //   (lets the eye see the whole set as available)
+                        const showGray = anyPicked && !picked;
                         return (
                           <motion.button
                             key={emoji}
@@ -950,17 +993,19 @@ export function ChatRow({
               {Object.entries(m.reactions).map(([emoji, info]) => (
                 <li
                   key={emoji}
-                  className="flex items-start gap-3 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3"
+                  className="flex items-center gap-3 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3"
                 >
-                  <span className="text-2xl leading-none shrink-0">{emoji}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/45 font-display mb-1 tabular-nums">
+                  {/* Emoji + its count stack — count sits directly under
+                      the glyph so the "how many" reads at a glance. */}
+                  <div className="flex flex-col items-center shrink-0">
+                    <span className="text-2xl leading-none">{emoji}</span>
+                    <span className="text-[11px] font-display text-white/55 tabular-nums mt-0.5">
                       {info.count}
-                    </p>
-                    <p className="text-sm text-white/85 leading-snug break-words">
-                      {info.names.join(", ")}
-                    </p>
+                    </span>
                   </div>
+                  <p className="min-w-0 flex-1 text-sm text-white/85 leading-snug break-words">
+                    {info.names.join(", ")}
+                  </p>
                 </li>
               ))}
             </ul>

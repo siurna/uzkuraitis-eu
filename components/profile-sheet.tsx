@@ -8,7 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { MessageCircle, Heart, Flame, Sparkles, Target, Brain, Lock } from "lucide-react";
+import { MessageCircle, Heart, Flame, Sparkles, Crown, Lightbulb, Lock } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Flag, HeartFlag } from "@/components/flag";
 import { getAvatar } from "@/lib/avatars";
@@ -244,14 +244,13 @@ function ProfileSheet({
             <StatTile icon={Heart} label={t(lang, "profile_stat_loves")} value={view.stats.reactionsReceived} />
             <StatTile icon={Flame} label={t(lang, "profile_stat_highlights")} value={view.stats.highlights} />
             <StatTile icon={Sparkles} label={t(lang, "profile_stat_bingo")} value={view.stats.bingoStrikes} />
-            {/* Bets used a filled-Dices glyph which looked off; Target
-                reads cleaner when filled (a single bullseye), still
-                ties to the "predictions" idea. */}
-            <StatTile icon={Target} label={t(lang, "profile_stat_bets")} value={view.stats.bets} />
-            {/* Brain over HelpCircle — HelpCircle when filled reads
-                as a solid ? blob; Brain stays legible filled. */}
+            {/* Bets → Crown ("crowning a winner"). Reads clean filled
+                where the previous filled-Dices/Target options didn't. */}
+            <StatTile icon={Crown} label={t(lang, "profile_stat_bets")} value={view.stats.bets} />
+            {/* Trivia → Lightbulb. Brain filled looked anatomical;
+                lightbulb is the universal "got it / answered" cue. */}
             <StatTile
-              icon={Brain}
+              icon={Lightbulb}
               label={t(lang, "profile_stat_trivia")}
               value={view.stats.triviaCorrect}
               suffix={view.stats.triviaTotal > 0 ? `/${view.stats.triviaTotal}` : null}
@@ -261,25 +260,34 @@ function ProfileSheet({
 
           {/* Top highlight */}
           {view.topHighlight && (
-            <div className="rounded-2xl bg-orange/[0.07] ring-1 ring-orange/20 px-3 py-3 flex items-center gap-3">
-              <span className="h-9 w-9 shrink-0 rounded-xl bg-orange/15 ring-1 ring-orange/35 grid place-items-center text-orange">
-                <Flame className="h-4 w-4" fill="currentColor" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-orange/90 font-display">
+            <div className="rounded-2xl bg-orange/[0.07] ring-1 ring-orange/20 p-3 flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <span className="h-9 w-9 shrink-0 rounded-xl bg-orange/15 ring-1 ring-orange/35 grid place-items-center text-orange">
+                  <Flame className="h-4 w-4" fill="currentColor" />
+                </span>
+                <p className="flex-1 text-[10px] uppercase tracking-[0.2em] text-orange/90 font-display">
                   {t(lang, "profile_top_moment")}
                 </p>
-                {view.topHighlight.body ? (
-                  <p className="text-sm text-white/90 truncate">{view.topHighlight.body}</p>
-                ) : view.topHighlight.gifUrl ? (
-                  <p className="text-sm text-white/70 italic">GIF</p>
-                ) : view.topHighlight.kind === "bingo_strike" ? (
-                  <p className="text-sm text-white/85">🎯 Bingo!</p>
-                ) : null}
+                <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange/15 ring-1 ring-orange/35 px-2 h-6 text-xs text-orange tabular-nums font-display">
+                  ❤️ {view.topHighlight.reactionCount}
+                </span>
               </div>
-              <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange/15 ring-1 ring-orange/35 px-2 h-6 text-xs text-orange tabular-nums font-display">
-                ❤️ {view.topHighlight.reactionCount}
-              </span>
+              {/* Body / GIF / image preview. The original treatment
+                  dropped GIFs as italic "GIF" text — if the moment
+                  WAS a GIF or an image, the picture itself IS the
+                  moment, so show it inline. */}
+              {(view.topHighlight.kind === "gif" || view.topHighlight.kind === "image") && view.topHighlight.gifUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={view.topHighlight.gifUrl}
+                  alt=""
+                  className="rounded-xl ring-1 ring-orange/25 max-h-48 w-auto self-start"
+                />
+              ) : view.topHighlight.body ? (
+                <p className="text-sm text-white/90 leading-snug">{view.topHighlight.body}</p>
+              ) : view.topHighlight.kind === "bingo_strike" ? (
+                <p className="text-sm text-white/85">🎯 Bingo!</p>
+              ) : null}
             </div>
           )}
 
