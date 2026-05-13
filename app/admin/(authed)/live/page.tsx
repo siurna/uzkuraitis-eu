@@ -47,10 +47,8 @@ export default async function AdminLivePage() {
   return (
     <div className="flex flex-col gap-6">
       <AdminPageTitle icon={Radio}>Live</AdminPageTitle>
-      <div className="grid gap-6 lg:grid-cols-2 items-start">
-        <div className="glass-card rounded-xl p-5">
-          <AdminLivePanel initialStatus={status} initialNowPlaying={nowPlaying} />
-        </div>
+      <div className="grid gap-8 lg:grid-cols-2 items-start">
+        <AdminLivePanel initialStatus={status} initialNowPlaying={nowPlaying} />
         <AdminBroadcasts rooms={rows.map((r) => ({ code: r.code, name: r.name }))} />
       </div>
     </div>
