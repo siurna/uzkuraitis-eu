@@ -11,51 +11,49 @@ import { checkAndIncrement } from "@/lib/rate-limit";
 // Body: { texts: string[] }   (≤ 50 per call)
 //   or  { text: string }      (single-text legacy form, kept for old clients)
 //
-// Returns: { results: TranslationResult[] }     (parallel array)
-//   or     { translate, text }                  (when called with single `text`)
+// Returns: { results: { translate, text }[] }   (parallel array, same length as texts)
+//   or     { translate, text }                  (when called with { text })
 //
 // Powers the "auto-translate to English" toggle. Each candidate chat
 // message goes through Anthropic's nano-class model (Haiku 4.5 by
-// default) which decides whether an English speaker would benefit from
-// a rendering. Pure English passes through; Lithuanian or Lithuanian-
-// flavoured slang gets a concise English rendering with optional
-// bracketed cultural notes.
+// default) which decides whether an English speaker would benefit
+// from a rendering.
 //
-// PERF: the client batches requests in a 100ms window and sends one
-// POST per batch. The route folds duplicates server-side, hits the
-// in-memory cache for known texts, and only sends the leftover
-// uncached texts to the model in a SINGLE structured-output call. A
-// 50-message chat-scroll-back collapses from 50 round-trips and 50
-// model invocations into 1 round-trip and 1 invocation.
-//
-// Requires ANTHROPIC_API_KEY. Without it, the endpoint soft-fails to
-// `{ translate: false, text: "" }` (or its array form) so the feature
-// degrades cleanly. Override the model via ANTHROPIC_TRANSLATE_MODEL.
+// PERF: ONE Anthropic call per batch. The client (lib/translate-
+// batcher) folds bubbles inside a 100ms window into a single fetch,
+// and this route packs all the unique-uncached texts into a single
+// structured-output prompt. The model returns a parallel array of
+// `{ index, translate, text }` — we use `index` to route each result
+// back to its slot (so partial / out-of-order responses still place
+// correctly instead of silently zeroing the whole batch).
 
 const Body = z.union([
   z.object({ texts: z.array(z.string().min(1).max(2000)).min(1).max(50) }),
   z.object({ text: z.string().min(1).max(2000) }),
 ]);
 
-const TranslationResult = zv4.object({
+// Per-text output shape. `index` lets the model address each input by
+// position regardless of order — defensive against the rare case where
+// the model elides a row.
+const Item = zv4.object({
+  index: zv4
+    .number()
+    .int()
+    .describe("Zero-based index of the input message this result corresponds to."),
   translate: zv4
     .boolean()
-    .describe("true if a non-English speaker would benefit from the rendering"),
+    .describe("true if a non-English speaker would benefit from a rendering"),
   text: zv4
     .string()
     .describe(
-      "When translate=true, a concise English rendering (≤200 chars). When translate=false, an empty string.",
+      "When translate=true, a concise English rendering (≤200 chars). When translate=false, empty string.",
     ),
 });
-
-// The server prompt asks the model to return ONE result per input
-// message in input order. We wrap an array on the structured-output
-// schema so a single call returns parallel results for the whole batch.
-const TranslationBatch = zv4.object({
-  results: zv4.array(TranslationResult).min(1).max(50),
+const Batch = zv4.object({
+  results: zv4.array(Item),
 });
 
-type CachedHit = zv4.infer<typeof TranslationResult>;
+type CachedHit = { translate: boolean; text: string };
 
 const cache = new Map<string, CachedHit>();
 const MAX_CACHE = 2000;
@@ -75,12 +73,12 @@ const EMPTY: CachedHit = { translate: false, text: "" };
 
 const SYSTEM_PROMPT = [
   "You help an English-speaking viewer follow a Lithuanian Eurovision watch-party chat.",
-  "You are given a JSON array of chat messages. For EACH one, decide whether an English speaker would benefit from a translation or cultural unpack.",
-  "Return a `results` array with ONE entry per input message, in the same order.",
+  "Input: a JSON array of chat messages, each item is `{ index, text }`.",
+  "Output: a `results` array with ONE entry per input message. Each entry MUST include the matching `index` from the input so the caller can map them back. You may return them in any order, but include EVERY index from the input exactly once.",
   "Per-message rules:",
   '- If the message is already clear, idiomatic English without Lithuanian content, set translate=false and text="".',
   "- If it contains Lithuanian text, or Lithuanian-specific slang/cultural references that an English speaker wouldn't catch, set translate=true and text to a concise English rendering.",
-  "- For cultural references, you may add a short [bracketed note] after the rendering. Keep each `text` under 200 characters.",
+  "- For cultural references you may add a short [bracketed note] after the rendering. Each `text` ≤ 200 chars.",
   "- Don't translate single emoji, single English words, or already-English phrases. Don't editorialise.",
 ].join("\n");
 
@@ -97,99 +95,93 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
-
-  // Normalise both shapes to a `texts: string[]` working list, remember
-  // which shape was sent so we mirror it back.
   const body = parsed.data;
   const isSingle = "text" in body;
   const texts = isSingle ? [body.text] : body.texts;
 
-  // Build the response array slot-by-slot. Cache hits fill in
-  // immediately; misses get queued for one model call.
-  const results: CachedHit[] = new Array(texts.length).fill(null) as never;
-  const missingIdx: number[] = [];
+  // Cache + dedupe pass. We end up with:
+  //   - results[]   : final response slot per input text
+  //   - missingText : unique texts to actually send to the model
+  //   - missingIdx  : the FIRST input-array index for each missingText
+  const results: CachedHit[] = new Array<CachedHit>(texts.length).fill(EMPTY);
   const missingText: string[] = [];
-  const seenInBatch = new Map<string, number>(); // text → index of FIRST occurrence
+  const missingIdx: number[] = [];
+  const firstOccurrence = new Map<string, number>();
 
   for (let i = 0; i < texts.length; i++) {
     const t = texts[i];
-    const fromCache = cacheGet(t);
-    if (fromCache) {
-      results[i] = fromCache;
+    const cached = cacheGet(t);
+    if (cached) {
+      results[i] = cached;
       continue;
     }
-    // Same text twice in one batch: only model-call it once, point both
-    // slots at the eventual answer.
-    const seen = seenInBatch.get(t);
-    if (seen != null) {
-      // Marker; we'll backfill after the model returns.
-      results[i] = { translate: false, text: "" };
-      continue;
-    }
-    seenInBatch.set(t, i);
-    missingIdx.push(i);
+    if (firstOccurrence.has(t)) continue; // duplicate, will backfill
+    firstOccurrence.set(t, i);
     missingText.push(t);
+    missingIdx.push(i);
   }
 
-  // If everything was a cache hit, skip auth / rate-limit / model
-  // entirely — fastest path.
   if (missingText.length > 0) {
     const session = await readSignedSessionId();
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-    const usingSession = !!session;
     const bucket = `translate:${session ?? `ip:${ip}`}`;
-    // The bucket counts ONE per actual model call (i.e. per fresh batch
-    // request that needs the model), not per text. With batching the
-    // limit becomes "240 model calls per minute" which is effectively
-    // unreachable for a normal chat session.
+    // ONE bucket tick per batch, not per text. With batching a busy
+    // room of 30 viewers refreshing translate at once burns ~30 ticks/
+    // minute total instead of 30 × N.
     const limited = await checkAndIncrement(
       bucket,
-      usingSession ? 240 : 60,
+      session ? 240 : 60,
       60_000,
     );
-    if (limited) {
-      // Fill all the misses with EMPTY so the client renders nothing
-      // for them, but doesn't break.
-      for (const i of missingIdx) results[i] = EMPTY;
-    } else {
+    if (!limited) {
       const client = getClient();
-      if (!client) {
-        // Soft-fail when the API key isn't configured.
-        for (const i of missingIdx) results[i] = EMPTY;
-      } else {
+      if (client) {
         try {
-          // Pack the missing texts as a numbered list inside the user
-          // message — Anthropic's structured-output runner returns the
-          // parallel array via `parsed_output.results`.
-          const userPayload = JSON.stringify(missingText);
+          // Pack the batch as an indexed JSON array. The model returns
+          // a parallel `results: [{ index, translate, text }, ...]`.
+          const payload = JSON.stringify(
+            missingText.map((text, index) => ({ index, text })),
+          );
+          // Token budget: ~200 tokens per response item + 256 overhead,
+          // capped at 4096 (Haiku's headroom is fine here).
+          const maxTokens = Math.min(256 + missingText.length * 200, 4096);
           const response = await client.messages.parse({
             model: process.env.ANTHROPIC_TRANSLATE_MODEL ?? "claude-haiku-4-5",
-            max_tokens: Math.min(256 + missingText.length * 256, 4096),
+            max_tokens: maxTokens,
             system: SYSTEM_PROMPT,
-            messages: [{ role: "user", content: userPayload }],
-            output_config: { format: zodOutputFormat(TranslationBatch) },
+            messages: [{ role: "user", content: payload }],
+            output_config: { format: zodOutputFormat(Batch) },
           });
-          const parsedBatch = TranslationBatch.safeParse(response.parsed_output);
-          if (
-            !parsedBatch.success ||
-            parsedBatch.data.results.length !== missingText.length
-          ) {
-            // Length mismatch is rare but possible if the model goes off
-            // script. Fail soft for ALL misses — better silence than
-            // wrong-row translations.
-            for (const i of missingIdx) results[i] = EMPTY;
-          } else {
-            for (let j = 0; j < missingText.length; j++) {
-              const t = missingText[j];
-              const r = parsedBatch.data.results[j];
+          const parsedBatch = Batch.safeParse(response.parsed_output);
+          if (parsedBatch.success) {
+            // Index-routed application — partial / re-ordered model
+            // output still lands in the correct slots. Anything the
+            // model skipped stays EMPTY and gets cached EMPTY (so we
+            // don't hammer for the same near-empty inputs forever).
+            const placed = new Set<number>();
+            for (const r of parsedBatch.data.results) {
+              const idx = r.index;
+              if (idx < 0 || idx >= missingText.length || placed.has(idx)) continue;
+              placed.add(idx);
               const hit: CachedHit = {
                 translate: !!r.translate,
                 text: r.translate ? (r.text ?? "").slice(0, 240) : "",
               };
-              cacheSet(t, hit);
-              results[missingIdx[j]] = hit;
+              cacheSet(missingText[idx], hit);
+              results[missingIdx[idx]] = hit;
             }
+            // Any text the model didn't address → cache EMPTY so we
+            // don't call again. (Almost always means "already English,
+            // no rendering needed".)
+            for (let j = 0; j < missingText.length; j++) {
+              if (!placed.has(j)) cacheSet(missingText[j], EMPTY);
+            }
+          } else {
+            console.warn(
+              "[translate] schema mismatch",
+              JSON.stringify(response.parsed_output)?.slice(0, 300),
+            );
           }
         } catch (err) {
           if (err instanceof Anthropic.APIError) {
@@ -197,18 +189,16 @@ export async function POST(req: Request) {
           } else {
             console.warn("[translate] unexpected", err);
           }
-          for (const i of missingIdx) results[i] = EMPTY;
         }
       }
     }
   }
 
-  // Fill the dedupe slots: any text that appeared multiple times in the
-  // batch shares the cached result.
+  // Backfill duplicate slots — the first occurrence is now in cache.
   for (let i = 0; i < texts.length; i++) {
-    if (!results[i] || results[i].translate === false && results[i].text === "" && cacheGet(texts[i])) {
-      const c = cacheGet(texts[i]);
-      if (c) results[i] = c;
+    if (results[i] === EMPTY) {
+      const cached = cacheGet(texts[i]);
+      if (cached) results[i] = cached;
     }
   }
 
