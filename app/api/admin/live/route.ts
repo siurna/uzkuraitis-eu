@@ -12,8 +12,10 @@ import {
   postSystemMessage,
   postNowPlayingMessage,
   postCommentatorMessage,
+  postTriviaMessage,
   showStatusAnnouncement,
 } from "@/lib/chat-system";
+import { getTrivia } from "@/lib/trivia";
 
 // Global live controller. POST sets show status / now-playing on EVERY
 // room at once and broadcasts the change to each — for running the
@@ -100,6 +102,13 @@ export async function POST(req: Request) {
         if (nowPlayingCode) {
           await postNowPlayingMessage(code, id, nowPlayingCode);
           await postCommentatorMessage(code, id, nowPlayingCode);
+          // Trivia card lands as its own chat message right after the
+          // now-playing banner (when the country has an entry in
+          // TRIVIA_DECK). The card itself gates UI tap-state on the
+          // server's per-(room, session) answer record.
+          if (getTrivia(nowPlayingCode)) {
+            await postTriviaMessage(code, id, nowPlayingCode);
+          }
           const c = getCountry(nowPlayingCode);
           await pushToRoom(
             id,

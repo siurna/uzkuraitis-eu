@@ -177,49 +177,63 @@ export function Highlights() {
             const np = (h.meta as { nowPlaying?: string } | null)?.nowPlaying;
             const country = np ? getCountry(np) : null;
             const text = preview(h);
+            const isMedia = (h.kind === "gif" || h.kind === "image") && !!h.gifUrl;
             return (
               <li
                 key={h.id}
-                className="flex items-center gap-3 rounded-2xl bg-orange/[0.07] ring-1 ring-orange/20 px-3 py-2.5 shadow-[0_2px_18px_-6px_oklch(70%_0.19_42_/_0.35)]"
+                className="flex flex-col gap-2 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 p-3"
               >
-                <span className="h-9 w-9 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/12 bg-white/[0.06]">
-                  {avatar?.photo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={optimizedSrc(avatar.photo, 128)}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      style={{ objectPosition: avatar.focal ? `${avatar.focal.x}% ${avatar.focal.y}%` : "50% 30%" }}
-                    />
-                  ) : (
-                    <span className="h-full w-full grid place-items-center text-xs font-display text-white/45">
-                      {h.name.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] text-white/55 leading-tight flex items-center gap-1.5 truncate">
-                    <span className="font-display text-white/80">{h.name}</span>
-                    {country && (
-                      <>
-                        <span className="text-white/25">·</span>
-                        <span className="truncate">{country.flag} {countryName(country.code, lang)}</span>
-                      </>
+                {/* Header row: avatar + name + country chip + heart count.
+                    Reads as a chat-card header so the drawer feels like
+                    a screenshot of the moment, not a stats list. */}
+                <div className="flex items-center gap-3">
+                  <span className="h-9 w-9 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/12 bg-white/[0.06]">
+                    {avatar?.photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={optimizedSrc(avatar.photo, 128)}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        style={{ objectPosition: avatar.focal ? `${avatar.focal.x}% ${avatar.focal.y}%` : "50% 30%" }}
+                      />
+                    ) : (
+                      <span className="h-full w-full grid place-items-center text-xs font-display text-white/45">
+                        {h.name.charAt(0).toUpperCase()}
+                      </span>
                     )}
-                  </p>
-                  {text && <p className="text-sm text-white/90 leading-snug truncate">{text}</p>}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-sm text-white/90 truncate leading-tight">
+                      {h.name}
+                    </p>
+                    {country && (
+                      <p className="text-[11px] text-white/55 leading-tight truncate">
+                        {country.flag} {countryName(country.code, lang)}
+                      </p>
+                    )}
+                  </div>
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange/15 ring-1 ring-orange/35 px-2 h-6 text-xs text-orange tabular-nums font-display">
+                    ❤️ {h.reactionCount}
+                  </span>
                 </div>
-                {h.gifUrl && (
+
+                {/* Body — quote or media. For GIF/image the picture IS
+                    the moment, so render it inline instead of an italic
+                    "GIF" placeholder. */}
+                {isMedia ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={h.gifUrl}
+                    src={h.gifUrl!}
                     alt=""
-                    className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-white/10"
+                    className="rounded-xl ring-1 ring-white/10 max-h-44 w-auto self-start"
                   />
-                )}
-                <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange/15 ring-1 ring-orange/35 px-2 h-6 text-xs text-orange tabular-nums font-display">
-                  ❤️ {h.reactionCount}
-                </span>
+                ) : h.kind === "bingo_strike" ? (
+                  <p className="text-sm text-white/85">🎯 Bingo!</p>
+                ) : text ? (
+                  <p className="text-[15px] text-white leading-snug text-balance pl-12">
+                    {text}
+                  </p>
+                ) : null}
               </li>
             );
           })}

@@ -88,10 +88,43 @@ export function ChatEditableInput({
       enterKeyHint={enterKeyHint}
       autoCapitalize="sentences"
       onInput={(e) => readAndEmit(e.currentTarget)}
+      // On iOS the keyboard's blue "Send" key (enterKeyHint="send") DOES
+      // dispatch keydown with key="Enter" — but only sometimes; some
+      // virtual-keyboard versions / autocorrect quirks dispatch with
+      // key="Unidentified" or no keydown at all and surface only a
+      // beforeinput event with inputType="insertParagraph". Catch both.
+      onBeforeInput={(e) => {
+        const native = e.nativeEvent as InputEvent;
+        const inputType = native.inputType;
+        if (inputType === "insertParagraph" || inputType === "insertLineBreak") {
+          // For Shift+Enter we WANT a line break — but the keydown above
+          // handles that path via execCommand, so any beforeinput for
+          // paragraph/linebreak that reaches here is the "Send" tap.
+          // Funnel it to the parent's onKeyDown as a synthetic Enter so
+          // chat-panel's existing send() logic fires.
+          e.preventDefault();
+          onKeyDown?.({
+            key: "Enter",
+            shiftKey: false,
+            preventDefault: () => {},
+          } as KeyboardEvent<HTMLDivElement>);
+        }
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter" && e.shiftKey) {
           e.preventDefault();
           document.execCommand("insertLineBreak");
+          return;
+        }
+        // The "Send" key on most iOS keyboards fires keydown with
+        // key="Enter"; some autocorrect-suggested variants leave key
+        // empty or set keyCode 13 — accept either as a send signal.
+        if (
+          e.key === "Enter" ||
+          (e as unknown as { keyCode?: number }).keyCode === 13
+        ) {
+          // Pass through (parent calls preventDefault + send()).
+          onKeyDown?.(e);
           return;
         }
         onKeyDown?.(e);

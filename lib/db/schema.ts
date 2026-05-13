@@ -258,7 +258,13 @@ export type ChatMessageKind =
   | "bingo_strike"
   | "system"
   | "now_playing"
-  | "results";
+  | "results"
+  // "trivia": one-question card for the on-stage country. Posted by
+  // the server when the admin flips nowPlayingCode (if the country
+  // has a trivia entry in lib/trivia.ts). Renders inline in the
+  // thread; player taps an option to lock their answer. Replaces the
+  // floating popup the old TriviaCard component used.
+  | "trivia";
 
 export const chatMessages = pgTable(
   "chat_messages",

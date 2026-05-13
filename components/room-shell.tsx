@@ -20,7 +20,6 @@ import { CountryDeepDiveProvider } from "@/components/country-deep-dive";
 import { ProfileProvider } from "@/components/profile-sheet";
 import { VotingAnnouncement } from "@/components/voting-announcement";
 import { NowPlayingTakeover } from "@/components/now-playing-takeover";
-import { TriviaCard } from "@/components/trivia-card";
 
 const LAST_ROOM_KEY = "uzk_last_room";
 
@@ -124,7 +123,10 @@ export function RoomShell({
               <ProfileProvider>
                 <NowPlayingTakeover />
                 <VotingAnnouncement />
-                <TriviaCard />
+                {/* TriviaCard (the floating popup) was removed —
+                    trivia now lands as a chat message (kind="trivia")
+                    rendered inline in the thread. See
+                    components/chat-trivia-inline.tsx. */}
                 <RoomBody>{children}</RoomBody>
               </ProfileProvider>
             </CountryDeepDiveProvider>

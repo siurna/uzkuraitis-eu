@@ -81,6 +81,39 @@ export async function postSystemMessage(
   }
 }
 
+// Inline trivia card posted as a chat message when the on-stage
+// country has a trivia entry. The card payload is just the country
+// code; the client renders the question from lib/trivia.ts in the
+// viewer's language. Quiet on purpose — trivia firing shouldn't bump
+// the chat-unread badge; the card is its own attention signal.
+export async function postTriviaMessage(
+  roomCode: string,
+  roomId: string,
+  countryCode: string,
+): Promise<void> {
+  try {
+    const [row] = await db
+      .insert(chatMessages)
+      .values({
+        roomId,
+        sessionId: "system",
+        name: "system",
+        kind: "trivia",
+        body: null,
+        meta: { countryCode },
+      })
+      .returning();
+    await broadcastToRoom(roomCode, {
+      type: "chat:new",
+      id: row.id,
+      quiet: true,
+      message: toChatPayload(row),
+    });
+  } catch {
+    /* not worth a 500 */
+  }
+}
+
 // Full-width "now on stage" banner in the thread. Carries the country
 // code (+ artist/song snapshot) in meta so the client can render the
 // heart-flag chip in its own language; `body` is a plain-text fallback.
