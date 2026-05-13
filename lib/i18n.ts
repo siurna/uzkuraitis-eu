@@ -52,7 +52,7 @@ function ltPoints(n: number): string {
 const S = {
   // ── Auto-translate to English (Settings) ─────────────────────────
   settings_translate_h:    { en: "Auto-translate to English", lt: "Auto-vertimas į anglų" },
-  settings_translate_sub:  { en: "We'll pop a clean English rendering under any Lithuanian message — slang, cultural beats, all of it.", lt: "Po lietuvišku tekstu paberiama angliška versija." },
+  settings_translate_sub:  { en: "We'll pop a clean English rendering under any Lithuanian message: slang, cultural beats, all of it.", lt: "Po lietuvišku tekstu paberiama angliška versija." },
 
   // ── NameGate / SettingsModal ─────────────────────────────────────
   welcome:           { en: "Welcome", lt: "Labas!" },
@@ -153,8 +153,8 @@ const S = {
   home_vs_room_agree:  { en: "You and the room agree, it's on top!", lt: "Tu ir kiti sutariate, ji pirmoji!" },
   home_vs_room_bold:   { en: (n: number) => `Bold pick, the room has it way down at #${n}`, lt: (n: number) => `Drąsu, kiti ją laiko net #${n}` },
   home_vs_room_pending:{ en: "Your #1, waiting for more ballots", lt: "Tavo Nr.1, laukiam daugiau balsų" },
-  home_vs_room_wavelength: { en: (n: number) => `On the room's wavelength — ${n} of your top 5 are theirs too`, lt: (n: number) => `Tavo ir kitų skonis sutampa — ${n} iš tavo TOP 5 yra ir jų sąraše` },
-  home_vs_room_outlier:    { en: "Lone wolf — barely any of your picks crack the room's top 10", lt: "Vienišas vilkas — beveik nė vienas tavo favoritas nepatenka į kitų TOP 10" },
+  home_vs_room_wavelength: { en: (n: number) => `On the room's wavelength: ${n} of your top 5 are theirs too`, lt: (n: number) => `Tavo ir kitų skonis sutampa: ${n} iš tavo TOP 5 yra ir jų sąraše` },
+  home_vs_room_outlier:    { en: "Lone wolf. Barely any of your picks crack the room's top 10", lt: "Vienišas vilkas. Beveik nė vienas tavo favoritas nepatenka į kitų TOP 10" },
   home_vs_room_empty_title: { en: "How do you stack up?", lt: "Kaip atrodai prieš kitus?" },
   home_vs_room_empty_sub:   { en: "Cast your TOP 10 to compare with the room.", lt: "Balsuok ir palygink savo TOP 10 su kitais." },
   home_results:        { en: "Results are in", lt: "Rezultatai jau čia" },
@@ -213,9 +213,9 @@ const S = {
   sys_cta_notifications_unsupported: { en: "Unsupported", lt: "Nepalaikoma" },
   sys_cta_vote:      { en: "🗳️ Lines are open, get your TOP 10 in!", lt: "🗳️ Linijos atviros, užfiksuok savo TOP 10!" },
   sys_cta_vote_title: { en: "Lines are open", lt: "Balsavimas pradėtas" },
-  sys_cta_vote_sub_empty:    { en: "Drop your TOP 10 — every spot is points.", lt: "Užfiksuok TOP 10 — kiekviena vieta — taškai." },
+  sys_cta_vote_sub_empty:    { en: "Drop your TOP 10. Every spot is points.", lt: "Užfiksuok TOP 10. Kiekviena vieta yra taškai." },
   sys_cta_vote_sub_progress: { en: (n: number) => `Your ballot is ${n}/10. Finish it off.`, lt: (n: number) => `Tavo balsas: ${n}/10. Užbaik.` },
-  sys_cta_vote_sub_done:     { en: "All 10 in — tap to tweak.", lt: "Visi 10 vietoje — bakstelėk pakeisti." },
+  sys_cta_vote_sub_done:     { en: "All 10 in. Tap to tweak.", lt: "Visi 10 vietoje. Bakstelėk pakeisti." },
   sys_cta_bet:      { en: "🎲 Don't forget your bonus bets, every one is free points if you call it.", lt: "🎲 Nepamiršk bonus statymų, kiekvienas pataikytas, tai nemokami taškai." },
   sys_cta_bet_title_suggest: { en: "Bonus bet idea", lt: "Bonus statymo idėja" },
   sys_cta_bet_title_done:    { en: "All bets in", lt: "Visi statymai pateikti" },
@@ -372,7 +372,7 @@ const S = {
   profile_stat_highlights:   { en: "highlights", lt: "akcentai" },
   profile_stat_bingo:        { en: "bingos", lt: "bingo" },
   profile_stat_bets:         { en: "bets", lt: "statymai" },
-  profile_stat_trivia:       { en: "trivia", lt: "smulkmenos" },
+  profile_stat_trivia:       { en: "trivia", lt: "viktorina" },
   profile_top_moment:        { en: "Top moment", lt: "Geriausia akimirka" },
   profile_top10_h:           { en: "TOP 10 ballot", lt: "TOP 10 balsas" },
   profile_top10_hidden:      { en: "Hidden until the host reveals results.", lt: "Slepiama, kol šeimininkas paskelbs rezultatus." },

@@ -73,39 +73,30 @@ export function Highlights() {
   const rest = items.length - 1;
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">
-      {/* Section title — same eyebrow language as the other home rails. */}
-      <header className="flex items-center justify-between px-1">
-        <h2 className="font-display text-base text-white/85 flex items-center gap-2">
-          <Flame className="h-4 w-4 text-orange" fill="currentColor" />
-          {t(lang, "highlights_title")}
-        </h2>
-        {rest > 0 && (
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="text-[12px] font-display uppercase tracking-[0.18em] text-orange/85
-                       hover:text-orange transition px-2 py-1 -mr-2 rounded"
-          >
-            +{rest} {t(lang, "highlights_more")}
-          </button>
-        )}
-      </header>
-
-      {/* Trophy card — full-width, skeuomorphic glass over a warm wash,
-          the single hottest moment dressed up like something you'd
-          re-share. Tap anywhere to open the full gallery. */}
+    <div className="container mx-auto max-w-3xl px-4">
+      {/* One self-contained widget: title baked in at the top (eyebrow
+          row), the trophy card body, and a "+N daugiau" affordance
+          pinned to the bottom-right of the card. Tap anywhere to open
+          the full gallery. */}
       <motion.button
         type="button"
         onClick={() => setOpen(true)}
         initial={{ opacity: 0, y: 12, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 360, damping: 32 }}
-        className="relative block w-full overflow-hidden rounded-3xl text-left
+        className="relative block w-full overflow-hidden rounded-3xl text-left text-balance
                    shadow-[0_18px_44px_-18px_oklch(58%_0.18_42_/_0.55),inset_0_1px_0_rgba(255,255,255,0.18)]
                    ring-1 ring-white/8"
         style={{ background: "linear-gradient(135deg, #ff8a2a 0%, #ef1f3f 52%, #b1146a 100%)" }}
       >
+        {/* Subtle fire animation in the background. Three radial blobs
+            drift up + fade independently; sits below the gloss + content
+            so they only read as a warm glow, never as foreground. */}
+        <span className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+          <span className="absolute inset-x-0 bottom-0 h-2/3 fire-blob fire-blob-a" />
+          <span className="absolute inset-x-0 bottom-0 h-2/3 fire-blob fire-blob-b" />
+          <span className="absolute inset-x-0 bottom-0 h-2/3 fire-blob fire-blob-c" />
+        </span>
         {/* Soft top-light strip (the skeuo gloss) */}
         <span
           className="pointer-events-none absolute inset-x-0 top-0 h-1/2"
@@ -113,6 +104,12 @@ export function Highlights() {
           aria-hidden
         />
         <div className="relative flex flex-col gap-3 p-5">
+          {/* Eyebrow / title — was a separate section header before. */}
+          <p className="text-[10px] uppercase tracking-[0.3em] text-white/90 font-display leading-tight flex items-center gap-1.5">
+            <Flame className="h-3 w-3" fill="currentColor" />
+            {t(lang, "highlights_title")}
+          </p>
+
           {/* Author row */}
           <div className="flex items-center gap-3">
             <span className="h-11 w-11 shrink-0 rounded-2xl overflow-hidden ring-2 ring-white/30 bg-dark-blue-800">
@@ -159,6 +156,18 @@ export function Highlights() {
             />
           )}
         </div>
+        {/* +N daugiau pinned bottom-right inside the card. Tap target
+            for the whole card is already the gallery; this label is
+            just the affordance hint. */}
+        {rest > 0 && (
+          <span
+            className="absolute bottom-3 right-4 text-[10px] uppercase tracking-[0.18em]
+                       font-display text-white/85 drop-shadow-sm"
+            aria-hidden
+          >
+            +{rest} {t(lang, "highlights_more")}
+          </span>
+        )}
       </motion.button>
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title={t(lang, "highlights_title")}>

@@ -8,6 +8,8 @@ import { useUpdateMyPresence } from "@/lib/liveblocks";
 import { useIdentity } from "@/lib/use-identity";
 import { useRoomLive } from "@/components/room-shell";
 import { SettingsModal } from "@/components/settings-modal";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { NotificationToggles } from "@/components/notification-toggles";
 import { Flag } from "@/components/flag";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { getCountry, countryName } from "@/lib/countries";
@@ -28,26 +30,22 @@ export function PresenceBar() {
   const lang = useLang();
   const { name, avatarId, avatar } = useIdentity();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [notifOnlyOpen, setNotifOnlyOpen] = useState(false);
 
   // Let other surfaces (the chat "turn on notifications" broadcast
-  // card) request the settings drawer. They fire a one-shot window
-  // event with detail.section optionally targeting a sub-sheet —
-  // SettingsModal listens for the matching open-… event once it's
-  // mounted.
+  // card) request a specific drawer. Two events:
+  //   uzk:open-settings  → opens the full Settings drawer
+  //   uzk:open-notifications-only → opens JUST the notifications sheet,
+  //                                no big Settings drawer behind it
   useEffect(() => {
-    const onOpen = (e: Event) => {
-      setSettingsOpen(true);
-      const section = (e as CustomEvent).detail?.section as string | undefined;
-      if (section === "notifications") {
-        // Wait one tick so SettingsModal's open effect runs first.
-        window.setTimeout(
-          () => window.dispatchEvent(new Event("uzk:open-notifications")),
-          0,
-        );
-      }
+    const onOpenSettings = () => setSettingsOpen(true);
+    const onOpenNotifsOnly = () => setNotifOnlyOpen(true);
+    window.addEventListener("uzk:open-settings", onOpenSettings);
+    window.addEventListener("uzk:open-notifications-only", onOpenNotifsOnly);
+    return () => {
+      window.removeEventListener("uzk:open-settings", onOpenSettings);
+      window.removeEventListener("uzk:open-notifications-only", onOpenNotifsOnly);
     };
-    window.addEventListener("uzk:open-settings", onOpen);
-    return () => window.removeEventListener("uzk:open-settings", onOpen);
   }, []);
   const updatePresence = useUpdateMyPresence();
   const shareUrl =
@@ -207,6 +205,18 @@ export function PresenceBar() {
         onClose={() => setSettingsOpen(false)}
         shareUrl={shareUrl}
       />
+
+      {/* Standalone notifications drawer — the chat broadcast card fires
+          uzk:open-notifications-only to open this WITHOUT also opening
+          the full Settings drawer behind it. */}
+      <BottomSheet
+        open={notifOnlyOpen}
+        onClose={() => setNotifOnlyOpen(false)}
+        title={t(lang, "notifications")}
+        sub={t(lang, "push_cta_sub")}
+      >
+        <NotificationToggles />
+      </BottomSheet>
     </header>
   );
 }

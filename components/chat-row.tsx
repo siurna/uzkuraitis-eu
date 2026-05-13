@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Reply, Pencil, Copy, Trash2, Smile, Loader2, Mic, Music, Trophy, Plus, ChevronRight,
+  Reply, Pencil, Copy, Trash2, Smile, Loader2, Mic, Music, Trophy, Plus, ChevronRight, Users,
 } from "lucide-react";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
@@ -403,6 +403,19 @@ export function ChatRow({
   if (isResults) {
     const podium = ((m.meta as { podium?: { name: string; total: number }[] } | null)?.podium ?? []).slice(0, 3);
     const medals = ["🥇", "🥈", "🥉"];
+    // Re-order for the pedestal: 2nd left, 1st centre, 3rd right.
+    const order: (typeof podium[number] | null)[] = [
+      podium[1] ?? null,
+      podium[0] ?? null,
+      podium[2] ?? null,
+    ];
+    const rankOrder: (1 | 2 | 3)[] = [2, 1, 3];
+    const heights = { 1: "h-24", 2: "h-16", 3: "h-12" } as const;
+    const blocks = {
+      1: "bg-gradient-to-b from-yellow to-gold",
+      2: "bg-gradient-to-b from-white/55 to-white/30",
+      3: "bg-gradient-to-b from-orange/70 to-orange/40",
+    } as const;
     return (
       <motion.li
         initial={{ opacity: 0, scale: 0.97 }}
@@ -410,11 +423,11 @@ export function ChatRow({
         transition={{ duration: 0.3 }}
         className="my-1 px-1"
       >
-        <div className="rainbow-border rounded-2xl">
+        <div className="rainbow-border rounded-3xl">
           <div
-            className="rounded-[14px] p-5 flex flex-col gap-4
-                       bg-gradient-to-br from-yellow/25 via-flamingo/25 to-purple/40
-                       shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
+            className="relative overflow-hidden rounded-[22px] p-5 flex flex-col gap-4
+                       bg-gradient-to-br from-yellow/25 via-flamingo/30 to-purple/55
+                       shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
           >
             <header className="flex items-center gap-2">
               <Trophy className="h-4 w-4 text-yellow" fill="currentColor" />
@@ -423,28 +436,33 @@ export function ChatRow({
               </p>
             </header>
 
-            <ol className="flex flex-col gap-1.5">
-              {podium.length > 0 ? (
-                podium.map((p, i) => (
-                  <li
-                    key={i}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2
-                                ${i === 0 ? "bg-white/15 ring-1 ring-white/25" : "bg-white/[0.06] ring-1 ring-white/10"}`}
-                  >
-                    <span className="text-xl shrink-0 w-7 text-center">{medals[i] ?? "•"}</span>
-                    <span className="font-display text-white truncate flex-1">{p.name}</span>
-                    <span className="tabular-nums font-display text-white shrink-0">{p.total}</span>
-                  </li>
-                ))
-              ) : (
-                <li className="text-sm text-white/85">{m.body}</li>
-              )}
-            </ol>
+            {podium.length > 0 ? (
+              <div className="flex items-end justify-around gap-2 pt-1">
+                {order.map((p, i) => {
+                  if (!p) return <span key={i} className="flex-1" />;
+                  const rank = rankOrder[i];
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-1 flex-1 min-w-0">
+                      <span className="text-lg leading-none">{medals[rank - 1]}</span>
+                      <span className="text-[11px] font-display text-white truncate max-w-full text-center">
+                        {p.name}
+                      </span>
+                      <span className="text-[11px] font-display text-white/90 tabular-nums">
+                        {p.total}
+                      </span>
+                      <span
+                        className={`w-full max-w-[5.5rem] rounded-t-md ring-2 ring-white/30
+                                    shadow-[inset_0_2px_0_rgba(255,255,255,0.4)] ${heights[rank]} ${blocks[rank]}`}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-white/85">{m.body}</p>
+            )}
 
-            {/* Two CTAs — "see your breakdown" + "see the full list".
-                Both jump to the Results tab; the second flips to the
-                board sub-tab via the same event the home banner uses. */}
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => roomTab.setTab("vote")}
@@ -667,12 +685,25 @@ export function ChatRow({
           )}
 
           {parent && (
-            // Quoted-message chip. Cap the width so a long quote can't
-            // outgrow the bubble; anchor right when it's your reply so
-            // the quote + bubble read as one right-aligned thread.
-            <div className={`text-[11px] px-3 py-1.5 rounded-xl truncate bg-white/[0.03] ring-1 ring-white/10 text-white/55 max-w-[min(100%,18rem)] ${mine ? "self-end" : "self-start"}`}>
+            // Quoted-message chip — reads as part of the bubble below.
+            // On your own side it picks up the bubble's white wash with
+            // dark text + a flamingo edge so the quote + bubble look
+            // tied together (the old dim-grey-on-right-of-white-bubble
+            // treatment read as disjointed). On others' messages it's
+            // the same quiet glass chip as before.
+            <div
+              className={`text-[11px] px-3 py-1.5 rounded-xl truncate max-w-[min(100%,18rem)] ${
+                mine ? "self-end" : "self-start"
+              } ${
+                mine
+                  ? "bg-white text-dark-blue/85 ring-1 ring-flamingo/30 shadow-[inset_2px_0_0_oklch(70%_0.27_336)]"
+                  : "bg-white/[0.04] ring-1 ring-white/10 text-white/65 shadow-[inset_2px_0_0_oklch(70%_0.27_336)]"
+              }`}
+            >
               <Reply className="h-3 w-3 inline-block mr-1 text-flamingo" />
-              <span className="font-display text-white/75">{parent.name}</span>
+              <span className={`font-display ${mine ? "text-dark-blue" : "text-white/85"}`}>
+                {parent.name}
+              </span>
               {": "}
               {parent.body ?? (parent.gifUrl ? "GIF" : t(lang, "chat_card"))}
             </div>
@@ -807,24 +838,30 @@ export function ChatRow({
                         const picked = !!m.reactions[emoji]?.mine;
                         // Anything I've already reacted with: full-colour
                         // and ringed in flamingo. Anything I haven't:
-                        // greyscaled + dimmed so my current choice
-                        // reads at a glance.
+                        // greyscaled + dimmed (or, if NO emoji is picked
+                        // yet on this message, EVERY emoji is grey so
+                        // tapping any of them registers as "my first
+                        // pick" rather than "switching from a default").
+                        const anyPicked = Object.values(m.reactions).some((r) => r.mine);
+                        const showGray = !anyPicked || !picked;
                         return (
                           <motion.button
                             key={emoji}
                             type="button"
                             onClick={(e) => reactWithRain(e, emoji)}
-                            initial={{ scale: 0, opacity: 0 }}
+                            initial={{ scale: 0.4, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0, opacity: 0 }}
-                            transition={{ delay: i * 0.012, type: "spring", stiffness: 1000, damping: 24 }}
+                            exit={{ scale: 0.4, opacity: 0 }}
+                            transition={{ delay: i * 0.012, duration: 0.05, ease: "easeOut" }}
                             className={`relative h-11 w-11 shrink-0 rounded-full grid place-items-center text-xl leading-none
                                         bg-gradient-to-br ${bg}
                                         shadow-[0_4px_12px_-3px_rgba(0,0,0,0.55)] transition-transform active:scale-90
                                         ${
                                           picked
                                             ? "ring-2 ring-flamingo brightness-110"
-                                            : "ring-1 ring-white/20 grayscale opacity-65 hover:opacity-100 hover:grayscale-0"
+                                            : showGray
+                                              ? "ring-1 ring-white/20 grayscale opacity-65 hover:opacity-100 hover:grayscale-0"
+                                              : "ring-1 ring-white/20"
                                         }`}
                           >
                             <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">{emoji}</span>
@@ -849,20 +886,25 @@ export function ChatRow({
                     onClick={(e) => e.stopPropagation()}
                     className={`absolute top-full mt-2 z-30 ${mine ? "right-0" : "left-0"}`}
                   >
-                    {/* Glassy actions menu — slightly translucent black
-                        with a stronger saturating backdrop blur, a
-                        gradient inner gloss on the top edge, and a
-                        subtle white inner border. Reads as one solid
-                        pill while letting the chat behind it glow
-                        through. */}
+                    {/* Glassy actions menu — heavier backdrop blur +
+                        saturation so the chat behind it dissolves into a
+                        smooth wash. Gradient inner gloss on the top
+                        edge, subtle white inner border. */}
                     <div
                       className="flex flex-col rounded-2xl overflow-hidden min-w-[10.5rem]
-                                 bg-gradient-to-b from-white/12 to-white/[0.04]
-                                 ring-1 ring-white/15
-                                 backdrop-blur-xl backdrop-saturate-150
-                                 shadow-[0_18px_44px_-12px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.18)]"
+                                 bg-gradient-to-b from-white/14 to-white/[0.04]
+                                 ring-1 ring-white/18
+                                 backdrop-blur-2xl backdrop-saturate-200
+                                 shadow-[0_18px_44px_-12px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.22)]"
                     >
                       <MenuAction onClick={onReply} icon={Reply} label={t(lang, "chat_reply")} />
+                      {reactionTotal > 0 && (
+                        <MenuAction
+                          onClick={() => setReactorsOpen(true)}
+                          icon={Users}
+                          label={t(lang, "chat_who_reacted")}
+                        />
+                      )}
                       {canEdit && <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />}
                       {m.body && <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />}
                       {mine && <MenuAction onClick={onDelete} icon={Trash2} label={t(lang, "chat_delete")} danger />}
@@ -896,20 +938,6 @@ export function ChatRow({
                   <span className="tabular-nums">{info.count}</span>
                 </button>
               ))}
-              {/* Lightweight "who reacted?" — opens a sheet listing each
-                  emoji with the names behind it. Hidden when the only
-                  reactor is the viewer (their own list is trivial). */}
-              {reactionTotal > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setReactorsOpen(true)}
-                  aria-label={t(lang, "chat_who_reacted")}
-                  className="h-6 px-2 rounded-full text-[10px] uppercase tracking-[0.12em] font-display
-                             text-white/55 hover:text-white hover:bg-white/[0.08] transition"
-                >
-                  {t(lang, "chat_who_reacted")}
-                </button>
-              )}
             </div>
           )}
 
