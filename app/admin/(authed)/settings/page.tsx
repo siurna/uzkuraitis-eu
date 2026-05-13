@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { adminCredentials } from "@/lib/db/schema";
 import { AdminPasskeysPanel } from "@/components/admin-passkeys-panel";
+import { AdminSeed } from "@/components/admin-seed";
 
 export default async function AdminSettingsPage() {
   const creds = await db
@@ -29,6 +30,8 @@ export default async function AdminSettingsPage() {
           lastUsedAt: c.lastUsedAt?.toISOString() ?? null,
         }))}
       />
+
+      <AdminSeed />
 
       <section className="glass-card rounded-xl p-5">
         <h2 className="font-display text-xl mb-3">Environment</h2>
