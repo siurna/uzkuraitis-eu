@@ -2,13 +2,19 @@
 
 import { useEffect, useRef } from "react";
 
-// Cloudflare Turnstile widget. Loads the script lazily on first mount,
-// then renders a managed-mode challenge. Reports the token via
-// `onToken` and resets itself if the response expires.
+// Cloudflare Turnstile widget — invisible mode. The script is lazy-
+// loaded on first mount and a 0×0 widget is mounted that runs the
+// challenge entirely in the background; the callback fires with a
+// token once Cloudflare decides the visitor is fine, and the gate
+// flips. No checkbox, no logo, no UX cost.
 //
-// "managed" mode = Cloudflare decides whether to show a visible
-// challenge based on passive signals. Most users never see anything —
-// the widget appears, ~1s later it fires the token callback, done.
+// Two things to know if this stops "just working":
+//   1. Invisible mode REQUIRES the site key in the Cloudflare dashboard
+//      to be configured as "Invisible". A "Managed" key will render the
+//      visible widget here even though we asked for size:"invisible".
+//   2. There's no host-side fallback if the visitor's browser blocks the
+//      script (Brave aggressive shields, some Pi-hole configs). They'll
+//      simply never get a token and the join button stays disabled.
 
 type TurnstileOptions = {
   sitekey: string;
@@ -66,7 +72,7 @@ export function TurnstileWidget({
         callback: (token) => onToken(token),
         "expired-callback": () => onExpire?.(),
         "error-callback": () => onExpire?.(),
-        theme: "dark",
+        size: "invisible",
       });
       return true;
     };
@@ -100,5 +106,7 @@ export function TurnstileWidget({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteKey]);
 
-  return <div ref={containerRef} className="flex justify-center" />;
+  // Invisible mode renders a 0×0 host node; we still keep it in the
+  // tree (the widget needs a mount point) but it takes no layout space.
+  return <div ref={containerRef} className="hidden" aria-hidden />;
 }

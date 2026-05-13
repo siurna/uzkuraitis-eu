@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { voters, votes } from "@/lib/db/schema";
 import { findRoomByCode, touchRoom } from "@/lib/rooms";
@@ -8,6 +8,7 @@ import { countries } from "@/lib/countries";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { postSystemMessage } from "@/lib/chat-system";
 import { guardSession } from "@/lib/server-session";
+import { checkAndIncrement } from "@/lib/rate-limit";
 
 const POINT_KEYS = ["12", "10", "8", "7", "6", "5", "4", "3", "2", "1"] as const;
 
@@ -84,6 +85,20 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const guard = await guardSession(sessionId);
   if (guard) return guard;
 
+  // 30 ballot writes per minute per session is plenty for legitimate
+  // re-edits and stops a stolen session from carpet-bombing the table.
+  const limited = await checkAndIncrement(
+    `votes:${room.id}:${sessionId}`,
+    30,
+    60_000,
+  );
+  if (limited) {
+    return NextResponse.json(
+      { error: "Slow down — too many ballot updates." },
+      { status: 429 },
+    );
+  }
+
   // Cross-check countries actually exist + no dupes.
   const validCodes = new Set(countries.map((c) => c.code));
   const used = new Set<string>();
@@ -126,9 +141,6 @@ export async function POST(request: Request, { params }: RouteCtx) {
     betJuryWinner: bets.juryWinner ?? null,
     betTelevoteWinner: bets.televoteWinner ?? null,
     betNulTelevote: bets.nulTelevote ?? null,
-    // betSameWinners column is intentionally not written: the bet was
-    // removed (it duplicates jury+televote winner picks).
-    betSameWinners: null,
     betHostTop3: bets.hostTop3 ?? null,
     betWinnerSolo: bets.winnerSolo ?? null,
     betLtTotalPoints: bets.ltTotalPoints ?? null,
@@ -191,28 +203,4 @@ export async function DELETE(request: Request, { params }: RouteCtx) {
   return NextResponse.json({ ok: true });
 }
 
-// Used by the legacy CSV export — list every ballot in a room.
-export async function GET(_req: Request, { params }: RouteCtx) {
-  const { code } = await params;
-  const room = await findRoomByCode(code);
-  if (!room) {
-    return NextResponse.json({ error: "Room not found" }, { status: 404 });
-  }
-
-  const rows = await db
-    .select({
-      voterId: voters.id,
-      voterName: voters.name,
-      voterCreatedAt: voters.createdAt,
-      points: votes.points,
-      countryCode: votes.countryCode,
-    })
-    .from(voters)
-    .leftJoin(votes, eq(votes.voterId, voters.id))
-    .where(eq(voters.roomId, room.id));
-
-  return NextResponse.json({ rows });
-}
-
-// silence unused import warnings if a future route stops using one of these
-void inArray;
+export const dynamic = "force-dynamic";

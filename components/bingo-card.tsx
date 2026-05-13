@@ -161,7 +161,7 @@ export function BingoCard() {
       <main className="container mx-auto max-w-3xl px-4 py-6 flex-1">
         <div className="grid grid-cols-5 gap-1.5">
           {Array.from({ length: 25 }, (_, i) => (
-            <div key={i} className="aspect-square rounded-2xl bg-white/5 animate-pulse" />
+            <div key={i} className="aspect-square rounded-2xl bg-white/5 skeleton" />
           ))}
         </div>
       </main>

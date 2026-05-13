@@ -3,13 +3,8 @@
 // — every method returns a discriminated result so callers can render
 // a friendly "not supported" / "permission denied" message.
 
-export type PushPrefs = {
-  chatAll?: boolean;
-  chatReplies?: boolean;
-  nowPlaying?: boolean;
-  votingState?: boolean;
-  resultsTallied?: boolean;
-};
+export type { PushPrefs } from "@/lib/push-prefs";
+import type { PushPrefs } from "@/lib/push-prefs";
 
 export type PushState =
   | { kind: "unsupported" }

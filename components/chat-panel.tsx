@@ -32,6 +32,7 @@ import { useIdentity } from "@/lib/use-identity";
 import { GifPicker } from "@/components/gif-picker";
 import { ChatRow, type Message, type MessageKind } from "@/components/chat-row";
 import { Lightbox } from "@/components/chat-lightbox";
+import { ChatEditableInput } from "@/components/chat-editable-input";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 import { haptic } from "@/lib/haptics";
@@ -828,7 +829,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           {loading ? (
             <ul className="flex flex-col gap-3">
               {[0, 1, 2].map((i) => (
-                <li key={i} className="h-12 rounded-2xl bg-white/[0.04] animate-pulse" />
+                <li key={i} className="h-12 rounded-2xl bg-white/[0.04] skeleton" />
               ))}
             </ul>
           ) : messages.length === 0 ? (
@@ -1045,7 +1046,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
             {/* Composer pill. No send button — Enter (or the keyboard's
                 "send" key) sends. Photo + GIF sit on the right. */}
             <div className="flex items-end gap-1 rounded-2xl border border-white/15 bg-black/40 px-1.5 py-1.5 transition focus-within:border-white/30">
-              <ContentEditableInput
+              <ChatEditableInput
                 innerRef={taRef}
                 enterKeyHint="send"
                 value={editing ? editBody : body}
@@ -1122,112 +1123,5 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       <GifPicker open={gifOpen} onClose={() => setGifOpen(false)} onPick={(url) => sendGif(url)} />
       <Lightbox url={lightbox} onClose={() => setLightbox(null)} closeLabel={t(lang, "close")} />
     </main>
-  );
-}
-
-// ── contentEditable composer ─────────────────────────────────────────
-// Experimental replacement for the <textarea>: a contentEditable <div>
-// doesn't get iOS Safari's "‹ › Done" keyboard accessory bar. We keep it
-// behaving like a plain-text field: paste is sanitised to plain text,
-// Shift+Enter inserts a single line break (not a nested <div>), the
-// length is clamped, and the DOM text is only written from the outside
-// when `value` changes from somewhere other than typing (send clears it,
-// edit-mode pre-fills it, @mention insert rewrites it). `data-empty`
-// drives the CSS placeholder (see globals.css).
-function ContentEditableInput({
-  value,
-  onChange,
-  onKeyDown,
-  onPaste,
-  onFocus,
-  onBlur,
-  placeholder,
-  className,
-  innerRef,
-  maxLength = 2000,
-  enterKeyHint,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
-  onPaste?: (e: React.ClipboardEvent<HTMLDivElement>) => void;
-  onFocus?: () => void;
-  onBlur?: () => void;
-  placeholder: string;
-  className?: string;
-  innerRef: React.RefObject<HTMLDivElement | null>;
-  maxLength?: number;
-  enterKeyHint?: React.HTMLAttributes<HTMLDivElement>["enterKeyHint"];
-}) {
-  const caretToEnd = (el: HTMLElement) => {
-    const r = document.createRange();
-    r.selectNodeContents(el);
-    r.collapse(false);
-    const s = window.getSelection();
-    s?.removeAllRanges();
-    s?.addRange(r);
-  };
-
-  // Mirror external value changes into the DOM (no-op while typing, since
-  // `value` already equals the DOM text then).
-  useEffect(() => {
-    const el = innerRef.current;
-    if (!el) return;
-    const cur = el.innerText === "\n" ? "" : el.innerText;
-    if (cur !== value) {
-      el.innerText = value;
-      if (document.activeElement === el) caretToEnd(el);
-    }
-    el.toggleAttribute("data-empty", value.length === 0);
-  }, [value, innerRef]);
-
-  const readAndEmit = (el: HTMLElement) => {
-    let text = el.innerText;
-    if (text === "\n") text = "";
-    if (text.length > maxLength) {
-      text = text.slice(0, maxLength);
-      el.innerText = text;
-      caretToEnd(el);
-    }
-    el.toggleAttribute("data-empty", text.length === 0);
-    onChange(text);
-  };
-
-  return (
-    <div
-      ref={innerRef}
-      role="textbox"
-      aria-multiline="true"
-      contentEditable
-      suppressContentEditableWarning
-      data-placeholder={placeholder}
-      enterKeyHint={enterKeyHint}
-      autoCapitalize="sentences"
-      onInput={(e) => readAndEmit(e.currentTarget)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && e.shiftKey) {
-          e.preventDefault();
-          document.execCommand("insertLineBreak");
-          return;
-        }
-        onKeyDown?.(e);
-      }}
-      onPaste={(e) => {
-        const hasImage = Array.from(e.clipboardData.items).some((i) =>
-          i.type.startsWith("image/"),
-        );
-        if (hasImage) {
-          if (onPaste) onPaste(e);
-          else e.preventDefault();
-          return;
-        }
-        e.preventDefault();
-        const txt = e.clipboardData.getData("text/plain");
-        if (txt) document.execCommand("insertText", false, txt);
-      }}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      className={className}
-    />
   );
 }

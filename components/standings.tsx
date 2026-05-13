@@ -52,7 +52,7 @@ export function Standings() {
   }, [fetchScores]);
 
   useEventListener(({ event }) => {
-    if ((event as { type?: string }).type === "scores:updated") fetchScores();
+    if (event.type === "scores:updated") fetchScores();
   });
 
   useEffect(() => {
@@ -81,10 +81,10 @@ export function Standings() {
               key={i}
               className="glass-card rounded-2xl px-3 py-2.5 flex items-center gap-3 opacity-60"
             >
-              <span className="h-9 w-9 rounded-full bg-white/8 animate-pulse" />
-              <span className="h-7 w-24 rounded-full bg-white/8 animate-pulse" />
+              <span className="h-9 w-9 rounded-full bg-white/8 skeleton" />
+              <span className="h-7 w-24 rounded-full bg-white/8 skeleton" />
               <span className="flex-1" />
-              <span className="h-7 w-10 rounded-md bg-white/8 animate-pulse" />
+              <span className="h-7 w-10 rounded-md bg-white/8 skeleton" />
             </li>
           ))}
         </ul>

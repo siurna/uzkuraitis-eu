@@ -49,7 +49,7 @@ export function ResultsPanel() {
   }, [load]);
 
   useEventListener(({ event }) => {
-    if ((event as { type?: string }).type === "leaderboard:updated") load();
+    if (event.type === "leaderboard:updated") load();
   });
 
   if (!rows || rows.length === 0) {

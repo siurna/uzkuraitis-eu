@@ -11,6 +11,8 @@ import {
   jsonb,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
+import type { PushPrefs } from "@/lib/push-prefs";
+export type { PushPrefs } from "@/lib/push-prefs";
 
 // A "room" is one watch-along group. Friends share a room code (e.g. "ABC123")
 // and only see each other's votes & reactions.
@@ -87,7 +89,6 @@ export const voters = pgTable(
     // Postgres text[] array.
     betNulTelevote: text("bet_nul_televote").array(),
     // Yes/no flags.
-    betSameWinners: boolean("bet_same_winners"),
     betHostTop3: boolean("bet_host_top3"),
     betWinnerSolo: boolean("bet_winner_solo"),
     // Total points the home country (LT by default) will end up with.
@@ -322,15 +323,7 @@ export const gifCache = pgTable("gif_cache", {
 // Web Push subscriptions. One row per (room, session, endpoint) so a
 // voter can opt into notifications from multiple rooms; deleting a
 // row unsubscribes that subscription. `prefs` is a jsonb bag of bool
-// toggles — chatAll / chatReplies / nowPlaying / votingState /
-// resultsTallied — so adding categories doesn't need a migration.
-export type PushPrefs = {
-  chatAll?: boolean;
-  chatReplies?: boolean;
-  nowPlaying?: boolean;
-  votingState?: boolean;
-  resultsTallied?: boolean;
-};
+// toggles — see lib/push-prefs.ts for the shape.
 
 export const pushSubscriptions = pgTable(
   "push_subscriptions",

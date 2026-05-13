@@ -1,4 +1,5 @@
 import { Liveblocks } from "@liveblocks/node";
+import type { RoomEvent } from "@/lib/liveblocks";
 
 // Lazy-instantiated server-side Liveblocks client used to push events from
 // route handlers (e.g. broadcasting "scores:updated" after a vote is saved).
@@ -15,28 +16,21 @@ export function getLiveblocksServer(): Liveblocks | null {
   return cached;
 }
 
-// Fire-and-forget helper. Logs failures but never throws so the calling
-// route doesn't fail just because the realtime hint couldn't be sent.
-// The Liveblocks Node client narrows to its internal Json type at the
-// call boundary; we accept any JSON-shaped object so callers don't have
-// to fight TS over Record<string, unknown> meta fields.
-type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | JsonValue[]
-  | { [k: string]: JsonValue | unknown };
-
+// Fire-and-forget broadcast. The parameter type is the RoomEvent union
+// (lib/liveblocks.ts) so any call site that forgets a required field
+// fails at compile time. The cast at the Liveblocks boundary is the one
+// place we lie to TS — RoomEvent payloads are JSON-clean by construction.
 export async function broadcastToRoom(
   roomCode: string,
-  data: JsonValue,
+  event: RoomEvent,
 ): Promise<void> {
   const lb = getLiveblocksServer();
   if (!lb) return;
   try {
-    await lb.broadcastEvent(`room:${roomCode}`, data as Parameters<typeof lb.broadcastEvent>[1]);
+    await lb.broadcastEvent(
+      `room:${roomCode}`,
+      event as Parameters<typeof lb.broadcastEvent>[1],
+    );
   } catch (err) {
     console.warn("[liveblocks] broadcast failed:", err);
   }

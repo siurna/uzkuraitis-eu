@@ -64,10 +64,7 @@ export function Leaderboard({ code }: { code: string }) {
   }, [fetchLeaderboard]);
 
   useEventListener(({ event }) => {
-    if (
-      (event as { type?: string }).type === "leaderboard:updated" ||
-      (event as { type?: string }).type === "scores:updated"
-    ) {
+    if (event.type === "leaderboard:updated" || event.type === "scores:updated") {
       fetchLeaderboard();
     }
   });

@@ -57,7 +57,12 @@ export async function POST(req: Request) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    // Modern browsers (Chrome/Firefox 109+) cap first-party cookie
+    // lifetimes at 400 days per RFC 6265bis — anything longer is
+    // silently clamped. So this is "as long as the browser allows":
+    // a visitor who clears Turnstile once won't see it again unless
+    // they clear cookies or switch devices.
+    maxAge: 60 * 60 * 24 * 400,
   });
   return res;
 }
