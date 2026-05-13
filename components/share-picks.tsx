@@ -5,7 +5,8 @@ import { Share2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRoomLive } from "@/components/room-shell";
 import { shareTopTen } from "@/lib/share-card";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // Quiet share row on the Home tab — only renders after the voter has
 // submitted a ballot (voterId stored in localStorage by vote-form). Shows

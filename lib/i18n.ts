@@ -14,9 +14,12 @@
 // users and not worth the maintenance overhead. Everything voter-facing
 // goes through `t(lang, key, …)` and switches the moment the user picks
 // a language.
+//
+// This module stays pure (no React imports) so server routes — e.g. the
+// OG share-card renderer — can `import { t } from "@/lib/i18n"` without
+// dragging client-only hooks in. The `useLang`/`readLang`/`writeLang`
+// React glue lives in `./i18n-client.ts`.
 // ─────────────────────────────────────────────────────────────────────
-
-import { useEffect, useState } from "react";
 
 export type Language = "en" | "lt";
 
@@ -386,38 +389,4 @@ export function fmt(
   return template.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`));
 }
 
-// ── Language persistence + hook ────────────────────────────────────
-
-// Custom event dispatched alongside writes so the same tab updates
-// without waiting for the cross-tab `storage` event.
-const LANG_CHANGE_EVENT = "uzk:lang-change";
-
-export function readLang(): Language {
-  if (typeof window === "undefined") return "lt";
-  // LT is the default; only an explicit "en" switches.
-  return window.localStorage.getItem(LANG_STORAGE_KEY) === "en" ? "en" : "lt";
-}
-
-export function writeLang(lang: Language): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(LANG_STORAGE_KEY, lang);
-  window.dispatchEvent(new CustomEvent(LANG_CHANGE_EVENT, { detail: lang }));
-}
-
-export function useLang(): Language {
-  const [lang, setLang] = useState<Language>("lt");
-  useEffect(() => {
-    setLang(readLang());
-    const onChange = () => setLang(readLang());
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LANG_STORAGE_KEY) onChange();
-    };
-    window.addEventListener(LANG_CHANGE_EVENT, onChange);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener(LANG_CHANGE_EVENT, onChange);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
-  return lang;
-}
+// `readLang` / `writeLang` / `useLang` live in ./i18n-client.ts.

@@ -5,7 +5,8 @@ import { motion } from "motion/react";
 import { useOthers, useSelf } from "@/lib/liveblocks";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // Home widget: the party, made visible. Everyone currently in the room
 // shows up as an avatar bubble in a loose honeycomb that drifts/bobs

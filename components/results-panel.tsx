@@ -9,7 +9,8 @@ import { ScoreBreakdown } from "@/components/score-breakdown";
 import { Leaderboard } from "@/components/leaderboard";
 import { countryName } from "@/lib/countries";
 import type { BetBreakdown } from "@/lib/scoring";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 type Row = {
   sessionId: string;

@@ -10,7 +10,8 @@ import { participantPhoto } from "@/lib/participants";
 import { optimizedSrc } from "@/lib/img";
 import { buildBingoCard, FREE_SQUARE, tropeEmoji, tropeText } from "@/lib/bingo-tropes";
 import { HeartFlag } from "@/components/flag";
-import { useLang, t, type Language } from "@/lib/i18n";
+import { t, type Language } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // ─────────────────────────────────────────────────────────────────────
 // Home banners — full-width, but each its own object: a bold, multi-hue

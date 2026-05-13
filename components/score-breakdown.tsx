@@ -2,7 +2,8 @@
 
 import { HOST_COUNTRY, type BetBreakdown } from "@/lib/scoring";
 import { countryName } from "@/lib/countries";
-import { useLang, t, fmt, type MessageKey } from "@/lib/i18n";
+import { t, fmt, type MessageKey } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // The per-component score breakdown (TOP10 ballot + home placement +
 // every side bet → points). Shared by the leaderboard's expanded row

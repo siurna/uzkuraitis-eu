@@ -9,7 +9,8 @@ import { getAvatar } from "@/lib/avatars";
 import { getCountry, countryName } from "@/lib/countries";
 import { optimizedSrc } from "@/lib/img";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 type Highlight = {
   id: string;

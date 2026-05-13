@@ -8,7 +8,8 @@ import { getCountry, countryName } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 import { ScoreBreakdown } from "@/components/score-breakdown";
 import type { BetBreakdown } from "@/lib/scoring";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 type Row = {
   voterId: string;

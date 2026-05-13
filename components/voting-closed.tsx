@@ -3,7 +3,8 @@
 import { motion } from "motion/react";
 import { Lock } from "lucide-react";
 import { useRoomLive } from "@/components/room-shell";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // Shown in the Vote tab when the host hasn't opened (or has closed)
 // voting. A padlock + a line — and a second line that reads the show

@@ -7,7 +7,8 @@ import { useEventListener } from "@/lib/liveblocks";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { ensureSessionId } from "@/lib/use-identity";
 import type { BetBreakdown } from "@/lib/scoring";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 type Row = {
   sessionId: string;

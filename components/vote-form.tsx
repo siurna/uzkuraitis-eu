@@ -31,7 +31,8 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { useIdentity } from "@/lib/use-identity";
 import { shareTopTen } from "@/lib/share-card";
 import { HOST_COUNTRY, type Bets } from "@/lib/scoring";
-import { useLang, t, fmt } from "@/lib/i18n";
+import { t, fmt } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 const POINT_VALUES = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1] as const;
 type Points = (typeof POINT_VALUES)[number];

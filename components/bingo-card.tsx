@@ -23,7 +23,8 @@ import {
   tropeText,
   type TropeIndex,
 } from "@/lib/bingo-tropes";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 type Ticket = {
   id: string;

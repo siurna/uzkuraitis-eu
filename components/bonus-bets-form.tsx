@@ -7,7 +7,8 @@ import { Flag, HeartFlag } from "@/components/flag";
 import { CountryDrawer } from "@/components/country-drawer";
 import { getCountry, countryName } from "@/lib/countries";
 import { BIG_5, HOST_COUNTRY, type Bets } from "@/lib/scoring";
-import { useLang, t, fmt } from "@/lib/i18n";
+import { t, fmt } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 const NONE_TOKEN = "NONE";
 

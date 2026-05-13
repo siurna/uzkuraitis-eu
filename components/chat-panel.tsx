@@ -27,7 +27,8 @@ import { useIdentity } from "@/lib/use-identity";
 import { GifPicker } from "@/components/gif-picker";
 import { ChatRow, type Message } from "@/components/chat-row";
 import { Lightbox } from "@/components/chat-lightbox";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 import { haptic } from "@/lib/haptics";
 
 // How many messages we keep in the DOM. The API already windows to the

@@ -5,7 +5,14 @@ import { voters, votes } from "@/lib/db/schema";
 import { countries, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { findRoomByCode } from "@/lib/rooms";
-import { t, type Language } from "@/lib/i18n";
+import type { Language } from "@/lib/i18n";
+
+// Localised in-route (instead of importing `t` from "@/lib/i18n", which
+// drags the React-bearing client module into the server route).
+const HEADLINE: Record<Language, string> = {
+  en: "My TOP10",
+  lt: "Mano TOP10",
+};
 
 // "#rrggbb" + alpha → "rgba(...)" so the satori card can wash a colour.
 function rgba(hex: string, a: number): string {
@@ -128,7 +135,7 @@ export async function GET(req: Request, { params }: RouteCtx) {
                 display: "flex",
               }}
             >
-              {t(lang, "your_top_10")}
+              {HEADLINE[lang]}
             </div>
           </div>
 

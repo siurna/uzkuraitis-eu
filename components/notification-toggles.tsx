@@ -15,7 +15,8 @@ import {
 } from "@/lib/push-client";
 import { useRoomLive } from "@/components/room-shell";
 import { NAME_KEY, SESSION_KEY } from "@/lib/use-identity";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // Sensible defaults: notify on things that need your attention (a reply
 // or @mention, lines opening/closing, results landing) — not on ambient

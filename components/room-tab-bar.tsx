@@ -9,7 +9,8 @@ import {
   Trophy,
   type LucideProps,
 } from "lucide-react";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 import { useRoomLive, useRoomTab, type RoomTab } from "@/components/room-shell";
 
 // Bottom dock. Each tab switches the room's active panel in place —

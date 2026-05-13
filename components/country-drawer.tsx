@@ -7,7 +7,8 @@ import { Flag } from "@/components/flag";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { readLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { readLang } from "@/lib/i18n-client";
 
 // Country picker: bottom-sheet (single OR multi mode) used by the
 // ballot, every bonus-bet country pick, and the side-bet facts editor.

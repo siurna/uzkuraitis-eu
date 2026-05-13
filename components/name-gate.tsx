@@ -8,14 +8,8 @@ import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { SelectedAvatarCard } from "@/components/selected-avatar-card";
-import {
-  LANGUAGES,
-  LANGUAGE_NAMES,
-  readLang,
-  writeLang,
-  t,
-  type Language,
-} from "@/lib/i18n";
+import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
+import { readLang, writeLang } from "@/lib/i18n-client";
 
 const NAME_KEY = "uzk_name";
 const AVATAR_KEY = "uzk_avatar";
