@@ -101,8 +101,12 @@ export function ChatEditableInput({
           i.type.startsWith("image/"),
         );
         if (hasImage) {
-          if (onPaste) onPaste(e);
-          else e.preventDefault();
+          // Always stop the contentEditable from inserting the image
+          // inline as base64 — even if the parent forgets to. The
+          // parent's onPaste reads the file off clipboardData (which is
+          // still populated after preventDefault) and queues it.
+          e.preventDefault();
+          onPaste?.(e);
           return;
         }
         e.preventDefault();

@@ -530,6 +530,30 @@ export function ChatRow({
   if (isSystem) {
     const sys = m.meta as { sysKey?: string; sysArg?: string | null } | null;
     const text = sys?.sysKey ? tDyn(lang, sys.sysKey, sys.sysArg ?? undefined) : m.body;
+    // Host CTAs ("Lines are open!", "Turn on notifications", "Don't
+    // forget bonus bets", "Leading the room right now…") get a full-
+    // width call-out: rainbow-stroked, centred text, big enough to
+    // actually catch the eye in a busy chat. Other system lines
+    // (someone voted, show transitions) stay as the small muted pill.
+    const isCta = !!sys?.sysKey && sys.sysKey.startsWith("sys_cta_");
+    if (isCta) {
+      return (
+        <motion.li
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          className="rainbow-border rounded-2xl"
+        >
+          <div
+            className="rounded-[14px] px-4 py-3 text-center
+                       bg-gradient-to-br from-dark-blue-800/95 to-dark-blue-900/95
+                       text-white font-display text-sm leading-snug text-balance"
+          >
+            {text}
+          </div>
+        </motion.li>
+      );
+    }
     return (
       <motion.li initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center">
         <span className="text-[11px] text-white/40 px-3 py-1 rounded-full bg-white/[0.03]">{text}</span>
@@ -576,7 +600,7 @@ export function ChatRow({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    profile.open(m.sessionId);
+                    profile.open(m.sessionId, { name: m.name, avatarId: m.avatarId ?? null });
                   }}
                   aria-label={m.name}
                   className={`${cls} hover:ring-white/30 active:scale-[0.95] transition transform-gpu`}

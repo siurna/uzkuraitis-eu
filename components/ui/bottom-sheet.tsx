@@ -89,12 +89,12 @@ export function BottomSheet({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            // A few px of side padding on mobile + iOS floats it off the
-            // home indicator with rounded bottom corners (see .uzk-sheet
-            // in globals.css). Same width cap on every drawer in the app
-            // so they feel like one component.
-            className="fixed bottom-0 inset-x-2 sm:inset-x-0 z-[60] mx-auto w-auto sm:w-full max-w-md
-                       glass-card uzk-sheet rounded-t-3xl border-x-0 border-b-0
+            // Edge-to-edge on mobile (the sheet hugs the bottom flush so
+            // the home indicator sits over its own background, not a
+            // gap), centred at max-w-md on tablets/desktops. Rounded
+            // only at the top.
+            className="fixed bottom-0 inset-x-0 z-[60] mx-auto w-full max-w-md
+                       glass-card rounded-t-3xl border-x-0 border-b-0
                        max-h-[78dvh] flex flex-col"
           >
             {(title || sub || dismissible) && (
@@ -129,7 +129,10 @@ export function BottomSheet({
                 // pt-3 keeps focus rings on the first form field from
                 // getting clipped at the scroll viewport's top edge;
                 // fade-scroll-y softens the top/bottom scroll edges.
-                "flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pt-3 pb-5 flex flex-col gap-4 fade-scroll-y",
+                // Bottom padding includes the iOS safe-area so content
+                // doesn't tuck under the home indicator.
+                "flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pt-3 flex flex-col gap-4 fade-scroll-y",
+                "pb-[max(env(safe-area-inset-bottom),1.25rem)]",
                 contentClassName,
               )}
             >

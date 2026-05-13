@@ -46,11 +46,14 @@ const TABS: TabDef[] = [
     id: "bingo",
     labelKey: "tab_bingo",
     Icon: Grid3x3,
-    gradient: "from-purple via-fuchsia to-flamingo",
-    // The raw `--color-purple` (≈42% L) is too dark to read as a glow
-    // against the near-black dock — a bright, slightly bigger glow in
-    // the gradient's hue so it pops like the others.
-    glow: "shadow-[0_10px_28px_-3px_oklch(66%_0.26_318_/_0.8)]",
+    // Was purple → fuchsia → flamingo, which collided with Home's
+    // flamingo-fuchsia-orange. Bingo goes cool-leading now (purple →
+    // blue → fuchsia) so the two tabs read as different palettes at a
+    // glance — Home is warm pink-orange, Bingo is purple-blue with a
+    // pink tail. Glow stays in the purple-electric range so it still
+    // pops against the near-black dock.
+    gradient: "from-purple via-blue to-fuchsia",
+    glow: "shadow-[0_10px_28px_-3px_oklch(60%_0.24_278_/_0.78)]",
   },
   {
     id: "vote",
@@ -127,7 +130,6 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
                               isActive ? "text-white" : "text-dark-blue-200"
                             }`}
                             strokeWidth={2}
-                            {...(isResults ? { fill: "currentColor" } : {})}
                           />
                         );
                       })()}

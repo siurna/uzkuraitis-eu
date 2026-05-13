@@ -153,10 +153,11 @@ export function GifPicker({
                        glass-card rounded-3xl overflow-hidden flex flex-col"
             style={vv ? { top: vv.top + 12, height: vv.h - 12 } : { top: 12, bottom: 12 }}
           >
-            {/* Top bar: search field on the left, close X cleanly anchored
-                to the top-right corner of the modal. */}
-            <div className="shrink-0 px-4 pt-3 pb-2 relative">
-              <div className="relative pr-12">
+            {/* Top bar: search field + close X share one flex row so the
+                X stays vertically centred on the input no matter the
+                viewport height. */}
+            <div className="shrink-0 px-4 pt-3 pb-2 flex items-center gap-2">
+              <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-dark-blue-200 pointer-events-none" />
                 <input
                   ref={inputRef}
@@ -174,7 +175,7 @@ export function GifPicker({
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={t(lang, "gif_search")}
-                  className="h-11 w-full rounded-md border border-white/15 bg-black/30 pl-9 pr-9
+                  className="h-11 w-full rounded-2xl border border-white/15 bg-black/30 pl-9 pr-9
                              text-sm text-white placeholder:text-white/40
                              focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 transition"
                   autoFocus
@@ -199,10 +200,10 @@ export function GifPicker({
                 type="button"
                 onClick={onClose}
                 aria-label={t(lang, "close")}
-                className="absolute right-3 top-3 h-9 w-9 grid place-items-center rounded-full
+                className="shrink-0 h-11 w-11 grid place-items-center rounded-full
                            text-white/55 hover:text-white hover:bg-white/10 transition"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 

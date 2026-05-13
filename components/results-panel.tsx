@@ -7,7 +7,8 @@ import { useRoomLive } from "@/components/room-shell";
 import { ensureSessionId } from "@/lib/use-identity";
 import { ScoreBreakdown } from "@/components/score-breakdown";
 import { Leaderboard } from "@/components/leaderboard";
-import { countryName } from "@/lib/countries";
+import { HeartFlag } from "@/components/flag";
+import { countryName, getCountry } from "@/lib/countries";
 import type { BetBreakdown } from "@/lib/scoring";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
@@ -23,6 +24,122 @@ type Row = {
   total: number;
 };
 
+type BallotPick = {
+  points: number;
+  countryCode: string;
+  officialPlacement: number | null;
+  earned: number;
+};
+
+type Profile = { ballot: BallotPick[] | null };
+
+// "You said / it was" scorecard — for each of your TOP 10 picks, shows
+// the country you put there alongside what actually finished at that
+// rank and the points the gap earned you. Lives in results-panel and
+// the leaderboard expanded-row.
+function BallotComparison({
+  ballot,
+  lang,
+}: {
+  ballot: BallotPick[];
+  lang: "en" | "lt";
+}) {
+  const filled = ballot.filter((b) => b.countryCode);
+  if (filled.length === 0) return null;
+  // Look up what country actually finished at each rank. Built from the
+  // ballot rows themselves (officialPlacement is each pick's actual
+  // finish, so reversing the map gets us "who finished N").
+  // We're only interested in 1..10.
+  const placement = new Map<number, string>();
+  for (const b of ballot) {
+    if (b.officialPlacement != null && b.officialPlacement >= 1 && b.officialPlacement <= 10) {
+      placement.set(b.officialPlacement, b.countryCode);
+    }
+  }
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="text-[11px] uppercase tracking-[0.2em] text-white/45 font-display px-1">
+        {t(lang, "results_pick_vs_actual_h")}
+      </h3>
+      <ol className="flex flex-col gap-1.5">
+        {ballot.map((pick) => (
+          <BallotComparisonRow
+            key={pick.points}
+            pick={pick}
+            actualCode={placement.get(pick.points) ?? null}
+            lang={lang}
+          />
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function BallotComparisonRow({
+  pick,
+  actualCode,
+  lang,
+}: {
+  pick: BallotPick;
+  actualCode: string | null;
+  lang: "en" | "lt";
+}) {
+  const youCountry = pick.countryCode ? getCountry(pick.countryCode) : null;
+  const actual = actualCode ? getCountry(actualCode) : null;
+  const youGotIt = !!youCountry && !!actual && youCountry.code === actual.code;
+  return (
+    <li
+      className={`flex items-center gap-3 rounded-2xl px-3 py-2.5
+                  ${youGotIt ? "bg-flamingo/10 ring-1 ring-flamingo/25" : "bg-white/[0.04] ring-1 ring-white/8"}`}
+    >
+      <span className="shrink-0 w-7 text-flamingo font-display text-base tabular-nums">
+        {pick.points}
+      </span>
+      <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-3 gap-y-0.5">
+        {/* "You said" */}
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-display leading-none">
+            {t(lang, "results_you_said")}
+          </p>
+          <div className="flex items-center gap-1.5 mt-1 min-w-0">
+            {youCountry ? (
+              <>
+                <HeartFlag code={youCountry.code} size="sm" />
+                <span className="text-sm truncate">{countryName(youCountry.code, lang)}</span>
+              </>
+            ) : (
+              <span className="text-sm text-white/30 italic">—</span>
+            )}
+          </div>
+        </div>
+        {/* "It was" */}
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-display leading-none">
+            {t(lang, "results_it_was")}
+          </p>
+          <div className="flex items-center gap-1.5 mt-1 min-w-0">
+            {actual ? (
+              <>
+                <HeartFlag code={actual.code} size="sm" />
+                <span className="text-sm truncate">{countryName(actual.code, lang)}</span>
+              </>
+            ) : (
+              <span className="text-sm text-white/30 italic">—</span>
+            )}
+          </div>
+        </div>
+      </div>
+      <span
+        className={`shrink-0 font-display tabular-nums text-sm pl-1 ${
+          pick.earned > 0 ? "text-flamingo" : "text-white/30"
+        }`}
+      >
+        {pick.earned > 0 ? `+${pick.earned}` : "—"}
+      </span>
+    </li>
+  );
+}
+
 // What the Vote tab turns into once the host flips tally on: the
 // player's per-component breakdown (if they voted), plus the room
 // leaderboard. Lives where the ballot used to so reaching results is
@@ -31,6 +148,7 @@ export function ResultsPanel() {
   const { code, homeCountryCode } = useRoomLive();
   const lang = useLang();
   const [rows, setRows] = useState<Row[] | null>(null);
+  const [ballot, setBallot] = useState<BallotPick[] | null>(null);
   const [tab, setTab] = useState<"me" | "board">("me");
 
   const load = useCallback(async () => {
@@ -44,12 +162,36 @@ export function ResultsPanel() {
     }
   }, [code]);
 
+  // Per-pick breakdown ("you said / it was"). Lives on the profile route
+  // so the same scoring helper is the single source of truth. Refetched
+  // whenever the aggregated leaderboard refetches — they share the
+  // leaderboard:updated event.
+  const loadBallot = useCallback(async () => {
+    const session = ensureSessionId();
+    if (!session) return;
+    try {
+      const res = await fetch(
+        `/api/rooms/${code}/profile/${encodeURIComponent(session)}?as=${encodeURIComponent(session)}`,
+        { cache: "no-store" },
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as Profile;
+      setBallot(data.ballot);
+    } catch {
+      /* network blip */
+    }
+  }, [code]);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadBallot();
+  }, [load, loadBallot]);
 
   useEventListener(({ event }) => {
-    if (event.type === "leaderboard:updated") load();
+    if (event.type === "leaderboard:updated") {
+      load();
+      loadBallot();
+    }
   });
 
   if (!rows || rows.length === 0) {
@@ -120,6 +262,13 @@ export function ResultsPanel() {
                 </span>
               </span>
             </div>
+
+            {/* "You said / it was" — per-pick comparison for the TOP10
+                ballot. Reads as a scorecard: each row shows the pick at
+                that rank, what the country actually finished, and the
+                earned points. */}
+            {ballot && <BallotComparison ballot={ballot} lang={lang} />}
+
             <ScoreBreakdown
               topTen={me.topTen}
               home={me.home}

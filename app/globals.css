@@ -276,13 +276,13 @@
    iOS-only `-webkit-touch-callout` property — no UA sniffing. Non-iOS
    browsers keep the edge-to-edge flat bottom (no border there anyway).
    Apply on any drawer (BottomSheet) that should float on iOS. */
-@supports (-webkit-touch-callout: none) {
-  .uzk-sheet {
-    border-bottom-left-radius: 40px;
-    border-bottom-right-radius: 40px;
-    margin-bottom: env(safe-area-inset-bottom, 0);
-  }
-}
+/* Earlier iterations gave the drawer rounded bottom corners + a bottom
+   margin on iOS so it "floated" above the home indicator. That broke the
+   edge-to-edge aesthetic — the gap looked like a layout bug, and the
+   rounded bottom corners fought the rounded top. The drawer now hugs
+   the bottom flush; the home-indicator area gets covered by the sheet's
+   own background, and the content inside pads itself out via
+   env(safe-area-inset-bottom). */
 
 /* Soft-fade the top + bottom edges of a vertically scrollable region so
    content dissolves into the chrome instead of being chopped by a hard
