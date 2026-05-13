@@ -325,61 +325,95 @@ export default async function AdminRoomDetailPage({
             {voterList.length === 0 ? (
               <p className="text-white/40 text-sm italic">Nobody's joined yet.</p>
             ) : (
-              <div className="flex flex-col gap-3">
-                {voterList.map((v) => (
-                  <details
-                    key={v.id}
-                    className="rounded-lg bg-white/[0.03] border border-white/5"
-                  >
-                    <summary className="flex items-center gap-3 px-3 py-2 cursor-pointer list-none">
-                      <span className="font-display flex-1 truncate">{v.name}</span>
-                      <span className="text-xs text-white/40 tabular-nums shrink-0">
-                        {timeAgo(v.updatedAt)}
-                      </span>
-                    </summary>
-                    {/* Activity row — six tiny stats. Reads at a glance
-                        without scrolling: ballot fill, chat, ❤ given,
-                        ❤ received, trivia, last seen. */}
-                    <ul className="px-3 pt-1 pb-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/55 tabular-nums">
-                      <li>📋 {v.ballot.size}/10 ballot</li>
-                      <li>💬 {v.messages} msg{v.messages === 1 ? "" : "s"}</li>
-                      <li>❤️ {v.reactionsReceived} received · {v.reactionsGiven} given</li>
-                      {v.triviaTotal > 0 && (
-                        <li>🧠 {v.triviaCorrect}/{v.triviaTotal} trivia</li>
-                      )}
-                    </ul>
-                    <div className="px-3 pb-3 grid grid-cols-2 sm:grid-cols-5 gap-1">
-                      {POINTS.map((p) => {
-                        const cc = v.ballot.get(p);
-                        const c = cc ? getCountry(cc) : null;
-                        return (
-                          <div
-                            key={p}
-                            className="flex items-center gap-1.5 px-2 py-1.5 rounded bg-black/30 text-xs"
-                          >
-                            <span className="w-5 text-flamingo font-display tabular-nums">{p}</span>
-                            {c ? (
-                              <>
-                                <Flag code={c.code} size="sm" />
-                                <span className="truncate">{c.name}</span>
-                              </>
-                            ) : (
-                              <span className="text-white/30 italic">—</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {/* Moderation strip — each row carries a delete that
-                        hits the admin DELETE endpoint and broadcasts. */}
-                    <div className="px-3 pb-1 pt-1">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-display px-1 mb-1">
-                        Recent messages
-                      </p>
-                      <AdminParticipantMessages code={room.code} messages={v.recent} />
-                    </div>
-                  </details>
-                ))}
+              // Table-style layout: a header row of column labels and one
+              // <details> per participant. The summary uses the same grid
+              // template as the header so cells line up cleanly. Expanded
+              // rows show the full ballot + recent messages strip.
+              <div className="rounded-lg bg-white/[0.02] border border-white/5 overflow-hidden">
+                {/* Column labels. Hidden on small screens — the row falls
+                    back to a single-line "name + 'tap for details'" view
+                    so the table doesn't get squished. */}
+                <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_72px_60px_88px_72px_76px_28px] gap-3 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-white/40 font-display bg-white/[0.03] border-b border-white/5">
+                  <span>Name</span>
+                  <span className="text-right">Ballot</span>
+                  <span className="text-right">Msgs</span>
+                  <span className="text-right">❤️ in/out</span>
+                  <span className="text-right">Trivia</span>
+                  <span className="text-right">Active</span>
+                  <span />
+                </div>
+                <ul className="divide-y divide-white/5">
+                  {voterList.map((v) => (
+                    <li key={v.id}>
+                      <details className="group">
+                        <summary className="grid grid-cols-[minmax(0,1fr)_28px] sm:grid-cols-[minmax(0,1fr)_72px_60px_88px_72px_76px_28px] items-center gap-3 px-3 py-2.5 cursor-pointer list-none hover:bg-white/[0.02] transition">
+                          <span className="font-display truncate">{v.name}</span>
+                          <span className="hidden sm:block text-right text-sm text-white/85 tabular-nums">
+                            {v.ballot.size}<span className="text-white/35">/10</span>
+                          </span>
+                          <span className="hidden sm:block text-right text-sm text-white/85 tabular-nums">
+                            {v.messages}
+                          </span>
+                          <span className="hidden sm:block text-right text-sm text-white/85 tabular-nums">
+                            {v.reactionsReceived}<span className="text-white/35">/{v.reactionsGiven}</span>
+                          </span>
+                          <span className="hidden sm:block text-right text-sm text-white/85 tabular-nums">
+                            {v.triviaTotal > 0 ? `${v.triviaCorrect}/${v.triviaTotal}` : "—"}
+                          </span>
+                          <span className="hidden sm:block text-right text-xs text-white/50 tabular-nums">
+                            {timeAgo(v.updatedAt)}
+                          </span>
+                          {/* Chevron — rotates open via group-open. */}
+                          <span className="justify-self-end text-white/40 transition-transform group-open:rotate-180">
+                            ▾
+                          </span>
+                        </summary>
+                        {/* Mobile-only quick stats row (the columns are
+                            hidden below sm, so surface the numbers here
+                            instead). */}
+                        <ul className="sm:hidden px-3 pt-1 pb-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/55 tabular-nums">
+                          <li>📋 {v.ballot.size}/10</li>
+                          <li>💬 {v.messages}</li>
+                          <li>❤️ {v.reactionsReceived}/{v.reactionsGiven}</li>
+                          {v.triviaTotal > 0 && <li>🧠 {v.triviaCorrect}/{v.triviaTotal}</li>}
+                          <li>{timeAgo(v.updatedAt)}</li>
+                        </ul>
+                        {/* Full ballot, 5 across. */}
+                        <div className="px-3 pb-3 grid grid-cols-2 sm:grid-cols-5 gap-1">
+                          {POINTS.map((p) => {
+                            const cc = v.ballot.get(p);
+                            const c = cc ? getCountry(cc) : null;
+                            return (
+                              <div
+                                key={p}
+                                className="flex items-center gap-1.5 px-2 py-1.5 rounded bg-black/30 text-xs"
+                              >
+                                <span className="w-5 text-flamingo font-display tabular-nums">{p}</span>
+                                {c ? (
+                                  <>
+                                    <Flag code={c.code} size="sm" />
+                                    <span className="truncate">{c.name}</span>
+                                  </>
+                                ) : (
+                                  <span className="text-white/30 italic">—</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Moderation strip — each row carries a delete
+                            that hits the admin DELETE endpoint and
+                            broadcasts. Capped at the most recent 10. */}
+                        <div className="px-3 pb-3 pt-1">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-display px-1 mb-1">
+                            Recent messages
+                          </p>
+                          <AdminParticipantMessages code={room.code} messages={v.recent} />
+                        </div>
+                      </details>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </section>
@@ -407,24 +441,19 @@ export default async function AdminRoomDetailPage({
               </div>
             </section>
 
-            <section className="glass-card rounded-xl p-5 flex flex-col gap-5">
+            <section className="glass-card rounded-xl p-5 flex flex-col gap-3">
               <header>
                 <h2 className="font-display text-xl leading-tight">Behaviour</h2>
                 <p className="text-xs text-white/45 mt-0.5">Toggles that change what the room does during the show.</p>
               </header>
-              <div className="flex flex-col gap-5 divide-y divide-white/5 [&>*]:pt-5 [&>*:first-child]:pt-0">
-                <div>
-                  <p className="text-sm font-display text-white/85 mb-2">Reveal results</p>
-                  <AdminRoomTallyToggle code={room.code} initialEnabled={room.tallyEnabled} />
-                </div>
-                <div>
-                  <p className="text-sm font-display text-white/85 mb-2">Auto-commentator</p>
-                  <AdminRoomCommentatorToggle
-                    code={room.code}
-                    initialEnabled={room.commentatorEnabled}
-                  />
-                </div>
-              </div>
+              {/* Each toggle already shows its own label + sub inside the
+                  tile, so we drop the per-row title (it was the same
+                  string twice). */}
+              <AdminRoomTallyToggle code={room.code} initialEnabled={room.tallyEnabled} />
+              <AdminRoomCommentatorToggle
+                code={room.code}
+                initialEnabled={room.commentatorEnabled}
+              />
             </section>
 
             <section className="flex flex-col gap-4">

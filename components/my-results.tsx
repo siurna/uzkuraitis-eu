@@ -17,6 +17,7 @@ type Row = {
   home: number;
   bets: BetBreakdown;
   highlights: number;
+  trivia: number;
   total: number;
 };
 
@@ -127,6 +128,9 @@ export function MyResults() {
                 {betsTotal > 0 && <Chip label={t(lang, "breakdown_bets_sum")} value={`+${betsTotal}`} />}
                 {me.highlights > 0 && (
                   <Chip label={t(lang, "breakdown_highlights")} value={`+${me.highlights}`} />
+                )}
+                {me.trivia > 0 && (
+                  <Chip label={t(lang, "trivia_eyebrow")} value={`+${me.trivia}`} />
                 )}
               </ul>
               {/* Tap-affordance hint */}

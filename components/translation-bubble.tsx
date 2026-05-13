@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Languages } from "lucide-react";
-import { t } from "@/lib/i18n";
-import { useLang } from "@/lib/i18n-client";
 
 // Renders an "in English" rendering under an incoming chat message when
 // the user has flipped the auto-translate setting on. The fetch result
@@ -37,7 +35,6 @@ export function TranslationBubble({
    *  bubble it belongs to. */
   mine: boolean;
 }) {
-  const lang = useLang();
   const [hit, setHit] = useState<Cached | null>(null);
 
   useEffect(() => {
@@ -64,10 +61,10 @@ export function TranslationBubble({
           mine ? "self-end" : "self-start"
         } max-w-[min(100%,22rem)]`}
       >
-        <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.18em] text-flamingo font-display mr-1.5 align-baseline">
-          <Languages className="h-3 w-3" />
-          {t(lang, "translate_eyebrow")}
-        </span>
+        {/* Icon alone is enough — the bubble's flamingo treatment +
+            the Languages glyph carry the "this is a translation"
+            signal without needing the redundant label. */}
+        <Languages className="inline h-3 w-3 text-flamingo mr-1.5 align-[-0.05em]" />
         <span className="break-words">{hit.text}</span>
       </motion.div>
     </AnimatePresence>

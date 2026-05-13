@@ -28,6 +28,27 @@ export function PresenceBar() {
   const lang = useLang();
   const { name, avatarId, avatar } = useIdentity();
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Let other surfaces (the chat "turn on notifications" broadcast
+  // card) request the settings drawer. They fire a one-shot window
+  // event with detail.section optionally targeting a sub-sheet —
+  // SettingsModal listens for the matching open-… event once it's
+  // mounted.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      setSettingsOpen(true);
+      const section = (e as CustomEvent).detail?.section as string | undefined;
+      if (section === "notifications") {
+        // Wait one tick so SettingsModal's open effect runs first.
+        window.setTimeout(
+          () => window.dispatchEvent(new Event("uzk:open-notifications")),
+          0,
+        );
+      }
+    };
+    window.addEventListener("uzk:open-settings", onOpen);
+    return () => window.removeEventListener("uzk:open-settings", onOpen);
+  }, []);
   const updatePresence = useUpdateMyPresence();
   const shareUrl =
     typeof window !== "undefined"

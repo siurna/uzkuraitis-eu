@@ -56,6 +56,18 @@ export function SettingsModal({
     setCopied(false);
   }, [open]);
 
+  // Allow other surfaces (the chat broadcast "turn on notifications"
+  // card, mainly) to jump straight to the notifications sub-sheet
+  // instead of making people drill through Settings. Listens for a
+  // window event so the call site doesn't need a hook reference.
+  useEffect(() => {
+    const onOpenNotifs = () => {
+      if (open) setNotifSheetOpen(true);
+    };
+    window.addEventListener("uzk:open-notifications", onOpenNotifs);
+    return () => window.removeEventListener("uzk:open-notifications", onOpenNotifs);
+  }, [open]);
+
   const toggleTranslate = () => {
     const next = !translate;
     setTranslate(next);

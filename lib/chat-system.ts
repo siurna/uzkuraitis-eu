@@ -15,7 +15,15 @@ import type { ChatMessagePayload, JsonObject } from "@/lib/liveblocks";
 // A system chat message, identified by its i18n key (+ optional arg).
 // The client renders it in the *recipient's* language from meta.sysKey;
 // `body` stays null (the client never needs it for these).
-export type SystemMsg = { key: string; arg?: string };
+//
+// `data` is a free-form bag for rich-render cards (e.g. the top-3
+// broadcast carries `{ codes: ["fi","se","it"] }` so the client can
+// build a real podium rather than parsing a flag-and-name string).
+export type SystemMsg = {
+  key: string;
+  arg?: string;
+  data?: Record<string, unknown>;
+};
 
 // Row-out-of-Drizzle → broadcast-shaped payload. `meta` is a jsonb bag
 // the inserter built — opaque to TS — so we cast it at the boundary.
@@ -55,7 +63,11 @@ export async function postSystemMessage(
         name: "system",
         kind: "system",
         body: null,
-        meta: { sysKey: sys.key, sysArg: sys.arg ?? null },
+        meta: {
+          sysKey: sys.key,
+          sysArg: sys.arg ?? null,
+          ...(sys.data ?? {}),
+        },
       })
       .returning();
     await broadcastToRoom(roomCode, {
