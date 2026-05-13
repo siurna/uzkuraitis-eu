@@ -63,14 +63,12 @@ export async function PUT(request: Request) {
     );
   }
 
-  // Wipe and reinsert in a single transaction so the scoreboard never sees
-  // a half-written state.
-  await db.transaction(async (tx) => {
-    await tx.delete(officialResults);
-    if (parsed.data.results.length > 0) {
-      await tx.insert(officialResults).values(parsed.data.results);
-    }
-  });
+  // Wipe and reinsert. (neon-http has no transactions; a brief
+  // "no results" window between the two is acceptable for an admin save.)
+  await db.delete(officialResults);
+  if (parsed.data.results.length > 0) {
+    await db.insert(officialResults).values(parsed.data.results);
+  }
 
   // Tell every room to refresh its leaderboard. Cheap blast.
   const allRooms = await db.select({ code: rooms.code }).from(rooms);

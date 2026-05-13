@@ -31,23 +31,21 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  // Upsert non-null entries, delete null ones.
-  const entries = Object.entries(parsed.data.facts);
-  await db.transaction(async (tx) => {
-    for (const [key, value] of entries) {
-      if (value === null || value === "") {
-        await tx.delete(officialFacts).where(sql`${officialFacts.key} = ${key}`);
-      } else {
-        await tx
-          .insert(officialFacts)
-          .values({ key, value })
-          .onConflictDoUpdate({
-            target: officialFacts.key,
-            set: { value, updatedAt: sql`now()` },
-          });
-      }
+  // Upsert non-null entries, delete null ones. (neon-http has no
+  // transactions; sequential is fine here.)
+  for (const [key, value] of Object.entries(parsed.data.facts)) {
+    if (value === null || value === "") {
+      await db.delete(officialFacts).where(sql`${officialFacts.key} = ${key}`);
+    } else {
+      await db
+        .insert(officialFacts)
+        .values({ key, value })
+        .onConflictDoUpdate({
+          target: officialFacts.key,
+          set: { value, updatedAt: sql`now()` },
+        });
     }
-  });
+  }
 
   // Push leaderboard refresh to every room.
   const allRooms = await db.select({ code: rooms.code }).from(rooms);

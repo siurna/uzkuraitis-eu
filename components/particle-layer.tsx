@@ -27,6 +27,7 @@ import { Flag } from "@/components/flag";
 export type ParticleAsset =
   | { type: "country"; code: string }
   | { type: "image"; src: string }
+  | { type: "emoji"; glyph: string }
   | { type: "emoji-icon"; bg: string; icon: React.ReactNode };
 
 export type ParticleSpec = {
@@ -195,6 +196,13 @@ function ParticleAssetRenderer({ asset }: { asset: ParticleAsset }) {
         alt=""
         className="h-full w-full object-contain"
       />
+    );
+  }
+  if (asset.type === "emoji") {
+    return (
+      <span className="grid h-full w-full place-items-center text-[2rem] leading-none select-none">
+        {asset.glyph}
+      </span>
     );
   }
   // emoji-icon

@@ -403,6 +403,26 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     return () => window.removeEventListener("uzk:chat-media-loaded", stick);
   }, []);
 
+  // Swipe / tap to reply: anchor the replied-to message in the middle so
+  // the list doesn't jump somewhere random. Re-runs once the keyboard's
+  // up (composerFocused flips) so it stays centred after the resize.
+  useEffect(() => {
+    if (!replyTo) return;
+    const id = replyTo.id;
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        listRef.current
+          ?.querySelector<HTMLElement>(`[data-msg-id="${id}"]`)
+          ?.scrollIntoView({ block: "center", behavior: "smooth" });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [replyTo, composerFocused]);
+
   // ----- composer / typing -----
   const onComposerChange = (v: string) => {
     setBody(v.slice(0, 2000));
