@@ -171,6 +171,9 @@ const S = {
   home_my_results_rank: { en: (rank: number, total: number) => `Ranked ${rank} of ${total}, tap for the breakdown`, lt: (rank: number, total: number) => `${rank} vieta iš ${total}, bakstelėk išklotinei` },
   results_tab_me:      { en: "My breakdown", lt: "Mano išklotinė" },
   results_tab_board:   { en: "Leaderboard", lt: "Lyderių lentelė" },
+  results_pick_vs_actual_h: { en: "Your TOP 10 vs the result", lt: "Tavo TOP 10 prieš realybę" },
+  results_you_said:    { en: "You said", lt: "Tu pasakei" },
+  results_it_was:      { en: "It was", lt: "Buvo" },
 
   // ── Chat ─────────────────────────────────────────────────────────
   chat_empty:        { en: "No messages yet. Say hi 👋", lt: "Dar nieks nieko nerašė. Pasisveikink pirmas 👋" },
