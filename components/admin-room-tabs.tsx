@@ -2,39 +2,36 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Activity, Users, Settings, AlertTriangle } from "lucide-react";
+import { Activity, Users, Settings } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // Tabbed shell for the admin room detail page. Server-side renders the
 // full data per tab; this client component owns the active-tab state
 // and the slide animation. (Live show controls live on /admin/live,
-// not here — those are global, not per-room.)
-export type TabId = "overview" | "voters" | "settings" | "danger";
+// not here — those are global, not per-room. The danger zone lives at
+// the bottom of Settings.)
+export type TabId = "overview" | "voters" | "settings";
 
 const TAB_DEFS: { id: TabId; label: string; Icon: typeof Activity }[] = [
   { id: "overview", label: "Overview", Icon: Activity },
   { id: "voters",   label: "Voters",   Icon: Users },
   { id: "settings", label: "Settings", Icon: Settings },
-  { id: "danger",   label: "Danger",   Icon: AlertTriangle },
 ];
 
 export function AdminRoomTabs({
   overview,
   voters,
   settings,
-  danger,
 }: {
   overview: React.ReactNode;
   voters: React.ReactNode;
   settings: React.ReactNode;
-  danger: React.ReactNode;
 }) {
   const [active, setActive] = useState<TabId>("overview");
   const panels: Record<TabId, React.ReactNode> = {
     overview,
     voters,
     settings,
-    danger,
   };
 
   return (

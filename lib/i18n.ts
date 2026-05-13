@@ -144,6 +144,8 @@ const S = {
   home_vs_room_agree:  { en: "You and the room agree, it's on top!", lt: "Tu ir kiti sutariate, ji pirmoji!" },
   home_vs_room_bold:   { en: (n: number) => `Bold pick, the room has it way down at #${n}`, lt: (n: number) => `Drąsu, kiti ją laiko net #${n}` },
   home_vs_room_pending:{ en: "Your #1, waiting for more ballots", lt: "Tavo Nr.1, laukiam daugiau balsų" },
+  home_vs_room_wavelength: { en: (n: number) => `On the room's wavelength — ${n} of your top 5 are theirs too`, lt: (n: number) => `Tavo ir kitų skonis sutampa — ${n} iš tavo TOP 5 yra ir jų sąraše` },
+  home_vs_room_outlier:    { en: "Lone wolf — barely any of your picks crack the room's top 10", lt: "Vienišas vilkas — beveik nė vienas tavo favoritas nepatenka į kitų TOP 10" },
   home_vs_room_empty_title: { en: "How do you stack up?", lt: "Kaip atrodai prieš kitus?" },
   home_vs_room_empty_sub:   { en: "Cast your TOP 10 to compare with the room.", lt: "Balsuok ir palygink savo TOP 10 su kitais." },
   home_results:        { en: "Results are in", lt: "Rezultatai jau čia" },

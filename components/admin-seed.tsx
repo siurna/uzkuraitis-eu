@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { FlaskConical, Users, Trophy, Flame } from "lucide-react";
+import { FlaskConical, Users, Trophy, Flame, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type Mode = "voters" | "highlights" | "results";
+type Mode = "voters" | "highlights" | "results" | "reroll";
 
 // Admin › Settings: a tidy dev-seed panel — demo voters, random official
 // results + facts, and reaction-heavy "highlights" — so the leaderboard
@@ -28,7 +28,13 @@ export function AdminSeed({ rooms }: { rooms: { code: string; name: string }[] }
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ mode, ...(opts.needsRoom ? { room } : {}), ...(opts.count ? { count: opts.count } : {}) }),
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; created?: number; placed?: number; error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        created?: number;
+        placed?: number;
+        rerolled?: number;
+        error?: string;
+      };
       if (!res.ok) {
         toast.error(data.error ?? "Seed failed.");
         return;
@@ -38,7 +44,9 @@ export function AdminSeed({ rooms }: { rooms: { code: string; name: string }[] }
           ? `Seeded ${data.created ?? voterN} demo voters into ${room}.`
           : mode === "results"
             ? `Seeded ${data.placed ?? "all"} final placements + facts (global).`
-            : `Posted ${data.created ?? 3} highlight messages into ${room}.`,
+            : mode === "reroll"
+              ? `Re-rolled ${data.rerolled ?? 0} ballot${data.rerolled === 1 ? "" : "s"} in ${room}.`
+              : `Posted ${data.created ?? 3} highlight messages into ${room}.`,
       );
     } catch {
       toast.error("Seed failed (network).");
@@ -100,6 +108,13 @@ export function AdminSeed({ rooms }: { rooms: { code: string; name: string }[] }
           }
           busy={busy === "voters"}
           onClick={() => run("voters", { count: voterN, needsRoom: true })}
+        />
+        <SeedCard
+          icon={<Shuffle className="h-4 w-4" />}
+          title="Re-roll ballots"
+          desc="Re-randomize the TOP 10 &amp; bonus bets of everyone already in this room — no new voters"
+          busy={busy === "reroll"}
+          onClick={() => run("reroll", { needsRoom: true })}
         />
         <SeedCard
           icon={<Trophy className="h-4 w-4" />}

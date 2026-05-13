@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   voters,
@@ -64,8 +65,25 @@ function rid(): string {
   return Math.random().toString(36).slice(2, 9);
 }
 
+// A fresh random spread of bonus bets (+ home-country guess), most filled
+// in, some skipped. Shared by the "voters" seeder and the "reroll" action.
+function randomBets(codes: string[]) {
+  return {
+    homeCountryPrediction: maybe(1 + Math.floor(Math.random() * countries.length)),
+    betWoodenSpoon: maybe(pick(codes)),
+    betLt12To: maybe(pick(codes)),
+    betHighestBig5: maybe(pick(BIG_5)),
+    betJuryWinner: maybe(pick(codes)),
+    betTelevoteWinner: maybe(pick(codes)),
+    betNulTelevote: maybe(shuffled(codes).slice(0, Math.floor(Math.random() * 4))) ?? null,
+    betHostTop3: maybe(Math.random() < 0.5),
+    betWinnerSolo: maybe(Math.random() < 0.5),
+    betLtTotalPoints: maybe(Math.floor(Math.random() * 620)),
+  };
+}
+
 const Body = z.object({
-  mode: z.enum(["voters", "highlights", "results"]),
+  mode: z.enum(["voters", "highlights", "results", "reroll"]),
   room: z.string().length(6).optional(),
   count: z.number().int().min(1).max(60).optional(),
 });
@@ -118,16 +136,7 @@ export async function POST(req: Request) {
           roomId: room.id,
           sessionId: `seed-${room.id.slice(0, 8)}-${Date.now()}-${i}-${rid()}`,
           name: pick(DEMO_NAMES),
-          homeCountryPrediction: maybe(1 + Math.floor(Math.random() * countries.length)),
-          betWoodenSpoon: maybe(pick(codes)),
-          betLt12To: maybe(pick(codes)),
-          betHighestBig5: maybe(pick(BIG_5)),
-          betJuryWinner: maybe(pick(codes)),
-          betTelevoteWinner: maybe(pick(codes)),
-          betNulTelevote: maybe(shuffled(codes).slice(0, Math.floor(Math.random() * 4))) ?? undefined,
-          betHostTop3: maybe(Math.random() < 0.5),
-          betWinnerSolo: maybe(Math.random() < 0.5),
-          betLtTotalPoints: maybe(Math.floor(Math.random() * 620)),
+          ...randomBets(codes),
         })
         .returning({ id: voters.id });
       if (!voter) continue;
@@ -137,6 +146,23 @@ export async function POST(req: Request) {
     }
     await broadcastToRoom(room.code, { type: "scores:updated" });
     return NextResponse.json({ ok: true, created: count });
+  }
+
+  // ── reroll: re-randomize ballots + bets for everyone already in the
+  // room (no new voters). Handy after seeding to shuffle the numbers. ──
+  if (mode === "reroll") {
+    const existing = await db.select({ id: voters.id }).from(voters).where(eq(voters.roomId, room.id));
+    for (const v of existing) {
+      const ballot = shuffled(codes).slice(0, 10);
+      await db.update(voters).set({ ...randomBets(codes), updatedAt: new Date() }).where(eq(voters.id, v.id));
+      await db.delete(votes).where(eq(votes.voterId, v.id));
+      await db
+        .insert(votes)
+        .values(ballot.map((cc, j) => ({ voterId: v.id, points: BALLOT_POINTS[j], countryCode: cc })));
+    }
+    await broadcastToRoom(room.code, { type: "scores:updated" });
+    await broadcastToRoom(room.code, { type: "leaderboard:updated" });
+    return NextResponse.json({ ok: true, rerolled: existing.length });
   }
 
   // highlights — a few chat messages, each with enough reactions (>=5)

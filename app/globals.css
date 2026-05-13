@@ -390,6 +390,24 @@
   animation: heartbeat-border 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
+/* Endless left-to-right marquee. The track holds two copies of its
+   content side by side; translating it -50% loops seamlessly. Put on
+   the inner flex track, not the clipping wrapper. */
+@keyframes uzk-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Audio-equalizer bounce — a bar that springs between a low and full
+   height. Stagger several with different animation-delay/-duration for
+   the classic dancing-bars look. Needs transform-origin: bottom. */
+@keyframes uzk-eq {
+  0%, 100% { transform: scaleY(0.32); }
+  20%      { transform: scaleY(0.85); }
+  45%      { transform: scaleY(0.5);  }
+  70%      { transform: scaleY(1);    }
+}
+
 input, button, textarea, select {
   -webkit-appearance: none;
   appearance: none;

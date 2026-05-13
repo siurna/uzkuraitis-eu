@@ -393,34 +393,56 @@ export function NotificationsCta() {
 
   if (!shouldShow || dismissed) return null;
 
-  // A quiet one-line row, not a hero banner — it's a small offer, not a
-  // surface you come to look at.
+  // A proper colour-fill banner in the Home stack — teal→blue, with a
+  // ring of bell glyphs bleeding off the right, copy on the left, an
+  // "enable" CTA, and a corner dismiss. Same shape language as the
+  // Vote / Bingo / Bonus banners.
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      className="flex items-center gap-3 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3"
+      className="relative block w-full overflow-hidden rounded-3xl"
+      style={{ background: "linear-gradient(135deg, #00b3a4 0%, #0f7fb5 52%, #2360c8 100%)" }}
     >
-      <Bell className="h-4 w-4 text-dark-blue-200 shrink-0" />
-      <p className="flex-1 min-w-0 text-sm text-white/70 leading-snug truncate">
-        {t(lang, "push_cta_title")} — <span className="text-white/45">{t(lang, "push_cta_sub")}</span>
-      </p>
-      <button
-        type="button"
-        onClick={enable}
-        className="shrink-0 px-3 h-8 rounded-full font-display text-xs bg-white text-dark-blue hover:bg-dark-blue-50 transition"
-      >
-        {t(lang, "push_cta_enable")}
-      </button>
+      {/* artwork — a clutch of bell glyphs, off the right edge */}
+      <div className="pointer-events-none absolute inset-y-0 -right-3 flex items-center" aria-hidden>
+        <span className="flex items-end gap-1 pr-6 -rotate-[6deg] opacity-90">
+          <span className="text-3xl">🔕</span>
+          <span className="text-5xl drop-shadow">🔔</span>
+          <span className="text-2xl">🔔</span>
+        </span>
+      </div>
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.46) 0%, rgba(8,9,28,0.2) 38%, transparent 64%)" }}
+      />
       <button
         type="button"
         onClick={() => setDismissed(true)}
         aria-label={t(lang, "cancel")}
-        className="shrink-0 -mr-0.5 text-dark-blue-300 hover:text-white transition"
+        className="absolute top-2.5 right-2.5 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/25 text-white/80 hover:text-white hover:bg-black/40 transition"
       >
-        <X className="h-4 w-4" />
+        <X className="h-3.5 w-3.5" />
       </button>
+      <div className="relative flex flex-col justify-center gap-1 px-5 py-5 min-h-[6.75rem]">
+        <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/75 flex items-center gap-1.5">
+          <Bell className="h-3 w-3" />
+          {t(lang, "push_off")}
+        </p>
+        <p className="font-display text-xl text-white leading-tight drop-shadow-sm">{t(lang, "push_cta_title")}</p>
+        <p className="text-sm text-white/70 leading-snug pr-20">{t(lang, "push_cta_sub")}</p>
+        <span className="mt-1.5">
+          <button
+            type="button"
+            onClick={enable}
+            className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 h-8 font-display text-xs text-dark-blue hover:bg-dark-blue-50 transition"
+          >
+            <Bell className="h-3.5 w-3.5" />
+            {t(lang, "push_cta_enable")}
+          </button>
+        </span>
+      </div>
     </motion.div>
   );
 }

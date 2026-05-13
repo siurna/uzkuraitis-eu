@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 
+// Compact voting-open switch for the admin room header. A pill that
+// reads its own state — green track + label when open, muted when shut.
 export function AdminRoomToggle({
   code,
   initialEnabled,
@@ -32,18 +33,32 @@ export function AdminRoomToggle({
   };
 
   return (
-    <Button
-      variant={enabled ? "default" : "outline"}
-      size="sm"
+    <button
+      type="button"
       onClick={flip}
       disabled={pending}
-      className={
-        enabled
-          ? "bg-success/20 text-success border-success/40"
-          : "border-white/20 text-white/60"
-      }
+      aria-pressed={enabled}
+      className={`group flex items-center gap-2.5 rounded-full pl-3.5 pr-2 py-1.5 text-sm font-display
+                  ring-1 transition disabled:opacity-60
+                  ${
+                    enabled
+                      ? "bg-success/15 text-success ring-success/40 hover:bg-success/25"
+                      : "bg-white/[0.04] text-white/55 ring-white/12 hover:bg-white/[0.08]"
+                  }`}
     >
-      {enabled ? "Voting open" : "Voting closed"}
-    </Button>
+      <span className="leading-none">{enabled ? "Voting open" : "Voting closed"}</span>
+      <span
+        className={`relative h-5 w-9 rounded-full transition shrink-0 ${
+          enabled ? "bg-success/70" : "bg-white/15"
+        }`}
+        aria-hidden
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+            enabled ? "translate-x-4" : "translate-x-0"
+          }`}
+        />
+      </span>
+    </button>
   );
 }

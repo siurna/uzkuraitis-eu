@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useState, type ReactNode, type CSSProperties } from "react";
-import { motion, useScroll, useTransform } from "motion/react";
+import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
 import { MessageCircle } from "lucide-react";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { participantPhoto } from "@/lib/participants";
 import { optimizedSrc } from "@/lib/img";
-import { buildBingoCard, FREE_SQUARE, tropeEmoji } from "@/lib/bingo-tropes";
+import { buildBingoCard, FREE_SQUARE, tropeEmoji, tropeText } from "@/lib/bingo-tropes";
 import { HeartFlag } from "@/components/flag";
-import { useLang, t } from "@/lib/i18n";
+import { useLang, t, type Language } from "@/lib/i18n";
 
 // ─────────────────────────────────────────────────────────────────────
 // Home banners — full-width, but each its own object: a bold, multi-hue
@@ -86,6 +86,35 @@ function Banner({
   );
 }
 
+// Vote artwork: a five-bar audio equalizer in the points colours
+// (12 = gold, then white fading down), each bar dancing on its own
+// loop. Reads as "the room is making noise" + "this is where points
+// happen".
+function VoteEqualizer() {
+  const BARS = [
+    { n: "12", grad: "from-yellow to-yellow/50", dur: "0.9s",  delay: "0s"    },
+    { n: "10", grad: "from-white to-white/65",   dur: "1.15s", delay: "0.18s" },
+    { n: "8",  grad: "from-white/80 to-white/40", dur: "0.8s", delay: "0.34s" },
+    { n: "7",  grad: "from-white/55 to-white/25", dur: "1.3s", delay: "0.06s" },
+    { n: "6",  grad: "from-white/40 to-white/15", dur: "1.0s", delay: "0.46s" },
+  ];
+  return (
+    <span className="flex items-end gap-2 pr-10 -rotate-[6deg] opacity-95" aria-hidden>
+      {BARS.map(({ n, grad, dur, delay }) => (
+        <span key={n} className="flex w-5 flex-col items-center gap-1">
+          <span className="relative h-16 w-full overflow-hidden rounded-t-md bg-white/10 ring-1 ring-white/10">
+            <span
+              className={`absolute inset-x-0 bottom-0 h-full rounded-t-md bg-gradient-to-t ${grad}`}
+              style={{ transformOrigin: "bottom", animation: `uzk-eq ${dur} ease-in-out ${delay} infinite` }}
+            />
+          </span>
+          <span className="font-display text-[9px] tabular-nums leading-none text-white/80">{n}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
 // A small "live" dot for the vote eyebrow when lines are open.
 function LiveDot() {
   return (
@@ -102,11 +131,40 @@ const BINGO_PREVIEW = buildBingoCard("uzk-home-preview")
   .slice(0, 9);
 const BINGO_PREVIEW_STRUCK = new Set([0, 4, 8]);
 
+// Bingo banner subtitle when there's no progress yet: slowly crossfade
+// through actual ticket tropes so it teases the game's flavour rather
+// than sitting on one static line.
+function BingoSubCrossfade({ lang }: { lang: Language }) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setI((n) => (n + 1) % BINGO_PREVIEW.length), 5000);
+    return () => window.clearInterval(id);
+  }, []);
+  return (
+    <span className="inline-block min-h-[1.2em] align-bottom">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={i}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.28 }}
+          className="block"
+        >
+          {tropeText(BINGO_PREVIEW[i], lang)}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+}
+
 // Denominator for the now-playing progress bar — grand-final size.
 const GRAND_FINAL_ACTS = 26;
 
-// Side-bet artwork: a fanned spread of bet-flavour emoji "chips".
-const BET_CHIPS = ["🏆", "🥄", "🎤", "⭐", "🎯"];
+// Side-bet artwork: a marching strip of bet-flavour emoji "chips" — one
+// per bonus bet (winner, wooden spoon, jury/televote, host top-3, LT's
+// 12 points, nul-points, the LT total points line).
+const BET_CHIPS = ["🏆", "🥄", "🎤", "⭐", "🎯", "0️⃣", "🇱🇹"];
 
 // Jump to a sub-tab inside the Vote screen (it owns its own ballot/bets/
 // rules toggle). Small delay so the panel — lazily mounted on first
@@ -124,7 +182,7 @@ export function HomeBanners() {
   const [voted, setVoted] = useState(false);
   const [betsCount, setBetsCount] = useState(0);
   const [bingo, setBingo] = useState<{ best: number; won: boolean } | null>(null);
-  const [vs, setVs] = useState<{ topCode: string; roomRank: number | null } | null>(null);
+  const [vs, setVs] = useState<{ topCode: string; roomRank: number | null; overlap: number | null } | null>(null);
 
   useEffect(() => {
     setVoted(localStorage.getItem(`uzk_voted_${code}`) === "1");
@@ -163,14 +221,21 @@ export function HomeBanners() {
         points?: number;
         countryCode?: string | null;
       }[];
-      const top = Array.isArray(ballot) ? ballot.find((s) => s.points === 12)?.countryCode : null;
+      const sorted = Array.isArray(ballot)
+        ? [...ballot].sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
+        : [];
+      const top5 = sorted.slice(0, 5).map((s) => s.countryCode).filter((c): c is string => !!c);
+      const top = sorted.find((s) => s.points === 12)?.countryCode ?? top5[0] ?? null;
       if (top) {
-        setVs({ topCode: top, roomRank: null });
+        setVs({ topCode: top, roomRank: null, overlap: null });
         fetch(`/api/rooms/${code}/scores`, { cache: "no-store" })
           .then((r) => (r.ok ? r.json() : null))
           .then((data: { scores?: { code: string }[] } | null) => {
-            const idx = data?.scores?.findIndex((s) => s.code === top) ?? -1;
-            setVs({ topCode: top, roomRank: idx >= 0 ? idx + 1 : null });
+            const scores = data?.scores ?? [];
+            const idx = scores.findIndex((s) => s.code === top);
+            const roomTop10 = new Set(scores.slice(0, 10).map((s) => s.code));
+            const overlap = top5.filter((c) => roomTop10.has(c)).length;
+            setVs({ topCode: top, roomRank: idx >= 0 ? idx + 1 : null, overlap: scores.length ? overlap : null });
           })
           .catch(() => {});
       }
@@ -183,15 +248,20 @@ export function HomeBanners() {
     showStatus === "in_progress" && nowPlayingCode ? getCountry(nowPlayingCode) : null;
   const vsCountry = vs ? getCountry(vs.topCode) : null;
   const vsRank = vs?.roomRank ?? null;
+  const vsOverlap = vs?.overlap ?? null;
   const vsSub = !vsCountry
     ? t(lang, "home_vs_room_empty_sub")
     : vsRank == null
       ? t(lang, "home_vs_room_pending")
       : vsRank === 1
         ? t(lang, "home_vs_room_agree")
-        : vsRank >= 12
-          ? t(lang, "home_vs_room_bold", vsRank)
-          : t(lang, "home_vs_room_rank", vsRank);
+        : vsOverlap != null && vsOverlap >= 4
+          ? t(lang, "home_vs_room_wavelength", vsOverlap)
+          : vsOverlap != null && vsOverlap <= 1
+            ? t(lang, "home_vs_room_outlier")
+            : vsRank >= 12
+              ? t(lang, "home_vs_room_bold", vsRank)
+              : t(lang, "home_vs_room_rank", vsRank);
 
   return (
     <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">
@@ -214,24 +284,7 @@ export function HomeBanners() {
         title={t(lang, voted ? "home_vote_done" : votingEnabled ? "home_vote_open" : "home_vote_soon")}
         sub={t(lang, voted ? "home_vote_done_sub" : votingEnabled ? "home_vote_open_sub" : "home_vote_soon_sub")}
         onClick={() => setTab("vote")}
-        artwork={
-          <span className="flex flex-col items-end gap-1.5 pr-9 -rotate-[8deg] opacity-90">
-            {[
-              { n: "12", w: "w-12", cls: "bg-yellow text-dark-blue" },
-              { n: "10", w: "w-10", cls: "bg-white text-dark-blue" },
-              { n: "8", w: "w-9", cls: "bg-white/70 text-dark-blue" },
-              { n: "7", w: "w-7", cls: "bg-white/35 text-white" },
-              { n: "6", w: "w-6", cls: "bg-white/20 text-white" },
-            ].map(({ n, w, cls }) => (
-              <span
-                key={n}
-                className={`h-5 ${w} rounded-md grid place-items-center font-display text-[11px] tabular-nums leading-none shadow-sm ${cls}`}
-              >
-                {n}
-              </span>
-            ))}
-          </span>
-        }
+        artwork={<VoteEqualizer />}
       />
 
       {/* Bingo — purple → magenta, the ticket grid bleeding off the edge */}
@@ -241,11 +294,13 @@ export function HomeBanners() {
         eyebrow="BINGO"
         title={t(lang, "bingo_widget_title")}
         sub={
-          bingo?.won
-            ? t(lang, "home_bingo_won")
-            : bingo
-              ? t(lang, "home_bingo_progress", bingo.best)
-              : t(lang, "home_bingo_sub")
+          bingo?.won ? (
+            t(lang, "home_bingo_won")
+          ) : bingo ? (
+            t(lang, "home_bingo_progress", bingo.best)
+          ) : (
+            <BingoSubCrossfade lang={lang} />
+          )
         }
         onClick={() => setTab("bingo")}
         artwork={
@@ -262,33 +317,6 @@ export function HomeBanners() {
                 </span>
               );
             })}
-          </span>
-        }
-      />
-
-      {/* Bonus bets — magenta → ESC pink, a fanned spread of bet "chips" */}
-      <Banner
-        fill="linear-gradient(135deg, #bc1475 0%, #f10d59 100%)"
-        size="sm"
-        eyebrow={t(lang, "rules_bets_h")}
-        title={betsCount > 0 ? t(lang, "home_bonus_placed", betsCount) : t(lang, "home_bonus_none")}
-        sub={t(lang, "home_bonus_sub")}
-        onClick={() => openVoteTab(setTab, "bets")}
-        artwork={
-          <span className="relative block w-32 h-20 pr-6">
-            {BET_CHIPS.map((c, i) => (
-              <span
-                key={c}
-                className="absolute top-1/2 grid h-11 w-11 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-xl shadow-md"
-                style={{
-                  left: `${i * 17}px`,
-                  transform: `translateY(-50%) rotate(${(i - 2) * 7}deg)`,
-                  zIndex: i,
-                }}
-              >
-                {c}
-              </span>
-            ))}
           </span>
         }
       />
@@ -322,6 +350,30 @@ export function HomeBanners() {
               📊
             </span>
           )
+        }
+      />
+
+      {/* Bonus bets — magenta → ESC pink, an endless marquee of bet "chips" */}
+      <Banner
+        fill="linear-gradient(135deg, #bc1475 0%, #f10d59 100%)"
+        size="sm"
+        eyebrow={t(lang, "rules_bets_h")}
+        title={betsCount > 0 ? t(lang, "home_bonus_placed", betsCount) : t(lang, "home_bonus_none")}
+        sub={t(lang, "home_bonus_sub")}
+        onClick={() => openVoteTab(setTab, "bets")}
+        artwork={
+          <span className="relative block w-44 overflow-hidden pr-2 [mask-image:linear-gradient(90deg,transparent,#000_22%,#000_100%)]" aria-hidden>
+            <span className="flex w-max -rotate-[6deg] py-1" style={{ animation: "uzk-marquee 16s linear infinite" }}>
+              {[...BET_CHIPS, ...BET_CHIPS].map((c, i) => (
+                <span
+                  key={i}
+                  className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-lg shadow-md"
+                >
+                  {c}
+                </span>
+              ))}
+            </span>
+          </span>
         }
       />
     </div>
