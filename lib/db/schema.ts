@@ -1,6 +1,7 @@
 import {
   pgTable,
   text,
+  varchar,
   timestamp,
   integer,
   boolean,
@@ -20,8 +21,8 @@ export const rooms = pgTable(
   "rooms",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    code: text("code").notNull().unique(),
-    name: text("name").notNull(),
+    code: varchar("code", { length: 8 }).notNull().unique(),
+    name: varchar("name", { length: 60 }).notNull(),
     votingEnabled: boolean("voting_enabled").notNull().default(true),
     // When false, the leaderboard for this room stays hidden even after
     // results are entered. Lets a watch-along host delay scoring until
@@ -29,17 +30,21 @@ export const rooms = pgTable(
     tallyEnabled: boolean("tally_enabled").notNull().default(false),
     // ISO 3166-1 alpha-2 lowercase. Used to ask voters where they think
     // this country will finish, scored separately from the top-10 ballot.
-    homeCountryCode: text("home_country_code").notNull().default("lt"),
+    homeCountryCode: varchar("home_country_code", { length: 2 })
+      .notNull()
+      .default("lt"),
     // ISO 3166-1 alpha-2 lowercase of the country currently performing.
     // Admin-set; clients render a top-of-screen strip + spawn a swarm
     // of heart-flag particles whenever this flips. NULL = no country
     // is highlighted right now.
-    nowPlayingCode: text("now_playing_code"),
+    nowPlayingCode: varchar("now_playing_code", { length: 2 }),
     // Coarse-grained show state for the room. The admin flips this
     // through the room-manage page; voters see different copy in the
     // header + tabs depending on the value. "not_started" → "in_progress"
     // → "break" → "ended" → "not_started" (next semi/final).
-    showStatus: text("show_status").notNull().default("not_started"),
+    showStatus: varchar("show_status", { length: 16 })
+      .notNull()
+      .default("not_started"),
     // When false, the live-commentator bot stays quiet in this room even
     // if it's configured globally. Host-toggled from the magic admin link.
     commentatorEnabled: boolean("commentator_enabled").notNull().default(true),
@@ -80,19 +85,19 @@ export const voters = pgTable(
     roomId: uuid("room_id")
       .notNull()
       .references(() => rooms.id, { onDelete: "cascade" }),
-    sessionId: text("session_id").notNull(),
-    name: text("name").notNull(),
+    sessionId: varchar("session_id", { length: 64 }).notNull(),
+    name: varchar("name", { length: 40 }).notNull(),
     // Predicted final placement for this room's home country (e.g. "where
     // will Lithuania finish?"). Range 1..N where N is the number of
     // finalists. Nullable: voters who skip this still cast their ballot.
     homeCountryPrediction: integer("home_country_prediction"),
     // --- Side bets ("bonus predictions"). All optional. ---
     // Country picks (ISO 3166-1 alpha-2 lowercase, or 'NONE' for nul-points).
-    betWoodenSpoon: text("bet_wooden_spoon"),
-    betLt12To: text("bet_lt_12_to"),
-    betHighestBig5: text("bet_highest_big5"),
-    betJuryWinner: text("bet_jury_winner"),
-    betTelevoteWinner: text("bet_televote_winner"),
+    betWoodenSpoon: varchar("bet_wooden_spoon", { length: 4 }),
+    betLt12To: varchar("bet_lt_12_to", { length: 4 }),
+    betHighestBig5: varchar("bet_highest_big5", { length: 4 }),
+    betJuryWinner: varchar("bet_jury_winner", { length: 4 }),
+    betTelevoteWinner: varchar("bet_televote_winner", { length: 4 }),
     // Nul-points televote: voter can pick MULTIPLE country guesses, plus
     // an optional "NONE" sentinel for "no country gets zero". Stored as a
     // Postgres text[] array.
@@ -126,7 +131,7 @@ export const votes = pgTable(
       .notNull()
       .references(() => voters.id, { onDelete: "cascade" }),
     points: integer("points").notNull(),
-    countryCode: text("country_code").notNull(),
+    countryCode: varchar("country_code", { length: 2 }).notNull(),
   },
   (t) => [
     primaryKey({ columns: [t.voterId, t.points] }),
@@ -143,7 +148,7 @@ export const reactions = pgTable(
     roomId: uuid("room_id")
       .notNull()
       .references(() => rooms.id, { onDelete: "cascade" }),
-    countryCode: text("country_code").notNull(),
+    countryCode: varchar("country_code", { length: 2 }).notNull(),
     emoji: text("emoji").notNull(),
     count: integer("count").notNull().default(0),
     updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -171,7 +176,7 @@ export const roomSettings = pgTable(
 // over. One row per finalist, placement is 1..N. Global because the show
 // only happens once; rooms reference this same table to score their voters.
 export const officialResults = pgTable("official_results", {
-  countryCode: text("country_code").primaryKey(),
+  countryCode: varchar("country_code", { length: 2 }).primaryKey(),
   placement: integer("placement").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
@@ -214,7 +219,7 @@ export const roomResults = pgTable(
     roomId: uuid("room_id")
       .notNull()
       .references(() => rooms.id, { onDelete: "cascade" }),
-    countryCode: text("country_code").notNull(),
+    countryCode: varchar("country_code", { length: 2 }).notNull(),
     placement: integer("placement").notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -282,10 +287,13 @@ export const chatMessages = pgTable(
     roomId: uuid("room_id")
       .notNull()
       .references(() => rooms.id, { onDelete: "cascade" }),
-    sessionId: text("session_id").notNull(),
-    name: text("name").notNull(),
-    avatarId: text("avatar_id"),
-    kind: text("kind").$type<ChatMessageKind>().notNull().default("text"),
+    sessionId: varchar("session_id", { length: 64 }).notNull(),
+    name: varchar("name", { length: 40 }).notNull(),
+    avatarId: varchar("avatar_id", { length: 40 }),
+    kind: varchar("kind", { length: 16 })
+      .$type<ChatMessageKind>()
+      .notNull()
+      .default("text"),
     body: text("body"),
     gifUrl: text("gif_url"),
     replyTo: uuid("reply_to"),
@@ -311,8 +319,8 @@ export const chatReactions = pgTable(
     messageId: uuid("message_id")
       .notNull()
       .references(() => chatMessages.id, { onDelete: "cascade" }),
-    sessionId: text("session_id").notNull(),
-    name: text("name").notNull(),
+    sessionId: varchar("session_id", { length: 64 }).notNull(),
+    name: varchar("name", { length: 40 }).notNull(),
     emoji: text("emoji").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -356,9 +364,9 @@ export const gifCache = pgTable("gif_cache", {
 export const chatHelperCache = pgTable(
   "chat_helper_cache",
   {
-    kind: text("kind").notNull(),
+    kind: varchar("kind", { length: 16 }).notNull(),
     textKey: text("text_key").notNull(),
-    lang: text("lang").notNull(),
+    lang: varchar("lang", { length: 2 }).notNull(),
     payload: jsonb("payload").notNull(),
     hits: integer("hits").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -383,8 +391,8 @@ export const pushSubscriptions = pgTable(
     roomId: uuid("room_id")
       .notNull()
       .references(() => rooms.id, { onDelete: "cascade" }),
-    sessionId: text("session_id").notNull(),
-    voterName: text("voter_name"),
+    sessionId: varchar("session_id", { length: 64 }).notNull(),
+    voterName: varchar("voter_name", { length: 40 }),
     endpoint: text("endpoint").notNull(),
     p256dh: text("p256dh").notNull(),
     auth: text("auth").notNull(),
@@ -413,18 +421,18 @@ export const triviaAnswers = pgTable(
     roomId: uuid("room_id")
       .notNull()
       .references(() => rooms.id, { onDelete: "cascade" }),
-    sessionId: text("session_id").notNull(),
-    countryCode: text("country_code").notNull(),
+    sessionId: varchar("session_id", { length: 64 }).notNull(),
+    countryCode: varchar("country_code", { length: 2 }).notNull(),
     choiceIndex: integer("choice_index").notNull(),
     correct: boolean("correct").notNull(),
     answeredAt: timestamp("answered_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (t) => [
-    primaryKey({ columns: [t.roomId, t.sessionId, t.countryCode] }),
-    index("trivia_answers_room_idx").on(t.roomId),
-  ],
+  // Primary key (room_id, session_id, country_code) doubles as the
+  // room-only lookup index via leftmost-prefix matching, so no
+  // separate single-column index here.
+  (t) => [primaryKey({ columns: [t.roomId, t.sessionId, t.countryCode] })],
 );
 
 // Postgres-backed rate-limit buckets. Replaces the in-memory floodCheck
