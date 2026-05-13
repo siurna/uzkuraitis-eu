@@ -29,15 +29,21 @@ export async function GET(_req: Request, { params }: RouteCtx) {
         leaderboard: result.leaderboard,
       };
 
-  // PERF: leaderboard rendering is heavy (joins voters, votes, chat,
-  // chat reactions, trivia). When the host hits "reveal results" all
-  // 30+ clients fetch in unison; a 5s edge cache + 30s SWR collapses
-  // that thundering herd to one origin call. Updates still feel
-  // immediate (5s ceiling).
+  // PERF: cache only AFTER results are finalised. The 5s+swr=30
+  // window I had on the unrevealed response was the bug behind
+  // "stuck on loading when I reveal results" — the edge served a
+  // stale `hasResults: false` for up to 35s after the host flipped
+  // the tally, leaving clients spinning. Pre-reveal stays no-store
+  // so the moment the host enters results, the next fetch reflects.
+  // Post-reveal data is final and can sit on the edge.
   const res = NextResponse.json(body);
-  res.headers.set(
-    "Cache-Control",
-    "public, s-maxage=5, stale-while-revalidate=30",
-  );
+  if (result.hasResults) {
+    res.headers.set(
+      "Cache-Control",
+      "public, s-maxage=10, stale-while-revalidate=60",
+    );
+  } else {
+    res.headers.set("Cache-Control", "no-store");
+  }
   return res;
 }

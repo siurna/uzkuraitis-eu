@@ -18,6 +18,7 @@ import { AdminRoomCode } from "@/components/admin-room-code";
 import { AdminRoomManageLink } from "@/components/admin-room-manage-link";
 import { AdminRoomCommentatorToggle } from "@/components/admin-room-commentator-toggle";
 import { AdminRoomTallyToggle } from "@/components/admin-room-tally-toggle";
+import { AdminRoomTriviaThreshold } from "@/components/admin-room-trivia-threshold";
 import { AdminRoomTabs } from "@/components/admin-room-tabs";
 import {
   AdminParticipantMessages,
@@ -453,6 +454,10 @@ export default async function AdminRoomDetailPage({
               <AdminRoomCommentatorToggle
                 code={room.code}
                 initialEnabled={room.commentatorEnabled}
+              />
+              <AdminRoomTriviaThreshold
+                code={room.code}
+                initialMax={room.triviaMaxAnswerers}
               />
             </section>
 

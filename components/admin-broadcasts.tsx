@@ -25,20 +25,41 @@ const SHOTS: { kind: Kind; icon: LucideIcon; title: string; desc: string }[] = [
 
 // Admin › Live: one-tap chat announcements fired into a chosen room.
 // Each button POSTs to /api/admin/broadcast, which posts a system
-// message (or the results podium) into that room's chat. The compact row
-// layout is the original design — a sister to the Show controls panel —
-// kept simple so the host scans down a list rather than reading hero cards.
-export function AdminBroadcasts({ rooms }: { rooms: { code: string; name: string }[] }) {
-  const [room, setRoom] = useState(rooms[0]?.code ?? "");
+// message (or the results podium) into that room's chat.
+//
+// Two usage modes:
+//   - Standalone: pass `rooms`, no `room`/`onRoomChange`. The widget
+//     owns its own dropdown + selection (default behaviour, kept for
+//     any caller that doesn't share state).
+//   - Controlled: pass `room` + `onRoomChange` + `hideRoomPicker={true}`.
+//     The parent (admin-live-room-column) owns one dropdown that
+//     drives broadcasts AND the voting/results toggles below.
+export function AdminBroadcasts({
+  rooms,
+  room: roomProp,
+  onRoomChange,
+  hideRoomPicker = false,
+}: {
+  rooms: { code: string; name: string }[];
+  room?: string;
+  onRoomChange?: (code: string) => void;
+  hideRoomPicker?: boolean;
+}) {
+  const [internalRoom, setInternalRoom] = useState(rooms[0]?.code ?? "");
+  const room = roomProp ?? internalRoom;
+  const setRoomState = onRoomChange ?? setInternalRoom;
   const [busy, setBusy] = useState<Kind | null>(null);
   const [lastFired, setLastFired] = useState<Partial<Record<Kind, string>>>({});
 
   // Remember the last room the host broadcast to across reloads, and
   // pull each shot's last-fired stamp for this room.
+  // Only restore from storage when we own the state — controlled mode
+  // gets its initial value from the parent.
   useEffect(() => {
+    if (onRoomChange) return; // controlled mode: parent owns selection
     const saved = localStorage.getItem(ROOM_STORAGE_KEY);
-    if (saved && rooms.some((r) => r.code === saved)) setRoom(saved);
-  }, [rooms]);
+    if (saved && rooms.some((r) => r.code === saved)) setInternalRoom(saved);
+  }, [rooms, onRoomChange]);
 
   useEffect(() => {
     if (!room) {
@@ -54,7 +75,7 @@ export function AdminBroadcasts({ rooms }: { rooms: { code: string; name: string
   }, [room]);
 
   const chooseRoom = (code: string) => {
-    setRoom(code);
+    setRoomState(code);
     try {
       localStorage.setItem(ROOM_STORAGE_KEY, code);
     } catch {
@@ -108,27 +129,29 @@ export function AdminBroadcasts({ rooms }: { rooms: { code: string; name: string
         </div>
       </header>
 
-      <label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-        <span className="text-xs uppercase tracking-[0.18em] text-white/40 font-display sm:w-20 shrink-0">
-          Room
-        </span>
-        {rooms.length === 0 ? (
-          <span className="text-sm text-white/40">No rooms yet.</span>
-        ) : (
-          <select
-            value={room}
-            onChange={(e) => chooseRoom(e.target.value)}
-            className="h-10 rounded-lg bg-black/30 border border-white/15 px-3 text-sm text-white
-                       focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 w-full"
-          >
-            {rooms.map((r) => (
-              <option key={r.code} value={r.code} className="bg-dark-blue-900">
-                {r.name} ({r.code})
-              </option>
-            ))}
-          </select>
-        )}
-      </label>
+      {!hideRoomPicker && (
+        <label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+          <span className="text-xs uppercase tracking-[0.18em] text-white/40 font-display sm:w-20 shrink-0">
+            Room
+          </span>
+          {rooms.length === 0 ? (
+            <span className="text-sm text-white/40">No rooms yet.</span>
+          ) : (
+            <select
+              value={room}
+              onChange={(e) => chooseRoom(e.target.value)}
+              className="h-10 rounded-lg bg-black/30 border border-white/15 px-3 text-sm text-white
+                         focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 w-full"
+            >
+              {rooms.map((r) => (
+                <option key={r.code} value={r.code} className="bg-dark-blue-900">
+                  {r.name} ({r.code})
+                </option>
+              ))}
+            </select>
+          )}
+        </label>
+      )}
 
       <div className="flex flex-col gap-2.5">
         {SHOTS.map(({ kind, icon: Icon, title, desc }) => {

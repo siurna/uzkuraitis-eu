@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { rooms, voters, votes } from "@/lib/db/schema";
-import { findRoomByCode, changeRoomCode } from "@/lib/rooms";
+import { findRoomByCode, changeRoomCode, invalidateRoomCache } from "@/lib/rooms";
 import { isAdminAuthed } from "@/lib/admin/session";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 
@@ -16,6 +16,8 @@ const PatchSchema = z.object({
   name: z.string().trim().min(1).max(60).optional(),
   commentatorEnabled: z.boolean().optional(),
   code: z.string().length(6).optional(),
+  /** NULL or 0 = unlimited answers per question. */
+  triviaMaxAnswerers: z.number().int().min(0).max(1000).nullable().optional(),
 });
 
 async function requireAdmin() {
@@ -43,6 +45,9 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
   const { code: nextCode, ...rest } = parsed.data;
   if (Object.keys(rest).length > 0) {
     await db.update(rooms).set(rest).where(eq(rooms.id, room.id));
+    // Bust the in-process room cache so the next findRoomByCode in
+    // this lambda warm-instance reads the new values.
+    invalidateRoomCache(room.code);
   }
   let newCode = room.code;
   if (nextCode && nextCode.toUpperCase() !== room.code) {
@@ -50,6 +55,8 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
     if (!updated) {
       return NextResponse.json({ error: "That code is taken or invalid." }, { status: 409 });
     }
+    invalidateRoomCache(room.code);
+    invalidateRoomCache(updated.code);
     newCode = updated.code;
   }
   // Push room props change to every connected client so e.g. the standings

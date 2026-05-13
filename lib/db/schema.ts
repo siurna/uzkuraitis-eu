@@ -47,6 +47,15 @@ export const rooms = pgTable(
     // of 26). Admin-set alongside now-playing; powers the progress bar on
     // the now-playing hero. NULL = unknown / not tracking.
     runningOrderPos: integer("running_order_pos"),
+    // Trivia: cap on how many players can answer a single trivia
+    // question per (room, country). NULL = unlimited. Used to make
+    // trivia feel like a race (first 5 players, etc.) rather than a
+    // group exercise. Server enforces in /api/rooms/[code]/trivia.
+    triviaMaxAnswerers: integer("trivia_max_answerers"),
+    // Beginner mode is a PER-USER preference (localStorage toggle,
+    // same shape as translate mode), not a per-room setting. No
+    // column lives on `rooms` for it. The shared `chat_helper_cache`
+    // table further down handles durable caching of the explanations.
     // Long random token granting per-room admin rights. Anyone with the
     // token can manage *this* room (rename, toggle voting, edit results,
     // change the join code) without a global passkey. Generated on room
@@ -325,6 +334,42 @@ export const gifCache = pgTable("gif_cache", {
     .notNull()
     .defaultNow(),
 });
+
+// Durable cache for AI-generated chat helpers. Each row stores ONE
+// (kind, text) → result pair so subsequent identical lookups can
+// skip the Anthropic round-trip even across cold serverless instances.
+//
+//   - `kind`     = "translate" (LT → EN rendering) or "beginner"
+//                  (Eurovision-joke unpack). Future kinds slot in
+//                  without a migration.
+//   - `text_key` = sha256 of the input text (full text would blow
+//                  past the index size; the hash is plenty for a
+//                  cache key and keeps duplicates from re-rolling).
+//   - `payload`  = JSON `{ translate / explain: boolean, text: string }`
+//                  matching the route's response shape.
+//   - `hits`     = bump every cache hit. Useful for "evict the cold
+//                  half" eviction once the table grows.
+//
+// Wired by /api/translate (today) and the beginner-mode route (later
+// — beginner_mode_enabled is the toggle column on rooms). The
+// in-memory route caches stay; this table is the second tier.
+export const chatHelperCache = pgTable(
+  "chat_helper_cache",
+  {
+    kind: text("kind").notNull(),
+    textKey: text("text_key").notNull(),
+    lang: text("lang").notNull(),
+    payload: jsonb("payload").notNull(),
+    hits: integer("hits").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.kind, t.textKey, t.lang] })],
+);
 
 // Web Push subscriptions. One row per (room, session, endpoint) so a
 // voter can opt into notifications from multiple rooms; deleting a

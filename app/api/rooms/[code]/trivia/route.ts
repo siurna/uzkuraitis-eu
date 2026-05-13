@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { triviaAnswers } from "@/lib/db/schema";
 import { findRoomByCode, touchRoom } from "@/lib/rooms";
@@ -40,6 +41,46 @@ export async function POST(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "No trivia for that country" }, { status: 404 });
   }
   const correct = choiceIndex === card.correctIndex;
+
+  // Per-room threshold: if the host capped the question at N answerers
+  // and N players already locked an answer for this country, this one
+  // comes too late. We check BEFORE the insert so a denied answer
+  // doesn't burn the player's idempotency slot.
+  if (room.triviaMaxAnswerers != null && room.triviaMaxAnswerers > 0) {
+    const [{ n }] = await db
+      .select({ n: sql<number>`COUNT(*)::int` })
+      .from(triviaAnswers)
+      .where(
+        and(
+          eq(triviaAnswers.roomId, room.id),
+          eq(triviaAnswers.countryCode, countryCode),
+        ),
+      );
+    // Allow the answer through if the same session already has a row
+    // (the insert below will no-op). Only block fresh sessions past
+    // the cap.
+    const [existing] = await db
+      .select({ sessionId: triviaAnswers.sessionId })
+      .from(triviaAnswers)
+      .where(
+        and(
+          eq(triviaAnswers.roomId, room.id),
+          eq(triviaAnswers.countryCode, countryCode),
+          eq(triviaAnswers.sessionId, sessionId),
+        ),
+      )
+      .limit(1);
+    if (!existing && (n ?? 0) >= room.triviaMaxAnswerers) {
+      return NextResponse.json(
+        {
+          ok: false,
+          tooLate: true,
+          correctIndex: card.correctIndex,
+        },
+        { status: 409 },
+      );
+    }
+  }
 
   // Idempotent insert — the unique primary key means a second answer
   // attempt is ignored without throwing. We always return the real
