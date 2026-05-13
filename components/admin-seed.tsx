@@ -2,20 +2,23 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { FlaskConical, Users, Trophy, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-// Dev seeding panel (Admin › Settings): drop demo voters / highlights
-// into a room so the leaderboard + Home widgets have something to show.
+type Mode = "voters" | "highlights" | "results";
+
+// Admin › Settings: a tidy dev-seed panel — demo voters, random official
+// results + facts, and reaction-heavy "highlights" — so the leaderboard
+// and Home widgets have something to chew on without a real crowd.
 export function AdminSeed() {
   const [room, setRoom] = useState("");
   const [voterN, setVoterN] = useState(8);
-  const hlN = 3;
-  const [busy, setBusy] = useState<null | "voters" | "highlights">(null);
+  const [busy, setBusy] = useState<Mode | null>(null);
 
-  const run = async (mode: "voters" | "highlights", count: number) => {
+  const run = async (mode: Mode, opts: { count?: number; needsRoom?: boolean } = {}) => {
     const code = room.trim().toUpperCase();
-    if (code.length !== 6) {
+    if (opts.needsRoom && code.length !== 6) {
       toast.error("Enter a 6-character room code first.");
       return;
     }
@@ -24,18 +27,20 @@ export function AdminSeed() {
       const res = await fetch("/api/admin/seed", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode, room: code, count }),
+        body: JSON.stringify({ mode, ...(opts.needsRoom ? { room: code } : {}), ...(opts.count ? { count: opts.count } : {}) }),
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; created?: number; error?: string };
-      if (res.ok) {
-        toast.success(
-          mode === "voters"
-            ? `Seeded ${data.created ?? count} demo voters into ${code}.`
-            : `Posted ${data.created ?? count} highlight messages into ${code}.`,
-        );
-      } else {
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; created?: number; placed?: number; error?: string };
+      if (!res.ok) {
         toast.error(data.error ?? "Seed failed.");
+        return;
       }
+      toast.success(
+        mode === "voters"
+          ? `Seeded ${data.created ?? voterN} demo voters into ${code}.`
+          : mode === "results"
+            ? `Seeded ${data.placed ?? "all"} final placements + facts (global).`
+            : `Posted ${data.created ?? 3} highlight messages into ${code}.`,
+      );
     } catch {
       toast.error("Seed failed (network).");
     } finally {
@@ -44,50 +49,96 @@ export function AdminSeed() {
   };
 
   return (
-    <section className="glass-card rounded-xl p-5 flex flex-col gap-4">
-      <div>
-        <h2 className="font-display text-xl">Seed data (dev)</h2>
-        <p className="text-sm text-white/50 mt-0.5">
-          Throw demo voters or reaction-heavy "highlights" into a room for testing. No undo.
-        </p>
-      </div>
+    <section className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-5">
+      <header className="flex items-start gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+          <FlaskConical className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="font-display text-xl leading-tight">Seed data</h2>
+          <p className="text-sm text-white/45 leading-snug mt-0.5">Dev only. Fills a room (or the whole show) with throwaway data. There's no undo.</p>
+        </div>
+      </header>
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-xs uppercase tracking-wider text-white/45 font-display">Room code</span>
+      {/* room scope — used by the per-room actions below */}
+      <label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+        <span className="text-xs uppercase tracking-[0.18em] text-white/40 font-display sm:w-28 shrink-0">Room code</span>
         <Input
           value={room}
-          onChange={(e) => setRoom(e.target.value.toUpperCase().slice(0, 6))}
+          onChange={(e) => setRoom(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))}
           placeholder="ABC234"
-          className="h-10 w-44 uppercase tracking-[0.2em]"
+          className="h-10 w-full sm:w-48 uppercase tracking-[0.25em] font-display"
         />
       </label>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs uppercase tracking-wider text-white/45 font-display"># demo voters</span>
-          <Input
-            type="number"
-            min={1}
-            max={60}
-            value={voterN}
-            onChange={(e) => setVoterN(Math.max(1, Math.min(60, Number(e.target.value) || 1)))}
-            className="h-10 w-24"
-          />
-        </label>
-        <Button type="button" onClick={() => run("voters", voterN)} disabled={!!busy} className="h-10">
-          {busy === "voters" ? "Seeding…" : "Add demo voters"}
-        </Button>
-        <span className="flex-1" />
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => run("highlights", hlN)}
-          disabled={!!busy}
-          className="h-10"
-        >
-          {busy === "highlights" ? "Posting…" : `Add ${hlN} random highlights`}
-        </Button>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <SeedCard
+          icon={<Users className="h-4 w-4" />}
+          title="Demo voters"
+          desc={
+            <span className="inline-flex items-center gap-1.5">
+              <Input
+                type="number"
+                min={1}
+                max={60}
+                value={voterN}
+                onChange={(e) => setVoterN(Math.max(1, Math.min(60, Number(e.target.value) || 1)))}
+                className="h-7 w-14 px-2 text-center tabular-nums"
+                aria-label="number of demo voters"
+              />
+              users with random ballots, bets &amp; a home guess
+            </span>
+          }
+          busy={busy === "voters"}
+          onClick={() => run("voters", { count: voterN, needsRoom: true })}
+        />
+        <SeedCard
+          icon={<Trophy className="h-4 w-4" />}
+          title="Results &amp; facts"
+          desc="Random final placements + jury/televote winners, nul-points, host, solo, LT total — installation-wide"
+          busy={busy === "results"}
+          onClick={() => run("results")}
+        />
+        <SeedCard
+          icon={<Flame className="h-4 w-4" />}
+          title="Highlights"
+          desc="A few reaction-heavy chat messages, tagged with whoever's on stage"
+          busy={busy === "highlights"}
+          onClick={() => run("highlights", { count: 3, needsRoom: true })}
+          className="sm:col-span-2"
+        />
       </div>
     </section>
+  );
+}
+
+function SeedCard({
+  icon,
+  title,
+  desc,
+  busy,
+  onClick,
+  className = "",
+}: {
+  icon: React.ReactNode;
+  title: React.ReactNode;
+  desc: React.ReactNode;
+  busy: boolean;
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={`flex items-start gap-3 rounded-xl bg-white/[0.03] ring-1 ring-white/8 p-3.5 ${className}`}>
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.06] ring-1 ring-white/10 text-white/60">
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-sm text-white/90">{title}</p>
+        <p className="text-[13px] text-white/45 leading-snug mt-0.5">{desc}</p>
+      </div>
+      <Button type="button" size="sm" onClick={onClick} disabled={busy} className="shrink-0 self-center">
+        {busy ? "Seeding…" : "Seed"}
+      </Button>
+    </div>
   );
 }

@@ -1,15 +1,25 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { voters, votes, chatMessages, chatReactions } from "@/lib/db/schema";
+import {
+  voters,
+  votes,
+  chatMessages,
+  chatReactions,
+  officialResults,
+  officialFacts,
+  rooms,
+} from "@/lib/db/schema";
 import { isAdminAuthed } from "@/lib/admin/session";
 import { findRoomByCode } from "@/lib/rooms";
 import { countries } from "@/lib/countries";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 
-// Dev-only seeding: throw demo voters (random ballots + bets) or a few
-// reaction-heavy chat messages ("highlights") into a room so we can
-// eyeball the leaderboard / Home widgets without a real crowd. Admin
+// Dev-only seeding: throw demo voters (random ballots + bets), a few
+// reaction-heavy chat messages ("highlights"), or random official
+// results + facts into the installation so we can eyeball the
+// leaderboard / Home widgets without a real crowd / a finished show.
+// Admin
 // session-gated. No undo.
 
 const DEMO_NAMES = [
@@ -54,9 +64,9 @@ function rid(): string {
 }
 
 const Body = z.object({
-  mode: z.enum(["voters", "highlights"]),
-  room: z.string().length(6),
-  count: z.number().int().min(1).max(60),
+  mode: z.enum(["voters", "highlights", "results"]),
+  room: z.string().length(6).optional(),
+  count: z.number().int().min(1).max(60).optional(),
 });
 
 export async function POST(req: Request) {
@@ -67,10 +77,36 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
-  const { mode, room: code, count } = parsed.data;
-  const room = await findRoomByCode(code);
-  if (!room) return NextResponse.json({ error: "Room not found" }, { status: 404 });
+  const { mode } = parsed.data;
+  const count = parsed.data.count ?? 8;
   const codes = countries.map((c) => c.code);
+
+  // ── official results + facts (global; the whole installation) ──
+  if (mode === "results") {
+    const finalOrder = shuffled(codes); // a random final placing
+    await db.delete(officialResults);
+    await db.insert(officialResults).values(finalOrder.map((cc, i) => ({ countryCode: cc, placement: i + 1 })));
+    const bottom = finalOrder.slice(-3);
+    const facts: Record<string, string> = {
+      jury_winner: finalOrder[0],
+      televote_winner: finalOrder[1] ?? finalOrder[0],
+      nul_televote: bottom.slice(0, 1 + Math.floor(Math.random() * 3)).join(","),
+      lt_12_to: pick(codes),
+      lt_total_points: String(40 + Math.floor(Math.random() * 280)),
+      winner_solo: Math.random() < 0.6 ? "true" : "false",
+    };
+    await db.delete(officialFacts);
+    await db.insert(officialFacts).values(Object.entries(facts).map(([key, value]) => ({ key, value })));
+    const allRooms = await db.select({ code: rooms.code }).from(rooms);
+    await Promise.all(allRooms.map((r) => broadcastToRoom(r.code, { type: "leaderboard:updated" })));
+    return NextResponse.json({ ok: true, placed: finalOrder.length, facts: Object.keys(facts).length });
+  }
+
+  // ── voters / highlights need a target room ──
+  const codeIn = parsed.data.room;
+  if (!codeIn) return NextResponse.json({ error: "Room code required" }, { status: 400 });
+  const room = await findRoomByCode(codeIn);
+  if (!room) return NextResponse.json({ error: "Room not found" }, { status: 404 });
 
   if (mode === "voters") {
     for (let i = 0; i < count; i++) {
