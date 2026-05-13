@@ -14,7 +14,7 @@ import { Highlights } from "@/components/highlights";
 // the bottom (id="standings" so the results card can scroll to it).
 export function HomePanel() {
   return (
-    <div className="flex flex-col gap-5 pt-3 pb-2">
+    <div className="flex flex-col gap-3 pt-3 pb-2">
       <HomeBanners />
       <WhosHere />
       <MyResults />

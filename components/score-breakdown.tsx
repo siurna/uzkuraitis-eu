@@ -36,7 +36,7 @@ export function ScoreBreakdown({
     { label: t(lang, "bet_jury_winner"), pts: bets.juryWinner },
     { label: t(lang, "bet_televote_winner"), pts: bets.televoteWinner },
     { label: t(lang, "bet_nul"), pts: bets.nulTelevote },
-    { label: t(lang, "bet_host_top3"), pts: bets.hostTop3 },
+    { label: tpl("bet_host_top3"), pts: bets.hostTop3 },
     { label: t(lang, "bet_solo_winner"), pts: bets.winnerSolo },
     { label: t(lang, "breakdown_highlights"), pts: highlights },
   ];

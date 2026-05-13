@@ -92,6 +92,8 @@ const S = {
   // ── Voting open/closed states + the on-air banners ───────────────
   update_vote:       { en: "Update your vote", lt: "Pakeisti balsą" },
   voting_closed:     { en: "Voting locked", lt: "Balsavimas užrakintas" },
+  voting_closed_show: { en: "Let's enjoy the show first!", lt: "Pirma pasimėgaukime šou!" },
+  voting_closed_results: { en: "Waiting for the official results!", lt: "Laukiame oficialių rezultatų!" },
   vote_open_now:     { en: "Europe, start voting now!", lt: "Europa, balsuok dabar!" },
   vote_closing:      { en: "Stop voting now!", lt: "Balsavimas baigtas!" },
 
