@@ -38,7 +38,16 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     .orderBy(desc(reactionCount), desc(chatMessages.createdAt))
     .limit(LIMIT);
 
-  return NextResponse.json({
+  // PERF: highlights change on every reaction toggle but the visible
+  // delta to viewers is tiny (a count tick on one message). 5s edge +
+  // 30s SWR is plenty for a "best moments" rail; keeps the heavy
+  // join+group+having out of the hot path.
+  const res = NextResponse.json({
     highlights: rows.map((r) => ({ ...r, reactionCount: Number(r.reactionCount) })),
   });
+  res.headers.set(
+    "Cache-Control",
+    "public, s-maxage=5, stale-while-revalidate=30",
+  );
+  return res;
 }

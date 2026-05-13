@@ -34,9 +34,24 @@ export function normalizeRoomCode(code: string): string {
   return code.trim().toUpperCase();
 }
 
+// PERF: tiny per-warm-instance cache keyed on the upper-cased room
+// code. Every API route that accepts a code does this lookup once
+// (sometimes 2-3x in a single request when the route then reads
+// derived data). Room props change rarely; a 5s TTL is invisible to
+// admin updates (they trigger a Liveblocks broadcast that the client
+// already reacts to) but lets a 30-client refetch fan-out hit memory
+// instead of Postgres.
+type CacheEntry = { room: Room; until: number };
+const roomCache = new Map<string, CacheEntry>();
+const ROOM_CACHE_TTL_MS = 5_000;
+
 export async function findRoomByCode(code: string): Promise<Room | null> {
   const normalized = normalizeRoomCode(code);
   if (!isValidRoomCode(normalized)) return null;
+
+  const now = Date.now();
+  const hit = roomCache.get(normalized);
+  if (hit && hit.until > now) return hit.room;
 
   const [room] = await db
     .select()
@@ -44,7 +59,16 @@ export async function findRoomByCode(code: string): Promise<Room | null> {
     .where(eq(rooms.code, normalized))
     .limit(1);
 
+  if (room) {
+    roomCache.set(normalized, { room, until: now + ROOM_CACHE_TTL_MS });
+  }
   return room ?? null;
+}
+
+/** Bust the cache for a single room — call from the routes that just
+ *  mutated the row so callers downstream don't read stale state. */
+export function invalidateRoomCache(code: string): void {
+  roomCache.delete(normalizeRoomCode(code));
 }
 
 export async function touchRoom(roomId: string): Promise<void> {

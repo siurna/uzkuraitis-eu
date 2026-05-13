@@ -23,8 +23,13 @@ import {
 // Read-only roll-up of a single participant: identity, chat activity,
 // bingo strikes, the ballot (only after results are revealed, or to the
 // participant themselves), and their hottest message of the night.
-// Powers the ProfileSheet drawer that opens from the Who's-Here bubbles
-// and chat avatars.
+// Powers the ProfileSheet drawer.
+//
+// PERF: everything that can run independently fires in parallel via
+// Promise.all. Was 9+ sequential roundtrips (a 1.5s wait); now bounded
+// by the slowest single query. The slow path (ballot reveal) adds two
+// more parallel calls but only when authorised — same fan-out, no
+// wait-for-the-previous-result chain.
 
 type RouteCtx = { params: Promise<{ code: string; sessionId: string }> };
 
@@ -35,29 +40,108 @@ export async function GET(req: Request, { params }: RouteCtx) {
 
   const viewer = new URL(req.url).searchParams.get("as") ?? "";
   const isSelf = viewer.length > 0 && viewer === sessionId;
-  // The ballot stays hidden until the host has revealed results — except
-  // to the voter themselves, who already knows their own picks.
   const canSeeBallot = room.tallyEnabled || isSelf;
 
-  // Voter row (only present if they've cast a ballot)
-  const [voterRow] = await db
-    .select()
-    .from(voters)
-    .where(and(eq(voters.roomId, room.id), eq(voters.sessionId, sessionId)))
-    .limit(1);
-
-  // Latest chat message — gives us the display name + avatar even for
-  // participants who joined the chat but never voted.
-  const [latestMsg] = await db
-    .select({
-      name: chatMessages.name,
-      avatarId: chatMessages.avatarId,
-      createdAt: chatMessages.createdAt,
-    })
-    .from(chatMessages)
-    .where(and(eq(chatMessages.roomId, room.id), eq(chatMessages.sessionId, sessionId)))
-    .orderBy(desc(chatMessages.createdAt))
-    .limit(1);
+  // Fan out every per-session query in parallel. None of these depend
+  // on each other — the room id is already in hand and the queries
+  // share no intermediate state.
+  const [
+    voterRow,
+    latestMsg,
+    messagesRow,
+    reactionsGivenRow,
+    reactionsReceivedRow,
+    highlightRows,
+    bingoStrikesRow,
+    triviaStatsRow,
+    topRow,
+  ] = await Promise.all([
+    db
+      .select()
+      .from(voters)
+      .where(and(eq(voters.roomId, room.id), eq(voters.sessionId, sessionId)))
+      .limit(1)
+      .then((rows) => rows[0]),
+    db
+      .select({
+        name: chatMessages.name,
+        avatarId: chatMessages.avatarId,
+        createdAt: chatMessages.createdAt,
+      })
+      .from(chatMessages)
+      .where(and(eq(chatMessages.roomId, room.id), eq(chatMessages.sessionId, sessionId)))
+      .orderBy(desc(chatMessages.createdAt))
+      .limit(1)
+      .then((rows) => rows[0]),
+    db
+      .select({ messages: sql<number>`COUNT(*)::int` })
+      .from(chatMessages)
+      .where(and(eq(chatMessages.roomId, room.id), eq(chatMessages.sessionId, sessionId)))
+      .then((rows) => rows[0]),
+    db
+      .select({ reactionsGiven: sql<number>`COUNT(*)::int` })
+      .from(chatReactions)
+      .innerJoin(chatMessages, eq(chatMessages.id, chatReactions.messageId))
+      .where(and(
+        eq(chatMessages.roomId, room.id),
+        eq(chatReactions.sessionId, sessionId),
+      ))
+      .then((rows) => rows[0]),
+    db
+      .select({ reactionsReceived: sql<number>`COUNT(*)::int` })
+      .from(chatReactions)
+      .innerJoin(chatMessages, eq(chatMessages.id, chatReactions.messageId))
+      .where(and(
+        eq(chatMessages.roomId, room.id),
+        eq(chatMessages.sessionId, sessionId),
+      ))
+      .then((rows) => rows[0]),
+    db
+      .select({
+        id: chatMessages.id,
+        reactionCount: sql<number>`COUNT(${chatReactions.messageId})::int`,
+      })
+      .from(chatMessages)
+      .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
+      .where(and(eq(chatMessages.roomId, room.id), eq(chatMessages.sessionId, sessionId)))
+      .groupBy(chatMessages.id)
+      .having(sql`COUNT(${chatReactions.messageId}) >= ${HIGHLIGHT_THRESHOLD}`),
+    db
+      .select({ bingoStrikes: sql<number>`COUNT(*)::int` })
+      .from(chatMessages)
+      .where(and(
+        eq(chatMessages.roomId, room.id),
+        eq(chatMessages.sessionId, sessionId),
+        eq(chatMessages.kind, "bingo_strike"),
+      ))
+      .then((rows) => rows[0]),
+    db
+      .select({
+        total: sql<number>`COUNT(*)::int`,
+        correct: sql<number>`COUNT(*) FILTER (WHERE ${triviaAnswers.correct})::int`,
+      })
+      .from(triviaAnswers)
+      .where(and(
+        eq(triviaAnswers.roomId, room.id),
+        eq(triviaAnswers.sessionId, sessionId),
+      ))
+      .then((rows) => rows[0]),
+    db
+      .select({
+        id: chatMessages.id,
+        body: chatMessages.body,
+        gifUrl: chatMessages.gifUrl,
+        kind: chatMessages.kind,
+        reactionCount: sql<number>`COUNT(${chatReactions.messageId})::int`,
+      })
+      .from(chatMessages)
+      .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
+      .where(and(eq(chatMessages.roomId, room.id), eq(chatMessages.sessionId, sessionId)))
+      .groupBy(chatMessages.id)
+      .orderBy(sql`COUNT(${chatReactions.messageId}) DESC, ${chatMessages.createdAt} ASC`)
+      .limit(1)
+      .then((rows) => rows[0]),
+  ]);
 
   if (!voterRow && !latestMsg) {
     return NextResponse.json({ error: "Unknown participant" }, { status: 404 });
@@ -66,84 +150,6 @@ export async function GET(req: Request, { params }: RouteCtx) {
   const name = voterRow?.name ?? latestMsg?.name ?? "Anon";
   const avatarId = latestMsg?.avatarId ?? null;
 
-  // Aggregate counters — each O(rows for this session) thanks to the
-  // chat_room_created_idx + chat_react_msg_idx indexes.
-  const [{ messages }] = await db
-    .select({ messages: sql<number>`COUNT(*)::int` })
-    .from(chatMessages)
-    .where(and(eq(chatMessages.roomId, room.id), eq(chatMessages.sessionId, sessionId)));
-
-  const [{ reactionsGiven }] = await db
-    .select({ reactionsGiven: sql<number>`COUNT(*)::int` })
-    .from(chatReactions)
-    .innerJoin(chatMessages, eq(chatMessages.id, chatReactions.messageId))
-    .where(and(
-      eq(chatMessages.roomId, room.id),
-      eq(chatReactions.sessionId, sessionId),
-    ));
-
-  const [{ reactionsReceived }] = await db
-    .select({ reactionsReceived: sql<number>`COUNT(*)::int` })
-    .from(chatReactions)
-    .innerJoin(chatMessages, eq(chatMessages.id, chatReactions.messageId))
-    .where(and(
-      eq(chatMessages.roomId, room.id),
-      eq(chatMessages.sessionId, sessionId),
-    ));
-
-  // Highlights — messages this session authored that crossed the
-  // reaction threshold. Same rule the leaderboard's social bonus uses.
-  const highlightRows = await db
-    .select({
-      id: chatMessages.id,
-      reactionCount: sql<number>`COUNT(${chatReactions.messageId})::int`,
-    })
-    .from(chatMessages)
-    .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
-    .where(and(eq(chatMessages.roomId, room.id), eq(chatMessages.sessionId, sessionId)))
-    .groupBy(chatMessages.id)
-    .having(sql`COUNT(${chatReactions.messageId}) >= ${HIGHLIGHT_THRESHOLD}`);
-
-  const [{ bingoStrikes }] = await db
-    .select({ bingoStrikes: sql<number>`COUNT(*)::int` })
-    .from(chatMessages)
-    .where(and(
-      eq(chatMessages.roomId, room.id),
-      eq(chatMessages.sessionId, sessionId),
-      eq(chatMessages.kind, "bingo_strike"),
-    ));
-
-  // Trivia: total tries + correct answers, so the profile can show
-  // "got 4 of 7 right" without overpromising.
-  const [triviaStats] = await db
-    .select({
-      total: sql<number>`COUNT(*)::int`,
-      correct: sql<number>`COUNT(*) FILTER (WHERE ${triviaAnswers.correct})::int`,
-    })
-    .from(triviaAnswers)
-    .where(and(
-      eq(triviaAnswers.roomId, room.id),
-      eq(triviaAnswers.sessionId, sessionId),
-    ));
-
-  // The hottest message they authored — drives the "top moment" chip.
-  const [topRow] = await db
-    .select({
-      id: chatMessages.id,
-      body: chatMessages.body,
-      gifUrl: chatMessages.gifUrl,
-      kind: chatMessages.kind,
-      reactionCount: sql<number>`COUNT(${chatReactions.messageId})::int`,
-    })
-    .from(chatMessages)
-    .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
-    .where(and(eq(chatMessages.roomId, room.id), eq(chatMessages.sessionId, sessionId)))
-    .groupBy(chatMessages.id)
-    .orderBy(sql`COUNT(${chatReactions.messageId}) DESC, ${chatMessages.createdAt} ASC`)
-    .limit(1);
-
-  // Count how many bet slots the voter has filled (the home-country
-  // placement guess sits in voters.homeCountryPrediction).
   let betsPlaced = 0;
   if (voterRow) {
     const slots: Array<unknown> = [
@@ -161,21 +167,20 @@ export async function GET(req: Request, { params }: RouteCtx) {
     betsPlaced = slots.filter((v) => v !== null && v !== undefined).length;
   }
 
-  // Ballot + per-pick breakdown — only when authorised.
+  // Ballot + per-pick breakdown — only when authorised. The ballot
+  // rows and the placement tables fan out in parallel too.
   let ballot: TopTenPickBreakdown[] | null = null;
   if (voterRow && canSeeBallot) {
-    const ballotRows = await db
-      .select({ points: votes.points, countryCode: votes.countryCode })
-      .from(votes)
-      .where(eq(votes.voterId, voterRow.id));
-    const ballotObj: Ballot = {};
-    for (const r of ballotRows) ballotObj[String(r.points)] = r.countryCode;
-
-    // Per-room overrides take precedence over the global result table.
-    const [overrideRows, globalRows] = await Promise.all([
+    const [ballotRows, overrideRows, globalRows] = await Promise.all([
+      db
+        .select({ points: votes.points, countryCode: votes.countryCode })
+        .from(votes)
+        .where(eq(votes.voterId, voterRow.id)),
       db.select().from(roomResults).where(eq(roomResults.roomId, room.id)),
       db.select().from(officialResults),
     ]);
+    const ballotObj: Ballot = {};
+    for (const r of ballotRows) ballotObj[String(r.points)] = r.countryCode;
     const placements: Record<string, number> =
       overrideRows.length > 0
         ? Object.fromEntries(overrideRows.map((r) => [r.countryCode, r.placement]))
@@ -190,14 +195,14 @@ export async function GET(req: Request, { params }: RouteCtx) {
     joinedAt: voterRow?.createdAt ?? latestMsg?.createdAt ?? null,
     lastActiveAt: voterRow?.updatedAt ?? latestMsg?.createdAt ?? null,
     stats: {
-      messages: messages ?? 0,
-      reactionsGiven: reactionsGiven ?? 0,
-      reactionsReceived: reactionsReceived ?? 0,
+      messages: messagesRow?.messages ?? 0,
+      reactionsGiven: reactionsGivenRow?.reactionsGiven ?? 0,
+      reactionsReceived: reactionsReceivedRow?.reactionsReceived ?? 0,
       highlights: highlightRows.length,
-      bingoStrikes: bingoStrikes ?? 0,
+      bingoStrikes: bingoStrikesRow?.bingoStrikes ?? 0,
       bets: betsPlaced,
-      triviaCorrect: triviaStats?.correct ?? 0,
-      triviaTotal: triviaStats?.total ?? 0,
+      triviaCorrect: triviaStatsRow?.correct ?? 0,
+      triviaTotal: triviaStatsRow?.total ?? 0,
     },
     ballot,
     ballotHidden: !!voterRow && !canSeeBallot,

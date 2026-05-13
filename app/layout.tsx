@@ -23,7 +23,10 @@ export const metadata: Metadata = {
       "Live voting and reactions for the 70th Eurovision Song Contest.",
     type: "website",
   },
-  // Favicon is auto-bound by app/icon.svg (Next metadata file convention).
+  // Favicon + apple-touch-icon are auto-bound by Next's metadata file
+  // convention from `app/icon.png` + `app/apple-icon.png`. Manifest
+  // icons (192/512/maskable) live under `public/icons/` and are
+  // referenced from `app/manifest.ts`.
 };
 
 export const viewport: Viewport = {

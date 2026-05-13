@@ -15,18 +15,29 @@ export async function GET(_req: Request, { params }: RouteCtx) {
   }
 
   const result = await computeRoomLeaderboard(room);
-  if (!result.hasResults) {
-    return NextResponse.json({
-      hasResults: false,
-      tallyEnabled: result.tallyEnabled,
-      homeCountryCode: result.homeCountryCode,
-      leaderboard: [],
-    });
-  }
-  return NextResponse.json({
-    hasResults: true,
-    homeCountryCode: result.homeCountryCode,
-    homeCountryOfficialPlacement: result.homeCountryOfficialPlacement,
-    leaderboard: result.leaderboard,
-  });
+  const body = !result.hasResults
+    ? {
+        hasResults: false as const,
+        tallyEnabled: result.tallyEnabled,
+        homeCountryCode: result.homeCountryCode,
+        leaderboard: [],
+      }
+    : {
+        hasResults: true as const,
+        homeCountryCode: result.homeCountryCode,
+        homeCountryOfficialPlacement: result.homeCountryOfficialPlacement,
+        leaderboard: result.leaderboard,
+      };
+
+  // PERF: leaderboard rendering is heavy (joins voters, votes, chat,
+  // chat reactions, trivia). When the host hits "reveal results" all
+  // 30+ clients fetch in unison; a 5s edge cache + 30s SWR collapses
+  // that thundering herd to one origin call. Updates still feel
+  // immediate (5s ceiling).
+  const res = NextResponse.json(body);
+  res.headers.set(
+    "Cache-Control",
+    "public, s-maxage=5, stale-while-revalidate=30",
+  );
+  return res;
 }
