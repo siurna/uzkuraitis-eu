@@ -21,6 +21,7 @@ type Row = {
   bets: BetBreakdown;
   betsTotal: number;
   highlights: number;
+  trivia?: number;
   total: number;
 };
 
@@ -178,6 +179,7 @@ export function Leaderboard({ code }: { code: string }) {
                           home={row.home}
                           bets={row.bets}
                           highlights={row.highlights}
+                          trivia={row.trivia ?? 0}
                           total={row.total}
                           homeName={countryName(homeCountryCode, lang)}
                         />

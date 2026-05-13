@@ -354,6 +354,31 @@ export const pushSubscriptions = pgTable(
   ],
 );
 
+// Trivia answers — one per (room, session, country). The trivia bank
+// itself lives in `lib/trivia.ts` (pure data, no DB). The server
+// validates the choiceIndex against that bank at answer time and stores
+// only the boolean correctness here, so the leaderboard can add +2 per
+// hit to the player's total.
+export const triviaAnswers = pgTable(
+  "trivia_answers",
+  {
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    sessionId: text("session_id").notNull(),
+    countryCode: text("country_code").notNull(),
+    choiceIndex: integer("choice_index").notNull(),
+    correct: boolean("correct").notNull(),
+    answeredAt: timestamp("answered_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.roomId, t.sessionId, t.countryCode] }),
+    index("trivia_answers_room_idx").on(t.roomId),
+  ],
+);
+
 // WebAuthn / passkey credentials for the single admin user. Initial enrollment
 // is gated by the ADMIN_BOOTSTRAP_SECRET env var; once at least one credential
 // exists, the bootstrap secret is no longer accepted and only the registered

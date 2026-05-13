@@ -19,6 +19,7 @@ type Row = {
   home: number;
   bets: BetBreakdown;
   highlights: number;
+  trivia: number;
   total: number;
 };
 
@@ -124,6 +125,7 @@ export function ResultsPanel() {
               home={me.home}
               bets={me.bets}
               highlights={me.highlights}
+              trivia={me.trivia}
               total={me.total}
               homeName={countryName(homeCountryCode, lang)}
             />

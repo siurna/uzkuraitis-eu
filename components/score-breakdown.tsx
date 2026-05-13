@@ -14,6 +14,7 @@ export function ScoreBreakdown({
   home,
   bets,
   highlights,
+  trivia = 0,
   total,
   homeName,
 }: {
@@ -21,6 +22,7 @@ export function ScoreBreakdown({
   home: number;
   bets: BetBreakdown;
   highlights: number;
+  trivia?: number;
   total: number;
   homeName: string;
 }) {
@@ -40,6 +42,7 @@ export function ScoreBreakdown({
     { label: tpl("bet_host_top3"), pts: bets.hostTop3 },
     { label: t(lang, "bet_solo_winner"), pts: bets.winnerSolo },
     { label: t(lang, "breakdown_highlights"), pts: highlights },
+    { label: t(lang, "trivia_eyebrow"), pts: trivia },
   ];
   return (
     <ul className="flex flex-col gap-0.5 text-sm">

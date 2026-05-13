@@ -9,6 +9,7 @@ import {
   votes,
   chatMessages,
   chatReactions,
+  triviaAnswers,
 } from "@/lib/db/schema";
 import {
   scoreVoter,
@@ -19,6 +20,7 @@ import {
   type BetBreakdown,
 } from "@/lib/scoring";
 import { countries } from "@/lib/countries";
+import { TRIVIA_POINTS } from "@/lib/trivia";
 
 // Shared per-voter leaderboard computation — used by the /leaderboard
 // API route AND by the "results are in" chat card. Per-room result
@@ -46,6 +48,8 @@ export type LeaderboardRow = {
   betsTotal: number;
   /** Chat-highlights social bonus (already capped). */
   highlights: number;
+  /** +2 per trivia question the player got right. */
+  trivia: number;
   total: number;
 };
 
@@ -144,6 +148,21 @@ export async function computeRoomLeaderboard(room: {
   const highlightPoints = (sessionId: string) =>
     Math.min((highlightCountBySession.get(sessionId) ?? 0) * HIGHLIGHT_POINTS_PER, HIGHLIGHT_POINTS_MAX);
 
+  // Trivia: count of correct answers per session, × TRIVIA_POINTS.
+  const triviaRows = await db
+    .select({
+      sessionId: triviaAnswers.sessionId,
+      hits: sql<number>`COUNT(*) FILTER (WHERE ${triviaAnswers.correct})::int`,
+    })
+    .from(triviaAnswers)
+    .where(eq(triviaAnswers.roomId, room.id))
+    .groupBy(triviaAnswers.sessionId);
+  const triviaPointsBySession = new Map<string, number>();
+  for (const r of triviaRows) {
+    triviaPointsBySession.set(r.sessionId, (r.hits ?? 0) * TRIVIA_POINTS);
+  }
+  const triviaPoints = (sessionId: string) => triviaPointsBySession.get(sessionId) ?? 0;
+
   const totalFinalists = countries.length;
   const officialHome = placements[room.homeCountryCode] ?? null;
 
@@ -170,6 +189,7 @@ export async function computeRoomLeaderboard(room: {
         totalFinalists,
       });
       const highlights = highlightPoints(v.sessionId);
+      const trivia = triviaPoints(v.sessionId);
       return {
         voterId: v.id,
         sessionId: v.sessionId,
@@ -180,7 +200,8 @@ export async function computeRoomLeaderboard(room: {
         bets: score.bets,
         betsTotal: score.betsTotal,
         highlights,
-        total: score.total + highlights,
+        trivia,
+        total: score.total + highlights + trivia,
       };
     })
     .sort((a, b) => {
