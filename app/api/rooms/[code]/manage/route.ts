@@ -87,7 +87,11 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
 
   // Apply non-code fields first.
   const updates: Record<string, unknown> = { ...rest };
-  if (nextNowPlaying !== undefined) updates.nowPlayingCode = nextNowPlaying;
+  if (nextNowPlaying !== undefined) {
+    updates.nowPlayingCode = nextNowPlaying;
+    // Running-order position follows the country's startlist order.
+    updates.runningOrderPos = nextNowPlaying ? getCountry(nextNowPlaying)?.order ?? null : null;
+  }
   if (Object.keys(updates).length > 0) {
     await db.update(rooms).set(updates).where(eq(rooms.id, room.id));
   }

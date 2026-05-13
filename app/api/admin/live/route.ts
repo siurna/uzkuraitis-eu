@@ -26,7 +26,6 @@ const PostSchema = z.object({
     .enum(["not_started", "in_progress", "break", "ended"])
     .optional(),
   nowPlayingCode: z.string().length(2).nullable().optional(),
-  runningOrderPos: z.number().int().min(1).max(60).nullable().optional(),
 });
 
 export async function GET() {
@@ -70,12 +69,16 @@ export async function POST(req: Request) {
   if (!parsed.success || Object.keys(parsed.data).length === 0) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
-  const { showStatus, nowPlayingCode, runningOrderPos } = parsed.data;
+  const { showStatus, nowPlayingCode } = parsed.data;
 
   const update: Record<string, unknown> = {};
   if (showStatus !== undefined) update.showStatus = showStatus;
-  if (nowPlayingCode !== undefined) update.nowPlayingCode = nowPlayingCode;
-  if (runningOrderPos !== undefined) update.runningOrderPos = runningOrderPos;
+  if (nowPlayingCode !== undefined) {
+    update.nowPlayingCode = nowPlayingCode;
+    // The running-order position is derived from the country's startlist
+    // order — no separate control.
+    update.runningOrderPos = nowPlayingCode ? getCountry(nowPlayingCode)?.order ?? null : null;
+  }
 
   await db.update(rooms).set(update);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode, type CSSProperties } from "react";
+import { motion, useScroll, useTransform } from "motion/react";
 import { MessageCircle } from "lucide-react";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { getCountry, countryName } from "@/lib/countries";
@@ -345,16 +346,21 @@ function PlayingCard({
 }) {
   const [c1, c2] = countryColors(country.code);
   const photo = participantPhoto(country.code);
+  // Gentle parallax: the photo lags the page scroll a touch.
+  const { scrollY } = useScroll();
+  const photoY = useTransform(scrollY, [0, 700], [-14, 14]);
   const prog = pos != null ? Math.min(Math.max(pos, 0) / GRAND_FINAL_ACTS, 1) : 0;
   const eyebrow =
     pos != null ? `${t(lang, "now_playing")} · ${pos} / ${GRAND_FINAL_ACTS}` : t(lang, "now_playing");
   // Always-present track so the "progress lives here" affordance reads,
   // even before the host sets the running-order position (then it's 0%).
+  // The fill slides when the running-order position advances.
   const progressBar = (
     <div className="absolute inset-x-0 bottom-0 h-1 bg-black/35">
-      <div
+      <motion.div
         className="h-full bg-gradient-to-r from-flamingo to-fuchsia shadow-[0_0_12px_oklch(70.55%_0.2725_336.19_/_0.7)]"
-        style={{ width: `${prog * 100}%` }}
+        animate={{ width: `${prog * 100}%` }}
+        transition={{ type: "spring", stiffness: 90, damping: 18 }}
       />
     </div>
   );
@@ -368,15 +374,31 @@ function PlayingCard({
         style={countryBorderStyle(c1, c2)}
       >
         <div className="relative overflow-hidden rounded-[20px] aspect-[16/10] sm:aspect-[2/1]">
+          {/* parallax photo — oversized so the scroll shift never bares an edge */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={optimizedSrc(photo, 1200)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <motion.img
+            key={photo}
+            src={optimizedSrc(photo, 1200)}
+            alt=""
+            style={{ y: photoY }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4 }}
+            className="absolute inset-x-0 -top-[14%] h-[128%] w-full object-cover"
+          />
           <div
             className="absolute inset-0"
             style={{
               background: `linear-gradient(110deg, ${hexA(c1, 0.5)}, ${hexA(c2, 0.28)} 45%, transparent 70%), linear-gradient(0deg, rgba(8,9,28,0.92), rgba(8,9,28,0.1) 55%, transparent)`,
             }}
           />
-          <div className="absolute inset-x-0 bottom-0 p-4 pb-5 sm:p-5 sm:pb-6 flex items-end gap-3">
+          <motion.div
+            key={country.code}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute inset-x-0 bottom-0 p-4 pb-5 sm:p-5 sm:pb-6 flex items-end gap-3"
+          >
             <span className="heartbeat shrink-0">
               <HeartFlag code={country.code} size="md" />
             </span>
@@ -403,7 +425,7 @@ function PlayingCard({
               )}
             </div>
             <MessageCircle className="h-5 w-5 text-white/80 shrink-0 mb-1" />
-          </div>
+          </motion.div>
           {progressBar}
         </div>
       </button>
