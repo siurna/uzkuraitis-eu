@@ -1,0 +1,134 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { voters, votes, chatMessages, chatReactions } from "@/lib/db/schema";
+import { isAdminAuthed } from "@/lib/admin/session";
+import { findRoomByCode } from "@/lib/rooms";
+import { countries } from "@/lib/countries";
+import { broadcastToRoom } from "@/lib/liveblocks-server";
+
+// Dev-only seeding: throw demo voters (random ballots + bets) or a few
+// reaction-heavy chat messages ("highlights") into a room so we can
+// eyeball the leaderboard / Home widgets without a real crowd. Admin
+// session-gated. No undo.
+
+const DEMO_NAMES = [
+  "Aušra", "Mantas", "Eglė", "Tomas", "Rūta", "Gabrielius", "Ieva", "Lukas",
+  "Greta", "Domas", "Smiltė", "Karolis", "Urtė", "Jonas", "Milda", "Paulius",
+  "Vakarė", "Dovydas", "Saulė", "Arūnas", "Goda", "Nojus", "Austėja", "Rokas",
+  "Liepa", "Matas", "Kotryna", "Emilis", "Vilija", "Tadas",
+];
+const HL_LINES = [
+  "this is THE song of the night, no contest",
+  "i'm literally crying, who let them do this",
+  "ok the staircase descent again 🪜",
+  "ten points from me NOW",
+  "WHAT was that key change 🤯",
+  "ok this slaps actually",
+  "douze points obviously",
+  "i would walk to Vienna for this person",
+  "the costume change??? legend",
+  "Europe is NOT ready for this",
+];
+const HL_EMOJIS = ["❤️", "😂", "🤯", "🙌", "😱", "💀", "🔥", "👏", "🎉", "😭"];
+const BIG_5 = ["gb", "de", "fr", "it", "es"];
+const BALLOT_POINTS = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1] as const;
+
+function pick<T>(a: readonly T[]): T {
+  return a[Math.floor(Math.random() * a.length)];
+}
+function shuffled<T>(a: readonly T[]): T[] {
+  const x = [...a];
+  for (let i = x.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [x[i], x[j]] = [x[j], x[i]];
+  }
+  return x;
+}
+// 60% of the time return v, else null — for "this voter skipped this bet".
+function maybe<T>(v: T): T | null {
+  return Math.random() < 0.6 ? v : null;
+}
+function rid(): string {
+  return Math.random().toString(36).slice(2, 9);
+}
+
+const Body = z.object({
+  mode: z.enum(["voters", "highlights"]),
+  room: z.string().length(6),
+  count: z.number().int().min(1).max(60),
+});
+
+export async function POST(req: Request) {
+  if (!(await isAdminAuthed())) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 401 });
+  }
+  const parsed = Body.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
+  const { mode, room: code, count } = parsed.data;
+  const room = await findRoomByCode(code);
+  if (!room) return NextResponse.json({ error: "Room not found" }, { status: 404 });
+  const codes = countries.map((c) => c.code);
+
+  if (mode === "voters") {
+    for (let i = 0; i < count; i++) {
+      const ballot = shuffled(codes).slice(0, 10);
+      const [voter] = await db
+        .insert(voters)
+        .values({
+          roomId: room.id,
+          sessionId: `seed-${room.id.slice(0, 8)}-${Date.now()}-${i}-${rid()}`,
+          name: pick(DEMO_NAMES),
+          homeCountryPrediction: maybe(1 + Math.floor(Math.random() * countries.length)),
+          betWoodenSpoon: maybe(pick(codes)),
+          betLt12To: maybe(pick(codes)),
+          betHighestBig5: maybe(pick(BIG_5)),
+          betJuryWinner: maybe(pick(codes)),
+          betTelevoteWinner: maybe(pick(codes)),
+          betNulTelevote: maybe(shuffled(codes).slice(0, Math.floor(Math.random() * 4))) ?? undefined,
+          betHostTop3: maybe(Math.random() < 0.5),
+          betWinnerSolo: maybe(Math.random() < 0.5),
+          betLtTotalPoints: maybe(Math.floor(Math.random() * 620)),
+        })
+        .returning({ id: voters.id });
+      if (!voter) continue;
+      await db
+        .insert(votes)
+        .values(ballot.map((cc, j) => ({ voterId: voter.id, points: BALLOT_POINTS[j], countryCode: cc })));
+    }
+    await broadcastToRoom(room.code, { type: "scores:updated" });
+    return NextResponse.json({ ok: true, created: count });
+  }
+
+  // highlights — a few chat messages, each with enough reactions (>=5)
+  // to surface on Home.
+  const npCode = room.nowPlayingCode ?? null;
+  for (let i = 0; i < count; i++) {
+    const [msg] = await db
+      .insert(chatMessages)
+      .values({
+        roomId: room.id,
+        sessionId: `seed-hl-${Date.now()}-${i}-${rid()}`,
+        name: pick(DEMO_NAMES),
+        body: pick(HL_LINES),
+        meta: { nowPlaying: npCode ?? pick(codes) },
+      })
+      .returning({ id: chatMessages.id });
+    if (!msg) continue;
+    // 3–5 distinct emojis × 2–4 people each → at least 6 reactions.
+    for (const emoji of shuffled(HL_EMOJIS).slice(0, 3 + Math.floor(Math.random() * 3))) {
+      const n = 2 + Math.floor(Math.random() * 3);
+      for (let k = 0; k < n; k++) {
+        await db
+          .insert(chatReactions)
+          .values({ messageId: msg.id, sessionId: `seed-r-${msg.id}-${emoji}-${k}`, name: pick(DEMO_NAMES), emoji })
+          .onConflictDoNothing();
+      }
+    }
+  }
+  await broadcastToRoom(room.code, { type: "chat:new", quiet: true });
+  await broadcastToRoom(room.code, { type: "chat:react" });
+  return NextResponse.json({ ok: true, created: count });
+}
