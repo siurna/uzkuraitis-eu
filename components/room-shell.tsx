@@ -223,9 +223,13 @@ function RoomBody({ children }: { children: React.ReactNode }) {
           isChat ? "h-[100dvh] overflow-hidden" : "min-h-dvh"
         }`}
       >
-        {/* Header hides while the chat composer is focused — keeps the
-            keyboarded-up chat panel from leaving an empty strip up top. */}
-        {!composing && <PresenceBar />}
+        {/* Header hides while the chat composer is focused on touch
+            devices — keeps the keyboarded-up chat panel from leaving an
+            empty strip up top. On desktop there's no keyboard inset, so
+            the header stays put. */}
+        <div className={composing ? "max-md:hidden" : ""}>
+          <PresenceBar />
+        </div>
         {/* <TabSync> + anything the route segment renders (no UI). */}
         {children}
 
@@ -245,7 +249,9 @@ function RoomBody({ children }: { children: React.ReactNode }) {
         {/* Chat is `position:fixed` — it manages its own visibility. */}
         {visited.has("chat") && <ChatPanel active={isChat} />}
 
-        {!composing && <RoomTabBar chatUnread={unread} />}
+        <div className={composing ? "max-md:hidden" : ""}>
+          <RoomTabBar chatUnread={unread} />
+        </div>
       </div>
     </RoomTabContext.Provider>
   );

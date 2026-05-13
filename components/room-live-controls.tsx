@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Pause, Sun, Flag as FlagIcon } from "lucide-react";
+import { Clock, Mic, Pause, Flag as FlagIcon } from "lucide-react";
 import { toast } from "sonner";
 import { HeartFlag } from "@/components/flag";
 import { countries } from "@/lib/countries";
@@ -19,9 +19,13 @@ export type LivePatch = {
   nowPlayingCode?: string | null;
 };
 
+// Icon choices: each status reads at a glance. Clock = doors not open
+// yet, Mic = act on stage, Pause = scheduled interval, Flag = checkered
+// finish. We avoid using Pause for both not-started and break (which
+// were the old pair and confusable).
 const STATUS_DEFS: { id: ShowStatus; label: string; Icon: typeof Pause }[] = [
-  { id: "not_started", label: "Not started", Icon: Pause },
-  { id: "in_progress", label: "In progress", Icon: Sun },
+  { id: "not_started", label: "Not started", Icon: Clock },
+  { id: "in_progress", label: "In progress", Icon: Mic },
   { id: "break", label: "Break", Icon: Pause },
   { id: "ended", label: "Ended", Icon: FlagIcon },
 ];

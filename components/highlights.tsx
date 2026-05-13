@@ -23,10 +23,13 @@ type Highlight = {
   reactionCount: number;
 };
 
-// Home widget: the chat moments that blew up. It collapses to a single
-// orange banner (top 3 authors' faces + a flame, the hottest line as a
-// teaser); tapping opens a drawer with the full read-only gallery. No
-// navigation — it's a keepsake, not a shortcut. Self-hides if empty.
+// Home widget: the chat moments that blew up.
+//
+// Layout: a section title at the top, then a full-width "trophy card"
+// showing the single hottest line — author, body / GIF, reaction count
+// — designed to read as a keepsake worth quoting later. A "More N"
+// button below opens a drawer with every highlight from the night.
+// Self-hides if empty.
 export function Highlights() {
   const { code } = useRoomLive();
   const lang = useLang();
@@ -64,52 +67,97 @@ export function Highlights() {
     h.kind === "bingo_strike" ? "🎯 Bingo!" : h.body?.trim() || (h.gifUrl ? "GIF" : "");
   const top = items[0];
   const topPreview = preview(top);
+  const topAvatar = top.avatarId ? getAvatar(top.avatarId) : null;
+  const topNp = (top.meta as { nowPlaying?: string } | null)?.nowPlaying;
+  const topCountry = topNp ? getCountry(topNp) : null;
+  const rest = items.length - 1;
 
   return (
-    <div className="container mx-auto max-w-3xl px-4">
+    <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">
+      {/* Section title — same eyebrow language as the other home rails. */}
+      <header className="flex items-center justify-between px-1">
+        <h2 className="font-display text-base text-white/85 flex items-center gap-2">
+          <Flame className="h-4 w-4 text-orange" fill="currentColor" />
+          {t(lang, "highlights_title")}
+        </h2>
+        {rest > 0 && (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="text-[12px] font-display uppercase tracking-[0.18em] text-orange/85
+                       hover:text-orange transition px-2 py-1 -mr-2 rounded"
+          >
+            +{rest} {t(lang, "highlights_more")}
+          </button>
+        )}
+      </header>
+
+      {/* Trophy card — full-width, skeuomorphic glass over a warm wash,
+          the single hottest moment dressed up like something you'd
+          re-share. Tap anywhere to open the full gallery. */}
       <motion.button
         type="button"
         onClick={() => setOpen(true)}
         initial={{ opacity: 0, y: 12, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 360, damping: 32 }}
-        className="relative block w-full overflow-hidden rounded-3xl text-left"
+        className="relative block w-full overflow-hidden rounded-3xl text-left
+                   shadow-[0_18px_44px_-18px_oklch(58%_0.18_42_/_0.55),inset_0_1px_0_rgba(255,255,255,0.18)]
+                   ring-1 ring-white/8"
         style={{ background: "linear-gradient(135deg, #ff8a2a 0%, #ef1f3f 52%, #b1146a 100%)" }}
       >
-        {/* artwork — the top 3 authors' faces, stacked, + a flame, off the right */}
-        <div className="pointer-events-none absolute inset-y-0 -right-1 flex items-center" aria-hidden>
-          <span className="flex items-center pr-5 -rotate-6">
-            <span className="flex items-center -space-x-3">
-              {items.slice(0, 3).map((h) => (
-                <AvatarBubble key={h.id} name={h.name} avatarId={h.avatarId} />
-              ))}
-            </span>
-            <span className="ml-1 text-4xl drop-shadow">🔥</span>
-          </span>
-        </div>
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.5) 0%, rgba(8,9,28,0.22) 38%, transparent 64%)" }}
+        {/* Soft top-light strip (the skeuo gloss) */}
+        <span
+          className="pointer-events-none absolute inset-x-0 top-0 h-1/2"
+          style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.20) 0%, transparent 70%)" }}
+          aria-hidden
         />
-        <div className="relative flex flex-col justify-center gap-1 pl-5 pr-[36%] py-5 min-h-[7rem]">
-          <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/80 flex items-center gap-1.5">
-            <Flame className="h-3 w-3" fill="currentColor" />
-            {t(lang, "highlights_title")}
-          </p>
-          <p className="font-display text-xl text-white leading-tight drop-shadow-sm">
-            {t(lang, "highlights_widget_title")}
-          </p>
-          <p className="text-sm text-white/75 leading-snug">
-            {topPreview ? (
-              <span className="block truncate">
-                <span className="font-display text-white/90">{top.name}</span>
-                {": "}
-                {topPreview}
-              </span>
-            ) : (
-              t(lang, "highlights_widget_sub")
-            )}
-          </p>
+        <div className="relative flex flex-col gap-3 p-5">
+          {/* Author row */}
+          <div className="flex items-center gap-3">
+            <span className="h-11 w-11 shrink-0 rounded-2xl overflow-hidden ring-2 ring-white/30 bg-dark-blue-800">
+              {topAvatar?.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={optimizedSrc(topAvatar.photo, 128)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  style={{ objectPosition: topAvatar.focal ? `${topAvatar.focal.x}% ${topAvatar.focal.y}%` : "50% 30%" }}
+                />
+              ) : (
+                <span className="h-full w-full grid place-items-center font-display text-base text-white bg-white/15">
+                  {top.name.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-base text-white leading-tight truncate drop-shadow-sm">
+                {top.name}
+              </p>
+              {topCountry && (
+                <p className="text-[11px] text-white/80 leading-tight truncate">
+                  {topCountry.flag} {countryName(topCountry.code, lang)}
+                </p>
+              )}
+            </div>
+            <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/20 ring-1 ring-white/30 px-2.5 h-7 text-sm text-white tabular-nums font-display">
+              ❤️ {top.reactionCount}
+            </span>
+          </div>
+          {/* The quote itself */}
+          {topPreview && (
+            <p className="font-display text-lg text-white leading-snug text-balance drop-shadow-sm line-clamp-3">
+              “{topPreview}”
+            </p>
+          )}
+          {top.gifUrl && top.kind !== "bingo_strike" && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={top.gifUrl}
+              alt=""
+              className="rounded-xl ring-1 ring-white/20 max-h-44 w-auto self-start"
+            />
+          )}
         </div>
       </motion.button>
 
@@ -172,23 +220,3 @@ export function Highlights() {
   );
 }
 
-function AvatarBubble({ name, avatarId }: { name: string; avatarId: string | null }) {
-  const avatar = avatarId ? getAvatar(avatarId) : null;
-  return (
-    <span className="h-11 w-11 shrink-0 rounded-full overflow-hidden ring-2 ring-black/30 bg-dark-blue-800">
-      {avatar?.photo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={optimizedSrc(avatar.photo, 128)}
-          alt=""
-          className="h-full w-full object-cover"
-          style={{ objectPosition: avatar.focal ? `${avatar.focal.x}% ${avatar.focal.y}%` : "50% 30%" }}
-        />
-      ) : (
-        <span className="h-full w-full grid place-items-center font-display text-sm text-white bg-white/10">
-          {name.charAt(0).toUpperCase()}
-        </span>
-      )}
-    </span>
-  );
-}

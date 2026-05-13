@@ -188,21 +188,22 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
                   onExpire={() => setTsToken(null)}
                 />
               )}
-              <Button
+              <button
                 type="submit"
                 disabled={
                   pending ||
                   code.length < 6 ||
                   (!!TURNSTILE_SITE_KEY && !tsToken)
                 }
-                className="h-12 w-full font-display text-[19px] pt-[10px]
-                           bg-gradient-to-r from-gold via-flamingo to-purple
-                           text-white shadow-glow-pink
-                           hover:opacity-95 disabled:opacity-40
-                           disabled:bg-none disabled:bg-white/10"
+                className="rainbow-border rounded-2xl w-full block disabled:opacity-40 transition"
               >
-                {pending ? t(lang, "checking") : t(lang, "enter_room")}
-              </Button>
+                <span
+                  className="block w-full h-12 rounded-[14px] grid place-items-center
+                             bg-white text-dark-blue font-display text-[19px] pt-[2px]"
+                >
+                  {pending ? t(lang, "checking") : t(lang, "enter_room")}
+                </span>
+              </button>
             </form>
           </motion.div>
         )}

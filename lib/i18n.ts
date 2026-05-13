@@ -53,9 +53,6 @@ const S = {
   // ── Auto-translate to English (Settings) ─────────────────────────
   settings_translate_h:    { en: "Auto-translate to English", lt: "Auto-vertimas į anglų" },
   settings_translate_sub:  { en: "We'll pop a clean English rendering under any Lithuanian message — slang, cultural beats, all of it.", lt: "Po lietuvišku tekstu paberiama angliška versija." },
-  settings_translate_off:  { en: "Off", lt: "Išjungta" },
-  settings_translate_on:   { en: "On", lt: "Įjungta" },
-  translate_loading:       { en: "Translating…", lt: "Verčiama…" },
   translate_eyebrow:       { en: "in English", lt: "angliškai" },
 
   // ── NameGate / SettingsModal ─────────────────────────────────────
@@ -165,12 +162,12 @@ const S = {
   home_bingo_won:      { en: "Bingo! 🎉 Tap to see your card", lt: "Bingo! 🎉 Bakstelėk savo kortelę" },
   bingo_widget_title:  { en: "Play bingo!", lt: "Žaisk bingo!" },
   highlights_title:    { en: "Highlights of the evening", lt: "Vakaro akcentai" },
-  highlights_widget_title: { en: "The night's best bits", lt: "Geriausios vakaro akimirkos" },
-  highlights_widget_sub:   { en: "Tap to flip through the gallery", lt: "Bakstelėk ir peržiūrėk visus" },
+  highlights_more:     { en: "more", lt: "daugiau" },
   whos_here_title:     { en: (n: number) => (n === 1 ? "Just you here" : `${n} here right now`), lt: (n: number) => (n === 1 ? "Kol kas tik tu" : `${n} čia dabar`) },
   home_my_results:     { en: "Your results", lt: "Tavo rezultatai" },
   home_results_in:     { en: "Results are in", lt: "Rezultatai jau čia" },
   home_results_in_sub: { en: "See how everyone did", lt: "Pažiūrėk, kaip visiems sekėsi" },
+  home_my_results_tap: { en: "Tap for full breakdown", lt: "Bakstelėk pilnai išklotinei" },
   home_my_results_rank: { en: (rank: number, total: number) => `Ranked ${rank} of ${total}, tap for the breakdown`, lt: (rank: number, total: number) => `${rank} vieta iš ${total}, bakstelėk išklotinei` },
   results_tab_me:      { en: "My breakdown", lt: "Mano išklotinė" },
   results_tab_board:   { en: "Leaderboard", lt: "Lyderių lentelė" },
@@ -223,7 +220,6 @@ const S = {
   chat_drop_image:   { en: "Drop the image to send it", lt: "Nuvilk nuotrauką, kad išsiųstum" },
   gif_pick:          { en: "Pick a GIF", lt: "Pasirink GIF" },
   gif_search:        { en: "Search GIFs", lt: "Ieškoti GIF" },
-  gif_hint:          { en: 'Try "omg", "yes", "fire"…', lt: "Bandyk „omg“, „taip“, „fire“…" },
   gif_empty:         { en: "No GIFs found.", lt: "Nieko nerasta." },
 
   // ── Country deep-dive ────────────────────────────────────────────
@@ -343,6 +339,9 @@ const S = {
   ballot_label:      { en: "ballot", lt: "balsas" },
   bonuses_label:     { en: "bonuses", lt: "statymai" },
   breakdown_highlights: { en: "Chat highlights", lt: "Pokalbio akcentai" },
+  breakdown_top_ten: { en: "TOP 10", lt: "TOP 10" },
+  breakdown_home:    { en: "Home pick", lt: "Sava šalis" },
+  breakdown_bets_sum: { en: "Bonus bets", lt: "Bonus statymai" },
   breakdown_total:   { en: "Total", lt: "Iš viso" },
 
   // ── Profile sheet ────────────────────────────────────────────────
@@ -362,15 +361,11 @@ const S = {
   profile_top10_unranked:    { en: "out of top 10", lt: "už TOP 10" },
   profile_picked_artist:     { en: "Picked the artist", lt: "Pasirinko atlikėją" },
   profile_loading:           { en: "Loading…", lt: "Įkeliama…" },
-  profile_not_here:          { en: "We can't find this person in the room.", lt: "Šio žmogaus kambaryje nerandame." },
 
   // ── Trivia ───────────────────────────────────────────────────────
   trivia_eyebrow:            { en: "Trivia", lt: "Smulkmenos" },
   trivia_answered_correct:   { en: "Spot on, +2 points!", lt: "Pataikei! +2 taškai." },
   trivia_answered_wrong:     { en: "Not this time.", lt: "Šįkart pro šalį." },
-  trivia_already_answered:   { en: "You've already answered.", lt: "Jau atsakei." },
-  trivia_closed:             { en: "Closed", lt: "Uždaryta" },
-  trivia_score_total:        { en: (n: number) => `+${n}`, lt: (n: number) => `+${n}` },
 
   // ── Reactions / honeycomb ────────────────────────────────────────
 };

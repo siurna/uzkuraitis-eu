@@ -99,7 +99,10 @@ export function WhosHere() {
               <Bubble
                 person={p}
                 index={i}
-                onOpen={() => p.sessionId && openProfile(p.sessionId)}
+                onOpen={() =>
+                  p.sessionId &&
+                  openProfile(p.sessionId, { name: p.name, avatarId: p.avatarId })
+                }
               />
             </li>
           ))}

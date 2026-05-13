@@ -22,13 +22,18 @@ import { useLang } from "@/lib/i18n-client";
 // "Tap an avatar, see who they are" — the participant profile drawer.
 //
 // Exposes the same provider-pattern as <CountryDeepDiveProvider>: any
-// descendant can call `useProfile().open(sessionId)`. Keeps the sheet
-// mounted once at the room shell instead of giving every bubble its own
-// hook + state. Loads the data on each open from the profile API; the
-// API gates the ballot section behind tallyEnabled / self-view.
+// descendant can call `useProfile().open(sessionId, seed?)`. Keeps the
+// sheet mounted once at the room shell instead of giving every bubble
+// its own hook + state. Loads the data on each open from the profile
+// API; the API gates the ballot section behind tallyEnabled / self-view.
+// `seed` lets a caller (e.g. the whos-here honeycomb) pass presence
+// name+avatar so the sheet has something to render even when the
+// participant hasn't cast a vote or sent a chat message yet.
+
+type ProfileSeed = { name?: string; avatarId?: string | null };
 
 type Ctx = {
-  open: (sessionId: string) => void;
+  open: (sessionId: string, seed?: ProfileSeed) => void;
   close: () => void;
 };
 
@@ -39,15 +44,24 @@ export function useProfile(): Ctx {
 }
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
-  const [target, setTarget] = useState<string | null>(null);
+  const [target, setTarget] = useState<
+    { sessionId: string; seed: ProfileSeed } | null
+  >(null);
   const value = useMemo<Ctx>(
-    () => ({ open: (s) => setTarget(s), close: () => setTarget(null) }),
+    () => ({
+      open: (s, seed) => setTarget({ sessionId: s, seed: seed ?? {} }),
+      close: () => setTarget(null),
+    }),
     [],
   );
   return (
     <Context.Provider value={value}>
       {children}
-      <ProfileSheet sessionId={target} onClose={() => setTarget(null)} />
+      <ProfileSheet
+        sessionId={target?.sessionId ?? null}
+        seed={target?.seed ?? {}}
+        onClose={() => setTarget(null)}
+      />
     </Context.Provider>
   );
 }
@@ -88,9 +102,11 @@ type ProfileData = {
 
 function ProfileSheet({
   sessionId,
+  seed,
   onClose,
 }: {
   sessionId: string | null;
+  seed: ProfileSeed;
   onClose: () => void;
 }) {
   const { code } = useRoomLive();
@@ -99,17 +115,17 @@ function ProfileSheet({
   const mySession = getSession();
   const [data, setData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [missing, setMissing] = useState(false);
+  const [shellOnly, setShellOnly] = useState(false);
 
   useEffect(() => {
     if (!sessionId) {
       setData(null);
-      setMissing(false);
+      setShellOnly(false);
       return;
     }
     let cancelled = false;
     setLoading(true);
-    setMissing(false);
+    setShellOnly(false);
     fetch(
       `/api/rooms/${code}/profile/${encodeURIComponent(sessionId)}?as=${encodeURIComponent(mySession)}`,
       { cache: "no-store" },
@@ -117,11 +133,11 @@ function ProfileSheet({
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancelled) return;
-        if (!d) setMissing(true);
+        if (!d) setShellOnly(true);
         else setData(d as ProfileData);
       })
       .catch(() => {
-        if (!cancelled) setMissing(true);
+        if (!cancelled) setShellOnly(true);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -131,18 +147,44 @@ function ProfileSheet({
     };
   }, [sessionId, code, mySession]);
 
-  const avatar = data?.avatarId ? getAvatar(data.avatarId) : null;
+  // "Shell" view: API returned 404 (no chat messages, no vote) but we
+  // still know who they are from the bubble that opened this drawer.
+  // Show their identity + a friendly "they're here but haven't done
+  // anything yet" line instead of failing closed.
+  const shell: ProfileData | null = useMemo(() => {
+    if (!sessionId || !shellOnly) return null;
+    return {
+      sessionId,
+      name: seed.name ?? "—",
+      avatarId: seed.avatarId ?? null,
+      joinedAt: null,
+      lastActiveAt: null,
+      stats: {
+        messages: 0,
+        reactionsGiven: 0,
+        reactionsReceived: 0,
+        highlights: 0,
+        bingoStrikes: 0,
+        bets: 0,
+        triviaCorrect: 0,
+        triviaTotal: 0,
+      },
+      ballot: null,
+      ballotHidden: false,
+      topHighlight: null,
+    };
+  }, [sessionId, shellOnly, seed.name, seed.avatarId]);
+
+  const view = data ?? shell;
+  const avatar = view?.avatarId ? getAvatar(view.avatarId) : null;
   const isSelf = !!sessionId && sessionId === mySession;
 
   return (
-    <BottomSheet open={!!sessionId} onClose={onClose} title={data?.name ?? ""}>
-      {loading && !data && (
+    <BottomSheet open={!!sessionId} onClose={onClose} title={view?.name ?? ""}>
+      {loading && !view && (
         <p className="text-sm text-white/45 text-center py-6">{t(lang, "profile_loading")}</p>
       )}
-      {missing && (
-        <p className="text-sm text-white/45 text-center py-6">{t(lang, "profile_not_here")}</p>
-      )}
-      {data && (
+      {view && (
         <div className="flex flex-col gap-4">
           {/* Identity hero */}
           <div className="flex items-center gap-3 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3">
@@ -161,13 +203,13 @@ function ProfileSheet({
                 />
               ) : (
                 <span className="h-full w-full grid place-items-center text-2xl font-display text-white/55">
-                  {data.name.charAt(0).toUpperCase()}
+                  {view.name.charAt(0).toUpperCase()}
                 </span>
               )}
             </span>
             <div className="min-w-0 flex-1">
               <p className="font-display text-lg truncate flex items-center gap-1.5">
-                {data.name}
+                {view.name}
                 {isSelf && (
                   <span className="text-[10px] uppercase tracking-[0.2em] text-flamingo font-display">
                     {t(lang, "profile_you")}
@@ -184,27 +226,27 @@ function ProfileSheet({
 
           {/* Stats grid */}
           <div className="grid grid-cols-3 gap-2">
-            <StatTile icon={MessageCircle} label={t(lang, "profile_stat_messages")} value={data.stats.messages} />
-            <StatTile icon={Heart} label={t(lang, "profile_stat_loves")} value={data.stats.reactionsReceived} fillIcon />
-            <StatTile icon={Flame} label={t(lang, "profile_stat_highlights")} value={data.stats.highlights} fillIcon />
-            <StatTile icon={Sparkles} label={t(lang, "profile_stat_bingo")} value={data.stats.bingoStrikes} />
-            <StatTile icon={Dices} label={t(lang, "profile_stat_bets")} value={data.stats.bets} />
+            <StatTile icon={MessageCircle} label={t(lang, "profile_stat_messages")} value={view.stats.messages} />
+            <StatTile icon={Heart} label={t(lang, "profile_stat_loves")} value={view.stats.reactionsReceived} fillIcon />
+            <StatTile icon={Flame} label={t(lang, "profile_stat_highlights")} value={view.stats.highlights} fillIcon />
+            <StatTile icon={Sparkles} label={t(lang, "profile_stat_bingo")} value={view.stats.bingoStrikes} />
+            <StatTile icon={Dices} label={t(lang, "profile_stat_bets")} value={view.stats.bets} />
             {/* Trivia: show "correct / total" so the denominator gives
                 context. Hidden if the player hasn't attempted any. */}
-            {data.stats.triviaTotal > 0 ? (
+            {view.stats.triviaTotal > 0 ? (
               <StatTile
                 icon={TriviaIcon}
                 label={t(lang, "profile_stat_trivia")}
-                value={data.stats.triviaCorrect}
-                suffix={`/${data.stats.triviaTotal}`}
+                value={view.stats.triviaCorrect}
+                suffix={`/${view.stats.triviaTotal}`}
               />
             ) : (
-              <StatTile icon={Heart} label={t(lang, "profile_stat_given")} value={data.stats.reactionsGiven} muted />
+              <StatTile icon={Heart} label={t(lang, "profile_stat_given")} value={view.stats.reactionsGiven} muted />
             )}
           </div>
 
           {/* Top highlight */}
-          {data.topHighlight && (
+          {view.topHighlight && (
             <div className="rounded-2xl bg-orange/[0.07] ring-1 ring-orange/20 px-3 py-3 flex items-center gap-3">
               <span className="h-9 w-9 shrink-0 rounded-xl bg-orange/15 ring-1 ring-orange/35 grid place-items-center text-orange">
                 <Flame className="h-4 w-4" fill="currentColor" />
@@ -213,16 +255,16 @@ function ProfileSheet({
                 <p className="text-[10px] uppercase tracking-[0.2em] text-orange/90 font-display">
                   {t(lang, "profile_top_moment")}
                 </p>
-                {data.topHighlight.body ? (
-                  <p className="text-sm text-white/90 truncate">{data.topHighlight.body}</p>
-                ) : data.topHighlight.gifUrl ? (
+                {view.topHighlight.body ? (
+                  <p className="text-sm text-white/90 truncate">{view.topHighlight.body}</p>
+                ) : view.topHighlight.gifUrl ? (
                   <p className="text-sm text-white/70 italic">GIF</p>
-                ) : data.topHighlight.kind === "bingo_strike" ? (
+                ) : view.topHighlight.kind === "bingo_strike" ? (
                   <p className="text-sm text-white/85">🎯 Bingo!</p>
                 ) : null}
               </div>
               <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange/15 ring-1 ring-orange/35 px-2 h-6 text-xs text-orange tabular-nums font-display">
-                ❤️ {data.topHighlight.reactionCount}
+                ❤️ {view.topHighlight.reactionCount}
               </span>
             </div>
           )}
@@ -231,8 +273,8 @@ function ProfileSheet({
               "hidden until reveal" placeholder if results aren't out
               and we're not looking at our own profile. */}
           <BallotSection
-            ballot={data.ballot}
-            hidden={data.ballotHidden}
+            ballot={view.ballot}
+            hidden={view.ballotHidden}
             lang={lang}
           />
         </div>

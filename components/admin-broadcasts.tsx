@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Megaphone, Bell, Vote, Dices, Medal, Sparkles, Loader2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { timeAgo } from "@/lib/utils";
 
 type Kind = "notifications" | "vote" | "bet" | "top3" | "final";
@@ -14,53 +15,19 @@ const ROOM_STORAGE_KEY = "uzk_admin_broadcast_room";
 // not a global audit trail.
 const FIRED_KEY = (room: string, kind: Kind) => `uzk_broadcast_${room}_${kind}`;
 
-const SHOTS: {
-  kind: Kind;
-  icon: LucideIcon;
-  title: string;
-  desc: string;
-  fill: string;
-}[] = [
-  {
-    kind: "notifications",
-    icon: Bell,
-    title: "Turn on notifications",
-    desc: "Nudge the room to enable push.",
-    fill: "linear-gradient(135deg, #00b3a4 0%, #0f7fb5 52%, #2360c8 100%)",
-  },
-  {
-    kind: "vote",
-    icon: Vote,
-    title: "Lines are open",
-    desc: "Tell everyone to lock their TOP 10.",
-    fill: "linear-gradient(135deg, #0040ee 0%, #6020c6 55%, #7d1f9a 100%)",
-  },
-  {
-    kind: "bet",
-    icon: Dices,
-    title: "Don't forget bonus bets",
-    desc: "Reminder that bets are free points.",
-    fill: "linear-gradient(135deg, #bc1475 0%, #f10d59 100%)",
-  },
-  {
-    kind: "top3",
-    icon: Medal,
-    title: "Room top 3 right now",
-    desc: "Posts the live fan aggregate leaders.",
-    fill: "linear-gradient(135deg, #f5a302 0%, #d61570 60%, #4c0a54 100%)",
-  },
-  {
-    kind: "final",
-    icon: Sparkles,
-    title: "Final results",
-    desc: "Drops the scored leaderboard podium.",
-    fill: "linear-gradient(135deg, #5a22a9 0%, #9b1690 50%, #c91475 100%)",
-  },
+const SHOTS: { kind: Kind; icon: LucideIcon; title: string; desc: string }[] = [
+  { kind: "notifications", icon: Bell, title: "Turn on notifications", desc: "Nudge the room to enable push." },
+  { kind: "vote", icon: Vote, title: "Lines are open", desc: "Tell everyone to lock their TOP 10." },
+  { kind: "bet", icon: Dices, title: "Don't forget bonus bets", desc: "Reminder that bets are free points." },
+  { kind: "top3", icon: Medal, title: "Room top 3 right now", desc: "Posts the live fan aggregate leaders." },
+  { kind: "final", icon: Sparkles, title: "Final results", desc: "Drops the scored leaderboard podium." },
 ];
 
-// Admin › Live: each broadcast is its own big tappable widget — same
-// shape language as the now-playing hero. Tap the card to fire it. Shows
-// when this shot was last sent into the chosen room (local log).
+// Admin › Live: one-tap chat announcements fired into a chosen room.
+// Each button POSTs to /api/admin/broadcast, which posts a system
+// message (or the results podium) into that room's chat. The compact row
+// layout is the original design — a sister to the Show controls panel —
+// kept simple so the host scans down a list rather than reading hero cards.
 export function AdminBroadcasts({ rooms }: { rooms: { code: string; name: string }[] }) {
   const [room, setRoom] = useState(rooms[0]?.code ?? "");
   const [busy, setBusy] = useState<Kind | null>(null);
@@ -163,41 +130,22 @@ export function AdminBroadcasts({ rooms }: { rooms: { code: string; name: string
         )}
       </label>
 
-      <div className="flex flex-col gap-3">
-        {SHOTS.map(({ kind, icon: Icon, title, desc, fill }) => {
+      <div className="flex flex-col gap-2.5">
+        {SHOTS.map(({ kind, icon: Icon, title, desc }) => {
           const last = lastFired[kind];
           const sending = busy === kind;
           return (
-            <button
+            <div
               key={kind}
-              type="button"
-              onClick={() => fire(kind)}
-              disabled={busy !== null || !room}
-              style={{ background: fill }}
-              className="relative block w-full overflow-hidden rounded-3xl text-left
-                         transition disabled:opacity-60 disabled:cursor-not-allowed
-                         active:scale-[0.99] transform-gpu"
+              className="flex items-center gap-3 rounded-xl bg-white/[0.03] ring-1 ring-white/8 p-3"
             >
-              {/* Icon artwork, off the right edge — matches the now-playing
-                  / home-banner shape language. */}
-              <div className="pointer-events-none absolute inset-y-0 -right-3 flex items-center" aria-hidden>
-                <Icon className="h-24 w-24 text-white/15 -rotate-[8deg]" strokeWidth={1.2} />
-              </div>
-              <div
-                className="pointer-events-none absolute inset-0"
-                style={{
-                  background:
-                    "linear-gradient(95deg, rgba(8,9,28,0.5) 0%, rgba(8,9,28,0.22) 38%, transparent 64%)",
-                }}
-              />
-              <div className="relative flex flex-col justify-center gap-1 pl-5 pr-[34%] py-5 min-h-[6.75rem]">
-                <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/80 flex items-center gap-1.5">
-                  <Icon className="h-3 w-3" />
-                  Broadcast
-                </p>
-                <p className="font-display text-xl text-white leading-tight drop-shadow-sm">{title}</p>
-                <p className="text-sm text-white/75 leading-snug">{desc}</p>
-                <p className="text-[11px] text-white/55 mt-1 inline-flex items-center gap-1.5">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.06] ring-1 ring-white/10 text-white/60">
+                <Icon className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-sm text-white/90">{title}</p>
+                <p className="text-[13px] text-white/45 leading-snug mt-0.5">{desc}</p>
+                <p className="text-[11px] text-white/40 mt-0.5 inline-flex items-center gap-1.5">
                   {sending ? (
                     <>
                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -210,7 +158,17 @@ export function AdminBroadcasts({ rooms }: { rooms: { code: string; name: string
                   )}
                 </p>
               </div>
-            </button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => fire(kind)}
+                disabled={busy !== null || !room}
+                className="shrink-0 self-center"
+              >
+                {sending ? "…" : "Post"}
+              </Button>
+            </div>
           );
         })}
       </div>

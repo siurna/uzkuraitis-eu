@@ -41,12 +41,23 @@ export function AdminRoomTabs({
     <Tabs value={active} onValueChange={(v) => setActive(v as TabId)}>
       <TabsList className="overflow-x-auto max-w-full">
         {TAB_DEFS.map(({ id, label, Icon }) => (
-          <TabsTrigger key={id} value={id} className="px-3 gap-1.5">
+          <TabsTrigger key={id} value={id} className="group px-3 gap-1.5">
             <Icon className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{label}</span>
             <span className="sm:hidden text-xs">{label.charAt(0)}</span>
             {id === "participants" && participantCount != null && participantCount > 0 && (
-              <span className="inline-flex items-center justify-center rounded-full bg-flamingo/20 ring-1 ring-flamingo/35 px-1.5 h-5 min-w-[1.25rem] text-[10px] font-display tabular-nums text-flamingo">
+              // When the tab is inactive the badge sits on a dim glass
+              // pill (flamingo on flamingo/20). When it's active the
+              // pill goes solid flamingo, so the badge has to flip to a
+              // light-on-flamingo treatment to stay readable.
+              <span
+                className="inline-flex items-center justify-center rounded-full px-1.5 h-5 min-w-[1.25rem]
+                           text-[10px] font-display tabular-nums
+                           bg-flamingo/20 ring-1 ring-flamingo/35 text-flamingo
+                           group-data-[state=active]:bg-white/25
+                           group-data-[state=active]:ring-white/40
+                           group-data-[state=active]:text-white"
+              >
                 {participantCount}
               </span>
             )}

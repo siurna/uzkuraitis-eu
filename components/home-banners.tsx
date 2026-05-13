@@ -298,9 +298,12 @@ export function HomeBanners() {
 
   // What lives in the big top slot:
   //   - someone on stage   → the now-playing hero
-  //   - else, lines open + you haven't voted → a "VOTE NOW" hero
+  //   - else, lines open   → a Vote hero (cast OR adjust, copy adapts)
   //   - else nothing
-  const showVoteHero = !playing && votingEnabled && !voted;
+  // We deliberately keep the hero up after you've voted: tweaking the
+  // ballot during the show IS the game, so it should stay one tap away
+  // until the host pulls the lines.
+  const showVoteHero = !playing && votingEnabled;
   // The regular small Vote banner only shows when the hero isn't, and we
   // never show the "voting opens soon" prompt once lines have been pulled.
   const showVoteBanner = (votingEnabled || voted) && !showVoteHero;
@@ -318,7 +321,11 @@ export function HomeBanners() {
           </motion.div>
         ) : showVoteHero ? (
           <motion.div key="vote-hero" {...BANNER_MOTION}>
-            <VoteHeroCard lang={lang} onOpen={() => setTab("vote")} />
+            <VoteHeroCard
+              lang={lang}
+              voted={voted}
+              onOpen={() => setTab("vote")}
+            />
           </motion.div>
         ) : null}
 
@@ -421,11 +428,36 @@ export function HomeBanners() {
               sub={t(lang, "home_bonus_sub")}
               onClick={() => openVoteTab(setTab, "bets")}
               artwork={
-                <span className="relative block w-48 overflow-hidden pr-2 [mask-image:linear-gradient(90deg,transparent,#000_16%,#000_84%,transparent)]" aria-hidden>
-                  <span className="flex w-max -rotate-[6deg] py-1" style={{ animation: "uzk-marquee 18s linear infinite" }}>
+                // Stacked confetti-ish layout: two short marquees in
+                // opposite directions instead of one rotated strip. The
+                // rotation was creating a diagonal hard-cut against the
+                // banner's bottom edge; this reads tidier inside the
+                // rounded box.
+                <span
+                  className="relative block w-44 h-24 overflow-hidden
+                             [mask-image:linear-gradient(90deg,transparent,#000_18%,#000_82%,transparent)]"
+                  aria-hidden
+                >
+                  <span
+                    className="absolute top-1 left-0 flex w-max"
+                    style={{ animation: "uzk-marquee 22s linear infinite" }}
+                  >
                     {[...BET_CHIPS, ...BET_CHIPS].map((c, i) => (
                       <span
-                        key={i}
+                        key={`top-${i}`}
+                        className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-lg shadow-md"
+                      >
+                        {c}
+                      </span>
+                    ))}
+                  </span>
+                  <span
+                    className="absolute bottom-1 left-0 flex w-max"
+                    style={{ animation: "uzk-marquee 28s linear infinite reverse" }}
+                  >
+                    {[...BET_CHIPS, ...BET_CHIPS].map((c, i) => (
+                      <span
+                        key={`bot-${i}`}
                         className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-lg shadow-md"
                       >
                         {c}
@@ -583,11 +615,20 @@ function PlayingCard({
   );
 }
 
-// The "VOTE NOW" hero — shown when the lines are open and nobody is on
-// stage yet, so the call to vote is the biggest thing on the screen.
-// Same prominence as the now-playing hero: full-width, rainbow-stroked,
-// the equalizer art bleeding off the right.
-function VoteHeroCard({ lang, onOpen }: { lang: "en" | "lt"; onOpen: () => void }) {
+// The Vote hero — shown whenever the lines are open and nobody is on
+// stage. Same prominence as the now-playing hero: full-width, rainbow-
+// stroked, equalizer art bleeding off the right. Copy adapts to whether
+// you've already cast — the hero stays up either way so adjusting your
+// TOP 10 mid-show is still a single tap from Home.
+function VoteHeroCard({
+  lang,
+  voted,
+  onOpen,
+}: {
+  lang: "en" | "lt";
+  voted: boolean;
+  onOpen: () => void;
+}) {
   return (
     <button type="button" onClick={onOpen} className="rainbow-border rounded-3xl w-full block">
       <div
@@ -607,9 +648,11 @@ function VoteHeroCard({ lang, onOpen }: { lang: "en" | "lt"; onOpen: () => void 
             {t(lang, "live")}
           </p>
           <p className="font-display text-2xl text-white leading-tight drop-shadow text-balance">
-            {t(lang, "home_vote_open")}
+            {t(lang, voted ? "home_vote_done" : "home_vote_open")}
           </p>
-          <p className="text-sm text-white/75 leading-snug">{t(lang, "home_vote_open_sub")}</p>
+          <p className="text-sm text-white/75 leading-snug">
+            {t(lang, voted ? "home_vote_done_sub" : "home_vote_open_sub")}
+          </p>
         </div>
       </div>
     </button>

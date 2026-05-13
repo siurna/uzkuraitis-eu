@@ -6,7 +6,7 @@ import { Trophy } from "lucide-react";
 import { useEventListener } from "@/lib/liveblocks";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { ensureSessionId } from "@/lib/use-identity";
-import type { BetBreakdown } from "@/lib/scoring";
+import { totalBetPoints, type BetBreakdown } from "@/lib/scoring";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 
@@ -20,10 +20,10 @@ type Row = {
   total: number;
 };
 
-// Home banner: once results are tallied, shows YOUR rank + total. Tap
-// jumps to the Results tab (the former Vote tab, swapped in by
-// RoomTabBar) where the full breakdown + leaderboard live. Hidden if
-// results aren't in yet.
+// Home banner: once results are tallied, shows YOUR card — a big rank
+// + total in a vertical layout, with a row of breakdown chips below
+// (TOP10 / Home / Bets / Highlights). Tap = jump to the Results tab
+// for the full breakdown + leaderboard. Hidden if results aren't in yet.
 export function MyResults() {
   const { code, tallyEnabled } = useRoomLive();
   const { setTab } = useRoomTab();
@@ -55,6 +55,7 @@ export function MyResults() {
   const me = idx >= 0 ? rows[idx] : null;
   const rank = idx >= 0 ? idx + 1 : 0;
   const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : null;
+  const betsTotal = me ? totalBetPoints(me.bets) : 0;
 
   return (
     <div id="my-results" className="container mx-auto max-w-3xl px-4 scroll-mt-16">
@@ -64,54 +65,87 @@ export function MyResults() {
         initial={{ opacity: 0, y: 12, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 360, damping: 32 }}
-        className="relative block w-full overflow-hidden rounded-3xl text-left"
-        style={{ background: "linear-gradient(135deg, #f5a302 0%, #d61570 48%, #4c0a54 100%)" }}
+        className="relative block w-full overflow-hidden rounded-3xl text-left
+                   ring-1 ring-white/10
+                   shadow-[0_20px_60px_-22px_oklch(45%_0.18_345_/_0.55),inset_0_1px_0_rgba(255,255,255,0.18)]"
+        style={{ background: "linear-gradient(155deg, #f5a302 0%, #d61570 48%, #4c0a54 100%)" }}
       >
-        {/* podium artwork bleeding off the right — middle block tallest */}
-        <div className="pointer-events-none absolute inset-y-0 -right-4 flex items-end gap-1.5 pb-6 opacity-90">
-          {[
-            { h: "h-12", e: "🥈", c: "bg-white/35", t: rank === 2 },
-            { h: "h-[5.25rem]", e: "🥇", c: "bg-yellow", t: rank === 1 },
-            { h: "h-9", e: "🥉", c: "bg-white/25", t: rank === 3 },
-          ].map(({ h, e, c, t: hi }, i) => (
-            <span key={i} className="flex flex-col items-center gap-1">
-              <span className={`text-base ${hi ? "" : "opacity-40 grayscale"}`}>{e}</span>
-              <span className={`w-7 rounded-t-md ${h} ${c} ${hi ? "ring-2 ring-white/60" : ""}`} />
-            </span>
-          ))}
-        </div>
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.42) 0%, rgba(8,9,28,0.15) 42%, transparent 64%)" }}
+        {/* Top gloss — gives the card a polished, skeumorphic top edge. */}
+        <span
+          className="pointer-events-none absolute inset-x-0 top-0 h-1/3"
+          style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.20), transparent)" }}
+          aria-hidden
         />
-        <div className="relative flex items-center gap-3 px-5 py-5 min-h-[7rem]">
-          <span className="shrink-0 grid place-items-center h-14 w-14 rounded-2xl bg-white/15 ring-1 ring-white/25 text-2xl font-display text-white drop-shadow-sm">
-            {me ? (medal ?? `#${rank}`) : "🏆"}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-white/75 font-display leading-tight mb-1 flex items-center gap-1.5">
-              <Trophy className="h-3 w-3" />
-              {t(lang, me ? "home_my_results" : "home_results_in")}
-            </p>
-            {me ? (
-              <>
-                <p className="font-display text-xl text-white truncate leading-tight drop-shadow-sm">{me.name}</p>
-                <p className="text-sm text-white/70 leading-snug mt-0.5">
-                  {t(lang, "home_my_results_rank", rank, rows.length)}
+        <div className="relative flex flex-col gap-4 p-5">
+          {/* Eyebrow + name */}
+          <header className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white/80 font-display leading-tight flex items-center gap-1.5">
+                <Trophy className="h-3 w-3" fill="currentColor" />
+                {t(lang, me ? "home_my_results" : "home_results_in")}
+              </p>
+              {me ? (
+                <p className="font-display text-base text-white/95 truncate leading-tight mt-0.5">
+                  {me.name}
                 </p>
-              </>
-            ) : (
-              <p className="text-sm text-white/70 leading-snug mt-0.5">{t(lang, "home_results_in_sub")}</p>
+              ) : (
+                <p className="text-xs text-white/70 leading-snug mt-0.5">
+                  {t(lang, "home_results_in_sub")}
+                </p>
+              )}
+            </div>
+            {me && (
+              <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/18 ring-1 ring-white/30 px-3 h-7 text-sm text-white font-display tabular-nums">
+                <span>{medal ?? `#${rank}`}</span>
+                <span className="text-white/70 text-xs">
+                  / {rows.length}
+                </span>
+              </span>
             )}
-          </div>
-          {me && (
-            <span className="relative text-right shrink-0 pr-1">
-              <span className="block font-display text-3xl text-white tabular-nums leading-none drop-shadow">{me.total}</span>
-              <span className="block text-[10px] uppercase tracking-wider text-white/60 mt-0.5">{t(lang, "pts_short")}</span>
-            </span>
-          )}
+          </header>
+
+          {me ? (
+            <>
+              {/* Total — the showpiece number, centred so it carries the card. */}
+              <div className="flex items-baseline gap-2 justify-center">
+                <span
+                  className="font-display tabular-nums leading-none text-white drop-shadow"
+                  style={{ fontSize: "clamp(3.25rem, 14vw, 5rem)" }}
+                >
+                  {me.total}
+                </span>
+                <span className="text-base font-display text-white/75 tracking-wider uppercase">
+                  {t(lang, "pts_short")}
+                </span>
+              </div>
+
+              {/* Breakdown chips — quick read of where the points came
+                  from. Zero-value categories stay hidden to avoid noise. */}
+              <ul className="flex flex-wrap items-center justify-center gap-1.5 text-[12px]">
+                {me.topTen > 0 && <Chip label={t(lang, "breakdown_top_ten")} value={`+${me.topTen}`} />}
+                {me.home > 0 && <Chip label={t(lang, "breakdown_home")} value={`+${me.home}`} />}
+                {betsTotal > 0 && <Chip label={t(lang, "breakdown_bets_sum")} value={`+${betsTotal}`} />}
+                {me.highlights > 0 && (
+                  <Chip label={t(lang, "breakdown_highlights")} value={`+${me.highlights}`} />
+                )}
+              </ul>
+              {/* Tap-affordance hint */}
+              <p className="text-[11px] uppercase tracking-[0.18em] text-white/65 font-display text-center">
+                {t(lang, "home_my_results_tap")}
+              </p>
+            </>
+          ) : null}
         </div>
       </motion.button>
     </div>
+  );
+}
+
+function Chip({ label, value }: { label: string; value: string }) {
+  return (
+    <li className="inline-flex items-center gap-1 rounded-full bg-white/15 ring-1 ring-white/22 px-2.5 h-7 text-white/90 font-display">
+      <span className="text-white/70">{label}</span>
+      <span className="tabular-nums text-white">{value}</span>
+    </li>
   );
 }

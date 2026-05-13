@@ -7,8 +7,12 @@ import { cn } from "@/lib/utils"
 // Base styles for every button. Tailwind v4 dropped the default
 // cursor:pointer on buttons; we want it back globally. transform-gpu
 // keeps the scale press cheap on mobile.
+//
+// We deliberately do NOT lift the button on hover — mobile reads the
+// post-tap hover state as an awkward stuck-in-place jitter. Press
+// feedback comes entirely from the active scale.
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 transform-gpu duration-150 ease-out cursor-pointer hover:-translate-y-px active:translate-y-0 active:scale-[0.97] disabled:hover:translate-y-0 disabled:hover:scale-100",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 transform-gpu duration-150 ease-out cursor-pointer active:scale-[0.97]",
   {
     variants: {
       variant: {

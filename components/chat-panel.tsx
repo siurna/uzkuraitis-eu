@@ -361,18 +361,47 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       return;
     }
     if (ev.type === "chat:new") {
-      // Our own message — already shown optimistically. Skipping the
-      // refetch keeps the local blob preview from flashing to the
-      // server URL.
-      if (ev.id && byId.has(ev.id)) return;
-      // The server now embeds the full row in the broadcast, so we can
-      // append in-place without a follow-up GET — saves a roundtrip per
-      // arriving message across every connected client. Older servers
-      // without the payload fall back to the refetch.
+      // The server embeds the full row in the broadcast, so we can
+      // append in-place without a follow-up GET. Older servers without
+      // the payload fall back to the refetch.
       if (ev.message) {
         const m = ev.message;
         setMessages((prev) => {
+          // 1) Already in the list (echo for someone else's POST that
+          //    we GET-loaded, or duplicate broadcast) — skip.
           if (prev.some((x) => x.id === m.id)) return prev;
+          // 2) This is the echo of OUR own POST: our optimistic row is
+          //    still sitting in `prev` with a `tmp-…` id. Replace it
+          //    in-place so the bubble doesn't double-render during the
+          //    window between broadcast arrival and POST-response.
+          if (m.sessionId === mySession) {
+            const tmpIdx = prev.findIndex(
+              (x) =>
+                x.pending &&
+                x.id.startsWith("tmp-") &&
+                x.sessionId === mySession &&
+                x.kind === m.kind &&
+                ((m.kind === "text" && x.body === m.body) ||
+                  (m.kind !== "text" && x.gifUrl === m.gifUrl)),
+            );
+            if (tmpIdx >= 0) {
+              const next = prev.slice();
+              next[tmpIdx] = {
+                id: m.id,
+                sessionId: m.sessionId,
+                name: m.name,
+                avatarId: m.avatarId,
+                kind: m.kind as MessageKind,
+                body: m.body,
+                gifUrl: m.gifUrl,
+                replyTo: m.replyTo,
+                meta: (m.meta ?? null) as Record<string, unknown> | null,
+                createdAt: m.createdAt,
+                reactions: {},
+              };
+              return next;
+            }
+          }
           const appended: Message = {
             id: m.id,
             sessionId: m.sessionId,
@@ -390,6 +419,9 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         });
         return;
       }
+      // No payload: fall back to a refetch. (Stale-broadcast safety:
+      // skip if we already know this id.)
+      if (ev.id && byId.has(ev.id)) return;
       fetchMessages();
       return;
     }
@@ -433,6 +465,35 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     if (!el || !atBottomRef.current) return;
     el.scrollTop = el.scrollHeight;
     setNewCount(0);
+  }, [active]);
+
+  // Window-level paste: if the chat tab is in front and the user pastes
+  // an image from anywhere (the composer doesn't need to be focused),
+  // queue it. This catches the "Ctrl+V on the screenshot I just took"
+  // flow that the composer-only handler would miss on desktop.
+  useEffect(() => {
+    if (!active) return;
+    const onPasteGlobal = (e: ClipboardEvent) => {
+      // Don't fight an input element that's already handling its own
+      // paste — the contentEditable composer's own onPaste runs first
+      // and stops propagation if it caught an image.
+      const target = e.target as Element | null;
+      if (target && target.closest("input, textarea, [contenteditable=true]")) {
+        return;
+      }
+      if (!e.clipboardData) return;
+      const file = Array.from(e.clipboardData.items)
+        .find((i) => i.type.startsWith("image/"))
+        ?.getAsFile();
+      if (file) {
+        e.preventDefault();
+        queueImage(file);
+      }
+    };
+    window.addEventListener("paste", onPasteGlobal);
+    return () => window.removeEventListener("paste", onPasteGlobal);
+    // queueImage is stable enough — it references state setters only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
   // A GIF / image finished loading and pushed the list taller — if we
@@ -515,9 +576,17 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       }
       const data = (await res.json()) as { id?: string };
       if (data.id) {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === optimistic.id ? { ...m, id: data.id!, pending: false } : m)),
-        );
+        // The broadcast handler may have already swapped the optimistic
+        // row for the real one. In that case the optimistic id is gone
+        // and the real id is already present — drop the optimistic to
+        // be safe, then no-op if it's already been swapped.
+        setMessages((prev) => {
+          const hasReal = prev.some((m) => m.id === data.id);
+          if (hasReal) return prev.filter((m) => m.id !== optimistic.id);
+          return prev.map((m) =>
+            m.id === optimistic.id ? { ...m, id: data.id!, pending: false } : m,
+          );
+        });
       }
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
@@ -569,9 +638,14 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       // Keep showing the local blob preview; just stamp the real id so
       // the chat:new echo dedupes against it. Only swap to the hosted
       // URL once the browser has it cached — no "blank then appear" flash.
-      setMessages((prev) =>
-        prev.map((m) => (m.id === optimistic.id ? { ...m, id: realId, pending: false } : m)),
-      );
+      // If the broadcast handler already swapped, drop the optimistic.
+      setMessages((prev) => {
+        const hasReal = prev.some((m) => m.id === realId && m.id !== optimistic.id);
+        if (hasReal) return prev.filter((m) => m.id !== optimistic.id);
+        return prev.map((m) =>
+          m.id === optimistic.id ? { ...m, id: realId, pending: false } : m,
+        );
+      });
       const preload = new Image();
       const finishSwap = () => {
         setMessages((prev) =>

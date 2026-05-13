@@ -1,7 +1,14 @@
 import { notFound } from "next/navigation";
 import { eq, sql, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { voters, votes, reactions, chatMessages } from "@/lib/db/schema";
+import {
+  voters,
+  votes,
+  reactions,
+  chatMessages,
+  chatReactions,
+  triviaAnswers,
+} from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
 import { getCountry } from "@/lib/countries";
 import { AdminRoomToggle } from "@/components/admin-room-toggle";
@@ -48,17 +55,50 @@ export default async function AdminRoomDetailPage({
     .where(eq(voters.roomId, room.id))
     .orderBy(desc(voters.updatedAt));
 
-  // Chat-message count per session id, scoped to this room. Joins back to
-  // the voter list by session id below.
+  // Per-session activity rollup. Each metric is its own GROUP BY so the
+  // joins stay legible; the table only ever has tens of participants in
+  // a watch-along room so the extra roundtrips don't matter.
   const msgRows = await db
-    .select({
-      sessionId: chatMessages.sessionId,
-      n: sql<number>`COUNT(*)::int`,
-    })
+    .select({ sessionId: chatMessages.sessionId, n: sql<number>`COUNT(*)::int` })
     .from(chatMessages)
     .where(eq(chatMessages.roomId, room.id))
     .groupBy(chatMessages.sessionId);
   const msgBySession = new Map(msgRows.map((r) => [r.sessionId, r.n]));
+
+  const reactGivenRows = await db
+    .select({
+      sessionId: chatReactions.sessionId,
+      n: sql<number>`COUNT(*)::int`,
+    })
+    .from(chatReactions)
+    .innerJoin(chatMessages, eq(chatMessages.id, chatReactions.messageId))
+    .where(eq(chatMessages.roomId, room.id))
+    .groupBy(chatReactions.sessionId);
+  const reactGivenBySession = new Map(reactGivenRows.map((r) => [r.sessionId, r.n]));
+
+  const reactReceivedRows = await db
+    .select({
+      sessionId: chatMessages.sessionId,
+      n: sql<number>`COUNT(*)::int`,
+    })
+    .from(chatReactions)
+    .innerJoin(chatMessages, eq(chatMessages.id, chatReactions.messageId))
+    .where(eq(chatMessages.roomId, room.id))
+    .groupBy(chatMessages.sessionId);
+  const reactReceivedBySession = new Map(reactReceivedRows.map((r) => [r.sessionId, r.n]));
+
+  const triviaRows = await db
+    .select({
+      sessionId: triviaAnswers.sessionId,
+      total: sql<number>`COUNT(*)::int`,
+      correct: sql<number>`COUNT(*) FILTER (WHERE ${triviaAnswers.correct})::int`,
+    })
+    .from(triviaAnswers)
+    .where(eq(triviaAnswers.roomId, room.id))
+    .groupBy(triviaAnswers.sessionId);
+  const triviaBySession = new Map(
+    triviaRows.map((r) => [r.sessionId, { total: r.total, correct: r.correct }]),
+  );
 
   // The last few real messages each session has posted, for the admin
   // moderation strip inside each participant's drawer. Pull the most
@@ -101,18 +141,27 @@ export default async function AdminRoomDetailPage({
     sessionId: string;
     updatedAt: Date;
     messages: number;
+    reactionsGiven: number;
+    reactionsReceived: number;
+    triviaCorrect: number;
+    triviaTotal: number;
     ballot: Map<number, string>;
     recent: AdminMessageRow[];
   };
   const voterMap = new Map<string, VoterAgg>();
   for (const r of voterRows) {
     if (!voterMap.has(r.id)) {
+      const trivia = triviaBySession.get(r.sessionId);
       voterMap.set(r.id, {
         id: r.id,
         name: r.name,
         sessionId: r.sessionId,
         updatedAt: r.updatedAt,
         messages: msgBySession.get(r.sessionId) ?? 0,
+        reactionsGiven: reactGivenBySession.get(r.sessionId) ?? 0,
+        reactionsReceived: reactReceivedBySession.get(r.sessionId) ?? 0,
+        triviaCorrect: trivia?.correct ?? 0,
+        triviaTotal: trivia?.total ?? 0,
         ballot: new Map(),
         recent: messagesBySession.get(r.sessionId) ?? [],
       });
@@ -219,17 +268,18 @@ export default async function AdminRoomDetailPage({
         participantCount={voterList.length}
         overview={
           <>
-            <section className="glass-card rounded-xl p-5">
-              <h2 className="font-display text-xl mb-4">
+            {/* No card wrapper — the standings ARE the content of the
+                Overview tab. Wrapping them in glass-card was a card
+                inside a card inside a tab. */}
+            <section className="flex flex-col gap-4">
+              <h2 className="font-display text-xl">
                 Standings ({scoreRows.length || 0})
               </h2>
               {scoreRows.length === 0 ? (
                 <p className="text-white/40 text-sm italic">No votes cast yet.</p>
               ) : (
                 <div className="grid gap-x-6 gap-y-1 md:grid-cols-2">
-                  {/* left column — the top 10 (the "ballot" the room collectively cast) */}
                   <ol className="flex flex-col gap-1">{topTen.map((row, i) => standingRow(row, i, true))}</ol>
-                  {/* right column — everyone else */}
                   {rest.length > 0 ? (
                     <ol className="flex flex-col gap-1">{rest.map((row, i) => standingRow(row, i + 10, false))}</ol>
                   ) : (
@@ -242,8 +292,8 @@ export default async function AdminRoomDetailPage({
             </section>
 
             {reactionRows.length > 0 && (
-              <section className="glass-card rounded-xl p-5">
-                <h2 className="font-display text-xl mb-4">
+              <section className="flex flex-col gap-4">
+                <h2 className="font-display text-xl">
                   Reactions ({reactionRows.length})
                 </h2>
                 <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
@@ -257,9 +307,7 @@ export default async function AdminRoomDetailPage({
                         <Flag code={cc} size="sm" />
                         <span className="flex-1 truncate">{c?.name ?? cc}</span>
                         <span className="text-xs text-white/60">
-                          {agg.emojis
-                            .map((r) => `${r.emoji}${r.count}`)
-                            .join(" ")}
+                          {agg.emojis.map((r) => `${r.emoji}${r.count}`).join(" ")}
                         </span>
                       </li>
                     );
@@ -270,8 +318,8 @@ export default async function AdminRoomDetailPage({
           </>
         }
         participants={
-          <section className="glass-card rounded-xl p-5">
-            <h2 className="font-display text-xl mb-4">
+          <section className="flex flex-col gap-4">
+            <h2 className="font-display text-xl">
               Participants ({voterList.length})
             </h2>
             {voterList.length === 0 ? (
@@ -286,11 +334,20 @@ export default async function AdminRoomDetailPage({
                     <summary className="flex items-center gap-3 px-3 py-2 cursor-pointer list-none">
                       <span className="font-display flex-1 truncate">{v.name}</span>
                       <span className="text-xs text-white/40 tabular-nums shrink-0">
-                        {v.ballot.size}/10 ·{" "}
-                        {v.messages} msg{v.messages === 1 ? "" : "s"} ·{" "}
                         {timeAgo(v.updatedAt)}
                       </span>
                     </summary>
+                    {/* Activity row — six tiny stats. Reads at a glance
+                        without scrolling: ballot fill, chat, ❤ given,
+                        ❤ received, trivia, last seen. */}
+                    <ul className="px-3 pt-1 pb-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/55 tabular-nums">
+                      <li>📋 {v.ballot.size}/10 ballot</li>
+                      <li>💬 {v.messages} msg{v.messages === 1 ? "" : "s"}</li>
+                      <li>❤️ {v.reactionsReceived} received · {v.reactionsGiven} given</li>
+                      {v.triviaTotal > 0 && (
+                        <li>🧠 {v.triviaCorrect}/{v.triviaTotal} trivia</li>
+                      )}
+                    </ul>
                     <div className="px-3 pb-3 grid grid-cols-2 sm:grid-cols-5 gap-1">
                       {POINTS.map((p) => {
                         const cc = v.ballot.get(p);
@@ -300,9 +357,7 @@ export default async function AdminRoomDetailPage({
                             key={p}
                             className="flex items-center gap-1.5 px-2 py-1.5 rounded bg-black/30 text-xs"
                           >
-                            <span className="w-5 text-flamingo font-display tabular-nums">
-                              {p}
-                            </span>
+                            <span className="w-5 text-flamingo font-display tabular-nums">{p}</span>
                             {c ? (
                               <>
                                 <Flag code={c.code} size="sm" />
@@ -330,31 +385,56 @@ export default async function AdminRoomDetailPage({
           </section>
         }
         settings={
+          // Three groups: Identity (what the room IS), Behaviour (what it
+          // DOES), and Operations (host link / wipe). One glass-card per
+          // group, inner rows separated by a thin divider — instead of
+          // five identical cards stacked.
           <div className="flex flex-col gap-6">
-            <section className="glass-card rounded-xl p-5">
-              <h2 className="font-display text-xl mb-3">Room name</h2>
-              <AdminRoomRename code={room.code} initialName={room.name} />
+            <section className="glass-card rounded-xl p-5 flex flex-col gap-5">
+              <header>
+                <h2 className="font-display text-xl leading-tight">Identity</h2>
+                <p className="text-xs text-white/45 mt-0.5">What this room is called and how guests join it.</p>
+              </header>
+              <div className="flex flex-col gap-5 divide-y divide-white/5 [&>*]:pt-5 [&>*:first-child]:pt-0">
+                <div>
+                  <p className="text-sm font-display text-white/85 mb-2">Room name</p>
+                  <AdminRoomRename code={room.code} initialName={room.name} />
+                </div>
+                <div>
+                  <p className="text-sm font-display text-white/85 mb-2">Join code</p>
+                  <AdminRoomCode code={room.code} />
+                </div>
+              </div>
             </section>
-            <section className="glass-card rounded-xl p-5">
-              <h2 className="font-display text-xl mb-3">Join code</h2>
-              <AdminRoomCode code={room.code} />
+
+            <section className="glass-card rounded-xl p-5 flex flex-col gap-5">
+              <header>
+                <h2 className="font-display text-xl leading-tight">Behaviour</h2>
+                <p className="text-xs text-white/45 mt-0.5">Toggles that change what the room does during the show.</p>
+              </header>
+              <div className="flex flex-col gap-5 divide-y divide-white/5 [&>*]:pt-5 [&>*:first-child]:pt-0">
+                <div>
+                  <p className="text-sm font-display text-white/85 mb-2">Reveal results</p>
+                  <AdminRoomTallyToggle code={room.code} initialEnabled={room.tallyEnabled} />
+                </div>
+                <div>
+                  <p className="text-sm font-display text-white/85 mb-2">Auto-commentator</p>
+                  <AdminRoomCommentatorToggle
+                    code={room.code}
+                    initialEnabled={room.commentatorEnabled}
+                  />
+                </div>
+              </div>
             </section>
-            <section className="glass-card rounded-xl p-5">
-              <h2 className="font-display text-xl mb-3">Reveal results</h2>
-              <AdminRoomTallyToggle
-                code={room.code}
-                initialEnabled={room.tallyEnabled}
-              />
+
+            <section className="flex flex-col gap-4">
+              <header>
+                <h2 className="font-display text-xl leading-tight">Operations</h2>
+                <p className="text-xs text-white/45 mt-0.5">The host magic link and the wipe-everything escape hatch.</p>
+              </header>
+              <AdminRoomManageLink code={room.code} adminToken={room.adminToken} />
+              <AdminRoomDangerZone code={room.code} />
             </section>
-            <section className="glass-card rounded-xl p-5">
-              <h2 className="font-display text-xl mb-3">Auto-commentator</h2>
-              <AdminRoomCommentatorToggle
-                code={room.code}
-                initialEnabled={room.commentatorEnabled}
-              />
-            </section>
-            <AdminRoomManageLink code={room.code} adminToken={room.adminToken} />
-            <AdminRoomDangerZone code={room.code} />
           </div>
         }
       />
