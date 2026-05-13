@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Save, Trophy, ChevronRight } from "lucide-react";
+import { Trophy, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getCountry } from "@/lib/countries";
@@ -102,10 +102,6 @@ export function AdminOfficialFacts({
         <Trophy className="h-5 w-5 text-flamingo" />
         <h2 className="font-display text-xl">Side-bet ground truth</h2>
       </header>
-      <p className="text-xs text-white/50 -mt-1">
-        Fill these in once the show ends so bonus bets can be scored.
-        Leave blank to skip.
-      </p>
 
       <div className="flex flex-col gap-2">
         {FACTS.map((f) => {
@@ -148,7 +144,6 @@ export function AdminOfficialFacts({
           disabled={pending}
           className="bg-white text-dark-blue hover:bg-dark-blue-50"
         >
-          <Save className="h-4 w-4 mr-1.5" />
           {pending ? "Saving…" : "Save facts"}
         </Button>
       </div>

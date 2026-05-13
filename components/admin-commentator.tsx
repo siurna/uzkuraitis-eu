@@ -75,18 +75,24 @@ export function AdminCommentator({ initial }: { initial: Record<string, string> 
         </label>
       </div>
 
-      <div className="flex flex-col gap-1.5 max-h-[60vh] overflow-y-auto -mx-1 px-1">
+      <p className="text-xs text-white/35">
+        Lines support <code className="text-white/55">**bold**</code> and <code className="text-white/55">*italic*</code>.
+      </p>
+      <div className="flex flex-col gap-3">
         {countries.map((c) => (
-          <label key={c.code} className="flex items-center gap-2">
-            <span className="w-6 shrink-0 text-center text-[11px] text-white/40 tabular-nums">{c.order}</span>
-            <span className="w-28 sm:w-36 shrink-0 truncate text-sm text-white/70">
+          <label key={c.code} className="flex items-start gap-2.5">
+            <span className="w-6 shrink-0 pt-2 text-center text-[11px] text-white/40 tabular-nums">{c.order}</span>
+            <span className="w-28 sm:w-40 shrink-0 truncate pt-2 text-sm text-white/70">
               {c.flag} {c.name}
             </span>
-            <Input
+            <textarea
               value={lines[c.code] ?? ""}
               onChange={(e) => set(c.code, e.target.value)}
+              rows={2}
               placeholder="…what the commentator says when they hit the stage"
-              className="h-9 flex-1 min-w-0"
+              className="flex-1 min-w-0 rounded-lg bg-black/30 border border-white/15 px-3 py-2
+                         text-sm leading-snug text-white resize-y min-h-[2.5rem]
+                         focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 transition"
             />
           </label>
         ))}

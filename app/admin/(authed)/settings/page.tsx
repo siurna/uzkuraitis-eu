@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { adminCredentials, commentator } from "@/lib/db/schema";
+import { desc } from "drizzle-orm";
+import { adminCredentials, commentator, rooms } from "@/lib/db/schema";
 import { AdminPasskeysPanel } from "@/components/admin-passkeys-panel";
 import { AdminSeed } from "@/components/admin-seed";
 import { AdminCommentator } from "@/components/admin-commentator";
@@ -15,15 +16,18 @@ export default async function AdminSettingsPage() {
     .from(adminCredentials);
   const commentaryRows = await db.select().from(commentator);
   const commentary = Object.fromEntries(commentaryRows.map((r) => [r.countryCode, r.text]));
+  const roomList = await db
+    .select({ code: rooms.code, name: rooms.name })
+    .from(rooms)
+    .orderBy(desc(rooms.lastActiveAt));
 
   return (
     <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="font-display text-3xl gradient-text heading-rise">Settings</h1>
-        <p className="text-sm text-white/50 mt-1">
-          Passkeys and environment.
-        </p>
-      </header>
+      <h1 className="font-display text-3xl gradient-text heading-rise">Settings</h1>
+
+      <AdminCommentator initial={commentary} />
+
+      <AdminSeed rooms={roomList} />
 
       <AdminPasskeysPanel
         credentials={creds.map((c) => ({
@@ -33,35 +37,6 @@ export default async function AdminSettingsPage() {
           lastUsedAt: c.lastUsedAt?.toISOString() ?? null,
         }))}
       />
-
-      <AdminCommentator initial={commentary} />
-
-      <AdminSeed />
-
-      <section className="glass-card rounded-xl p-5">
-        <h2 className="font-display text-xl mb-3">Environment</h2>
-        <ul className="text-sm space-y-2 text-white/70">
-          <li className="flex justify-between gap-2">
-            <span>Database</span>
-            <code className="text-white/40 truncate max-w-[16rem]">
-              {process.env.DATABASE_URL ? "configured" : "MISSING"}
-            </code>
-          </li>
-          <li className="flex justify-between gap-2">
-            <span>Liveblocks</span>
-            <code className="text-white/40">
-              {(process.env.LIVEBLOCKS_SECRET_KEY ??
-                process.env.LIVEBLOCKS_PRIVATE_KEY)
-                ? "configured"
-                : "MISSING"}
-            </code>
-          </li>
-          <li className="flex justify-between gap-2">
-            <span>Auth model</span>
-            <code className="text-white/40">passkey (TOFU)</code>
-          </li>
-        </ul>
-      </section>
     </div>
   );
 }
