@@ -309,6 +309,7 @@ export function VoteForm({
         roomCode,
         voterId,
         caption: t(lang, "share_picks_caption"),
+        lang,
       });
       if (result === "clipboard") toast.success(t(lang, "share_image_copied"));
     } catch {

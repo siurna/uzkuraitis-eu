@@ -267,8 +267,7 @@
       oklch(18% 0.05 264 / 0.46) 100%
     );
   border: 1px solid oklch(95% 0.005 250 / 0.10);
-  backdrop-filter: blur(20px) saturate(1.12);
-  -webkit-backdrop-filter: blur(20px) saturate(1.12);
+  backdrop-filter: blur(20px) saturate(120%);
   box-shadow: var(--shadow-soft);
 }
 

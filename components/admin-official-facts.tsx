@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trophy, ChevronRight } from "lucide-react";
+import { Dices, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getCountry } from "@/lib/countries";
@@ -98,8 +98,10 @@ export function AdminOfficialFacts({
 
   return (
     <section className="glass-card rounded-xl p-5 flex flex-col gap-4">
-      <header className="flex items-center gap-2">
-        <Trophy className="h-5 w-5 text-flamingo" />
+      <header className="flex items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+          <Dices className="h-5 w-5" />
+        </span>
         <h2 className="font-display text-xl">Side-bet ground truth</h2>
       </header>
 
@@ -174,10 +176,7 @@ function CountryFact({
           onClick={() => setDrawerOpen(true)}
           className="list-card-hover glass-card rounded-xl p-3 flex items-center gap-3 text-left w-full"
         >
-          <div className="flex-1 min-w-0">
-            <p className="font-display">{fact.label}</p>
-            <p className="text-xs text-white/55 leading-relaxed">{fact.sub}</p>
-          </div>
+          <p className="flex-1 min-w-0 font-display truncate">{fact.label}</p>
           <div className="flex items-center gap-2 shrink-0">
             {picks.length === 0 ? (
               <span className="text-xs text-white/40 italic">tap to pick</span>
@@ -236,10 +235,7 @@ function CountryFact({
         onClick={() => setDrawerOpen(true)}
         className="list-card-hover glass-card rounded-xl p-3 flex items-center gap-3 text-left w-full"
       >
-        <div className="flex-1 min-w-0">
-          <p className="font-display">{fact.label}</p>
-          <p className="text-xs text-white/55 leading-relaxed">{fact.sub}</p>
-        </div>
+        <p className="flex-1 min-w-0 font-display truncate">{fact.label}</p>
         <div className="flex items-center gap-2 shrink-0">
           {c ? (
             <span className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-flamingo/20 border border-flamingo/40">
@@ -282,10 +278,7 @@ function NumberFact({
 }) {
   return (
     <div className="glass-card rounded-xl p-3 flex items-center gap-3">
-      <div className="flex-1 min-w-0">
-        <p className="font-display truncate">{fact.label}</p>
-        <p className="text-xs text-white/55 leading-relaxed">{fact.sub}</p>
-      </div>
+      <p className="flex-1 min-w-0 font-display truncate">{fact.label}</p>
       <Input
         type="number"
         inputMode="numeric"
@@ -311,10 +304,7 @@ function BooleanFact({
 }) {
   return (
     <div className="glass-card rounded-xl p-3 flex items-center gap-3">
-      <div className="flex-1 min-w-0">
-        <p className="font-display truncate">{fact.label}</p>
-        <p className="text-xs text-white/55 truncate">{fact.sub}</p>
-      </div>
+      <p className="flex-1 min-w-0 font-display truncate">{fact.label}</p>
       <div className="flex items-center gap-1 rounded-full bg-black/30 p-1 shrink-0 text-xs">
         {(["true", "false", ""] as const).map((opt) => {
           const active = value === opt;

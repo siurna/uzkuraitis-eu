@@ -47,7 +47,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <PageTransition>{children}</PageTransition>
         <Toaster
           theme="dark"
-          position="top-center"
+          position="bottom-right"
           toastOptions={{
             style: {
               background: "oklch(20% 0.07 264 / 0.9)",

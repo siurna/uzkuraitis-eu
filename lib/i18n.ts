@@ -107,7 +107,7 @@ const S = {
   tab_bets:          { en: "Guesses", lt: "Spėjimai" },
   tab_rules:         { en: "Rules", lt: "Taisyklės" },
   vote_cast_title:   { en: "Your vote's cast! 🎉", lt: "Tavo balsas užfiksuotas! 🎉" },
-  vote_cast_body:    { en: "Locked in automatically. Reorder any time, just tap Save to update.", lt: "Išsaugota automatiškai. Keisk eilę bet kada iki balsavimo pabaigos, tiesiog nepamiršk paspaust Išsaugoti." },
+  vote_cast_body:    { en: "Saved automatically. Reorder anytime, it updates on its own.", lt: "Išsaugota automatiškai. Eilę gali keisti bet kada, atsinaujins pati." },
   vote_place_bets:   { en: "Place your bets", lt: "Užpildyk spėjimus" },
   vote_keep_editing: { en: "Keep editing", lt: "Tęsti redagavimą" },
 

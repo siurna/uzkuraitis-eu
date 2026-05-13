@@ -2,8 +2,18 @@ import { ImageResponse } from "next/og";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { voters, votes } from "@/lib/db/schema";
-import { countries } from "@/lib/countries";
+import { countries, countryName } from "@/lib/countries";
+import { countryColors } from "@/lib/country-colors";
 import { findRoomByCode } from "@/lib/rooms";
+import { t, type Language } from "@/lib/i18n";
+
+// "#rrggbb" + alpha → "rgba(...)" so the satori card can wash a colour.
+function rgba(hex: string, a: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return `rgba(255,46,222,${a})`;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+}
 
 // Social share card — the voter's TOP10 ballot as a 3:4 portrait PNG
 // (good for Stories / iMessage). Inline styles only (satori doesn't
@@ -31,7 +41,9 @@ export async function GET(req: Request, { params }: RouteCtx) {
   const { code, voterId } = await params;
 
   try {
-    const origin = new URL(req.url).origin;
+    const url = new URL(req.url);
+    const origin = url.origin;
+    const lang: Language = url.searchParams.get("lang") === "en" ? "en" : "lt";
 
     const room = await findRoomByCode(code);
     if (!room) return new Response("Not found", { status: 404 });
@@ -52,8 +64,20 @@ export async function GET(req: Request, { params }: RouteCtx) {
     const picks = POINTS.map((p) => {
       const cc = byPoints.get(p);
       const c = cc ? countries.find((x) => x.code === cc) : null;
-      return { points: p, country: c };
+      return { points: p, code: cc ?? null, country: c };
     });
+
+    // Wash the card in the flag colours of the top 3 picks (12 / 10 / 8),
+    // falling back to the brand rainbow for any empty slot.
+    const BRAND: [string, string][] = [["#ff2ede", "#4cc9f0"], ["#4cc9f0", "#9257ff"], ["#9257ff", "#ffd166"]];
+    const accents = [picks[0]?.code, picks[1]?.code, picks[2]?.code].map((cc, i) =>
+      cc ? countryColors(cc) : BRAND[i],
+    );
+    const backgroundImage = [
+      `radial-gradient(880px 600px at 84% -6%, ${rgba(accents[0][0], 0.62)}, transparent 60%)`,
+      `radial-gradient(820px 640px at 6% 106%, ${rgba(accents[1][0], 0.5)}, transparent 60%)`,
+      `radial-gradient(700px 520px at 50% 52%, ${rgba(accents[2][0], 0.3)}, transparent 65%)`,
+    ].join(", ");
 
     const fontRes = await fetch(`${origin}${FONT_PATH}`);
     if (!fontRes.ok) throw new Error(`font fetch ${fontRes.status}`);
@@ -69,8 +93,7 @@ export async function GET(req: Request, { params }: RouteCtx) {
             display: "flex",
             flexDirection: "column",
             backgroundColor: "#0a0b22",
-            backgroundImage:
-              "radial-gradient(820px 560px at 82% -4%, rgba(255,46,222,0.55), transparent 60%), radial-gradient(820px 640px at 8% 104%, rgba(76,201,240,0.45), transparent 60%), radial-gradient(640px 460px at 50% 50%, rgba(146,87,255,0.28), transparent 65%)",
+            backgroundImage,
             padding: 64,
             fontFamily: SANS,
             color: "white",
@@ -105,14 +128,15 @@ export async function GET(req: Request, { params }: RouteCtx) {
                 display: "flex",
               }}
             >
-              My TOP 10
+              {t(lang, "your_top_10")}
             </div>
           </div>
 
           {/* Ballot rows */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 40 }}>
-            {picks.map(({ points, country }) => {
+            {picks.map(({ points, code: cc, country }) => {
               const top = points === 12;
+              const [c1] = cc ? countryColors(cc) : ["#ffffff"];
               return (
                 <div
                   key={points}
@@ -123,9 +147,9 @@ export async function GET(req: Request, { params }: RouteCtx) {
                     padding: "14px 26px",
                     borderRadius: 24,
                     background: top
-                      ? "linear-gradient(90deg, rgba(255,214,10,0.30), rgba(255,46,222,0.16))"
-                      : "rgba(255,255,255,0.05)",
-                    border: top ? "2px solid rgba(255,214,10,0.55)" : "1px solid rgba(255,255,255,0.10)",
+                      ? `linear-gradient(90deg, ${rgba(c1, 0.34)}, rgba(255,255,255,0.06))`
+                      : `linear-gradient(90deg, ${rgba(c1, 0.16)}, rgba(255,255,255,0.04))`,
+                    border: top ? `2px solid ${rgba(c1, 0.6)}` : `1px solid ${rgba(c1, 0.28)}`,
                   }}
                 >
                   <span
@@ -141,7 +165,7 @@ export async function GET(req: Request, { params }: RouteCtx) {
                   </span>
                   <span style={{ fontSize: 50, display: "flex" }}>{country?.flag ?? "🏳️"}</span>
                   <span style={{ fontFamily: display, fontSize: 44, display: "flex", flex: 1, overflow: "hidden" }}>
-                    {country?.name ?? "—"}
+                    {cc ? countryName(cc, lang) : "—"}
                   </span>
                 </div>
               );

@@ -36,7 +36,6 @@ export function AdminLivePanel({
       initialStatus={initialStatus}
       initialNowPlaying={initialNowPlaying}
       apply={apply}
-      scopeLabel="all rooms"
     />
   );
 }

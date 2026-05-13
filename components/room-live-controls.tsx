@@ -30,14 +30,11 @@ export function RoomLiveControls({
   initialStatus,
   initialNowPlaying,
   apply,
-  scopeLabel,
 }: {
   initialStatus: ShowStatus;
   initialNowPlaying: string | null;
   /** Persist a patch. Should resolve true on success. */
   apply: (patch: LivePatch) => Promise<boolean>;
-  /** Optional caption (e.g. "all active rooms"). */
-  scopeLabel?: string;
 }) {
   const [status, setStatusState] = useState<ShowStatus>(initialStatus);
   const [nowPlaying, setNowPlaying] = useState<string | null>(initialNowPlaying);
@@ -102,11 +99,6 @@ export function RoomLiveControls({
 
   return (
     <section className="flex flex-col gap-3">
-      {scopeLabel && (
-        <p className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-display">
-          Applies to {scopeLabel}
-        </p>
-      )}
       <div className="grid grid-cols-4 gap-1.5">
         {STATUS_DEFS.map(({ id, label, Icon }) => {
           const active = status === id;
@@ -116,7 +108,7 @@ export function RoomLiveControls({
               type="button"
               disabled={pending}
               onClick={() => setStatus(id)}
-              className={`flex flex-col items-center justify-center gap-1 h-14 rounded-xl px-1
+              className={`flex flex-col items-center justify-center gap-1.5 h-[4.25rem] rounded-xl px-1
                           font-display text-[10.5px] leading-tight text-center transition
                           ${
                             active
@@ -124,7 +116,7 @@ export function RoomLiveControls({
                               : "bg-white/[0.04] ring-1 ring-white/10 text-white/70 hover:bg-white/[0.08]"
                           }`}
             >
-              <Icon className="h-3.5 w-3.5" />
+              <Icon className="h-6 w-6" />
               {label}
             </button>
           );

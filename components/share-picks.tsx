@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Share2, Loader2, ArrowRight } from "lucide-react";
+import { Share2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRoomLive } from "@/components/room-shell";
 import { shareTopTen } from "@/lib/share-card";
@@ -24,7 +24,7 @@ export function SharePicks() {
   }, [code]);
 
   if (!voterId) return null;
-  const ogUrl = `/api/og/${code}/${voterId}`;
+  const ogUrl = `/api/og/${code}/${voterId}?lang=${lang}`;
 
   const share = async () => {
     if (sharing) return;
@@ -34,6 +34,7 @@ export function SharePicks() {
         roomCode: code,
         voterId,
         caption: t(lang, "share_picks_caption"),
+        lang,
       });
       if (result === "clipboard") toast.success(t(lang, "share_image_copied"));
     } catch {
@@ -73,9 +74,8 @@ export function SharePicks() {
         <div className="min-w-0 flex-1">
           <p className="text-[10px] uppercase tracking-[0.3em] text-white/75 font-display leading-tight mb-1">{t(lang, "share_eyebrow")}</p>
           <p className="font-display text-xl text-white leading-tight drop-shadow-sm">{sharing ? t(lang, "share_preparing") : t(lang, "share_picks")}</p>
-          <p className="text-sm text-white/70 leading-snug mt-0.5">{t(lang, "share_picks_sub")}</p>
+          <p className="text-sm text-white/70 leading-snug mt-0.5 pr-24">{t(lang, "share_picks_sub")}</p>
         </div>
-        <ArrowRight className="relative h-5 w-5 text-white/70 shrink-0" />
       </div>
     </button>
   );

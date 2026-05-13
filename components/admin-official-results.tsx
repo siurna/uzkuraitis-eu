@@ -110,8 +110,10 @@ export function AdminOfficialResults({
   return (
     <section className="glass-card rounded-xl p-5">
       <header className="flex items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-flamingo" />
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+            <Trophy className="h-5 w-5" />
+          </span>
           <h2 className="font-display text-xl">Official results</h2>
         </div>
         <span className="text-xs text-white/50 tabular-nums">
