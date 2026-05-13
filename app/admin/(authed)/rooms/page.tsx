@@ -70,7 +70,9 @@ export default async function AdminRoomsPage() {
                 <div className="flex items-center gap-3 text-xs text-white/50 mt-1">
                   <code className="tracking-[0.2em]">{r.code}</code>
                   <span>·</span>
-                  <span>{r.voterCount} voters</span>
+                  <span>
+                    {r.voterCount} participant{r.voterCount === 1 ? "" : "s"}
+                  </span>
                   <span>·</span>
                   <span>active {timeAgo(r.lastActiveAt)}</span>
                 </div>

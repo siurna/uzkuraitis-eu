@@ -5,6 +5,8 @@ import { isAdminAuthed } from "@/lib/admin/session";
 
 const CreateRoomSchema = z.object({
   name: z.string().trim().min(1).max(60).optional(),
+  /** Optional pre-chosen join code — must be 6 chars in the allowed set. */
+  code: z.string().length(6).optional(),
 });
 
 export async function POST(request: Request) {
@@ -27,14 +29,23 @@ export async function POST(request: Request) {
     );
   }
 
-  const room = await createRoom(parsed.data.name ?? "Eurovision party");
+  const result = await createRoom(
+    parsed.data.name ?? "Eurovision party",
+    parsed.data.code,
+  );
+  if ("error" in result) {
+    if (result.error === "code_taken") {
+      return NextResponse.json({ error: "That code is already in use." }, { status: 409 });
+    }
+    return NextResponse.json({ error: "Codes are 6 characters: 1-9 and A-Z (no 0, I, L, O)." }, { status: 400 });
+  }
   return NextResponse.json({
-    id: room.id,
-    code: room.code,
-    name: room.name,
+    id: result.id,
+    code: result.code,
+    name: result.name,
     // The host who creates the room gets the per-room admin token so they
     // can use the share-link admin flow (no global passkey needed). Only
     // the global admin (already authed above) sees this in the response.
-    adminToken: room.adminToken,
+    adminToken: result.adminToken,
   });
 }

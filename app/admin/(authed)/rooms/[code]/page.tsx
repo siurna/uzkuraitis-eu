@@ -9,6 +9,7 @@ import { AdminRoomDangerZone } from "@/components/admin-room-danger-zone";
 import { AdminRoomRename } from "@/components/admin-room-rename";
 import { AdminRoomCode } from "@/components/admin-room-code";
 import { AdminRoomManageLink } from "@/components/admin-room-manage-link";
+import { AdminRoomCommentatorToggle } from "@/components/admin-room-commentator-toggle";
 import { AdminRoomTabs } from "@/components/admin-room-tabs";
 import { Flag } from "@/components/flag";
 
@@ -174,13 +175,14 @@ export default async function AdminRoomDetailPage({
           </div>
           <p className="text-xs text-white/40 mt-1">
             Created {new Date(room.createdAt).toLocaleDateString()} ·{" "}
-            {voterList.length} voter{voterList.length === 1 ? "" : "s"}
+            {voterList.length} participant{voterList.length === 1 ? "" : "s"}
           </p>
         </div>
         <AdminRoomToggle code={room.code} initialEnabled={room.votingEnabled} />
       </header>
 
       <AdminRoomTabs
+        participantCount={voterList.length}
         overview={
           <>
             <section className="glass-card rounded-xl p-5">
@@ -233,13 +235,13 @@ export default async function AdminRoomDetailPage({
             )}
           </>
         }
-        voters={
+        participants={
           <section className="glass-card rounded-xl p-5">
             <h2 className="font-display text-xl mb-4">
-              Voters ({voterList.length})
+              Participants ({voterList.length})
             </h2>
             {voterList.length === 0 ? (
-              <p className="text-white/40 text-sm italic">No one has voted yet.</p>
+              <p className="text-white/40 text-sm italic">Nobody's joined yet.</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {voterList.map((v) => (
@@ -294,6 +296,13 @@ export default async function AdminRoomDetailPage({
             <section className="glass-card rounded-xl p-5">
               <h2 className="font-display text-xl mb-3">Join code</h2>
               <AdminRoomCode code={room.code} />
+            </section>
+            <section className="glass-card rounded-xl p-5">
+              <h2 className="font-display text-xl mb-3">Auto-commentator</h2>
+              <AdminRoomCommentatorToggle
+                code={room.code}
+                initialEnabled={room.commentatorEnabled}
+              />
             </section>
             <AdminRoomManageLink code={room.code} adminToken={room.adminToken} />
             <AdminRoomDangerZone code={room.code} />

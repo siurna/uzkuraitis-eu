@@ -8,8 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RoomLiveControls, type ShowStatus } from "@/components/room-live-controls";
-
-const ROOM_CODE_RE = /^[2-9ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/;
+import { ROOM_CODE_REGEX } from "@/lib/rooms";
 
 // Magic-link host page. Three blocks:
 //   1. Live — show status + country-on-stage controls (also on
@@ -84,8 +83,8 @@ export function RoomManage({
   const saveCode = () => {
     const next = codeDraft.trim().toUpperCase();
     if (next === room.code) return;
-    if (!ROOM_CODE_RE.test(next)) {
-      toast.error("Codes are 6 characters: 2-9 and A-Z (no 0, 1, I, L, O).");
+    if (!ROOM_CODE_REGEX.test(next)) {
+      toast.error("Codes are 6 characters: 1-9 and A-Z (no 0, I, L, O).");
       return;
     }
     setSavingCode(true);
@@ -220,7 +219,7 @@ export function RoomManage({
               setCodeDraft(
                 e.target.value
                   .toUpperCase()
-                  .replace(/[^2-9A-Z]/g, "")
+                  .replace(/[^1-9A-Z]/g, "")
                   .slice(0, 6),
               )
             }
