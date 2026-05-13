@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { triviaAnswers } from "@/lib/db/schema";
 import { findRoomByCode, touchRoom } from "@/lib/rooms";
 import { getTrivia, TRIVIA_POINTS } from "@/lib/trivia";
+import { guardSession } from "@/lib/server-session";
 
 // POST /api/rooms/<code>/trivia
 //
@@ -31,6 +32,9 @@ export async function POST(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
   const { sessionId, countryCode, choiceIndex } = parsed.data;
+
+  const guard = await guardSession(sessionId);
+  if (guard) return guard;
   const card = getTrivia(countryCode);
   if (!card) {
     return NextResponse.json({ error: "No trivia for that country" }, { status: 404 });

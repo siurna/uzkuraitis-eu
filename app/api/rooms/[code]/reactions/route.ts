@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { reactions } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
+import { guardAnySession } from "@/lib/server-session";
 
 const ReactionSchema = z.object({
   countryCode: z.string().length(2),
@@ -21,6 +22,9 @@ export async function POST(request: Request, { params }: RouteCtx) {
   if (!room) {
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
+
+  const guard = await guardAnySession();
+  if (guard) return guard;
 
   let body: unknown;
   try {

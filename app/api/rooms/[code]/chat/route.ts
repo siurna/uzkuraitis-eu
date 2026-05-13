@@ -6,6 +6,7 @@ import { chatMessages, chatReactions, type ChatMessageKind } from "@/lib/db/sche
 import { findRoomByCode } from "@/lib/rooms";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { pushToRoom } from "@/lib/push";
+import { guardSession } from "@/lib/server-session";
 
 // Per-room chat. GET returns a window of messages with their reactions
 // folded in; POST inserts a new message and fans-out chat:new +
@@ -143,6 +144,10 @@ export async function POST(req: Request, { params }: RouteCtx) {
     );
   }
   const data = parsed.data;
+
+  // Cookie must vouch for the session the client claims to be.
+  const guard = await guardSession(data.session);
+  if (guard) return guard;
 
   if (!floodCheck(data.session)) {
     return NextResponse.json({ error: "Too many messages — slow down." }, { status: 429 });

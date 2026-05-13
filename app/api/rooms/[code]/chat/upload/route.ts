@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { nanoid } from "nanoid";
 import { findRoomByCode } from "@/lib/rooms";
+import { guardAnySession } from "@/lib/server-session";
 
 // Image upload for chat. Accepts a multipart form ("file") or a raw
 // image body, validates type + size, drops it in the Blob store and
@@ -30,6 +31,9 @@ export async function POST(req: Request, { params }: RouteCtx) {
   const { code } = await params;
   const room = await findRoomByCode(code);
   if (!room) return NextResponse.json({ error: "Room not found" }, { status: 404 });
+
+  const guard = await guardAnySession();
+  if (guard) return guard;
 
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return NextResponse.json(

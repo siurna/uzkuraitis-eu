@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { chatMessages, chatReactions } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { guardSession } from "@/lib/server-session";
 
 // Toggle a reaction: if (msg, session, emoji) exists, delete it;
 // otherwise insert. Returns ok:true with `added` so clients can update
@@ -29,6 +30,9 @@ export async function POST(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
   const { session, name, emoji } = parsed.data;
+
+  const guard = await guardSession(session);
+  if (guard) return guard;
 
   // Make sure the message exists and is in this room.
   const [msg] = await db
