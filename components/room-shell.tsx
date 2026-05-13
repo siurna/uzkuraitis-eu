@@ -17,6 +17,7 @@ import { BingoCard } from "@/components/bingo-card";
 import { VotePanel } from "@/components/vote-panel";
 import { ParticleLayer } from "@/components/particle-layer";
 import { CountryDeepDiveProvider } from "@/components/country-deep-dive";
+import { ProfileProvider } from "@/components/profile-sheet";
 import { VotingAnnouncement } from "@/components/voting-announcement";
 import { NowPlayingTakeover } from "@/components/now-playing-takeover";
 
@@ -119,9 +120,11 @@ export function RoomShell({
         >
           <ParticleLayer>
             <CountryDeepDiveProvider>
-              <NowPlayingTakeover />
-              <VotingAnnouncement />
-              <RoomBody>{children}</RoomBody>
+              <ProfileProvider>
+                <NowPlayingTakeover />
+                <VotingAnnouncement />
+                <RoomBody>{children}</RoomBody>
+              </ProfileProvider>
             </CountryDeepDiveProvider>
           </ParticleLayer>
         </RoomLiveProvider>

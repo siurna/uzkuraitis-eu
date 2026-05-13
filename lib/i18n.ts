@@ -340,6 +340,32 @@ const S = {
   breakdown_highlights: { en: "Chat highlights", lt: "Pokalbio akcentai" },
   breakdown_total:   { en: "Total", lt: "Iš viso" },
 
+  // ── Profile sheet ────────────────────────────────────────────────
+  profile_you:               { en: "you", lt: "tu" },
+  profile_stat_messages:     { en: "messages", lt: "žinutės" },
+  profile_stat_loves:        { en: "loves", lt: "širdys" },
+  profile_stat_given:        { en: "given", lt: "atiduota" },
+  profile_stat_highlights:   { en: "highlights", lt: "akcentai" },
+  profile_stat_bingo:        { en: "bingos", lt: "bingo" },
+  profile_stat_bets:         { en: "bets", lt: "statymai" },
+  profile_top_moment:        { en: "Top moment", lt: "Geriausia akimirka" },
+  profile_top10_h:           { en: "TOP 10 ballot", lt: "TOP 10 balsas" },
+  profile_top10_hidden:      { en: "Hidden until the host reveals results.", lt: "Slepiama, kol šeimininkas paskelbs rezultatus." },
+  profile_top10_empty:       { en: "Hasn't voted yet.", lt: "Dar nebalsavo." },
+  profile_top10_finished:    { en: (n: number) => `finished #${n}`, lt: (n: number) => `liko #${n}` },
+  profile_top10_unranked:    { en: "out of top 10", lt: "už TOP 10" },
+  profile_picked_artist:     { en: "Picked the artist", lt: "Pasirinko atlikėją" },
+  profile_loading:           { en: "Loading…", lt: "Įkeliama…" },
+  profile_not_here:          { en: "We can't find this person in the room.", lt: "Šio žmogaus kambaryje nerandame." },
+
+  // ── Trivia ───────────────────────────────────────────────────────
+  trivia_eyebrow:            { en: "Trivia", lt: "Smulkmenos" },
+  trivia_answered_correct:   { en: "Spot on, +2 points!", lt: "Pataikei! +2 taškai." },
+  trivia_answered_wrong:     { en: "Not this time.", lt: "Šįkart pro šalį." },
+  trivia_already_answered:   { en: "You've already answered.", lt: "Jau atsakei." },
+  trivia_closed:             { en: "Closed", lt: "Uždaryta" },
+  trivia_score_total:        { en: (n: number) => `+${n}`, lt: (n: number) => `+${n}` },
+
   // ── Reactions / honeycomb ────────────────────────────────────────
 };
 

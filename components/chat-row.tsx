@@ -12,6 +12,7 @@ import { countryColors } from "@/lib/country-colors";
 import { HeartFlag } from "@/components/flag";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
+import { useProfile } from "@/components/profile-sheet";
 import { useParticles } from "@/components/particle-layer";
 import { haptic } from "@/lib/haptics";
 import { getTrope, type TropeIndex } from "@/lib/bingo-tropes";
@@ -389,8 +390,13 @@ export function ChatRow({
     Date.now() - new Date(m.createdAt).getTime() < EDIT_WINDOW_MS;
 
   const deepDive = useCountryDeepDive();
+  const profile = useProfile();
   const particles = useParticles();
   const lastTap = useRef(0); // for double-tap-a-text-bubble → ❤️
+  // Bot rows (the commentator) don't open a profile — there's no DB row
+  // to look up. Real participants do.
+  const isCommentator = !!m.meta?.commentator;
+  const canOpenProfile = !mine && !isSystem && !isNowPlaying && !isResults && !isCommentator;
   // React + a little burst of that emoji floating up from the tap point.
   const reactWithRain = (e: { currentTarget: Element }, emoji: string) => {
     haptic(12);
@@ -625,26 +631,46 @@ export function ChatRow({
     >
       <div className={`relative max-w-[82%] sm:max-w-[68%] flex gap-2 ${mine ? "flex-row-reverse" : "flex-row"}`}>
         {!mine && (
-          <div className={`h-9 w-9 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/[0.04] ${showHeader ? "" : "invisible"}`}>
-            {m.meta && typeof m.meta.commentatorPhoto === "string" && m.meta.commentatorPhoto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={m.meta.commentatorPhoto} alt="" className="h-full w-full object-cover" />
-            ) : m.meta?.commentator ? (
-              <div className="h-full w-full grid place-items-center text-sm leading-none">🎙️</div>
-            ) : avatar?.photo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={optimizedSrc(avatar.photo, 128)}
-                alt=""
-                className="h-full w-full object-cover"
-                style={{ objectPosition: avatar.focal ? `${avatar.focal.x}% ${avatar.focal.y}%` : "50% 30%" }}
-              />
-            ) : (
-              <div className="h-full w-full grid place-items-center text-xs font-display text-white/45">
-                {m.name.charAt(0).toUpperCase()}
-              </div>
-            )}
-          </div>
+          // Tap the avatar to open the author's profile. The commentator
+          // bot doesn't have a real profile, so it stays a plain tile.
+          (() => {
+            const avatarInner =
+              m.meta && typeof m.meta.commentatorPhoto === "string" && m.meta.commentatorPhoto ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={m.meta.commentatorPhoto} alt="" className="h-full w-full object-cover" />
+              ) : isCommentator ? (
+                <div className="h-full w-full grid place-items-center text-sm leading-none">🎙️</div>
+              ) : avatar?.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={optimizedSrc(avatar.photo, 128)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  style={{ objectPosition: avatar.focal ? `${avatar.focal.x}% ${avatar.focal.y}%` : "50% 30%" }}
+                />
+              ) : (
+                <div className="h-full w-full grid place-items-center text-xs font-display text-white/45">
+                  {m.name.charAt(0).toUpperCase()}
+                </div>
+              );
+            const cls = `h-9 w-9 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/[0.04] ${showHeader ? "" : "invisible"}`;
+            if (canOpenProfile) {
+              return (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    profile.open(m.sessionId);
+                  }}
+                  aria-label={m.name}
+                  className={`${cls} hover:ring-white/30 active:scale-[0.95] transition transform-gpu`}
+                >
+                  {avatarInner}
+                </button>
+              );
+            }
+            return <div className={cls}>{avatarInner}</div>;
+          })()
         )}
 
         <div className="min-w-0 flex flex-col items-stretch gap-1">

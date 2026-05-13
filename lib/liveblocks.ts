@@ -32,6 +32,10 @@ export type Presence = {
   typing?: boolean;
   /** Chat: ISO timestamp of the newest message this user has seen. */
   seenAt?: string | null;
+  /** Stable browser-session id (mirrors lib/use-identity.ts). Lets
+   *  features like the profile drawer go presence → DB without
+   *  hand-matching by display name. */
+  sessionId?: string | null;
 };
 
 export type Storage = Record<string, never>;

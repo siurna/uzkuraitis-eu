@@ -72,6 +72,47 @@ function pointsKeyToPlacement(pointsKey: string): number {
   }
 }
 
+// Per-pick breakdown of a TOP-10 ballot. Same scoring rule as
+// `scoreTopTen`, but returns one row per slot so a UI can show
+// "you picked SE for 12, it finished 2nd, you scored 10".
+export type TopTenPickBreakdown = {
+  /** The ballot slot value (12, 10, 8 … 1). */
+  points: number;
+  /** ISO-2 lowercase, or empty string if the slot is empty. */
+  countryCode: string;
+  /** Official Eurovision placement (1..N) or null if the country wasn't
+   *  in the official table or this slot is empty. */
+  officialPlacement: number | null;
+  /** Points earned for this slot under the notch-down rule. */
+  earned: number;
+};
+
+const TOP_TEN_POINT_SLOTS = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1] as const;
+
+export function scoreTopTenBreakdown(
+  ballot: Ballot,
+  officialPlacements: OfficialPlacements,
+): TopTenPickBreakdown[] {
+  return TOP_TEN_POINT_SLOTS.map((p) => {
+    const code = ballot[String(p)] ?? "";
+    const officialPlacement = code ? officialPlacements[code] ?? null : null;
+    let earned = 0;
+    if (
+      code &&
+      officialPlacement != null &&
+      officialPlacement >= 1 &&
+      officialPlacement <= 10
+    ) {
+      const voterPlacement = pointsKeyToPlacement(String(p));
+      if (voterPlacement >= 1) {
+        const distance = Math.abs(voterPlacement - officialPlacement);
+        earned = POINTS_BY_PLACEMENT[officialPlacement + distance] ?? 0;
+      }
+    }
+    return { points: p, countryCode: code, officialPlacement, earned };
+  });
+}
+
 // ---------- home-country (LT) placement ----------
 
 export function scoreHomePrediction(
