@@ -12,6 +12,7 @@ import { countryColors } from "@/lib/country-colors";
 import { HeartFlag } from "@/components/flag";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
+import { useParticles } from "@/components/particle-layer";
 import { getTrope, type TropeIndex } from "@/lib/bingo-tropes";
 import { t, tDyn } from "@/lib/i18n";
 
@@ -365,6 +366,26 @@ export function ChatRow({
     Date.now() - new Date(m.createdAt).getTime() < EDIT_WINDOW_MS;
 
   const deepDive = useCountryDeepDive();
+  const particles = useParticles();
+  // React + a little burst of that emoji floating up from the tap point.
+  const reactWithRain = (e: React.MouseEvent, emoji: string) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const n = 5 + Math.floor(Math.random() * 3);
+    particles.spawnMany(
+      Array.from({ length: n }, () => ({
+        asset: { type: "emoji" as const, glyph: emoji },
+        from: {
+          x: r.left + r.width / 2 + (Math.random() - 0.5) * (r.width * 0.8),
+          y: r.top + r.height / 2,
+        },
+        driftRange: 100 + Math.random() * 60,
+        size: 26 + Math.random() * 18,
+        durationMs: 1100 + Math.random() * 700,
+        rotate: 24 + Math.random() * 22,
+      })),
+    );
+    onReact(emoji);
+  };
   const [addOpen, setAddOpen] = useState(false); // "+ TOP 10" sheet (now-playing card)
   // For the *active* now-playing card: where this country sits in your
   // draft TOP 10 (1-based), or null if it isn't on your ballot. Drives
@@ -563,6 +584,7 @@ export function ChatRow({
 
   return (
     <motion.li
+      data-msg-id={m.id}
       initial={m.pending ? { opacity: 0, y: 8 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
@@ -715,7 +737,7 @@ export function ChatRow({
                       <motion.button
                         key={emoji}
                         type="button"
-                        onClick={() => onReact(emoji)}
+                        onClick={(e) => reactWithRain(e, emoji)}
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
@@ -745,7 +767,7 @@ export function ChatRow({
                 <button
                   key={emoji}
                   type="button"
-                  onClick={() => onReact(emoji)}
+                  onClick={(e) => (info.mine ? onReact(emoji) : reactWithRain(e, emoji))}
                   title={info.names.join(", ")}
                   className={`px-2 h-6 rounded-full text-xs font-display inline-flex items-center gap-1 transition
                               ${

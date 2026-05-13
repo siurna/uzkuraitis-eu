@@ -45,25 +45,23 @@ export async function PUT(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  await db.transaction(async (tx) => {
-    for (const [key, value] of Object.entries(parsed.data.facts)) {
-      if (value === null || value === "") {
-        await tx
-          .delete(roomFacts)
-          .where(
-            sql`${roomFacts.roomId} = ${room.id} AND ${roomFacts.key} = ${key}`,
-          );
-      } else {
-        await tx
-          .insert(roomFacts)
-          .values({ roomId: room.id, key, value })
-          .onConflictDoUpdate({
-            target: [roomFacts.roomId, roomFacts.key],
-            set: { value, updatedAt: sql`now()` },
-          });
-      }
+  // (neon-http has no transactions; sequential upserts/deletes are fine
+  // for an admin save — a partial write just means re-save.)
+  for (const [key, value] of Object.entries(parsed.data.facts)) {
+    if (value === null || value === "") {
+      await db
+        .delete(roomFacts)
+        .where(sql`${roomFacts.roomId} = ${room.id} AND ${roomFacts.key} = ${key}`);
+    } else {
+      await db
+        .insert(roomFacts)
+        .values({ roomId: room.id, key, value })
+        .onConflictDoUpdate({
+          target: [roomFacts.roomId, roomFacts.key],
+          set: { value, updatedAt: sql`now()` },
+        });
     }
-  });
+  }
 
   await broadcastToRoom(room.code, { type: "leaderboard:updated" });
   return NextResponse.json({ ok: true });
@@ -77,20 +75,12 @@ export async function POST(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   }
   const global = await db.select().from(officialFacts);
-  await db.transaction(async (tx) => {
-    await tx.delete(roomFacts).where(eq(roomFacts.roomId, room.id));
-    if (global.length > 0) {
-      await tx
-        .insert(roomFacts)
-        .values(
-          global.map((g) => ({
-            roomId: room.id,
-            key: g.key,
-            value: g.value,
-          })),
-        );
-    }
-  });
+  await db.delete(roomFacts).where(eq(roomFacts.roomId, room.id));
+  if (global.length > 0) {
+    await db
+      .insert(roomFacts)
+      .values(global.map((g) => ({ roomId: room.id, key: g.key, value: g.value })));
+  }
   await broadcastToRoom(room.code, { type: "leaderboard:updated" });
   return NextResponse.json({ ok: true, copied: global.length });
 }

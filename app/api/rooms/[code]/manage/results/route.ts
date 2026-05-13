@@ -72,18 +72,18 @@ export async function PUT(req: Request, { params }: RouteCtx) {
     }
   }
 
-  await db.transaction(async (tx) => {
-    await tx.delete(roomResults).where(eq(roomResults.roomId, room.id));
-    if (parsed.data.results.length > 0) {
-      await tx.insert(roomResults).values(
-        parsed.data.results.map((r) => ({
-          roomId: room.id,
-          countryCode: r.countryCode,
-          placement: r.placement,
-        })),
-      );
-    }
-  });
+  // neon-http has no transactions; a delete-then-insert is fine for an
+  // admin save (a momentary "no results" window at worst).
+  await db.delete(roomResults).where(eq(roomResults.roomId, room.id));
+  if (parsed.data.results.length > 0) {
+    await db.insert(roomResults).values(
+      parsed.data.results.map((r) => ({
+        roomId: room.id,
+        countryCode: r.countryCode,
+        placement: r.placement,
+      })),
+    );
+  }
 
   await broadcastToRoom(room.code, { type: "leaderboard:updated" });
   return NextResponse.json({ ok: true });
@@ -98,18 +98,16 @@ export async function POST(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   }
   const global = await db.select().from(officialResults);
-  await db.transaction(async (tx) => {
-    await tx.delete(roomResults).where(eq(roomResults.roomId, room.id));
-    if (global.length > 0) {
-      await tx.insert(roomResults).values(
-        global.map((g) => ({
-          roomId: room.id,
-          countryCode: g.countryCode,
-          placement: g.placement,
-        })),
-      );
-    }
-  });
+  await db.delete(roomResults).where(eq(roomResults.roomId, room.id));
+  if (global.length > 0) {
+    await db.insert(roomResults).values(
+      global.map((g) => ({
+        roomId: room.id,
+        countryCode: g.countryCode,
+        placement: g.placement,
+      })),
+    );
+  }
   await broadcastToRoom(room.code, { type: "leaderboard:updated" });
   return NextResponse.json({ ok: true, copied: global.length });
 }
