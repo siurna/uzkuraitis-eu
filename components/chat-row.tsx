@@ -403,9 +403,9 @@ export function ChatRow({
           x: r.left + r.width / 2 + (Math.random() - 0.5) * (r.width * 0.8),
           y: r.top + r.height / 2,
         },
-        driftRange: 100 + Math.random() * 60,
+        driftRange: 90 + Math.random() * 50,
         size: 26 + Math.random() * 18,
-        durationMs: 1100 + Math.random() * 700,
+        durationMs: 550 + Math.random() * 300,
         rotate: 24 + Math.random() * 22,
       })),
     );
@@ -659,7 +659,10 @@ export function ChatRow({
           )}
 
           {parent && (
-            <div className={`text-[11px] px-3 py-1.5 rounded-xl truncate bg-white/[0.03] ring-1 ring-white/10 text-white/55 ${mine ? "self-end" : "self-start"}`}>
+            // Quoted-message chip. Cap the width so a long quote can't
+            // outgrow the bubble; anchor right when it's your reply so
+            // the quote + bubble read as one right-aligned thread.
+            <div className={`text-[11px] px-3 py-1.5 rounded-xl truncate bg-white/[0.03] ring-1 ring-white/10 text-white/55 max-w-[min(100%,18rem)] ${mine ? "self-end" : "self-start"}`}>
               <Reply className="h-3 w-3 inline-block mr-1 text-flamingo" />
               <span className="font-display text-white/75">{parent.name}</span>
               {": "}
@@ -754,7 +757,11 @@ export function ChatRow({
                     src={m.gifUrl!}
                     alt=""
                     onLoad={() => window.dispatchEvent(new Event("uzk:chat-media-loaded"))}
-                    className="block max-h-60 w-auto rounded-2xl"
+                    // `touch-manipulation` blocks iOS Safari's native
+                    // double-tap-to-zoom on the image so the bubble's
+                    // own click + double-tap-to-react handlers run.
+                    className="block max-h-60 w-auto rounded-2xl touch-manipulation"
+                    draggable={false}
                   />
                   {m.kind === "image" && m.pending && (
                     <span className="absolute inset-0 grid place-items-center bg-black/30 rounded-2xl">

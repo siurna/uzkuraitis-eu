@@ -88,8 +88,12 @@ export function BottomSheet({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed bottom-0 inset-x-0 z-[60] mx-auto w-full max-w-md
-                       glass-card rounded-t-3xl border-x-0 border-b-0
+            // A few px of side padding on mobile + iOS floats it off the
+            // home indicator with rounded bottom corners (see .uzk-sheet
+            // in globals.css). Same width cap on every drawer in the app
+            // so they feel like one component.
+            className="fixed bottom-0 inset-x-2 sm:inset-x-0 z-[60] mx-auto w-auto sm:w-full max-w-md
+                       glass-card uzk-sheet rounded-t-3xl border-x-0 border-b-0
                        max-h-[78dvh] flex flex-col"
           >
             {(title || sub || dismissible) && (

@@ -271,6 +271,19 @@
   box-shadow: var(--shadow-soft);
 }
 
+/* iOS-style floating sheet: round the bottom corners + lift off the
+   home indicator so the rounding is visible. Detection via the
+   iOS-only `-webkit-touch-callout` property — no UA sniffing. Non-iOS
+   browsers keep the edge-to-edge flat bottom (no border there anyway).
+   Apply on any drawer (BottomSheet) that should float on iOS. */
+@supports (-webkit-touch-callout: none) {
+  .uzk-sheet {
+    border-bottom-left-radius: 40px;
+    border-bottom-right-radius: 40px;
+    margin-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
 /* Soft-fade the top + bottom edges of a vertically scrollable region so
    content dissolves into the chrome instead of being chopped by a hard
    line. Use on drawer content panels, the chat list, etc. */

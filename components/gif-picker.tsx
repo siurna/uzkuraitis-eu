@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Search, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { useLang, t } from "@/lib/i18n";
 
 type GifResult = {
@@ -16,12 +15,29 @@ type GifResult = {
   height: number;
 };
 
+// One-tap reaction prompts shown when the search box is empty — pill
+// buttons that drop straight into the search field. Klipy-friendly
+// queries, intentionally not localised (the GIF index is English).
+const QUICK_QUERIES = [
+  "yes",
+  "omg",
+  "fire",
+  "lol",
+  "no way",
+  "love",
+  "shocked",
+  "thank you",
+  "applause",
+  "dance",
+];
+
 // GIF picker — a near-full-height modal sized to the *visual viewport*,
 // so it sits from just below the top of the screen down to the on-screen
 // keyboard (the search input autofocuses). Tap a tile → onPick(url) +
 // close. Errors degrade to "no results". Portaled to <body> to dodge
 // transformed ancestors (see BottomSheet for the why). Debounced search
-// hits /api/gif/search which proxies + caches Klipy.
+// hits /api/gif/search which proxies + caches Klipy. The results render
+// in a CSS-column masonry so tall and short tiles flow naturally.
 export function GifPicker({
   open,
   onClose,
@@ -38,6 +54,7 @@ export function GifPicker({
   const [vv, setVv] = useState<{ top: number; h: number } | null>(null);
   const [mounted, setMounted] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => setMounted(true), []);
 
   // Track the bit of the page above the keyboard while open.
@@ -52,6 +69,17 @@ export function GifPicker({
     return () => {
       win?.removeEventListener("resize", update);
       win?.removeEventListener("scroll", update);
+    };
+  }, [open]);
+
+  // Lock body scroll while the picker is up so swipes inside the modal
+  // don't bleed through to the room behind it.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
     };
   }, [open]);
 
@@ -118,30 +146,65 @@ export function GifPicker({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 18, scale: 0.98 }}
             transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-x-3 sm:inset-x-0 z-[70] mx-auto w-auto sm:w-full max-w-md
+            // Width matches the BottomSheet drawers — same a-few-px
+            // gutter on mobile, capped on tablet/desktop.
+            className="fixed inset-x-2 sm:inset-x-0 z-[70] mx-auto w-auto sm:w-full max-w-md
                        glass-card rounded-3xl overflow-hidden flex flex-col"
             style={vv ? { top: vv.top + 12, height: vv.h - 12 } : { top: 12, bottom: 12 }}
           >
-            <div className="shrink-0 px-4 pt-3 pb-2 flex items-center gap-2">
-              <div className="relative flex-1">
+            {/* Top bar: search field on the left, close X cleanly anchored
+                to the top-right corner of the modal. */}
+            <div className="shrink-0 px-4 pt-3 pb-2 relative">
+              <div className="relative pr-12">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-dark-blue-200 pointer-events-none" />
-                <Input
+                <input
+                  ref={inputRef}
+                  // type="search" gives us the native clear pill on some
+                  // platforms; we render our own X regardless. name/auto*
+                  // explicitly block the phone's "username / email"
+                  // autofill prompt that fires on plain text inputs.
+                  type="search"
+                  name="gif-search"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  enterKeyHint="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={t(lang, "gif_search")}
-                  className="h-11 pl-9"
+                  className="h-11 w-full rounded-md border border-white/15 bg-black/30 pl-9 pr-9
+                             text-sm text-white placeholder:text-white/40
+                             focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 transition"
                   autoFocus
                 />
+                {query.length > 0 && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setQuery("");
+                      inputRef.current?.focus();
+                    }}
+                    aria-label={t(lang, "clear")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center
+                               rounded-full text-white/55 hover:text-white hover:bg-white/10 transition"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
               <button
                 type="button"
                 onClick={onClose}
                 aria-label={t(lang, "close")}
-                className="shrink-0 h-11 w-11 rounded-full grid place-items-center text-dark-blue-200 hover:text-white transition"
+                className="absolute right-3 top-3 h-9 w-9 grid place-items-center rounded-full
+                           text-white/55 hover:text-white hover:bg-white/10 transition"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
+
             <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
               {loading && results.length === 0 ? (
                 <div className="grid grid-cols-2 gap-2">
@@ -150,13 +213,36 @@ export function GifPicker({
                   ))}
                 </div>
               ) : results.length === 0 ? (
-                <p className="text-center text-white/40 text-sm py-10">
-                  {query.trim() ? t(lang, "gif_empty") : t(lang, "gif_hint")}
-                </p>
+                query.trim() ? (
+                  <p className="text-center text-white/40 text-sm py-10">{t(lang, "gif_empty")}</p>
+                ) : (
+                  // Empty-state: pill suggestions instead of a hint
+                  // string. Tapping one drops the query straight into
+                  // the search box and fires the debounced fetch.
+                  <div className="flex flex-wrap justify-center gap-2 pt-6 px-2">
+                    {QUICK_QUERIES.map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => {
+                          setQuery(q);
+                          inputRef.current?.focus();
+                        }}
+                        className="h-9 px-4 rounded-full bg-white/[0.06] ring-1 ring-white/12
+                                   text-sm text-white/85 hover:bg-white/[0.12] hover:ring-white/25
+                                   active:scale-[0.97] transition transform-gpu"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                )
               ) : (
-                <ul className="grid grid-cols-2 gap-2">
+                // CSS columns masonry — tall + short tiles tile cleanly
+                // without a JS layout pass.
+                <ul className="columns-2 gap-2 [column-fill:_balance]">
                   {results.map((g) => (
-                    <li key={g.id}>
+                    <li key={g.id} className="mb-2 break-inside-avoid">
                       <button
                         type="button"
                         onClick={() => {
