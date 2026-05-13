@@ -10,6 +10,7 @@ import { AdminRoomRename } from "@/components/admin-room-rename";
 import { AdminRoomCode } from "@/components/admin-room-code";
 import { AdminRoomManageLink } from "@/components/admin-room-manage-link";
 import { AdminRoomCommentatorToggle } from "@/components/admin-room-commentator-toggle";
+import { AdminRoomTallyToggle } from "@/components/admin-room-tally-toggle";
 import { AdminRoomTabs } from "@/components/admin-room-tabs";
 import { Flag } from "@/components/flag";
 
@@ -296,6 +297,13 @@ export default async function AdminRoomDetailPage({
             <section className="glass-card rounded-xl p-5">
               <h2 className="font-display text-xl mb-3">Join code</h2>
               <AdminRoomCode code={room.code} />
+            </section>
+            <section className="glass-card rounded-xl p-5">
+              <h2 className="font-display text-xl mb-3">Reveal results</h2>
+              <AdminRoomTallyToggle
+                code={room.code}
+                initialEnabled={room.tallyEnabled}
+              />
             </section>
             <section className="glass-card rounded-xl p-5">
               <h2 className="font-display text-xl mb-3">Auto-commentator</h2>

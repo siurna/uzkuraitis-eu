@@ -130,6 +130,7 @@ const S = {
   tab_chat:          { en: "Chat", lt: "Pokalbiai" },
   tab_bingo:         { en: "Bingo", lt: "Bingo" },
   tab_vote:          { en: "Vote", lt: "Balsuok" },
+  tab_results:       { en: "Results", lt: "Rezultatai" },
 
   // ── Home banners (context-aware shortcuts) ───────────────────────
   home_vote_open:      { en: "Voting is open, cast your TOP 10", lt: "Balsavimas atidarytas, paskelbk savo TOP 10" },
@@ -220,23 +221,6 @@ const S = {
   // ── Country deep-dive ────────────────────────────────────────────
   deep_artist:       { en: "Artist", lt: "Atlikėjas" },
   deep_song:         { en: "Song", lt: "Daina" },
-
-  // ── End-of-show reveal ───────────────────────────────────────────
-  reveal_cta:        { en: "Reveal my night", lt: "Kaip man sekėsi?" },
-  reveal_title:      { en: "Your Eurovision night", lt: "Tavo Eurovizijos vakaras" },
-  reveal_done:       { en: "Done", lt: "Baigta" },
-  reveal_top10:      { en: "Top 10 ballot", lt: "TOP10 balsas" },
-  reveal_home:       { en: (home: string) => `${home} placement`, lt: (home: string) => `${home} vieta` },
-  reveal_home_total: { en: (home: string) => `${home} total points`, lt: (home: string) => `${home} taškai iš viso` },
-  reveal_wooden:     { en: "Wooden spoon", lt: "Paskutinė vieta" },
-  reveal_lt12to:     { en: (home: string) => `12 from ${home}`, lt: (home: string) => `12 iš ${home}` },
-  reveal_big5:       { en: "Best of the Big 5", lt: "Geriausias iš Big 5" },
-  reveal_jury:       { en: "Jury winner", lt: "Žiuri nugalėtojas" },
-  reveal_tele:       { en: "Televote winner", lt: "Žiūrovų nugalėtojas" },
-  reveal_nul:        { en: "Zero from televote", lt: "Nulis iš žiūrovų" },
-  reveal_host:       { en: "Host top 3", lt: "Šeimininkai TOP3" },
-  reveal_solo:       { en: "Solo winner", lt: "Solo nugalėtojas" },
-  reveal_total:      { en: "Your final score", lt: "Galutinis rezultatas" },
 
   // ── Social share ─────────────────────────────────────────────────
   share_picks:        { en: "Share my TOP10", lt: "Dalinkis savo TOP10" },
