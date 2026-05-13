@@ -52,9 +52,11 @@ export function RoomLiveControls({
 
   const setStatus = (next: ShowStatus) => {
     setStatusState(next);
-    // Anything other than "in progress" wipes who's on stage — a
-    // break or "not started" shouldn't keep showing the last act.
-    if (next !== "in_progress" && nowPlaying) {
+    // Only "not started" wipes who's on stage. A break should resume
+    // exactly where it left off — going to break then back to "in
+    // progress" must NOT reset the running order. (The now-playing hero
+    // hides on any non-"in_progress" status anyway.)
+    if (next === "not_started" && nowPlaying) {
       setNowPlaying(null);
       run({ showStatus: next, nowPlayingCode: null });
     } else {

@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Reply, Pencil, Copy, Trash2, Smile, Loader2, Mic, Music, Trophy, Plus,
 } from "lucide-react";
-import { toast } from "sonner";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { getCountry, countryName } from "@/lib/countries";
@@ -93,7 +92,8 @@ function AddTopTenSheet({
     const next = placeInBallot(slots, code, target);
     writeBallot(roomCode, next);
     onClose();
-    toast.success(t(lang, "np_placed", next[target].points));
+    // No toast — the now-playing card's badge flips to the new place,
+    // that's confirmation enough.
   };
 
   return (
@@ -366,6 +366,29 @@ export function ChatRow({
 
   const deepDive = useCountryDeepDive();
   const [addOpen, setAddOpen] = useState(false); // "+ TOP 10" sheet (now-playing card)
+  // For the *active* now-playing card: where this country sits in your
+  // draft TOP 10 (1-based), or null if it isn't on your ballot. Drives
+  // the badge ("#3" vs "+ TOP 10"); re-reads on uzk:ballot-changed.
+  const npCode = isNowPlaying ? (m.meta as { code?: string } | null)?.code ?? null : null;
+  const npActive = !!npCode && npCode === nowPlayingCode;
+  const [ballotPos, setBallotPos] = useState<number | null>(null);
+  useEffect(() => {
+    if (!npActive || !npCode) return;
+    const read = () => {
+      try {
+        const slots = JSON.parse(localStorage.getItem(`uzk_ballot_${roomCode}`) ?? "null");
+        const i = Array.isArray(slots)
+          ? slots.findIndex((s: { countryCode?: string | null }) => s?.countryCode === npCode)
+          : -1;
+        setBallotPos(i >= 0 ? i + 1 : null);
+      } catch {
+        setBallotPos(null);
+      }
+    };
+    read();
+    window.addEventListener("uzk:ballot-changed", read);
+    return () => window.removeEventListener("uzk:ballot-changed", read);
+  }, [npActive, npCode, roomCode]);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longFired = useRef(false);
   const startPress = () => {
@@ -374,7 +397,7 @@ export function ChatRow({
     pressTimer.current = setTimeout(() => {
       longFired.current = true;
       onOpenMenu();
-    }, 450);
+    }, 320);
   };
   const cancelPress = () => {
     if (pressTimer.current) {
@@ -488,16 +511,29 @@ export function ChatRow({
             <div className="flex flex-col items-end gap-2 shrink-0">
               <span className="text-[10px] text-white/30 tabular-nums">{time}</span>
               {country && isActive && (
-                <button
-                  type="button"
-                  onClick={() => setAddOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white text-dark-blue
-                             px-3 h-8 font-display text-xs leading-none shadow-sm
-                             active:scale-95 transition transform-gpu"
-                >
-                  <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
-                  {t(lang, "np_add_top10")}
-                </button>
+                ballotPos != null ? (
+                  <button
+                    type="button"
+                    onClick={() => setAddOpen(true)}
+                    aria-label={`#${ballotPos} in your TOP 10 — tap to change`}
+                    className="inline-flex items-center justify-center h-8 min-w-[2.25rem] px-2 rounded-full
+                               bg-white/18 ring-1 ring-white/30 text-white font-display text-xs tabular-nums
+                               active:scale-95 transition transform-gpu"
+                  >
+                    #{ballotPos}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAddOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-white text-dark-blue
+                               px-3 h-8 font-display text-xs leading-none shadow-sm
+                               active:scale-95 transition transform-gpu"
+                  >
+                    <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+                    {t(lang, "np_add_top10")}
+                  </button>
+                )
               )}
             </div>
           </div>
@@ -640,7 +676,12 @@ export function ChatRow({
               ) : isMedia ? (
                 <span className="relative block">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={m.gifUrl!} alt="" className="block max-h-60 w-auto rounded-2xl" />
+                  <img
+                    src={m.gifUrl!}
+                    alt=""
+                    onLoad={() => window.dispatchEvent(new Event("uzk:chat-media-loaded"))}
+                    className="block max-h-60 w-auto rounded-2xl"
+                  />
                   {m.kind === "image" && m.pending && (
                     <span className="absolute inset-0 grid place-items-center bg-black/30 rounded-2xl">
                       <Loader2 className="h-5 w-5 text-white animate-spin" />
@@ -665,7 +706,7 @@ export function ChatRow({
                   initial={{ opacity: 0, scale: 0.85, y: -8 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9, y: -6 }}
-                  transition={{ type: "spring", stiffness: 640, damping: 30, mass: 0.5 }}
+                  transition={{ type: "spring", stiffness: 900, damping: 30, mass: 0.4 }}
                   onClick={(e) => e.stopPropagation()}
                   className={`absolute top-full mt-2 z-30 flex flex-col gap-2 ${mine ? "right-0 items-end" : "left-0 items-start"}`}
                 >
@@ -678,7 +719,7 @@ export function ChatRow({
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        transition={{ delay: i * 0.02, type: "spring", stiffness: 800, damping: 22 }}
+                        transition={{ delay: i * 0.012, type: "spring", stiffness: 1000, damping: 24 }}
                         className={`h-11 w-11 shrink-0 rounded-full grid place-items-center text-xl leading-none
                                     ring-1 ring-white/20 bg-gradient-to-br ${bg}
                                     shadow-[0_4px_12px_-3px_rgba(0,0,0,0.55)] transition-transform active:scale-90`}

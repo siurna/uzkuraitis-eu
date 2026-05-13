@@ -392,6 +392,17 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     setNewCount(0);
   }, [active]);
 
+  // A GIF / image finished loading and pushed the list taller — if we
+  // were parked at the bottom (e.g. you just sent it), stay there.
+  useEffect(() => {
+    const stick = () => {
+      const el = listRef.current;
+      if (el && atBottomRef.current) el.scrollTop = el.scrollHeight;
+    };
+    window.addEventListener("uzk:chat-media-loaded", stick);
+    return () => window.removeEventListener("uzk:chat-media-loaded", stick);
+  }, []);
+
   // ----- composer / typing -----
   const onComposerChange = (v: string) => {
     setBody(v.slice(0, 2000));
