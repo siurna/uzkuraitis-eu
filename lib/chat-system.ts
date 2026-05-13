@@ -1,5 +1,11 @@
+import { inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { chatMessages } from "@/lib/db/schema";
+import {
+  chatMessages,
+  commentator,
+  COMMENTATOR_NAME_KEY,
+  COMMENTATOR_PHOTO_KEY,
+} from "@/lib/db/schema";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { getCountry } from "@/lib/countries";
 import { computeRoomLeaderboard } from "@/lib/leaderboard";
@@ -93,6 +99,43 @@ export async function postResultsMessage(
     await broadcastToRoom(roomCode, { type: "chat:new", id: row.id });
   } catch {
     /* not worth a 500 */
+  }
+}
+
+// The "live commentator": once a country is on stage, if a bot name is
+// configured AND a line exists for that country, the bot drops the line
+// into chat as its own (non-system) message, carrying its photo in meta
+// so the client renders it as the bot's avatar. Best-effort; quiet (it
+// fires every song, no point badging the tab each time).
+export async function postCommentatorMessage(
+  roomCode: string,
+  roomId: string,
+  countryCode: string,
+): Promise<void> {
+  try {
+    const rows = await db
+      .select()
+      .from(commentator)
+      .where(inArray(commentator.countryCode, [countryCode, COMMENTATOR_NAME_KEY, COMMENTATOR_PHOTO_KEY]));
+    const byKey = new Map(rows.map((r) => [r.countryCode, r.text]));
+    const name = byKey.get(COMMENTATOR_NAME_KEY)?.trim();
+    const line = byKey.get(countryCode)?.trim();
+    if (!name || !line) return; // bot not set up, or nothing to say for this country
+    const photo = byKey.get(COMMENTATOR_PHOTO_KEY)?.trim() || null;
+    const [row] = await db
+      .insert(chatMessages)
+      .values({
+        roomId,
+        sessionId: "commentator",
+        name,
+        kind: "text",
+        body: line,
+        meta: { commentator: true, commentatorPhoto: photo, nowPlaying: countryCode },
+      })
+      .returning({ id: chatMessages.id });
+    await broadcastToRoom(roomCode, { type: "chat:new", id: row.id, quiet: true });
+  } catch {
+    /* a missing commentary line is not worth a 500 */
   }
 }
 
