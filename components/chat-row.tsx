@@ -185,19 +185,20 @@ export type Message = {
   pending?: boolean;
 };
 
-// Inline **bold** / *italic* (non-greedy, no nesting). Returns a string
-// when there's no markup, else an array of nodes.
+// Inline **bold** / *italic* / __underline__ (non-greedy, no nesting).
+// Returns a string when there's no markup, else an array of nodes.
 function renderInline(s: string): React.ReactNode {
-  if (!s.includes("*")) return s;
+  if (!s.includes("*") && !s.includes("__")) return s;
   const parts: React.ReactNode[] = [];
-  const re = /\*\*([^*]+?)\*\*|\*([^*]+?)\*/g;
+  const re = /\*\*([^*]+?)\*\*|\*([^*]+?)\*|__([^_]+?)__/g;
   let last = 0;
   let k = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(s))) {
     if (m.index > last) parts.push(s.slice(last, m.index));
     if (m[1] != null) parts.push(<strong key={k++}>{m[1]}</strong>);
-    else parts.push(<em key={k++}>{m[2]}</em>);
+    else if (m[2] != null) parts.push(<em key={k++}>{m[2]}</em>);
+    else parts.push(<u key={k++}>{m[3]}</u>);
     last = re.lastIndex;
   }
   if (parts.length === 0) return s;

@@ -13,6 +13,7 @@ import {
 import { isAdminAuthed } from "@/lib/admin/session";
 import { findRoomByCode } from "@/lib/rooms";
 import { countries } from "@/lib/countries";
+import { AVATARS } from "@/lib/avatars";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 
 // Dev-only seeding: throw demo voters (random ballots + bets), a few
@@ -142,14 +143,17 @@ export async function POST(req: Request) {
   // to surface on Home.
   const npCode = room.nowPlayingCode ?? null;
   for (let i = 0; i < count; i++) {
+    // ~25% of highlights happen "in the interval" — no country attached.
+    const npForThis = Math.random() < 0.25 ? null : npCode ?? pick(codes);
     const [msg] = await db
       .insert(chatMessages)
       .values({
         roomId: room.id,
         sessionId: `seed-hl-${Date.now()}-${i}-${rid()}`,
         name: pick(DEMO_NAMES),
+        avatarId: pick(AVATARS).id,
         body: pick(HL_LINES),
-        meta: { nowPlaying: npCode ?? pick(codes) },
+        meta: npForThis ? { nowPlaying: npForThis } : {},
       })
       .returning({ id: chatMessages.id });
     if (!msg) continue;

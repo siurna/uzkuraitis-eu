@@ -1,6 +1,10 @@
+import { desc } from "drizzle-orm";
+import { Radio } from "lucide-react";
 import { db } from "@/lib/db";
 import { rooms } from "@/lib/db/schema";
 import { AdminLivePanel } from "@/components/admin-live-panel";
+import { AdminBroadcasts } from "@/components/admin-broadcasts";
+import { AdminPageTitle } from "@/components/admin-page-title";
 
 // Global live controller. The admin runs the real broadcast from here:
 // flip the show status / pick who's on stage and it fans out to every
@@ -10,10 +14,14 @@ import { AdminLivePanel } from "@/components/admin-live-panel";
 export default async function AdminLivePage() {
   const rows = await db
     .select({
+      code: rooms.code,
+      name: rooms.name,
       showStatus: rooms.showStatus,
       nowPlayingCode: rooms.nowPlayingCode,
+      lastActiveAt: rooms.lastActiveAt,
     })
-    .from(rooms);
+    .from(rooms)
+    .orderBy(desc(rooms.lastActiveAt));
 
   const mode = <T extends string | number | null>(values: T[]): T | null => {
     const counts = new Map<string, { value: T; n: number }>();
@@ -38,9 +46,12 @@ export default async function AdminLivePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display text-3xl gradient-text heading-rise">Live</h1>
-      <div className="glass-card rounded-xl p-5 max-w-md">
-        <AdminLivePanel initialStatus={status} initialNowPlaying={nowPlaying} />
+      <AdminPageTitle icon={Radio}>Live</AdminPageTitle>
+      <div className="grid gap-6 lg:grid-cols-2 items-start">
+        <div className="glass-card rounded-xl p-5">
+          <AdminLivePanel initialStatus={status} initialNowPlaying={nowPlaying} />
+        </div>
+        <AdminBroadcasts rooms={rows.map((r) => ({ code: r.code, name: r.name }))} />
       </div>
     </div>
   );

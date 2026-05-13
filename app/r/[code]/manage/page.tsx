@@ -34,6 +34,7 @@ export default async function RoomManagePage({
         name: room.name,
         votingEnabled: room.votingEnabled,
         tallyEnabled: room.tallyEnabled,
+        commentatorEnabled: room.commentatorEnabled,
         nowPlayingCode: room.nowPlayingCode,
         showStatus: room.showStatus as
           | "not_started"

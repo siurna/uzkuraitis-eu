@@ -7,6 +7,7 @@ import { getCountry } from "@/lib/countries";
 import { AdminRoomToggle } from "@/components/admin-room-toggle";
 import { AdminRoomDangerZone } from "@/components/admin-room-danger-zone";
 import { AdminRoomRename } from "@/components/admin-room-rename";
+import { AdminRoomCode } from "@/components/admin-room-code";
 import { AdminRoomManageLink } from "@/components/admin-room-manage-link";
 import { AdminRoomTabs } from "@/components/admin-room-tabs";
 import { Flag } from "@/components/flag";
@@ -255,6 +256,10 @@ export default async function AdminRoomDetailPage({
             <section className="glass-card rounded-xl p-5">
               <h2 className="font-display text-xl mb-3">Room name</h2>
               <AdminRoomRename code={room.code} initialName={room.name} />
+            </section>
+            <section className="glass-card rounded-xl p-5">
+              <h2 className="font-display text-xl mb-3">Join code</h2>
+              <AdminRoomCode code={room.code} />
             </section>
             <AdminRoomManageLink code={room.code} adminToken={room.adminToken} />
           </div>

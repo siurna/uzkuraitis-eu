@@ -26,6 +26,8 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the deep dive.
 
 8. **Admin pages stay English.** Voter-facing surfaces use `t(lang, key)`. Admin uses literal English strings — by design.
 
+9. **Admin pages share one chrome.** Every `/admin/*` page opens with `<AdminPageTitle icon={Icon}>Title</AdminPageTitle>` (`components/admin-page-title.tsx`) — a flamingo-tinted icon tile + gradient `<h1>`. The icon must match that section's icon in `components/admin-nav.tsx` (Live → `Radio`, Rooms → `Vote`, Results → `Trophy`, Settings → `Settings`). Card-section headers inside a page repeat the same icon-tile pattern at `h-10 w-10`.
+
 ## Useful scripts
 
 ```bash
@@ -42,7 +44,7 @@ pnpm db:migrate  # apply migrations (we usually do this manually via @neondataba
 |---|---|
 | A new country chip surface | `components/flag.tsx` (`<HeartFlag/>`) |
 | A new bonus bet | `lib/scoring.ts` + `components/bonus-bets-form.tsx` + DB column + i18n keys |
-| A new admin surface | `app/admin/(authed)/<name>/page.tsx` + maybe a tab in `components/admin-room-tabs.tsx` |
+| A new admin surface | `app/admin/(authed)/<name>/page.tsx` (open with `<AdminPageTitle/>`) + maybe a tab in `components/admin-room-tabs.tsx` |
 | A new translation | `lib/i18n.ts` (both `en` and `lt`) |
 | A new broadcast event | `lib/liveblocks.ts` (union) + emit + listen |
 | A new bottom-sheet | Wrap your content in `<BottomSheet/>` from `components/ui/bottom-sheet.tsx` |

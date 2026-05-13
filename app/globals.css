@@ -263,12 +263,12 @@
   background:
     linear-gradient(
       180deg,
-      oklch(24% 0.04 264 / 0.72) 0%,
-      oklch(18% 0.05 264 / 0.62) 100%
+      oklch(25% 0.04 264 / 0.6) 0%,
+      oklch(18% 0.05 264 / 0.46) 100%
     );
   border: 1px solid oklch(95% 0.005 250 / 0.10);
-  backdrop-filter: blur(14px) saturate(1.05);
-  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  backdrop-filter: blur(20px) saturate(1.12);
+  -webkit-backdrop-filter: blur(20px) saturate(1.12);
   box-shadow: var(--shadow-soft);
 }
 

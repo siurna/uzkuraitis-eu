@@ -33,6 +33,7 @@ const PatchSchema = z.object({
   name: z.string().trim().min(1).max(60).optional(),
   votingEnabled: z.boolean().optional(),
   tallyEnabled: z.boolean().optional(),
+  commentatorEnabled: z.boolean().optional(),
   homeCountryCode: z.string().length(2).optional(),
   code: z.string().min(6).max(6).optional(),
   // Now-playing country (ISO-2 lowercase) or null to clear.
@@ -63,6 +64,7 @@ export async function GET(req: Request, { params }: RouteCtx) {
       name: room.name,
       votingEnabled: room.votingEnabled,
       tallyEnabled: room.tallyEnabled,
+      commentatorEnabled: room.commentatorEnabled,
       homeCountryCode: room.homeCountryCode,
       nowPlayingCode: room.nowPlayingCode,
       showStatus: room.showStatus,

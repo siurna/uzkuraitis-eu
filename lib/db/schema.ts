@@ -38,6 +38,9 @@ export const rooms = pgTable(
     // header + tabs depending on the value. "not_started" → "in_progress"
     // → "break" → "ended" → "not_started" (next semi/final).
     showStatus: text("show_status").notNull().default("not_started"),
+    // When false, the live-commentator bot stays quiet in this room even
+    // if it's configured globally. Host-toggled from the magic admin link.
+    commentatorEnabled: boolean("commentator_enabled").notNull().default(true),
     // 1-based position of the current act in the running order (e.g. 12
     // of 26). Admin-set alongside now-playing; powers the progress bar on
     // the now-playing hero. NULL = unknown / not tracking.

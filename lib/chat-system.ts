@@ -1,8 +1,9 @@
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   chatMessages,
   commentator,
+  rooms,
   COMMENTATOR_NAME_KEY,
   COMMENTATOR_PHOTO_KEY,
 } from "@/lib/db/schema";
@@ -113,6 +114,12 @@ export async function postCommentatorMessage(
   countryCode: string,
 ): Promise<void> {
   try {
+    const [room] = await db
+      .select({ on: rooms.commentatorEnabled })
+      .from(rooms)
+      .where(eq(rooms.id, roomId))
+      .limit(1);
+    if (room && room.on === false) return; // host muted the bot for this room
     const rows = await db
       .select()
       .from(commentator)
