@@ -11,15 +11,14 @@ type Mode = "voters" | "highlights" | "results";
 // Admin › Settings: a tidy dev-seed panel — demo voters, random official
 // results + facts, and reaction-heavy "highlights" — so the leaderboard
 // and Home widgets have something to chew on without a real crowd.
-export function AdminSeed() {
-  const [room, setRoom] = useState("");
+export function AdminSeed({ rooms }: { rooms: { code: string; name: string }[] }) {
+  const [room, setRoom] = useState(rooms[0]?.code ?? "");
   const [voterN, setVoterN] = useState(8);
   const [busy, setBusy] = useState<Mode | null>(null);
 
   const run = async (mode: Mode, opts: { count?: number; needsRoom?: boolean } = {}) => {
-    const code = room.trim().toUpperCase();
-    if (opts.needsRoom && code.length !== 6) {
-      toast.error("Enter a 6-character room code first.");
+    if (opts.needsRoom && !room) {
+      toast.error("Pick a room first.");
       return;
     }
     setBusy(mode);
@@ -27,7 +26,7 @@ export function AdminSeed() {
       const res = await fetch("/api/admin/seed", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode, ...(opts.needsRoom ? { room: code } : {}), ...(opts.count ? { count: opts.count } : {}) }),
+        body: JSON.stringify({ mode, ...(opts.needsRoom ? { room } : {}), ...(opts.count ? { count: opts.count } : {}) }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; created?: number; placed?: number; error?: string };
       if (!res.ok) {
@@ -36,10 +35,10 @@ export function AdminSeed() {
       }
       toast.success(
         mode === "voters"
-          ? `Seeded ${data.created ?? voterN} demo voters into ${code}.`
+          ? `Seeded ${data.created ?? voterN} demo voters into ${room}.`
           : mode === "results"
             ? `Seeded ${data.placed ?? "all"} final placements + facts (global).`
-            : `Posted ${data.created ?? 3} highlight messages into ${code}.`,
+            : `Posted ${data.created ?? 3} highlight messages into ${room}.`,
       );
     } catch {
       toast.error("Seed failed (network).");
@@ -62,13 +61,23 @@ export function AdminSeed() {
 
       {/* room scope — used by the per-room actions below */}
       <label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-        <span className="text-xs uppercase tracking-[0.18em] text-white/40 font-display sm:w-28 shrink-0">Room code</span>
-        <Input
-          value={room}
-          onChange={(e) => setRoom(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))}
-          placeholder="ABC234"
-          className="h-10 w-full sm:w-48 uppercase tracking-[0.25em] font-display"
-        />
+        <span className="text-xs uppercase tracking-[0.18em] text-white/40 font-display sm:w-28 shrink-0">Room</span>
+        {rooms.length === 0 ? (
+          <span className="text-sm text-white/40">No rooms yet.</span>
+        ) : (
+          <select
+            value={room}
+            onChange={(e) => setRoom(e.target.value)}
+            className="h-10 rounded-lg bg-black/30 border border-white/15 px-3 text-sm text-white
+                       focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 w-full sm:w-72"
+          >
+            {rooms.map((r) => (
+              <option key={r.code} value={r.code} className="bg-dark-blue-900">
+                {r.name} ({r.code})
+              </option>
+            ))}
+          </select>
+        )}
       </label>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -142,3 +151,4 @@ function SeedCard({
     </div>
   );
 }
+

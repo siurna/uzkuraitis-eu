@@ -185,10 +185,31 @@ export type Message = {
   pending?: boolean;
 };
 
-// Render @mentions inside message text as highlighted tokens. Only known
-// participant names count (case-insensitive, longest match wins).
+// Inline **bold** / *italic* (non-greedy, no nesting). Returns a string
+// when there's no markup, else an array of nodes.
+function renderInline(s: string): React.ReactNode {
+  if (!s.includes("*")) return s;
+  const parts: React.ReactNode[] = [];
+  const re = /\*\*([^*]+?)\*\*|\*([^*]+?)\*/g;
+  let last = 0;
+  let k = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s))) {
+    if (m.index > last) parts.push(s.slice(last, m.index));
+    if (m[1] != null) parts.push(<strong key={k++}>{m[1]}</strong>);
+    else parts.push(<em key={k++}>{m[2]}</em>);
+    last = re.lastIndex;
+  }
+  if (parts.length === 0) return s;
+  if (last < s.length) parts.push(s.slice(last));
+  return parts;
+}
+
+// Render @mentions inside message text as highlighted tokens (+ inline
+// **bold** / *italic*). Only known participant names count
+// (case-insensitive, longest match wins).
 function renderBody(text: string, names: string[]): React.ReactNode {
-  if (!text.includes("@") || names.length === 0) return text;
+  if (!text.includes("@") || names.length === 0) return renderInline(text);
   const lower = names.map((n) => n.toLowerCase());
   const out: React.ReactNode[] = [];
   let i = 0;
@@ -212,7 +233,7 @@ function renderBody(text: string, names: string[]): React.ReactNode {
     }
     const next = text.indexOf("@", i + 1);
     const end = next === -1 ? text.length : next;
-    out.push(<span key={key++}>{text.slice(i, end)}</span>);
+    out.push(<span key={key++}>{renderInline(text.slice(i, end))}</span>);
     i = end;
   }
   return out;

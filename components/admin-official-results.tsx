@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Save, Trophy } from "lucide-react";
+import { Trash2, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { countries } from "@/lib/countries";
@@ -119,12 +119,6 @@ export function AdminOfficialResults({
         </span>
       </header>
 
-      <p className="text-xs text-white/50 mb-4">
-        Top 10 placements only. Pick the country for each slot; the
-        placement number is locked. Saving broadcasts the new leaderboard
-        to every room.
-      </p>
-
       <ol className="flex flex-col gap-2">
         {rows.map((row) => (
           <li
@@ -185,7 +179,6 @@ export function AdminOfficialResults({
           disabled={pending}
           className="bg-white text-dark-blue hover:bg-dark-blue-50"
         >
-          <Save className="h-4 w-4 mr-1.5" />
           {pending ? "Saving…" : "Save"}
         </Button>
       </div>
