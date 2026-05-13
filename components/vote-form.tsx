@@ -542,7 +542,7 @@ function ScaleRow({ items }: { items: readonly (readonly [string, number])[] }) 
       {items.map(([off, pts]) => (
         <span
           key={off}
-          className="inline-flex items-center gap-1 rounded-lg bg-black/30 ring-1 ring-white/10 pl-1.5 pr-1.5 py-1 text-xs leading-none"
+          className="inline-flex items-center gap-1 rounded-lg bg-black/30 ring-1 ring-white/10 px-2 py-1.5 text-[13px] leading-none"
         >
           <span className="text-white/40 tabular-nums">{off}</span>
           <span className="text-white/25">→</span>
@@ -584,23 +584,23 @@ function RulesPanel({
 
       {/* TOP 10 ballot */}
       <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-2.5">
-        <p className="font-display text-sm text-white/90">{t(lang, "rules_top10_h")}</p>
-        <p className="text-sm text-white/60 leading-relaxed text-pretty">{t(lang, "rules_top10_b")}</p>
-        <p className="text-xs text-white/45 leading-relaxed pt-0.5">{t(lang, "rules_top10_eg")}</p>
+        <p className="font-display text-base text-white/90">{t(lang, "rules_top10_h")}</p>
+        <p className="text-[15px] text-white/65 leading-relaxed text-pretty">{t(lang, "rules_top10_b")}</p>
+        <p className="text-[13px] text-white/45 leading-relaxed pt-0.5">{t(lang, "rules_top10_eg")}</p>
         <ScaleRow items={[["0", 12], ["1", 10], ["2", 8], ["3", 7], ["5", 5], ["9", 1]]} />
       </div>
 
       {/* Home-country placement */}
       <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-2.5">
-        <p className="font-display text-sm text-white/90">{t(lang, "rules_home_h")}</p>
-        <p className="text-sm text-white/60 leading-relaxed text-pretty">{tr("rules_home_b")}</p>
+        <p className="font-display text-base text-white/90">{t(lang, "rules_home_h")}</p>
+        <p className="text-[15px] text-white/65 leading-relaxed text-pretty">{tr("rules_home_b")}</p>
         <ScaleRow items={[["0", 12], ["1", 10], ["2", 8], ["3", 7], ["5", 5], ["9", 1]]} />
       </div>
 
       {/* Bonus bets */}
       <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-3">
-        <p className="font-display text-sm text-white/90">{t(lang, "rules_bets_h")}</p>
-        <p className="text-xs text-white/50 leading-relaxed">{t(lang, "rules_bets_intro")}</p>
+        <p className="font-display text-base text-white/90">{t(lang, "rules_bets_h")}</p>
+        <p className="text-[13px] text-white/50 leading-relaxed">{t(lang, "rules_bets_intro")}</p>
         <ul className="flex flex-col">
           {bets.map((b) => (
             <li
@@ -608,8 +608,8 @@ function RulesPanel({
               className="flex items-start gap-3 py-2.5 border-t border-white/8 first:border-t-0 first:pt-0 last:pb-0"
             >
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-white/85 leading-snug">{b.label}</p>
-                <p className="text-xs text-white/45 leading-snug mt-0.5 text-pretty">{b.sub}</p>
+                <p className="text-[15px] text-white/85 leading-snug">{b.label}</p>
+                <p className="text-[13px] text-white/45 leading-snug mt-0.5 text-pretty">{b.sub}</p>
               </div>
               <span
                 className={`shrink-0 mt-0.5 rounded-lg px-2 py-1 text-xs font-display tabular-nums leading-none ${
@@ -623,6 +623,12 @@ function RulesPanel({
             </li>
           ))}
         </ul>
+      </div>
+
+      {/* Chat highlights bonus */}
+      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-2">
+        <p className="font-display text-base text-white/90">{t(lang, "breakdown_highlights")}</p>
+        <p className="text-[15px] text-white/65 leading-relaxed text-pretty">{t(lang, "rules_highlights_b")}</p>
       </div>
     </section>
   );

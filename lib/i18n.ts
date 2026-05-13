@@ -116,7 +116,8 @@ const S = {
   rules_home_h:      { en: "Home-country placement", lt: "Savo šalies vieta" },
   rules_home_b:      { en: "Guess where {home} finishes. Nail it and that's 12 points; every place you're off slides you one rung down the Eurovision ladder (12 → 10 → 8 → 7 … 1):", lt: "Atspėk, kelintas liks {home}. Pataikei tiksliai — 12 taškų; už kiekvieną netaiklią vietą nuslysti pakopa žemyn Eurovizijos skale (12 → 10 → 8 → 7 … 1):" },
   rules_bets_h:      { en: "Bonus bets", lt: "Bonus statymai" },
-  rules_bets_intro:  { en: "Every bet is optional. You only score if you call it right — a skipped bet is just 0.", lt: "Kiekvienas statymas neprivalomas. Taškų gauni tik pataikęs — praleistas statymas tiesiog 0." },
+  rules_bets_intro:  { en: "Every bet is optional. You only score if you call it right; a skipped bet is just 0.", lt: "Kiekvienas statymas neprivalomas. Taškų gauni tik pataikęs; praleistas statymas tiesiog 0." },
+  rules_highlights_b:{ en: "When a chat message you sent picks up enough reactions it becomes a highlight: +2 points each, up to +12. (You have to have voted to score.)", lt: "Kai tavo žinutė pokalbyje surenka pakankamai reakcijų, ji tampa akcentu: po +2 t., iki +12. Taškai skaičiuojami tik balsavusiems." },
 
   // ── Room tab bar ─────────────────────────────────────────────────
   tab_home:          { en: "Home", lt: "Pradžia" },
