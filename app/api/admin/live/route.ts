@@ -6,6 +6,7 @@ import { isAdminAuthed } from "@/lib/admin/session";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { pushToRoom } from "@/lib/push";
 import { getCountry } from "@/lib/countries";
+import { invalidateRoomCache } from "@/lib/rooms";
 import { participantPhoto } from "@/lib/participants";
 import {
   postSystemMessage,
@@ -85,6 +86,9 @@ export async function POST(req: Request) {
 
   // Broadcast to every room + drop a system chat line where relevant.
   const all = await db.select({ id: rooms.id, code: rooms.code }).from(rooms);
+  // We just mutated EVERY room — bust the in-process cache so the next
+  // findRoomByCode() call reads the new showStatus / nowPlayingCode.
+  for (const r of all) invalidateRoomCache(r.code);
   await Promise.all(
     all.map(async ({ id, code }) => {
       await broadcastToRoom(code, { type: "room:updated" });

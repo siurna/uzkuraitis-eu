@@ -3,28 +3,13 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Languages } from "lucide-react";
+import { requestTranslation, type TranslationHit } from "@/lib/translate-batcher";
 
 // Renders an "in English" rendering under an incoming chat message when
-// the user has flipped the auto-translate setting on. The fetch result
-// is module-level cached so the same body across 30 connected clients
-// only ever runs through the model once per session.
-
-type Cached = { translate: boolean; text: string };
-const cache = new Map<string, Promise<Cached>>();
-
-function getTranslation(text: string): Promise<Cached> {
-  const cached = cache.get(text);
-  if (cached) return cached;
-  const promise = fetch("/api/translate", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text }),
-  })
-    .then((r) => (r.ok ? (r.json() as Promise<Cached>) : { translate: false, text: "" }))
-    .catch(() => ({ translate: false, text: "" }));
-  cache.set(text, promise);
-  return promise;
-}
+// the user has flipped the auto-translate setting on. Batched via
+// lib/translate-batcher: every bubble that mounts within a 100ms
+// window joins one POST + one model invocation, regardless of how many
+// of them there are.
 
 export function TranslationBubble({
   text,
@@ -35,11 +20,11 @@ export function TranslationBubble({
    *  bubble it belongs to. */
   mine: boolean;
 }) {
-  const [hit, setHit] = useState<Cached | null>(null);
+  const [hit, setHit] = useState<TranslationHit | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    getTranslation(text).then((r) => {
+    requestTranslation(text).then((r) => {
       if (!cancelled) setHit(r);
     });
     return () => {
