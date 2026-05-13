@@ -10,6 +10,7 @@ import { participantPhoto } from "@/lib/participants";
 import { optimizedSrc } from "@/lib/img";
 import { buildBingoCard, FREE_SQUARE, tropeEmoji, tropeText } from "@/lib/bingo-tropes";
 import { HeartFlag } from "@/components/flag";
+import { MyResults } from "@/components/my-results";
 import { t, type Language } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 
@@ -301,11 +302,10 @@ export function HomeBanners() {
   //   - else, lines open   → a Vote hero (cast OR adjust, copy adapts)
   //   - else nothing
   const showVoteHero = !playing && votingEnabled;
-  // "Your vote is in" small banner: ONLY when the user has actually
-  // cast a ballot. (Previously it also fired the "Lines are open!"
-  // copy whenever voting was on regardless of whether they'd voted,
-  // which doubled up with the Vote hero above.)
-  const showVoteBanner = voted && !showVoteHero;
+  // "Your vote is in" small banner: ONLY while voting is actively
+  // happening AND the viewer has cast. After lines close the banner
+  // serves no purpose (the ballot is final), so hide it entirely.
+  const showVoteBanner = voted && votingEnabled && !showVoteHero;
   // Hide the "place your bets" prompt once voting's off (nothing to do),
   // but keep showing it if you've already got bets down.
   const showBonusBanner = betsCount > 0 || votingEnabled;
@@ -327,6 +327,12 @@ export function HomeBanners() {
             />
           </motion.div>
         ) : null}
+
+        {/* Results widget — first card UNDER the now-playing / vote
+            hero. Self-hides when tally isn't on. */}
+        <motion.div key="my-results-inline" {...BANNER_MOTION}>
+          <MyResults />
+        </motion.div>
 
         {/* Vote — electric-blue → purple */}
         {showVoteBanner && (

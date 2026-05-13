@@ -441,8 +441,10 @@ export function ChatRow({
       >
         {/* Different gradient + theme-tinted border (was rainbow). Cool
             turquoise → indigo → flamingo wash distinguishes the
-            "results dropped" beat from the other broadcast cards. */}
-        <div className="rounded-3xl ring-1 ring-turquoise/45 shadow-[0_18px_44px_-18px_oklch(70%_0.15_190_/_0.5)] overflow-hidden">
+            "results dropped" beat from the other broadcast cards.
+            Thicker (ring-2) so the card reads as a Big Deal among
+            the surrounding chatter. */}
+        <div className="rounded-3xl ring-2 ring-turquoise/55 shadow-[0_18px_44px_-18px_oklch(70%_0.15_190_/_0.6)] overflow-hidden">
           <div
             className="relative overflow-hidden p-5 flex flex-col gap-4
                        shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
@@ -929,17 +931,14 @@ export function ChatRow({
                     onClick={(e) => e.stopPropagation()}
                     className={`absolute top-full mt-2 z-30 ${mine ? "right-0" : "left-0"}`}
                   >
-                    {/* Glassy actions menu — heavier backdrop blur +
-                        saturation so the chat behind it dissolves into a
-                        smooth wash. Gradient inner gloss on the top
-                        edge, subtle white inner border. */}
-                    <div
-                      className="flex flex-col rounded-2xl overflow-hidden min-w-[10.5rem]
-                                 bg-gradient-to-b from-white/14 to-white/[0.04]
-                                 ring-1 ring-white/18
-                                 backdrop-blur-2xl backdrop-saturate-200
-                                 shadow-[0_18px_44px_-12px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.22)]"
-                    >
+                    {/* Reuse the brand `.glass-card` surface (the same
+                        treatment NameGate / Settings / CountryDrawer
+                        use) so the long-press menu sits inside the
+                        chat the same way every other floating panel
+                        does — saturating backdrop blur, white inner
+                        border, soft shadow. No more bespoke gradient
+                        stack here. */}
+                    <div className="glass-card rounded-2xl overflow-hidden min-w-[10.5rem] flex flex-col">
                       <MenuAction onClick={onReply} icon={Reply} label={t(lang, "chat_reply")} />
                       {reactionTotal > 0 && (
                         <MenuAction

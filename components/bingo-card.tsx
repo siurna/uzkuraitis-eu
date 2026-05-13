@@ -171,11 +171,10 @@ export function BingoCard() {
   const struckCount = card.filter((tx) => tx === FREE_SQUARE || struckSet.has(tx)).length;
 
   return (
-    // pt-12 + extra mt-2 on the ticket itself so the rounded ring +
-    // strike-X overflow on the top tiles has room to breathe under
-    // the fixed header. The previous pt-8 still let the top-row ring
-    // graze the header's bottom edge on some viewport sizes.
-    <main className="container mx-auto max-w-3xl px-4 pt-12 pb-10 flex-1 flex flex-col gap-3">
+    // pt-4 = just enough breathing room below the fixed header for
+    // the ring overflow on the top tiles. pt-12 was overcorrecting
+    // from the original cutoff complaint.
+    <main className="container mx-auto max-w-3xl px-4 pt-4 pb-10 flex-1 flex flex-col gap-3">
       {/* Brand-rainbow stroke for the strike X, defined once. */}
       <svg width={0} height={0} className="absolute -z-10" aria-hidden>
         <defs>
