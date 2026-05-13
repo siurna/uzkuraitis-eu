@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { nanoid } from "nanoid";
 import { findRoomByCode } from "@/lib/rooms";
-import { guardAnySession } from "@/lib/server-session";
+import { guardAnySession, readSignedSessionId } from "@/lib/server-session";
+import { checkAndIncrement } from "@/lib/rate-limit";
 
 // Image upload for chat. Accepts a multipart form ("file") or a raw
 // image body, validates type + size, drops it in the Blob store and
@@ -34,6 +35,23 @@ export async function POST(req: Request, { params }: RouteCtx) {
 
   const guard = await guardAnySession();
   if (guard) return guard;
+
+  // 30 uploads per session per hour. Keeps blob storage costs bounded
+  // even if a room code leaks and a guest decides to be hostile.
+  const session = await readSignedSessionId();
+  if (session) {
+    const rl = await checkAndIncrement(
+      `upload:${room.id}:${session}`,
+      30,
+      60 * 60 * 1000,
+    );
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Upload limit reached — try again in an hour." },
+        { status: 429 },
+      );
+    }
+  }
 
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return NextResponse.json(

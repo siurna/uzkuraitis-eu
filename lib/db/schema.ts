@@ -383,6 +383,19 @@ export const triviaAnswers = pgTable(
   ],
 );
 
+// Postgres-backed rate-limit buckets. Replaces the in-memory floodCheck
+// that was only as durable as one warm serverless instance.
+// `bucket` is a free-form string the caller composes — convention is
+// "<kind>:<roomId>:<sessionId>" so different write paths share the
+// helper without colliding.
+export const rateLimits = pgTable("rate_limits", {
+  bucket: text("bucket").primaryKey(),
+  hits: integer("hits").notNull().default(0),
+  windowStart: timestamp("window_start", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 // WebAuthn / passkey credentials for the single admin user. Initial enrollment
 // is gated by the ADMIN_BOOTSTRAP_SECRET env var; once at least one credential
 // exists, the bootstrap secret is no longer accepted and only the registered

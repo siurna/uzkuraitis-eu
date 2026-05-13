@@ -7,6 +7,7 @@ import { findRoomByCode } from "@/lib/rooms";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { pushToRoom } from "@/lib/push";
 import { guardSession } from "@/lib/server-session";
+import { checkAndIncrement } from "@/lib/rate-limit";
 
 // Per-room chat. GET returns a window of messages with their reactions
 // folded in; POST inserts a new message and fans-out chat:new +
@@ -35,25 +36,11 @@ const PostSchema = z.object({
 
 const PAGE_SIZE = 50;
 
-// Best-effort, per-warm-instance flood guard: max N posts per session in
-// a rolling window. Not a hard limit (serverless instances are
-// ephemeral), but enough to blunt a hype-moment spam burst.
-const FLOOD_WINDOW_MS = 10_000;
-const FLOOD_MAX = 12;
-const recentPosts = new Map<string, number[]>();
-function floodCheck(session: string): boolean {
-  const now = Date.now();
-  const arr = (recentPosts.get(session) ?? []).filter((t) => now - t < FLOOD_WINDOW_MS);
-  arr.push(now);
-  recentPosts.set(session, arr);
-  if (recentPosts.size > 500) {
-    // crude GC so the map can't grow unbounded
-    for (const [k, v] of recentPosts) {
-      if (v.every((t) => now - t > FLOOD_WINDOW_MS)) recentPosts.delete(k);
-    }
-  }
-  return arr.length <= FLOOD_MAX;
-}
+// Token-bucket caps live in the DB now (lib/rate-limit.ts) — durable
+// across warm instances. 12 messages per 10 seconds per session is the
+// floor; spam past that returns 429.
+const CHAT_RATE_MAX = 12;
+const CHAT_RATE_WINDOW_MS = 10_000;
 
 export async function GET(req: Request, { params }: RouteCtx) {
   const { code } = await params;
@@ -149,7 +136,12 @@ export async function POST(req: Request, { params }: RouteCtx) {
   const guard = await guardSession(data.session);
   if (guard) return guard;
 
-  if (!floodCheck(data.session)) {
+  const rl = await checkAndIncrement(
+    `chat:${room.id}:${data.session}`,
+    CHAT_RATE_MAX,
+    CHAT_RATE_WINDOW_MS,
+  );
+  if (!rl.ok) {
     return NextResponse.json({ error: "Too many messages — slow down." }, { status: 429 });
   }
 
