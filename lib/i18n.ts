@@ -50,6 +50,14 @@ function ltPoints(n: number): string {
 }
 
 const S = {
+  // ── Auto-translate to English (Settings) ─────────────────────────
+  settings_translate_h:    { en: "Auto-translate to English", lt: "Auto-vertimas į anglų" },
+  settings_translate_sub:  { en: "We'll pop a clean English rendering under any Lithuanian message — slang, cultural beats, all of it.", lt: "Po lietuvišku tekstu paberiama angliška versija." },
+  settings_translate_off:  { en: "Off", lt: "Išjungta" },
+  settings_translate_on:   { en: "On", lt: "Įjungta" },
+  translate_loading:       { en: "Translating…", lt: "Verčiama…" },
+  translate_eyebrow:       { en: "in English", lt: "angliškai" },
+
   // ── NameGate / SettingsModal ─────────────────────────────────────
   welcome:           { en: "Welcome", lt: "Labas!" },
   name_prompt:       { en: "What should we call you in this room?", lt: "Kaip į tave kreiptis?" },

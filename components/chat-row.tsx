@@ -14,6 +14,8 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { useProfile } from "@/components/profile-sheet";
 import { useParticles } from "@/components/particle-layer";
+import { TranslationBubble } from "@/components/translation-bubble";
+import { useTranslateEnabled } from "@/lib/translate-client";
 import { haptic } from "@/lib/haptics";
 import { getTrope, type TropeIndex } from "@/lib/bingo-tropes";
 import { t, tDyn } from "@/lib/i18n";
@@ -392,6 +394,7 @@ export function ChatRow({
   const deepDive = useCountryDeepDive();
   const profile = useProfile();
   const particles = useParticles();
+  const translateOn = useTranslateEnabled();
   const lastTap = useRef(0); // for double-tap-a-text-bubble → ❤️
   // Bot rows (the commentator) don't open a profile — there's no DB row
   // to look up. Real participants do.
@@ -860,6 +863,10 @@ export function ChatRow({
               )}
             </AnimatePresence>
           </div>
+
+          {translateOn && !mine && m.kind === "text" && m.body && (
+            <TranslationBubble text={m.body} mine={mine} />
+          )}
 
           {Object.keys(m.reactions).length > 0 && (
             <div className={`flex flex-wrap gap-1 ${mine ? "self-end" : "self-start"}`}>

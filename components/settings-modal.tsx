@@ -16,6 +16,7 @@ import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
 import { readLang, writeLang } from "@/lib/i18n-client";
+import { readTranslate, writeTranslate } from "@/lib/translate-client";
 
 const NAME_KEY = "uzk_name";
 const AVATAR_KEY = "uzk_avatar";
@@ -44,14 +45,22 @@ export function SettingsModal({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [notifSheetOpen, setNotifSheetOpen] = useState(false);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
+  const [translate, setTranslate] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setName(localStorage.getItem(NAME_KEY) ?? "");
     setAvatar(localStorage.getItem(AVATAR_KEY) ?? null);
     setLang(readLang());
+    setTranslate(readTranslate());
     setCopied(false);
   }, [open]);
+
+  const toggleTranslate = () => {
+    const next = !translate;
+    setTranslate(next);
+    writeTranslate(next);
+  };
 
   const save = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -166,6 +175,39 @@ export function SettingsModal({
               })}
             </div>
           </Section>
+
+          {lang === "en" && (
+            // Only meaningful to the English speakers in the room — the
+            // toggle drops a translated bubble under any Lithuanian
+            // message coming in.
+            <Section label={t(lang, "settings_translate_h")}>
+              <button
+                type="button"
+                onClick={toggleTranslate}
+                aria-pressed={translate}
+                className="w-full flex items-center gap-3 rounded-2xl px-4 py-3
+                           bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07] transition text-left"
+              >
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm text-white/90 leading-snug">
+                    {t(lang, "settings_translate_sub")}
+                  </span>
+                </span>
+                <span
+                  className={`relative h-6 w-11 rounded-full transition shrink-0 ${
+                    translate ? "bg-success/70" : "bg-white/10"
+                  }`}
+                  aria-hidden
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition transform ${
+                      translate ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </span>
+              </button>
+            </Section>
+          )}
 
           <Section label={t(lang, "pick_avatar")}>
             <button
