@@ -4,14 +4,14 @@ import { AdminLivePanel } from "@/components/admin-live-panel";
 
 // Global live controller. The admin runs the real broadcast from here:
 // flip the show status / pick who's on stage and it fans out to every
-// room. The per-room magic-link page can still override individual
-// rooms after the fact.
+// room. The per-room magic-link page can still override individual rooms
+// after the fact. The running-order position is derived server-side from
+// the country's startlist order — no separate control.
 export default async function AdminLivePage() {
   const rows = await db
     .select({
       showStatus: rooms.showStatus,
       nowPlayingCode: rooms.nowPlayingCode,
-      runningOrderPos: rooms.runningOrderPos,
     })
     .from(rooms);
 
@@ -35,24 +35,12 @@ export default async function AdminLivePage() {
       | "break"
       | "ended") ?? "not_started";
   const nowPlaying = mode(rows.map((r) => r.nowPlayingCode));
-  const runningOrderPos = mode(rows.map((r) => r.runningOrderPos));
 
   return (
     <div className="flex flex-col gap-6">
       <h1 className="font-display text-3xl gradient-text heading-rise">Live</h1>
-      <p className="text-sm text-white/55 max-w-prose">
-        Run the broadcast from here. The status pills set the show state
-        for every room at once. While in&nbsp;progress, tap a country to
-        put it on stage — every connected client across all rooms sees
-        the switch + a heart swarm. {rows.length} room
-        {rows.length === 1 ? "" : "s"} currently exist.
-      </p>
       <div className="glass-card rounded-xl p-5 max-w-md">
-        <AdminLivePanel
-          initialStatus={status}
-          initialNowPlaying={nowPlaying}
-          initialRunningOrderPos={runningOrderPos}
-        />
+        <AdminLivePanel initialStatus={status} initialNowPlaying={nowPlaying} />
       </div>
     </div>
   );

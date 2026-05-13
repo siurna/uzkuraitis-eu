@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 const navItems: { path: Route; label: string; icon: typeof Vote }[] = [
   { path: "/admin/live" as Route,     label: "Live",     icon: Radio },
-  { path: "/admin" as Route,          label: "Rooms",    icon: Vote },
+  { path: "/admin/rooms" as Route,    label: "Rooms",    icon: Vote },
   { path: "/admin/results" as Route,  label: "Results",  icon: Trophy },
   { path: "/admin/settings" as Route, label: "Settings", icon: Settings },
 ];
@@ -29,19 +29,19 @@ export function AdminNav() {
     <header className="sticky top-0 z-30 bg-dark-blue-900/85 backdrop-blur-md border-b border-white/5">
       <div className="container mx-auto max-w-5xl px-4 h-14 flex items-center gap-4">
         <Link
-          href="/admin"
+          href="/admin/live"
           className="font-display text-lg gradient-text shrink-0"
         >
           Backstage
         </Link>
         <nav className="ml-auto flex items-center gap-1">
           {navItems.map(({ path, label, icon: Icon }) => {
-            // Treat /admin/rooms/[code] as part of the Rooms tab so the
-            // "Rooms" link stays highlighted when drilled into a single
-            // room. Other tabs use exact match.
+            // Treat /admin/rooms/[code] as part of the Rooms tab so it
+            // stays highlighted when drilled into a single room. Other
+            // tabs use exact match.
             const active =
-              path === "/admin"
-                ? pathname === "/admin" || pathname.startsWith("/admin/rooms")
+              label === "Rooms"
+                ? pathname.startsWith("/admin/rooms")
                 : pathname === path;
             return (
               <Link

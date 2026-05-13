@@ -17,7 +17,6 @@ export type ShowStatus = "not_started" | "in_progress" | "break" | "ended";
 export type LivePatch = {
   showStatus?: ShowStatus;
   nowPlayingCode?: string | null;
-  runningOrderPos?: number | null;
 };
 
 const STATUS_DEFS: { id: ShowStatus; label: string; Icon: typeof Pause }[] = [
@@ -30,23 +29,18 @@ const STATUS_DEFS: { id: ShowStatus; label: string; Icon: typeof Pause }[] = [
 export function RoomLiveControls({
   initialStatus,
   initialNowPlaying,
-  initialRunningOrderPos,
   apply,
   scopeLabel,
 }: {
   initialStatus: ShowStatus;
   initialNowPlaying: string | null;
-  /** Pass to show the running-order position control (omit to hide it). */
-  initialRunningOrderPos?: number | null;
   /** Persist a patch. Should resolve true on success. */
   apply: (patch: LivePatch) => Promise<boolean>;
   /** Optional caption (e.g. "all active rooms"). */
   scopeLabel?: string;
 }) {
-  const showRunningOrder = initialRunningOrderPos !== undefined;
   const [status, setStatusState] = useState<ShowStatus>(initialStatus);
   const [nowPlaying, setNowPlaying] = useState<string | null>(initialNowPlaying);
-  const [pos, setPos] = useState<number | null>(initialRunningOrderPos ?? null);
   const [pending, start] = useTransition();
 
   const run = (patch: LivePatch) => {
@@ -70,13 +64,13 @@ export function RoomLiveControls({
 
   const setNowPlayingDirect = (code: string) => {
     setNowPlaying(code);
-    run({ nowPlayingCode: code });
+    run({ nowPlayingCode: code }); // the server derives the running-order position from the country's startlist order
   };
 
-  const setPosTo = (next: number | null) => {
-    setPos(next);
-    run({ runningOrderPos: next });
-  };
+  // "Next" = the act right after whoever's on stage (or the first act if
+  // nobody is yet).
+  const curOrder = countries.find((c) => c.code === nowPlaying)?.order ?? 0;
+  const nextCountry = countries.find((c) => c.order === curOrder + 1) ?? null;
 
   return (
     <section className="flex flex-col gap-3">
@@ -109,57 +103,20 @@ export function RoomLiveControls({
         })}
       </div>
 
-      {status === "in_progress" && showRunningOrder && (
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-widest text-white/45 font-display">
-            Running order
-          </span>
-          <button
-            type="button"
-            disabled={pending || (pos ?? 1) <= 1}
-            onClick={() => setPosTo(pos != null && pos > 1 ? pos - 1 : 1)}
-            className="h-8 w-8 rounded-lg bg-white/[0.04] ring-1 ring-white/10 grid place-items-center text-white/70 disabled:opacity-30 hover:bg-white/[0.08] transition"
-          >
-            −
-          </button>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={60}
-            value={pos ?? ""}
-            placeholder="—"
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "") {
-                setPos(null);
-                return;
-              }
-              const n = Number(v);
-              if (Number.isFinite(n)) setPos(Math.max(1, Math.min(60, Math.round(n))));
-            }}
-            onBlur={() => run({ runningOrderPos: pos })}
-            className="h-8 w-14 rounded-lg bg-black/30 border border-white/15 text-center font-display tabular-nums text-white focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 transition"
-          />
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => setPosTo((pos ?? 0) + 1)}
-            className="h-8 w-8 rounded-lg bg-white/[0.04] ring-1 ring-white/10 grid place-items-center text-white/70 disabled:opacity-30 hover:bg-white/[0.08] transition"
-          >
-            +
-          </button>
-          {pos != null && (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => setPosTo(null)}
-              className="text-[11px] text-white/40 hover:text-white transition"
-            >
-              clear
-            </button>
+      {status === "in_progress" && nextCountry && (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => setNowPlayingDirect(nextCountry.code)}
+          className="flex items-center gap-2.5 h-11 rounded-xl bg-white text-dark-blue font-display text-sm px-3.5
+                     disabled:opacity-60 active:scale-[0.99] transition"
+        >
+          <HeartFlag code={nextCountry.code} size="sm" />
+          <span className="truncate">Next up → {nextCountry.name}</span>
+          {nextCountry.order != null && (
+            <span className="ml-auto text-[11px] tabular-nums text-dark-blue/50">#{nextCountry.order}</span>
           )}
-        </div>
+        </button>
       )}
 
       {status === "in_progress" && (

@@ -12,11 +12,9 @@ import {
 export function AdminLivePanel({
   initialStatus,
   initialNowPlaying,
-  initialRunningOrderPos,
 }: {
   initialStatus: ShowStatus;
   initialNowPlaying: string | null;
-  initialRunningOrderPos: number | null;
 }) {
   const apply = async (patch: LivePatch): Promise<boolean> => {
     const res = await fetch("/api/admin/live", {
@@ -37,7 +35,6 @@ export function AdminLivePanel({
     <RoomLiveControls
       initialStatus={initialStatus}
       initialNowPlaying={initialNowPlaying}
-      initialRunningOrderPos={initialRunningOrderPos}
       apply={apply}
       scopeLabel="all rooms"
     />
