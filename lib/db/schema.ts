@@ -280,6 +280,10 @@ export const chatMessages = pgTable(
   },
   (t) => [
     index("chat_room_created_idx").on(t.roomId, t.createdAt),
+    // Per-author lookups (profile drawer, leaderboard highlights,
+    // admin moderation) — without this they fall back to a filter on
+    // the (room, createdAt) index.
+    index("chat_room_session_idx").on(t.roomId, t.sessionId),
   ],
 );
 

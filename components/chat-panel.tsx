@@ -21,11 +21,16 @@ import {
   ImageDown,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useEventListener, useOthers, useUpdateMyPresence } from "@/lib/liveblocks";
+import {
+  useEventListener,
+  useOthers,
+  useUpdateMyPresence,
+  type ChatMessagePayload,
+} from "@/lib/liveblocks";
 import { useRoomLive } from "@/components/room-shell";
 import { useIdentity } from "@/lib/use-identity";
 import { GifPicker } from "@/components/gif-picker";
-import { ChatRow, type Message } from "@/components/chat-row";
+import { ChatRow, type Message, type MessageKind } from "@/components/chat-row";
 import { Lightbox } from "@/components/chat-lightbox";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
@@ -345,7 +350,11 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   }, [code, active, messages.length]);
 
   useEventListener(({ event }) => {
-    const ev = event as { type?: string; id?: string };
+    const ev = event as {
+      type?: string;
+      id?: string;
+      message?: ChatMessagePayload;
+    };
     if (ev.type === "chat:delete") {
       if (ev.id) setMessages((prev) => prev.filter((m) => m.id !== ev.id));
       return;
@@ -355,6 +364,31 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       // refetch keeps the local blob preview from flashing to the
       // server URL.
       if (ev.id && byId.has(ev.id)) return;
+      // The server now embeds the full row in the broadcast, so we can
+      // append in-place without a follow-up GET — saves a roundtrip per
+      // arriving message across every connected client. Older servers
+      // without the payload fall back to the refetch.
+      if (ev.message) {
+        const m = ev.message;
+        setMessages((prev) => {
+          if (prev.some((x) => x.id === m.id)) return prev;
+          const appended: Message = {
+            id: m.id,
+            sessionId: m.sessionId,
+            name: m.name,
+            avatarId: m.avatarId,
+            kind: m.kind as MessageKind,
+            body: m.body,
+            gifUrl: m.gifUrl,
+            replyTo: m.replyTo,
+            meta: (m.meta ?? null) as Record<string, unknown> | null,
+            createdAt: m.createdAt,
+            reactions: {},
+          };
+          return [...prev, appended].slice(-RENDER_CAP);
+        });
+        return;
+      }
       fetchMessages();
       return;
     }

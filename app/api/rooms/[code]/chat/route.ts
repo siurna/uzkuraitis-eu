@@ -14,7 +14,12 @@ import { pushToRoom } from "@/lib/push";
 type RouteCtx = { params: Promise<{ code: string }> };
 
 const PostSchema = z.object({
-  session: z.string().min(8).max(64),
+  // Reject the two reserved session strings used internally for system
+  // / commentator posts so a client can't impersonate them.
+  session: z.string().min(8).max(64).refine(
+    (s) => s !== "system" && s !== "commentator",
+    { message: "Reserved session id" },
+  ),
   name: z.string().trim().min(1).max(40),
   avatarId: z.string().min(1).max(64).nullable().optional(),
   body: z.string().trim().max(2000).optional(),
@@ -152,6 +157,26 @@ export async function POST(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Message is empty" }, { status: 400 });
   }
 
+  // A reply must point at a message that lives in *this* room — anything
+  // else would let someone with a stray UUID reply across rooms.
+  if (data.replyTo) {
+    const [parent] = await db
+      .select({ roomId: chatMessages.roomId })
+      .from(chatMessages)
+      .where(eq(chatMessages.id, data.replyTo))
+      .limit(1);
+    if (!parent || parent.roomId !== room.id) {
+      return NextResponse.json(
+        { error: "That reply target isn't in this room" },
+        { status: 400 },
+      );
+    }
+  }
+
+  const finalMeta = room.nowPlayingCode
+    ? { ...(data.meta ?? {}), nowPlaying: room.nowPlayingCode }
+    : (data.meta ?? null);
+
   const [row] = await db
     .insert(chatMessages)
     .values({
@@ -163,15 +188,29 @@ export async function POST(req: Request, { params }: RouteCtx) {
       body: data.body ?? null,
       gifUrl: data.gifUrl ?? null,
       replyTo: data.replyTo ?? null,
-      // Snapshot the country on stage when this was sent — the Home
-      // "Highlights of the evening" shows it next to the message.
-      meta: room.nowPlayingCode
-        ? { ...(data.meta ?? {}), nowPlaying: room.nowPlayingCode }
-        : (data.meta ?? null),
+      meta: finalMeta,
     })
-    .returning({ id: chatMessages.id });
+    .returning();
 
-  await broadcastToRoom(code, { type: "chat:new", id: row.id });
+  // Embed the full message inline so every connected client can append
+  // without a follow-up GET — drops the refetch storm under hype-moment
+  // load. `reactions` is always empty for a brand-new row.
+  await broadcastToRoom(code, {
+    type: "chat:new",
+    id: row.id,
+    message: {
+      id: row.id,
+      sessionId: row.sessionId,
+      name: row.name,
+      avatarId: row.avatarId,
+      kind: row.kind,
+      body: row.body,
+      gifUrl: row.gifUrl,
+      replyTo: row.replyTo,
+      meta: row.meta,
+      createdAt: row.createdAt.toISOString(),
+    },
+  });
 
   // Push: chatAll subscribers OR (chatReplies && replyTo author === them).
   pushToRoom(

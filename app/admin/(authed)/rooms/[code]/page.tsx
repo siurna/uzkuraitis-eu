@@ -12,6 +12,10 @@ import { AdminRoomManageLink } from "@/components/admin-room-manage-link";
 import { AdminRoomCommentatorToggle } from "@/components/admin-room-commentator-toggle";
 import { AdminRoomTallyToggle } from "@/components/admin-room-tally-toggle";
 import { AdminRoomTabs } from "@/components/admin-room-tabs";
+import {
+  AdminParticipantMessages,
+  type AdminMessageRow,
+} from "@/components/admin-participant-messages";
 import { Flag } from "@/components/flag";
 
 type RouteParams = Promise<{ code: string }>;
@@ -66,12 +70,49 @@ export default async function AdminRoomDetailPage({
     .groupBy(chatMessages.sessionId);
   const msgBySession = new Map(msgRows.map((r) => [r.sessionId, r.n]));
 
+  // The last few real messages each session has posted, for the admin
+  // moderation strip inside each participant's drawer. Pull the most
+  // recent ~10 per session at the DB level via a window function.
+  const recentMessageRows = await db.execute<{
+    id: string;
+    session_id: string;
+    kind: string;
+    body: string | null;
+    gif_url: string | null;
+    created_at: Date;
+  }>(sql`
+    SELECT id, session_id, kind, body, gif_url, created_at
+    FROM (
+      SELECT id, session_id, kind, body, gif_url, created_at,
+             ROW_NUMBER() OVER (PARTITION BY session_id ORDER BY created_at DESC) AS rn
+      FROM ${chatMessages}
+      WHERE room_id = ${room.id}
+        AND session_id NOT IN ('system', 'commentator')
+    ) AS ranked
+    WHERE rn <= 10
+    ORDER BY session_id, created_at DESC
+  `);
+  const messagesBySession = new Map<string, AdminMessageRow[]>();
+  for (const r of recentMessageRows.rows) {
+    const arr = messagesBySession.get(r.session_id) ?? [];
+    arr.push({
+      id: r.id,
+      kind: r.kind,
+      body: r.body,
+      gifUrl: r.gif_url,
+      createdAt: new Date(r.created_at).toISOString(),
+    });
+    messagesBySession.set(r.session_id, arr);
+  }
+
   type VoterAgg = {
     id: string;
     name: string;
+    sessionId: string;
     updatedAt: Date;
     messages: number;
     ballot: Map<number, string>;
+    recent: AdminMessageRow[];
   };
   const voterMap = new Map<string, VoterAgg>();
   for (const r of voterRows) {
@@ -79,9 +120,11 @@ export default async function AdminRoomDetailPage({
       voterMap.set(r.id, {
         id: r.id,
         name: r.name,
+        sessionId: r.sessionId,
         updatedAt: r.updatedAt,
         messages: msgBySession.get(r.sessionId) ?? 0,
         ballot: new Map(),
+        recent: messagesBySession.get(r.sessionId) ?? [],
       });
     }
     if (r.points != null && r.countryCode != null) {
@@ -281,6 +324,14 @@ export default async function AdminRoomDetailPage({
                           </div>
                         );
                       })}
+                    </div>
+                    {/* Moderation strip — each row carries a delete that
+                        hits the admin DELETE endpoint and broadcasts. */}
+                    <div className="px-3 pb-1 pt-1">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-display px-1 mb-1">
+                        Recent messages
+                      </p>
+                      <AdminParticipantMessages code={room.code} messages={v.recent} />
                     </div>
                   </details>
                 ))}

@@ -37,8 +37,24 @@ export async function postSystemMessage(
         body: null,
         meta: { sysKey: sys.key, sysArg: sys.arg ?? null },
       })
-      .returning({ id: chatMessages.id });
-    await broadcastToRoom(roomCode, { type: "chat:new", id: row.id, quiet: true });
+      .returning();
+    await broadcastToRoom(roomCode, {
+      type: "chat:new",
+      id: row.id,
+      quiet: true,
+      message: {
+        id: row.id,
+        sessionId: row.sessionId,
+        name: row.name,
+        avatarId: row.avatarId,
+        kind: row.kind,
+        body: row.body,
+        gifUrl: row.gifUrl,
+        replyTo: row.replyTo,
+        meta: row.meta,
+        createdAt: row.createdAt.toISOString(),
+      },
+    });
   } catch {
     /* a missing announcement is not worth a 500 */
   }
@@ -68,8 +84,24 @@ export async function postNowPlayingMessage(
         body,
         meta: { code: countryCode, artist: c?.artist ?? null, song: c?.song ?? null },
       })
-      .returning({ id: chatMessages.id });
-    await broadcastToRoom(roomCode, { type: "chat:new", id: row.id, quiet: true });
+      .returning();
+    await broadcastToRoom(roomCode, {
+      type: "chat:new",
+      id: row.id,
+      quiet: true,
+      message: {
+        id: row.id,
+        sessionId: row.sessionId,
+        name: row.name,
+        avatarId: row.avatarId,
+        kind: row.kind,
+        body: row.body,
+        gifUrl: row.gifUrl,
+        replyTo: row.replyTo,
+        meta: row.meta,
+        createdAt: row.createdAt.toISOString(),
+      },
+    });
   } catch {
     /* not worth a 500 */
   }
@@ -96,8 +128,23 @@ export async function postResultsMessage(
     const [row] = await db
       .insert(chatMessages)
       .values({ roomId: room.id, sessionId: "system", name: "system", kind: "results", body, meta: { podium } })
-      .returning({ id: chatMessages.id });
-    await broadcastToRoom(roomCode, { type: "chat:new", id: row.id });
+      .returning();
+    await broadcastToRoom(roomCode, {
+      type: "chat:new",
+      id: row.id,
+      message: {
+        id: row.id,
+        sessionId: row.sessionId,
+        name: row.name,
+        avatarId: row.avatarId,
+        kind: row.kind,
+        body: row.body,
+        gifUrl: row.gifUrl,
+        replyTo: row.replyTo,
+        meta: row.meta,
+        createdAt: row.createdAt.toISOString(),
+      },
+    });
   } catch {
     /* not worth a 500 */
   }
@@ -139,8 +186,24 @@ export async function postCommentatorMessage(
         body: line,
         meta: { commentator: true, commentatorPhoto: photo, nowPlaying: countryCode },
       })
-      .returning({ id: chatMessages.id });
-    await broadcastToRoom(roomCode, { type: "chat:new", id: row.id, quiet: true });
+      .returning();
+    await broadcastToRoom(roomCode, {
+      type: "chat:new",
+      id: row.id,
+      quiet: true,
+      message: {
+        id: row.id,
+        sessionId: row.sessionId,
+        name: row.name,
+        avatarId: row.avatarId,
+        kind: row.kind,
+        body: row.body,
+        gifUrl: row.gifUrl,
+        replyTo: row.replyTo,
+        meta: row.meta,
+        createdAt: row.createdAt.toISOString(),
+      },
+    });
   } catch {
     /* a missing commentary line is not worth a 500 */
   }
