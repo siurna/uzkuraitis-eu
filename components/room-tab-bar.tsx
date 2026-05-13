@@ -1,15 +1,17 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Home,
   MessageCircle,
   Grid3x3,
   ListChecks,
+  Trophy,
   type LucideProps,
 } from "lucide-react";
-import { useLang, t } from "@/lib/i18n";
-import { useRoomTab, type RoomTab } from "@/components/room-shell";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
+import { useRoomLive, useRoomTab, type RoomTab } from "@/components/room-shell";
 
 // Bottom dock. Each tab switches the room's active panel in place —
 // pure state, no navigation. The active pill layoutId-animates between
@@ -62,6 +64,7 @@ const TABS: TabDef[] = [
 export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
   const lang = useLang();
   const { tab, setTab } = useRoomTab();
+  const { tallyEnabled } = useRoomLive();
   const active = TABS.find((t) => t.id === tab) ?? TABS[0];
 
   return (
@@ -76,7 +79,19 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
       >
         {TABS.map(({ id, labelKey, Icon, gradient, glow }) => {
           const isActive = id === tab;
-          const label = t(lang, labelKey);
+          // The "Vote" slot turns into "Results" the moment the host
+          // reveals the score. Crossfade the icon + label so it reads
+          // as the SAME tab transforming, not a navigation.
+          const isResults = id === "vote" && tallyEnabled;
+          const effectiveIcon = isResults ? Trophy : Icon;
+          const effectiveLabelKey = (isResults ? "tab_results" : labelKey) as
+            | "tab_home"
+            | "tab_chat"
+            | "tab_bingo"
+            | "tab_vote"
+            | "tab_results";
+          const label = t(lang, effectiveLabelKey);
+          const morphKey = `${id}-${isResults ? "results" : "default"}`;
           return (
             <li key={id} className="flex-1">
               <button
@@ -94,16 +109,30 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
                     transition={{ type: "spring", stiffness: 560, damping: 42 }}
                   />
                 )}
-                {/* Constant box + constant stroke width — the only
-                    active-state changes are colour and the pill behind,
-                    so the icon never visually shifts when you switch. */}
                 <div className="relative h-6 w-6">
-                  <Icon
-                    className={`h-6 w-6 transition-colors ${
-                      isActive ? "text-white" : "text-dark-blue-200"
-                    }`}
-                    strokeWidth={2}
-                  />
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={morphKey}
+                      initial={{ opacity: 0, scale: 0.8, rotate: -12 }}
+                      animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                      exit={{ opacity: 0, scale: 0.8, rotate: 12 }}
+                      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                      className="absolute inset-0"
+                    >
+                      {(() => {
+                        const I = effectiveIcon;
+                        return (
+                          <I
+                            className={`h-6 w-6 transition-colors ${
+                              isActive ? "text-white" : "text-dark-blue-200"
+                            }`}
+                            strokeWidth={2}
+                            {...(isResults ? { fill: "currentColor" } : {})}
+                          />
+                        );
+                      })()}
+                    </motion.span>
+                  </AnimatePresence>
                   {/* Unread badge on the Chat tab. */}
                   {labelKey === "tab_chat" && chatUnread > 0 && (
                     <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1
@@ -114,12 +143,19 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
                     </span>
                   )}
                 </div>
-                <span
-                  className={`relative text-[10px] font-display tracking-wide leading-none
-                              transition ${isActive ? "text-white" : "text-white/55"}`}
-                >
-                  {label}
-                </span>
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={`${morphKey}-label`}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.22 }}
+                    className={`relative text-[10px] font-display tracking-wide leading-none
+                                transition ${isActive ? "text-white" : "text-white/55"}`}
+                  >
+                    {label}
+                  </motion.span>
+                </AnimatePresence>
               </button>
             </li>
           );

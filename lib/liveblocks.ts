@@ -32,6 +32,10 @@ export type Presence = {
   typing?: boolean;
   /** Chat: ISO timestamp of the newest message this user has seen. */
   seenAt?: string | null;
+  /** Stable browser-session id (mirrors lib/use-identity.ts). Lets
+   *  features like the profile drawer go presence → DB without
+   *  hand-matching by display name. */
+  sessionId?: string | null;
 };
 
 export type Storage = Record<string, never>;
@@ -69,12 +73,47 @@ export type NowPlayingChangeEvent = {
   type: "now-playing:change";
   countryCode: string | null;
 };
-// Chat: server fans these out after a successful write. Body intention-
-// ally minimal — clients refetch the message slice they need.
+// Chat: server fans these out after a successful write. The new-message
+// event now carries the full row inline (id + author + body/gif/meta +
+// empty reactions) so clients can append without a follow-up GET — saves
+// one refetch round-trip per arriving message across every connected
+// client. Legacy clients without payload support still work: they fall
+// back to the GET path.
+//
 // `quiet` = a meta/system message (now-playing banner, "X voted", show
 // status…) — clients still render it, but it shouldn't bump the
 // unread-chat badge on the tab bar.
-export type ChatNewEvent = { type: "chat:new"; id: string; quiet?: boolean };
+
+// Recursive JSON type that satisfies Liveblocks' Json constraint —
+// chatMessages.meta is `Record<string, unknown>` in Drizzle's typing
+// but in practice it's always JSON, so callers cast at the broadcast
+// boundary.
+type LbJson =
+  | string
+  | number
+  | boolean
+  | null
+  | LbJson[]
+  | { [k: string]: LbJson };
+
+export type ChatMessagePayload = {
+  id: string;
+  sessionId: string;
+  name: string;
+  avatarId: string | null;
+  kind: string;
+  body: string | null;
+  gifUrl: string | null;
+  replyTo: string | null;
+  meta: LbJson | null;
+  createdAt: string;
+};
+export type ChatNewEvent = {
+  type: "chat:new";
+  id: string;
+  quiet?: boolean;
+  message?: ChatMessagePayload;
+};
 export type ChatReactEvent = { type: "chat:react"; id: string };
 export type ChatDeleteEvent = { type: "chat:delete"; id: string };
 

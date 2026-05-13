@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Bell, BellOff, HelpCircle, X } from "lucide-react";
+import { Bell, BellOff, HelpCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import {
@@ -15,7 +15,8 @@ import {
 } from "@/lib/push-client";
 import { useRoomLive } from "@/components/room-shell";
 import { NAME_KEY, SESSION_KEY } from "@/lib/use-identity";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // Sensible defaults: notify on things that need your attention (a reply
 // or @mention, lines opening/closing, results landing) — not on ambient
@@ -389,19 +390,19 @@ export function useNotificationCta(): {
 export function NotificationsCta() {
   const lang = useLang();
   const { shouldShow, enable } = useNotificationCta();
-  const [dismissed, setDismissed] = useState(false);
 
-  if (!shouldShow || dismissed) return null;
+  if (!shouldShow) return null;
 
   // A proper colour-fill banner in the Home stack — teal→blue, with a
   // ring of bell glyphs bleeding off the right, copy on the left, an
-  // "enable" CTA, and a corner dismiss. Same shape language as the
-  // Vote / Bingo / Bonus banners.
+  // "enable" CTA. Same shape language as the Vote / Bingo / Bonus
+  // banners. No dismiss — it self-hides the moment push is enabled.
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0, y: 12, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ type: "spring", stiffness: 360, damping: 32 }}
       className="relative block w-full overflow-hidden rounded-3xl"
       style={{ background: "linear-gradient(135deg, #00b3a4 0%, #0f7fb5 52%, #2360c8 100%)" }}
     >
@@ -417,21 +418,13 @@ export function NotificationsCta() {
         className="pointer-events-none absolute inset-0"
         style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.46) 0%, rgba(8,9,28,0.2) 38%, transparent 64%)" }}
       />
-      <button
-        type="button"
-        onClick={() => setDismissed(true)}
-        aria-label={t(lang, "cancel")}
-        className="absolute top-2.5 right-2.5 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/25 text-white/80 hover:text-white hover:bg-black/40 transition"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
-      <div className="relative flex flex-col justify-center gap-1 px-5 py-5 min-h-[6.75rem]">
+      <div className="relative flex flex-col justify-center gap-1 pl-5 pr-[34%] py-5 min-h-[6.75rem]">
         <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/75 flex items-center gap-1.5">
           <Bell className="h-3 w-3" />
           {t(lang, "push_off")}
         </p>
         <p className="font-display text-xl text-white leading-tight drop-shadow-sm">{t(lang, "push_cta_title")}</p>
-        <p className="text-sm text-white/70 leading-snug pr-20">{t(lang, "push_cta_sub")}</p>
+        <p className="text-sm text-white/70 leading-snug">{t(lang, "push_cta_sub")}</p>
         <span className="mt-1.5">
           <button
             type="button"

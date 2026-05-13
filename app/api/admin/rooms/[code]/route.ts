@@ -11,6 +11,8 @@ type RouteCtx = { params: Promise<{ code: string }> };
 
 const PatchSchema = z.object({
   votingEnabled: z.boolean().optional(),
+  /** When true, the room's leaderboard becomes visible. */
+  tallyEnabled: z.boolean().optional(),
   name: z.string().trim().min(1).max(60).optional(),
   commentatorEnabled: z.boolean().optional(),
   code: z.string().length(6).optional(),
@@ -53,6 +55,10 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
   // Push room props change to every connected client so e.g. the standings
   // page hides the vote CTA the moment voting toggles closed.
   await broadcastToRoom(newCode, { type: "room:updated" });
+  // Revealing results: nudge the leaderboard subscribers to refetch.
+  if (parsed.data.tallyEnabled === true && room.tallyEnabled !== true) {
+    await broadcastToRoom(newCode, { type: "leaderboard:updated" });
+  }
   return NextResponse.json({ ok: true, code: newCode });
 }
 

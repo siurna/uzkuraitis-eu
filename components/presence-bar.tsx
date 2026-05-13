@@ -11,7 +11,8 @@ import { SettingsModal } from "@/components/settings-modal";
 import { Flag } from "@/components/flag";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { getCountry, countryName } from "@/lib/countries";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // Unified room header. Carries everything chrome-y in one translucent
 // strip:

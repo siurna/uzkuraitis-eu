@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { pushSubscriptions, type PushPrefs } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
 import { getVapidPublicKey } from "@/lib/push";
+import { guardSession } from "@/lib/server-session";
 
 // Push subscribe / prefs / unsubscribe for a single room. Voters opt
 // into specific event categories per room — they may want chat on for
@@ -92,6 +93,9 @@ export async function POST(req: Request, { params }: RouteCtx) {
   }
   const { session, name, subscription, prefs } = parsed.data;
 
+  const guard = await guardSession(session);
+  if (guard) return guard;
+
   await db
     .insert(pushSubscriptions)
     .values({
@@ -128,6 +132,10 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
   const { session, prefs } = parsed.data;
+
+  const guard = await guardSession(session);
+  if (guard) return guard;
+
   await db
     .update(pushSubscriptions)
     .set({ prefs, updatedAt: sql`now()` })
@@ -151,6 +159,9 @@ export async function DELETE(req: Request, { params }: RouteCtx) {
   if (!session) {
     return NextResponse.json({ error: "Missing session" }, { status: 400 });
   }
+  const guard = await guardSession(session);
+  if (guard) return guard;
+
   if (endpoint) {
     await db
       .delete(pushSubscriptions)

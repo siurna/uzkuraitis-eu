@@ -12,7 +12,10 @@ import { countryColors } from "@/lib/country-colors";
 import { HeartFlag } from "@/components/flag";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
+import { useProfile } from "@/components/profile-sheet";
 import { useParticles } from "@/components/particle-layer";
+import { TranslationBubble } from "@/components/translation-bubble";
+import { useTranslateEnabled } from "@/lib/translate-client";
 import { haptic } from "@/lib/haptics";
 import { getTrope, type TropeIndex } from "@/lib/bingo-tropes";
 import { t, tDyn } from "@/lib/i18n";
@@ -389,8 +392,14 @@ export function ChatRow({
     Date.now() - new Date(m.createdAt).getTime() < EDIT_WINDOW_MS;
 
   const deepDive = useCountryDeepDive();
+  const profile = useProfile();
   const particles = useParticles();
+  const translateOn = useTranslateEnabled();
   const lastTap = useRef(0); // for double-tap-a-text-bubble → ❤️
+  // Bot rows (the commentator) don't open a profile — there's no DB row
+  // to look up. Real participants do.
+  const isCommentator = !!m.meta?.commentator;
+  const canOpenProfile = !mine && !isSystem && !isNowPlaying && !isResults && !isCommentator;
   // React + a little burst of that emoji floating up from the tap point.
   const reactWithRain = (e: { currentTarget: Element }, emoji: string) => {
     haptic(12);
@@ -403,9 +412,9 @@ export function ChatRow({
           x: r.left + r.width / 2 + (Math.random() - 0.5) * (r.width * 0.8),
           y: r.top + r.height / 2,
         },
-        driftRange: 100 + Math.random() * 60,
+        driftRange: 90 + Math.random() * 50,
         size: 26 + Math.random() * 18,
-        durationMs: 1100 + Math.random() * 700,
+        durationMs: 550 + Math.random() * 300,
         rotate: 24 + Math.random() * 22,
       })),
     );
@@ -625,26 +634,46 @@ export function ChatRow({
     >
       <div className={`relative max-w-[82%] sm:max-w-[68%] flex gap-2 ${mine ? "flex-row-reverse" : "flex-row"}`}>
         {!mine && (
-          <div className={`h-9 w-9 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/[0.04] ${showHeader ? "" : "invisible"}`}>
-            {m.meta && typeof m.meta.commentatorPhoto === "string" && m.meta.commentatorPhoto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={m.meta.commentatorPhoto} alt="" className="h-full w-full object-cover" />
-            ) : m.meta?.commentator ? (
-              <div className="h-full w-full grid place-items-center text-sm leading-none">🎙️</div>
-            ) : avatar?.photo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={optimizedSrc(avatar.photo, 128)}
-                alt=""
-                className="h-full w-full object-cover"
-                style={{ objectPosition: avatar.focal ? `${avatar.focal.x}% ${avatar.focal.y}%` : "50% 30%" }}
-              />
-            ) : (
-              <div className="h-full w-full grid place-items-center text-xs font-display text-white/45">
-                {m.name.charAt(0).toUpperCase()}
-              </div>
-            )}
-          </div>
+          // Tap the avatar to open the author's profile. The commentator
+          // bot doesn't have a real profile, so it stays a plain tile.
+          (() => {
+            const avatarInner =
+              m.meta && typeof m.meta.commentatorPhoto === "string" && m.meta.commentatorPhoto ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={m.meta.commentatorPhoto} alt="" className="h-full w-full object-cover" />
+              ) : isCommentator ? (
+                <div className="h-full w-full grid place-items-center text-sm leading-none">🎙️</div>
+              ) : avatar?.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={optimizedSrc(avatar.photo, 128)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  style={{ objectPosition: avatar.focal ? `${avatar.focal.x}% ${avatar.focal.y}%` : "50% 30%" }}
+                />
+              ) : (
+                <div className="h-full w-full grid place-items-center text-xs font-display text-white/45">
+                  {m.name.charAt(0).toUpperCase()}
+                </div>
+              );
+            const cls = `h-9 w-9 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/[0.04] ${showHeader ? "" : "invisible"}`;
+            if (canOpenProfile) {
+              return (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    profile.open(m.sessionId);
+                  }}
+                  aria-label={m.name}
+                  className={`${cls} hover:ring-white/30 active:scale-[0.95] transition transform-gpu`}
+                >
+                  {avatarInner}
+                </button>
+              );
+            }
+            return <div className={cls}>{avatarInner}</div>;
+          })()
         )}
 
         <div className="min-w-0 flex flex-col items-stretch gap-1">
@@ -659,7 +688,10 @@ export function ChatRow({
           )}
 
           {parent && (
-            <div className={`text-[11px] px-3 py-1.5 rounded-xl truncate bg-white/[0.03] ring-1 ring-white/10 text-white/55 ${mine ? "self-end" : "self-start"}`}>
+            // Quoted-message chip. Cap the width so a long quote can't
+            // outgrow the bubble; anchor right when it's your reply so
+            // the quote + bubble read as one right-aligned thread.
+            <div className={`text-[11px] px-3 py-1.5 rounded-xl truncate bg-white/[0.03] ring-1 ring-white/10 text-white/55 max-w-[min(100%,18rem)] ${mine ? "self-end" : "self-start"}`}>
               <Reply className="h-3 w-3 inline-block mr-1 text-flamingo" />
               <span className="font-display text-white/75">{parent.name}</span>
               {": "}
@@ -754,7 +786,11 @@ export function ChatRow({
                     src={m.gifUrl!}
                     alt=""
                     onLoad={() => window.dispatchEvent(new Event("uzk:chat-media-loaded"))}
-                    className="block max-h-60 w-auto rounded-2xl"
+                    // `touch-manipulation` blocks iOS Safari's native
+                    // double-tap-to-zoom on the image so the bubble's
+                    // own click + double-tap-to-react handlers run.
+                    className="block max-h-60 w-auto rounded-2xl touch-manipulation"
+                    draggable={false}
                   />
                   {m.kind === "image" && m.pending && (
                     <span className="absolute inset-0 grid place-items-center bg-black/30 rounded-2xl">
@@ -827,6 +863,10 @@ export function ChatRow({
               )}
             </AnimatePresence>
           </div>
+
+          {translateOn && !mine && m.kind === "text" && m.body && (
+            <TranslationBubble text={m.body} mine={mine} />
+          )}
 
           {Object.keys(m.reactions).length > 0 && (
             <div className={`flex flex-wrap gap-1 ${mine ? "self-end" : "self-start"}`}>

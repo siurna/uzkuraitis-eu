@@ -14,9 +14,12 @@
 // users and not worth the maintenance overhead. Everything voter-facing
 // goes through `t(lang, key, …)` and switches the moment the user picks
 // a language.
+//
+// This module stays pure (no React imports) so server routes — e.g. the
+// OG share-card renderer — can `import { t } from "@/lib/i18n"` without
+// dragging client-only hooks in. The `useLang`/`readLang`/`writeLang`
+// React glue lives in `./i18n-client.ts`.
 // ─────────────────────────────────────────────────────────────────────
-
-import { useEffect, useState } from "react";
 
 export type Language = "en" | "lt";
 
@@ -47,10 +50,19 @@ function ltPoints(n: number): string {
 }
 
 const S = {
+  // ── Auto-translate to English (Settings) ─────────────────────────
+  settings_translate_h:    { en: "Auto-translate to English", lt: "Auto-vertimas į anglų" },
+  settings_translate_sub:  { en: "We'll pop a clean English rendering under any Lithuanian message — slang, cultural beats, all of it.", lt: "Po lietuvišku tekstu paberiama angliška versija." },
+  settings_translate_off:  { en: "Off", lt: "Išjungta" },
+  settings_translate_on:   { en: "On", lt: "Įjungta" },
+  translate_loading:       { en: "Translating…", lt: "Verčiama…" },
+  translate_eyebrow:       { en: "in English", lt: "angliškai" },
+
   // ── NameGate / SettingsModal ─────────────────────────────────────
   welcome:           { en: "Welcome", lt: "Labas!" },
   name_prompt:       { en: "What should we call you in this room?", lt: "Kaip į tave kreiptis?" },
   your_name:         { en: "Your name", lt: "Tavo vardas" },
+  name_taken_hint:   { en: "A fan with that name's already here. Add an initial or a second name so we can tell who's who!", lt: "Fanas jau su tokiu vardu egzistuoja. Pridėk inicialą ar antrą vardą, kad atskirtume, apie ką kalbam!" },
   join_party:        { en: "Join the party", lt: "Pradėti vakarėlį" },
   pick_avatar:       { en: "Pick an avatar", lt: "Pasirink avatarą" },
   settings:          { en: "Settings", lt: "Nustatymai" },
@@ -92,6 +104,8 @@ const S = {
   // ── Voting open/closed states + the on-air banners ───────────────
   update_vote:       { en: "Update your vote", lt: "Pakeisti balsą" },
   voting_closed:     { en: "Voting locked", lt: "Balsavimas užrakintas" },
+  voting_closed_show: { en: "Let's enjoy the show first!", lt: "Pirma pasimėgaukime šou!" },
+  voting_closed_results: { en: "Waiting for the official results!", lt: "Laukiame oficialių rezultatų!" },
   vote_open_now:     { en: "Europe, start voting now!", lt: "Europa, balsuok dabar!" },
   vote_closing:      { en: "Stop voting now!", lt: "Balsavimas baigtas!" },
 
@@ -107,7 +121,7 @@ const S = {
   tab_bets:          { en: "Guesses", lt: "Spėjimai" },
   tab_rules:         { en: "Rules", lt: "Taisyklės" },
   vote_cast_title:   { en: "Your vote's cast! 🎉", lt: "Tavo balsas užfiksuotas! 🎉" },
-  vote_cast_body:    { en: "Locked in automatically. Reorder any time, just tap Save to update.", lt: "Išsaugota automatiškai. Keisk eilę bet kada iki balsavimo pabaigos, tiesiog nepamiršk paspaust Išsaugoti." },
+  vote_cast_body:    { en: "Saved automatically. Reorder anytime, it updates on its own.", lt: "Išsaugota automatiškai. Eilę gali keisti bet kada, atsinaujins pati." },
   vote_place_bets:   { en: "Place your bets", lt: "Užpildyk spėjimus" },
   vote_keep_editing: { en: "Keep editing", lt: "Tęsti redagavimą" },
 
@@ -127,6 +141,7 @@ const S = {
   tab_chat:          { en: "Chat", lt: "Pokalbiai" },
   tab_bingo:         { en: "Bingo", lt: "Bingo" },
   tab_vote:          { en: "Vote", lt: "Balsuok" },
+  tab_results:       { en: "Results", lt: "Rezultatai" },
 
   // ── Home banners (context-aware shortcuts) ───────────────────────
   home_vote_open:      { en: "Voting is open, cast your TOP 10", lt: "Balsavimas atidarytas, paskelbk savo TOP 10" },
@@ -134,8 +149,6 @@ const S = {
   home_vote_done:      { en: "Your vote's in, reorder it anytime", lt: "Tavo balsas užfiksuotas" },
   home_vote_done_eyebrow: { en: "Voted", lt: "Balsuota" },
   home_vote_done_sub:  { en: "Place bets, share your TOP 10, or tweak.", lt: "Dalyvauk spėlionėje, pasidalink TOP 10." },
-  home_vote_soon:      { en: "Voting opens soon", lt: "Balsavimas netrukus" },
-  home_vote_soon_sub:  { en: "Line up your TOP 10, you can lock it the moment lines open.", lt: "Susidėliok TOP 10, užfiksuosi vos atsidarius linijoms." },
   home_bonus_placed:   { en: (n: number) => `${n} side ${n === 1 ? "bet" : "bets"} placed`, lt: (n: number) => `pastatyta ${n}` },
   home_bonus_none:     { en: "Place your side bets", lt: "Sudaryk savo statymus" },
   home_bonus_sub:      { en: "Wooden spoon, jury winner, nul points… each pays out only if you call it.", lt: "Paskutinė vieta, žiuri nugalėtojas, nulis taškų… užskaitoma tik pataikius." },
@@ -149,10 +162,11 @@ const S = {
   home_vs_room_empty_title: { en: "How do you stack up?", lt: "Kaip atrodai prieš kitus?" },
   home_vs_room_empty_sub:   { en: "Cast your TOP 10 to compare with the room.", lt: "Balsuok ir palygink savo TOP 10 su kitais." },
   home_results:        { en: "Results are in", lt: "Rezultatai jau čia" },
-  home_bingo_progress: { en: (n: number) => `${n} / 25 ticked`, lt: (n: number) => `pažymėta ${n} / 25` },
   home_bingo_won:      { en: "Bingo! 🎉 Tap to see your card", lt: "Bingo! 🎉 Bakstelėk savo kortelę" },
   bingo_widget_title:  { en: "Play bingo!", lt: "Žaisk bingo!" },
   highlights_title:    { en: "Highlights of the evening", lt: "Vakaro akcentai" },
+  highlights_widget_title: { en: "The night's best bits", lt: "Geriausios vakaro akimirkos" },
+  highlights_widget_sub:   { en: "Tap to flip through the gallery", lt: "Bakstelėk ir peržiūrėk visus" },
   whos_here_title:     { en: (n: number) => (n === 1 ? "Just you here" : `${n} here right now`), lt: (n: number) => (n === 1 ? "Kol kas tik tu" : `${n} čia dabar`) },
   home_my_results:     { en: "Your results", lt: "Tavo rezultatai" },
   home_results_in:     { en: "Results are in", lt: "Rezultatai jau čia" },
@@ -215,23 +229,6 @@ const S = {
   // ── Country deep-dive ────────────────────────────────────────────
   deep_artist:       { en: "Artist", lt: "Atlikėjas" },
   deep_song:         { en: "Song", lt: "Daina" },
-
-  // ── End-of-show reveal ───────────────────────────────────────────
-  reveal_cta:        { en: "Reveal my night", lt: "Kaip man sekėsi?" },
-  reveal_title:      { en: "Your Eurovision night", lt: "Tavo Eurovizijos vakaras" },
-  reveal_done:       { en: "Done", lt: "Baigta" },
-  reveal_top10:      { en: "Top 10 ballot", lt: "TOP10 balsas" },
-  reveal_home:       { en: (home: string) => `${home} placement`, lt: (home: string) => `${home} vieta` },
-  reveal_home_total: { en: (home: string) => `${home} total points`, lt: (home: string) => `${home} taškai iš viso` },
-  reveal_wooden:     { en: "Wooden spoon", lt: "Paskutinė vieta" },
-  reveal_lt12to:     { en: (home: string) => `12 from ${home}`, lt: (home: string) => `12 iš ${home}` },
-  reveal_big5:       { en: "Best of the Big 5", lt: "Geriausias iš Big 5" },
-  reveal_jury:       { en: "Jury winner", lt: "Žiuri nugalėtojas" },
-  reveal_tele:       { en: "Televote winner", lt: "Žiūrovų nugalėtojas" },
-  reveal_nul:        { en: "Zero from televote", lt: "Nulis iš žiūrovų" },
-  reveal_host:       { en: "Host top 3", lt: "Šeimininkai TOP3" },
-  reveal_solo:       { en: "Solo winner", lt: "Solo nugalėtojas" },
-  reveal_total:      { en: "Your final score", lt: "Galutinis rezultatas" },
 
   // ── Social share ─────────────────────────────────────────────────
   share_picks:        { en: "Share my TOP10", lt: "Dalinkis savo TOP10" },
@@ -348,6 +345,33 @@ const S = {
   breakdown_highlights: { en: "Chat highlights", lt: "Pokalbio akcentai" },
   breakdown_total:   { en: "Total", lt: "Iš viso" },
 
+  // ── Profile sheet ────────────────────────────────────────────────
+  profile_you:               { en: "you", lt: "tu" },
+  profile_stat_messages:     { en: "messages", lt: "žinutės" },
+  profile_stat_loves:        { en: "loves", lt: "širdys" },
+  profile_stat_given:        { en: "given", lt: "atiduota" },
+  profile_stat_highlights:   { en: "highlights", lt: "akcentai" },
+  profile_stat_bingo:        { en: "bingos", lt: "bingo" },
+  profile_stat_bets:         { en: "bets", lt: "statymai" },
+  profile_stat_trivia:       { en: "trivia", lt: "smulkmenos" },
+  profile_top_moment:        { en: "Top moment", lt: "Geriausia akimirka" },
+  profile_top10_h:           { en: "TOP 10 ballot", lt: "TOP 10 balsas" },
+  profile_top10_hidden:      { en: "Hidden until the host reveals results.", lt: "Slepiama, kol šeimininkas paskelbs rezultatus." },
+  profile_top10_empty:       { en: "Hasn't voted yet.", lt: "Dar nebalsavo." },
+  profile_top10_finished:    { en: (n: number) => `finished #${n}`, lt: (n: number) => `liko #${n}` },
+  profile_top10_unranked:    { en: "out of top 10", lt: "už TOP 10" },
+  profile_picked_artist:     { en: "Picked the artist", lt: "Pasirinko atlikėją" },
+  profile_loading:           { en: "Loading…", lt: "Įkeliama…" },
+  profile_not_here:          { en: "We can't find this person in the room.", lt: "Šio žmogaus kambaryje nerandame." },
+
+  // ── Trivia ───────────────────────────────────────────────────────
+  trivia_eyebrow:            { en: "Trivia", lt: "Smulkmenos" },
+  trivia_answered_correct:   { en: "Spot on, +2 points!", lt: "Pataikei! +2 taškai." },
+  trivia_answered_wrong:     { en: "Not this time.", lt: "Šįkart pro šalį." },
+  trivia_already_answered:   { en: "You've already answered.", lt: "Jau atsakei." },
+  trivia_closed:             { en: "Closed", lt: "Uždaryta" },
+  trivia_score_total:        { en: (n: number) => `+${n}`, lt: (n: number) => `+${n}` },
+
   // ── Reactions / honeycomb ────────────────────────────────────────
 };
 
@@ -397,38 +421,4 @@ export function fmt(
   return template.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`));
 }
 
-// ── Language persistence + hook ────────────────────────────────────
-
-// Custom event dispatched alongside writes so the same tab updates
-// without waiting for the cross-tab `storage` event.
-const LANG_CHANGE_EVENT = "uzk:lang-change";
-
-export function readLang(): Language {
-  if (typeof window === "undefined") return "lt";
-  // LT is the default; only an explicit "en" switches.
-  return window.localStorage.getItem(LANG_STORAGE_KEY) === "en" ? "en" : "lt";
-}
-
-export function writeLang(lang: Language): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(LANG_STORAGE_KEY, lang);
-  window.dispatchEvent(new CustomEvent(LANG_CHANGE_EVENT, { detail: lang }));
-}
-
-export function useLang(): Language {
-  const [lang, setLang] = useState<Language>("lt");
-  useEffect(() => {
-    setLang(readLang());
-    const onChange = () => setLang(readLang());
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LANG_STORAGE_KEY) onChange();
-    };
-    window.addEventListener(LANG_CHANGE_EVENT, onChange);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener(LANG_CHANGE_EVENT, onChange);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
-  return lang;
-}
+// `readLang` / `writeLang` / `useLang` live in ./i18n-client.ts.

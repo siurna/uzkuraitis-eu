@@ -280,6 +280,10 @@ export const chatMessages = pgTable(
   },
   (t) => [
     index("chat_room_created_idx").on(t.roomId, t.createdAt),
+    // Per-author lookups (profile drawer, leaderboard highlights,
+    // admin moderation) — without this they fall back to a filter on
+    // the (room, createdAt) index.
+    index("chat_room_session_idx").on(t.roomId, t.sessionId),
   ],
 );
 
@@ -353,6 +357,44 @@ export const pushSubscriptions = pgTable(
     uniqueIndex("push_subs_endpoint_unique").on(t.roomId, t.endpoint),
   ],
 );
+
+// Trivia answers — one per (room, session, country). The trivia bank
+// itself lives in `lib/trivia.ts` (pure data, no DB). The server
+// validates the choiceIndex against that bank at answer time and stores
+// only the boolean correctness here, so the leaderboard can add +2 per
+// hit to the player's total.
+export const triviaAnswers = pgTable(
+  "trivia_answers",
+  {
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    sessionId: text("session_id").notNull(),
+    countryCode: text("country_code").notNull(),
+    choiceIndex: integer("choice_index").notNull(),
+    correct: boolean("correct").notNull(),
+    answeredAt: timestamp("answered_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.roomId, t.sessionId, t.countryCode] }),
+    index("trivia_answers_room_idx").on(t.roomId),
+  ],
+);
+
+// Postgres-backed rate-limit buckets. Replaces the in-memory floodCheck
+// that was only as durable as one warm serverless instance.
+// `bucket` is a free-form string the caller composes — convention is
+// "<kind>:<roomId>:<sessionId>" so different write paths share the
+// helper without colliding.
+export const rateLimits = pgTable("rate_limits", {
+  bucket: text("bucket").primaryKey(),
+  hits: integer("hits").notNull().default(0),
+  windowStart: timestamp("window_start", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 // WebAuthn / passkey credentials for the single admin user. Initial enrollment
 // is gated by the ADMIN_BOOTSTRAP_SECRET env var; once at least one credential

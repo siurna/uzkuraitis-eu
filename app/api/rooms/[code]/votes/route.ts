@@ -7,6 +7,7 @@ import { findRoomByCode, touchRoom } from "@/lib/rooms";
 import { countries } from "@/lib/countries";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { postSystemMessage } from "@/lib/chat-system";
+import { guardSession } from "@/lib/server-session";
 
 const POINT_KEYS = ["12", "10", "8", "7", "6", "5", "4", "3", "2", "1"] as const;
 
@@ -79,6 +80,9 @@ export async function POST(request: Request, { params }: RouteCtx) {
     homePrediction,
     bets,
   } = parsed.data;
+
+  const guard = await guardSession(sessionId);
+  if (guard) return guard;
 
   // Cross-check countries actually exist + no dupes.
   const validCodes = new Set(countries.map((c) => c.code));
@@ -172,6 +176,10 @@ export async function DELETE(request: Request, { params }: RouteCtx) {
   }
   const url = new URL(request.url);
   const sessionId = url.searchParams.get("session");
+  if (sessionId) {
+    const guard = await guardSession(sessionId);
+    if (guard) return guard;
+  }
   if (!sessionId) {
     return NextResponse.json({ error: "Missing session" }, { status: 400 });
   }

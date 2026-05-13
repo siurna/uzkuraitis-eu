@@ -2,7 +2,8 @@
 
 import { HOST_COUNTRY, type BetBreakdown } from "@/lib/scoring";
 import { countryName } from "@/lib/countries";
-import { useLang, t, fmt, type MessageKey } from "@/lib/i18n";
+import { t, fmt, type MessageKey } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // The per-component score breakdown (TOP10 ballot + home placement +
 // every side bet → points). Shared by the leaderboard's expanded row
@@ -13,6 +14,7 @@ export function ScoreBreakdown({
   home,
   bets,
   highlights,
+  trivia = 0,
   total,
   homeName,
 }: {
@@ -20,6 +22,7 @@ export function ScoreBreakdown({
   home: number;
   bets: BetBreakdown;
   highlights: number;
+  trivia?: number;
   total: number;
   homeName: string;
 }) {
@@ -36,9 +39,10 @@ export function ScoreBreakdown({
     { label: t(lang, "bet_jury_winner"), pts: bets.juryWinner },
     { label: t(lang, "bet_televote_winner"), pts: bets.televoteWinner },
     { label: t(lang, "bet_nul"), pts: bets.nulTelevote },
-    { label: t(lang, "bet_host_top3"), pts: bets.hostTop3 },
+    { label: tpl("bet_host_top3"), pts: bets.hostTop3 },
     { label: t(lang, "bet_solo_winner"), pts: bets.winnerSolo },
     { label: t(lang, "breakdown_highlights"), pts: highlights },
+    { label: t(lang, "trivia_eyebrow"), pts: trivia },
   ];
   return (
     <ul className="flex flex-col gap-0.5 text-sm">

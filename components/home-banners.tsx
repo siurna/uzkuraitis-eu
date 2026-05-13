@@ -10,7 +10,8 @@ import { participantPhoto } from "@/lib/participants";
 import { optimizedSrc } from "@/lib/img";
 import { buildBingoCard, FREE_SQUARE, tropeEmoji, tropeText } from "@/lib/bingo-tropes";
 import { HeartFlag } from "@/components/flag";
-import { useLang, t, type Language } from "@/lib/i18n";
+import { t, type Language } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // ─────────────────────────────────────────────────────────────────────
 // Home banners — full-width, but each its own object: a bold, multi-hue
@@ -60,28 +61,35 @@ function Banner({
   title: ReactNode;
   sub: ReactNode;
   artwork: ReactNode;
-  onClick: () => void;
+  /** Tap target. Omit to render a non-interactive surface. */
+  onClick?: () => void;
   dim?: boolean;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`relative block w-full overflow-hidden rounded-3xl text-left ${dim ? "opacity-85" : ""}`}
-      style={{ background: fill }}
-    >
+  const inner = (
+    <>
       <div className="pointer-events-none absolute inset-y-0 -right-6 flex items-center">{artwork}</div>
       <div
         className="pointer-events-none absolute inset-0"
         style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.46) 0%, rgba(8,9,28,0.2) 38%, transparent 64%)" }}
       />
-      <div className={`relative flex flex-col justify-center gap-1 px-5 py-5 ${SIZE_MIN_H[size]}`}>
+      {/* The right ~34% is reserved for the artwork so copy never sits on
+          top of it (matches the wash that fades out at ~64%). */}
+      <div className={`relative flex flex-col justify-center gap-1 pl-5 pr-[34%] py-5 ${SIZE_MIN_H[size]}`}>
         <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/75 flex items-center gap-1.5">
           {eyebrow}
         </p>
-        <p className="font-display text-xl text-white leading-tight drop-shadow-sm">{title}</p>
+        <p className="font-display text-xl text-white leading-tight drop-shadow-sm text-balance">{title}</p>
         <p className="text-sm text-white/70 leading-snug">{sub}</p>
       </div>
+    </>
+  );
+  const cls = `relative block w-full overflow-hidden rounded-3xl text-left ${dim ? "opacity-85" : ""}`;
+  if (!onClick) {
+    return <div className={cls} style={{ background: fill }}>{inner}</div>;
+  }
+  return (
+    <button type="button" onClick={onClick} className={cls} style={{ background: fill }}>
+      {inner}
     </button>
   );
 }
@@ -131,27 +139,31 @@ const BINGO_PREVIEW = buildBingoCard("uzk-home-preview")
   .slice(0, 9);
 const BINGO_PREVIEW_STRUCK = new Set([0, 4, 8]);
 
-// Bingo banner subtitle when there's no progress yet: slowly crossfade
-// through actual ticket tropes so it teases the game's flavour rather
-// than sitting on one static line.
-function BingoSubCrossfade({ lang }: { lang: Language }) {
+// Bingo banner subtitle: slowly crossfade through the player's actual
+// ticket tropes (every ~10s) so it teases the game's flavour rather than
+// sitting on a static "marked x/y" line. Falls back to a preview deck
+// when the player hasn't generated a ticket yet.
+function BingoSubCrossfade({ lang, tropes }: { lang: Language; tropes: readonly number[] }) {
+  const list = tropes.length > 0 ? tropes : BINGO_PREVIEW;
   const [i, setI] = useState(0);
   useEffect(() => {
-    const id = window.setInterval(() => setI((n) => (n + 1) % BINGO_PREVIEW.length), 5000);
+    setI(0);
+    const id = window.setInterval(() => setI((n) => (n + 1) % list.length), 10000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [list.length]);
+  const idx = list[i % list.length] ?? list[0];
   return (
     <span className="inline-block min-h-[1.2em] align-bottom">
       <AnimatePresence mode="wait" initial={false}>
         <motion.span
-          key={i}
+          key={`${i}-${idx}`}
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -4 }}
-          transition={{ duration: 0.28 }}
+          transition={{ duration: 0.32 }}
           className="block"
         >
-          {tropeText(BINGO_PREVIEW[i], lang)}
+          {tropeText(idx, lang)}
         </motion.span>
       </AnimatePresence>
     </span>
@@ -174,14 +186,26 @@ function openVoteTab(setTab: (t: "vote") => void, sub: "ballot" | "bets" | "rule
   window.setTimeout(() => window.dispatchEvent(new CustomEvent("uzk:vote-tab", { detail: sub })), 60);
 }
 
+// Shared enter/exit/layout choreography for every home banner — so a
+// widget appearing or disappearing (now-playing, results, share, …)
+// slides in/out rather than popping, and its neighbours reflow smoothly.
+const BANNER_MOTION = {
+  layout: true,
+  initial: { opacity: 0, y: 12, scale: 0.97 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, scale: 0.95 },
+  transition: { type: "spring" as const, stiffness: 360, damping: 32 },
+};
+
 export function HomeBanners() {
-  const { code, votingEnabled, tallyEnabled, nowPlayingCode, showStatus, runningOrderPos } = useRoomLive();
+  const { code, votingEnabled, nowPlayingCode, showStatus, runningOrderPos } = useRoomLive();
   const lang = useLang();
   const { setTab } = useRoomTab();
 
   const [voted, setVoted] = useState(false);
   const [betsCount, setBetsCount] = useState(0);
   const [bingo, setBingo] = useState<{ best: number; won: boolean } | null>(null);
+  const [ticketTropes, setTicketTropes] = useState<number[]>([]);
   const [vs, setVs] = useState<{ topCode: string; roomRank: number | null; overlap: number | null } | null>(null);
 
   useEffect(() => {
@@ -191,12 +215,21 @@ export function HomeBanners() {
       const tickets = JSON.parse(localStorage.getItem(`uzk_bingo_tickets_${code}`) ?? "[]") as {
         struck?: unknown[];
         bingoFired?: boolean;
+        seed?: string;
       }[];
       if (Array.isArray(tickets) && tickets.length > 0) {
         const counts = tickets.map((tk) =>
           Math.min(25, (Array.isArray(tk.struck) ? tk.struck.length : 0) + 1),
         );
         setBingo({ best: Math.max(...counts), won: tickets.some((tk) => !!tk.bingoFired) });
+        // Collect the trope indices on every ticket the player holds — the
+        // banner subtitle crossfades through them.
+        const set = new Set<number>();
+        for (const tk of tickets) {
+          if (typeof tk.seed !== "string") continue;
+          for (const tr of buildBingoCard(tk.seed)) if (tr !== FREE_SQUARE) set.add(tr);
+        }
+        setTicketTropes([...set]);
       }
     } catch {
       /* ignore */
@@ -263,119 +296,148 @@ export function HomeBanners() {
               ? t(lang, "home_vs_room_bold", vsRank)
               : t(lang, "home_vs_room_rank", vsRank);
 
+  // What lives in the big top slot:
+  //   - someone on stage   → the now-playing hero
+  //   - else, lines open + you haven't voted → a "VOTE NOW" hero
+  //   - else nothing
+  const showVoteHero = !playing && votingEnabled && !voted;
+  // The regular small Vote banner only shows when the hero isn't, and we
+  // never show the "voting opens soon" prompt once lines have been pulled.
+  const showVoteBanner = (votingEnabled || voted) && !showVoteHero;
+  // Hide the "place your bets" prompt once voting's off (nothing to do),
+  // but keep showing it if you've already got bets down.
+  const showBonusBanner = betsCount > 0 || votingEnabled;
+
   return (
     <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">
-      {/* the headline — who's on stage right now */}
-      {playing && (
-        <PlayingCard country={playing} lang={lang} pos={runningOrderPos} onOpen={() => setTab("chat")} />
-      )}
+      <AnimatePresence mode="popLayout" initial={false}>
+        {/* Top slot — who's on stage, or a VOTE NOW hero, or nothing */}
+        {playing ? (
+          <motion.div key="np-hero" {...BANNER_MOTION}>
+            <PlayingCard country={playing} lang={lang} pos={runningOrderPos} onOpen={() => setTab("chat")} />
+          </motion.div>
+        ) : showVoteHero ? (
+          <motion.div key="vote-hero" {...BANNER_MOTION}>
+            <VoteHeroCard lang={lang} onOpen={() => setTab("vote")} />
+          </motion.div>
+        ) : null}
 
-      {/* Vote — electric-blue → purple, a cascade of "douze points" pills */}
-      <Banner
-        fill="linear-gradient(135deg, #0040ee 0%, #6020c6 55%, #7d1f9a 100%)"
-        size="lg"
-        eyebrow={
-          voted
-            ? t(lang, "home_vote_done_eyebrow")
-            : votingEnabled
-              ? <><LiveDot />{t(lang, "live")}</>
-              : t(lang, "tab_ballot")
-        }
-        title={t(lang, voted ? "home_vote_done" : votingEnabled ? "home_vote_open" : "home_vote_soon")}
-        sub={t(lang, voted ? "home_vote_done_sub" : votingEnabled ? "home_vote_open_sub" : "home_vote_soon_sub")}
-        onClick={() => setTab("vote")}
-        artwork={<VoteEqualizer />}
-      />
+        {/* Vote — electric-blue → purple */}
+        {showVoteBanner && (
+          <motion.div key="vote-banner" {...BANNER_MOTION}>
+            <Banner
+              fill="linear-gradient(135deg, #0040ee 0%, #6020c6 55%, #7d1f9a 100%)"
+              size="lg"
+              eyebrow={
+                voted
+                  ? t(lang, "home_vote_done_eyebrow")
+                  : votingEnabled
+                    ? <><LiveDot />{t(lang, "live")}</>
+                    : t(lang, "tab_ballot")
+              }
+              title={t(lang, voted ? "home_vote_done" : "home_vote_open")}
+              sub={t(lang, voted ? "home_vote_done_sub" : "home_vote_open_sub")}
+              onClick={() => setTab("vote")}
+              artwork={<VoteEqualizer />}
+            />
+          </motion.div>
+        )}
 
-      {/* Bingo — purple → magenta, the ticket grid bleeding off the edge */}
-      <Banner
-        fill="linear-gradient(135deg, #5a22a9 0%, #9b1690 50%, #c91475 100%)"
-        size="lg"
-        eyebrow="BINGO"
-        title={t(lang, "bingo_widget_title")}
-        sub={
-          bingo?.won ? (
-            t(lang, "home_bingo_won")
-          ) : bingo ? (
-            t(lang, "home_bingo_progress", bingo.best)
-          ) : (
-            <BingoSubCrossfade lang={lang} />
-          )
-        }
-        onClick={() => setTab("bingo")}
-        artwork={
-          <span className="grid grid-cols-3 gap-1.5 pr-9 -rotate-[8deg] opacity-95">
-            {BINGO_PREVIEW.map((idx, i) => {
-              const x = BINGO_PREVIEW_STRUCK.has(i);
-              return (
-                <span
-                  key={i}
-                  className="relative h-9 w-9 grid place-items-center text-lg leading-none rounded-lg bg-white/12 ring-1 ring-white/15"
-                >
-                  <span className={x ? "opacity-30 grayscale" : ""}>{tropeEmoji(idx)}</span>
-                  {x && <span className="absolute inset-0 grid place-items-center text-white text-xl font-bold leading-none">✕</span>}
-                </span>
-              );
-            })}
-          </span>
-        }
-      />
-
-      {/* You vs the room — deep-space radial, your #1 flag + a two-bar chart */}
-      <Banner
-        fill="radial-gradient(150% 130% at 88% -8%, #2a17e6 0%, #0a0d52 28%, #060a3e 55%, #3e0f54 88%)"
-        size="md"
-        dim={!vsCountry}
-        eyebrow={t(lang, "home_vs_room")}
-        title={vsCountry ? countryName(vsCountry.code, lang) : t(lang, "home_vs_room_empty_title")}
-        sub={vsSub}
-        onClick={() => setTab("vote")}
-        artwork={
-          vsCountry ? (
-            <span className="flex items-center gap-3 pr-9">
-              <span className="flex items-end gap-1.5 h-16">
-                <span className="w-3 rounded-t bg-white" style={{ height: "100%" }} title="your #1" />
-                <span
-                  className="w-3 rounded-t bg-white/35"
-                  style={{ height: `${Math.max(14, 100 - ((vsRank ?? 10) - 1) * 9)}%` }}
-                  title="the room"
-                />
+        {/* Bingo — purple → magenta, the ticket grid bleeding off the edge */}
+        <motion.div key="bingo-banner" {...BANNER_MOTION}>
+          <Banner
+            fill="linear-gradient(135deg, #5a22a9 0%, #9b1690 50%, #c91475 100%)"
+            size="lg"
+            eyebrow="BINGO"
+            title={t(lang, "bingo_widget_title")}
+            sub={
+              bingo?.won
+                ? t(lang, "home_bingo_won")
+                : <BingoSubCrossfade lang={lang} tropes={ticketTropes} />
+            }
+            onClick={() => setTab("bingo")}
+            artwork={
+              <span className="grid grid-cols-3 gap-1.5 pr-9 -rotate-[8deg] opacity-95">
+                {BINGO_PREVIEW.map((idx, i) => {
+                  const x = BINGO_PREVIEW_STRUCK.has(i);
+                  return (
+                    <span
+                      key={i}
+                      className="relative h-9 w-9 grid place-items-center text-lg leading-none rounded-lg bg-white/12 ring-1 ring-white/15"
+                    >
+                      <span className={x ? "opacity-30 grayscale" : ""}>{tropeEmoji(idx)}</span>
+                      {x && <span className="absolute inset-0 grid place-items-center text-white text-xl font-bold leading-none">✕</span>}
+                    </span>
+                  );
+                })}
               </span>
-              <span className="-rotate-6 drop-shadow">
-                <HeartFlag code={vsCountry.code} size="lg" />
-              </span>
-            </span>
-          ) : (
-            <span className="pr-12 text-7xl opacity-25 -rotate-6 select-none" aria-hidden>
-              📊
-            </span>
-          )
-        }
-      />
+            }
+          />
+        </motion.div>
 
-      {/* Bonus bets — magenta → ESC pink, an endless marquee of bet "chips" */}
-      <Banner
-        fill="linear-gradient(135deg, #bc1475 0%, #f10d59 100%)"
-        size="sm"
-        eyebrow={t(lang, "rules_bets_h")}
-        title={betsCount > 0 ? t(lang, "home_bonus_placed", betsCount) : t(lang, "home_bonus_none")}
-        sub={t(lang, "home_bonus_sub")}
-        onClick={() => openVoteTab(setTab, "bets")}
-        artwork={
-          <span className="relative block w-44 overflow-hidden pr-2 [mask-image:linear-gradient(90deg,transparent,#000_22%,#000_100%)]" aria-hidden>
-            <span className="flex w-max -rotate-[6deg] py-1" style={{ animation: "uzk-marquee 16s linear infinite" }}>
-              {[...BET_CHIPS, ...BET_CHIPS].map((c, i) => (
-                <span
-                  key={i}
-                  className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-lg shadow-md"
-                >
-                  {c}
+        {/* You vs the room — deep-space radial, your #1 flag + a two-bar chart */}
+        <motion.div key="vs-banner" {...BANNER_MOTION}>
+          <Banner
+            fill="radial-gradient(150% 130% at 88% -8%, #2a17e6 0%, #0a0d52 28%, #060a3e 55%, #3e0f54 88%)"
+            size="md"
+            dim={!vsCountry}
+            eyebrow={t(lang, "home_vs_room")}
+            title={vsCountry ? countryName(vsCountry.code, lang) : t(lang, "home_vs_room_empty_title")}
+            sub={vsSub}
+            // No-op when lines are shut — there's nothing to do over on the Vote tab.
+            onClick={votingEnabled ? () => setTab("vote") : undefined}
+            artwork={
+              vsCountry ? (
+                <span className="flex items-center gap-3 pr-9">
+                  <span className="flex items-end gap-1.5 h-16">
+                    <span className="w-3 rounded-t bg-white" style={{ height: "100%" }} title="your #1" />
+                    <span
+                      className="w-3 rounded-t bg-white/35"
+                      style={{ height: `${Math.max(14, 100 - ((vsRank ?? 10) - 1) * 9)}%` }}
+                      title="the room"
+                    />
+                  </span>
+                  <span className="-rotate-6 drop-shadow">
+                    <HeartFlag code={vsCountry.code} size="lg" />
+                  </span>
                 </span>
-              ))}
-            </span>
-          </span>
-        }
-      />
+              ) : (
+                <span className="pr-12 text-7xl opacity-25 -rotate-6 select-none" aria-hidden>
+                  📊
+                </span>
+              )
+            }
+          />
+        </motion.div>
+
+        {/* Bonus bets — magenta → ESC pink, an endless marquee of bet "chips" */}
+        {showBonusBanner && (
+          <motion.div key="bonus-banner" {...BANNER_MOTION}>
+            <Banner
+              fill="linear-gradient(135deg, #bc1475 0%, #f10d59 100%)"
+              size="sm"
+              eyebrow={t(lang, "rules_bets_h")}
+              title={betsCount > 0 ? t(lang, "home_bonus_placed", betsCount) : t(lang, "home_bonus_none")}
+              sub={t(lang, "home_bonus_sub")}
+              onClick={() => openVoteTab(setTab, "bets")}
+              artwork={
+                <span className="relative block w-48 overflow-hidden pr-2 [mask-image:linear-gradient(90deg,transparent,#000_16%,#000_84%,transparent)]" aria-hidden>
+                  <span className="flex w-max -rotate-[6deg] py-1" style={{ animation: "uzk-marquee 18s linear infinite" }}>
+                    {[...BET_CHIPS, ...BET_CHIPS].map((c, i) => (
+                      <span
+                        key={i}
+                        className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-lg shadow-md"
+                      >
+                        {c}
+                      </span>
+                    ))}
+                  </span>
+                </span>
+              }
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -451,7 +513,7 @@ function PlayingCard({
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-x-0 bottom-0 p-4 pb-5 sm:p-5 sm:pb-6 flex items-end gap-3"
           >
-            <span className="heartbeat shrink-0">
+            <span className="shrink-0">
               <HeartFlag code={country.code} size="md" />
             </span>
             <div className="min-w-0 flex-1">
@@ -498,7 +560,7 @@ function PlayingCard({
         }}
       >
         <div className="flex items-center gap-4">
-          <span className="heartbeat shrink-0">
+          <span className="shrink-0">
             <HeartFlag code={country.code} size="lg" />
           </span>
           <div className="min-w-0 flex-1">
@@ -516,6 +578,39 @@ function PlayingCard({
           <MessageCircle className="h-5 w-5 text-dark-blue-200 shrink-0" />
         </div>
         {progressBar}
+      </div>
+    </button>
+  );
+}
+
+// The "VOTE NOW" hero — shown when the lines are open and nobody is on
+// stage yet, so the call to vote is the biggest thing on the screen.
+// Same prominence as the now-playing hero: full-width, rainbow-stroked,
+// the equalizer art bleeding off the right.
+function VoteHeroCard({ lang, onOpen }: { lang: "en" | "lt"; onOpen: () => void }) {
+  return (
+    <button type="button" onClick={onOpen} className="rainbow-border rounded-3xl w-full block">
+      <div
+        className="relative overflow-hidden rounded-[22px] px-5 pt-5 pb-6 sm:px-6 min-h-[8.75rem] flex flex-col justify-center"
+        style={{ background: "linear-gradient(125deg, #f10d59 0%, #ff3ede 46%, #6020c6 100%)" }}
+      >
+        <div className="pointer-events-none absolute inset-y-0 -right-5 flex items-center">
+          <VoteEqualizer />
+        </div>
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.5) 0%, rgba(8,9,28,0.22) 40%, transparent 66%)" }}
+        />
+        <div className="relative flex flex-col gap-1 pr-[34%]">
+          <p className="text-[10px] uppercase tracking-[0.32em] text-white/85 font-display leading-tight flex items-center gap-1.5">
+            <LiveDot />
+            {t(lang, "live")}
+          </p>
+          <p className="font-display text-2xl text-white leading-tight drop-shadow text-balance">
+            {t(lang, "home_vote_open")}
+          </p>
+          <p className="text-sm text-white/75 leading-snug">{t(lang, "home_vote_open_sub")}</p>
+        </div>
       </div>
     </button>
   );

@@ -10,7 +10,8 @@ import { useEventListener } from "@/lib/liveblocks";
 import { HeartFlag, MetaPill } from "@/components/flag";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 type ScoreRow = {
   code: string;

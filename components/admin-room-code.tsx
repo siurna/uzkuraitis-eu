@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-const ROOM_CODE_RE = /^[2-9ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/;
+import { ROOM_CODE_REGEX } from "@/lib/rooms";
 
 // Admin › room › Settings: change the human-friendly join code.
 // Heads-up: this invalidates any links/QRs already handed out.
@@ -20,8 +19,8 @@ export function AdminRoomCode({ code }: { code: string }) {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!dirty) return;
-    if (!ROOM_CODE_RE.test(next)) {
-      toast.error("Codes are 6 characters: 2-9 and A-Z (no 0, 1, I, L, O).");
+    if (!ROOM_CODE_REGEX.test(next)) {
+      toast.error("Codes are 6 characters: 1-9 and A-Z (no 0, I, L, O).");
       return;
     }
     start(async () => {
@@ -46,7 +45,7 @@ export function AdminRoomCode({ code }: { code: string }) {
       <div className="flex gap-2">
         <Input
           value={draft}
-          onChange={(e) => setDraft(e.target.value.toUpperCase().replace(/[^2-9A-Z]/g, "").slice(0, 6))}
+          onChange={(e) => setDraft(e.target.value.toUpperCase().replace(/[^1-9A-Z]/g, "").slice(0, 6))}
           className="h-10 flex-1 font-mono tracking-[0.3em] text-center uppercase"
           maxLength={6}
           spellCheck={false}

@@ -21,13 +21,19 @@ import {
   ImageDown,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useEventListener, useOthers, useUpdateMyPresence } from "@/lib/liveblocks";
+import {
+  useEventListener,
+  useOthers,
+  useUpdateMyPresence,
+  type ChatMessagePayload,
+} from "@/lib/liveblocks";
 import { useRoomLive } from "@/components/room-shell";
 import { useIdentity } from "@/lib/use-identity";
 import { GifPicker } from "@/components/gif-picker";
-import { ChatRow, type Message } from "@/components/chat-row";
+import { ChatRow, type Message, type MessageKind } from "@/components/chat-row";
 import { Lightbox } from "@/components/chat-lightbox";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 import { haptic } from "@/lib/haptics";
 
 // How many messages we keep in the DOM. The API already windows to the
@@ -344,7 +350,11 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   }, [code, active, messages.length]);
 
   useEventListener(({ event }) => {
-    const ev = event as { type?: string; id?: string };
+    const ev = event as {
+      type?: string;
+      id?: string;
+      message?: ChatMessagePayload;
+    };
     if (ev.type === "chat:delete") {
       if (ev.id) setMessages((prev) => prev.filter((m) => m.id !== ev.id));
       return;
@@ -354,6 +364,31 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       // refetch keeps the local blob preview from flashing to the
       // server URL.
       if (ev.id && byId.has(ev.id)) return;
+      // The server now embeds the full row in the broadcast, so we can
+      // append in-place without a follow-up GET — saves a roundtrip per
+      // arriving message across every connected client. Older servers
+      // without the payload fall back to the refetch.
+      if (ev.message) {
+        const m = ev.message;
+        setMessages((prev) => {
+          if (prev.some((x) => x.id === m.id)) return prev;
+          const appended: Message = {
+            id: m.id,
+            sessionId: m.sessionId,
+            name: m.name,
+            avatarId: m.avatarId,
+            kind: m.kind as MessageKind,
+            body: m.body,
+            gifUrl: m.gifUrl,
+            replyTo: m.replyTo,
+            meta: (m.meta ?? null) as Record<string, unknown> | null,
+            createdAt: m.createdAt,
+            reactions: {},
+          };
+          return [...prev, appended].slice(-RENDER_CAP);
+        });
+        return;
+      }
       fetchMessages();
       return;
     }
@@ -410,25 +445,24 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     return () => window.removeEventListener("uzk:chat-media-loaded", stick);
   }, []);
 
-  // Swipe / tap to reply: anchor the replied-to message in the middle so
-  // the list doesn't jump somewhere random. Re-runs once the keyboard's
-  // up (composerFocused flips) so it stays centred after the resize.
+  // Swipe / tap to reply: anchor the replied-to message in the middle
+  // so the list doesn't jump somewhere random. Run once now, and again
+  // after the keyboard / reply-chip layout settles — without the second
+  // pass the message would land off-screen on iOS roughly half the time.
   useEffect(() => {
     if (!replyTo) return;
     const id = replyTo.id;
-    let raf2 = 0;
-    const raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => {
-        listRef.current
-          ?.querySelector<HTMLElement>(`[data-msg-id="${id}"]`)
-          ?.scrollIntoView({ block: "center", behavior: "smooth" });
-      });
-    });
+    const scroll = () =>
+      listRef.current
+        ?.querySelector<HTMLElement>(`[data-msg-id="${id}"]`)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    const raf = requestAnimationFrame(scroll);
+    const settle = window.setTimeout(scroll, 280);
     return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
+      cancelAnimationFrame(raf);
+      window.clearTimeout(settle);
     };
-  }, [replyTo, composerFocused]);
+  }, [replyTo, composerFocused, viewport]);
 
   // ----- composer / typing -----
   const onComposerChange = (v: string) => {
@@ -785,11 +819,9 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         <div
           ref={listRef}
           onScroll={onScroll}
-          // Scrolling the history with a finger dismisses the keyboard,
-          // the way every native chat does.
-          onTouchMove={() => {
-            if (document.activeElement === taRef.current) taRef.current?.blur();
-          }}
+          // We deliberately don't dismiss the keyboard on touch-move:
+          // every modern chat lets you keep typing while scrolling the
+          // history. Tap the bubble or the composer Done key to close.
           className="flex-1 min-h-0 overflow-y-auto py-4 flex flex-col gap-3 fade-scroll-y"
           onClick={() => menuFor && setMenuFor(null)}
         >
@@ -914,34 +946,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         </AnimatePresence>
 
         {/* Composer */}
-        <div className="shrink-0 pb-2 pt-2 bg-gradient-to-t from-dark-blue-900 via-dark-blue-900/95 to-dark-blue-900/0 relative">
-          {/* @-mention autocomplete */}
-          <AnimatePresence>
-            {mentionMatches.length > 0 && !editing && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                transition={{ duration: 0.14 }}
-                className="absolute bottom-full left-0 right-0 mb-2 rounded-2xl bg-black/85
-                           ring-1 ring-white/12 backdrop-blur-md overflow-hidden shadow-xl"
-              >
-                {mentionMatches.map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => insertMention(n)}
-                    className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-white
-                               hover:bg-white/8 transition text-left"
-                  >
-                    <span className="text-flamingo font-display">@</span>
-                    {n}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
+        <div className="shrink-0 pb-2 pt-2 bg-gradient-to-t from-dark-blue-900 via-dark-blue-900/95 to-dark-blue-900/0">
           {/* Typing indicator */}
           {typingNames.length > 0 && !editing && (
             <p className="px-3 pb-1 text-[11px] text-white/45">
@@ -955,24 +960,25 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
 
           {(replyTo || editing) && (
             // Sits on the right — it's about your (right-aligned) message.
-            <div className="mb-2 ml-auto max-w-[85%] flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] ring-1 ring-white/10 text-xs">
+            // Hard-capped so a long quote can't blow past the composer.
+            <div className="mb-2 ml-auto w-fit max-w-[min(85%,22rem)] flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] ring-1 ring-white/10 text-xs">
               {editing ? (
                 <>
-                  <Pencil className="h-3.5 w-3.5 text-flamingo" />
-                  <p className="flex-1 truncate text-white/70">{t(lang, "chat_editing")}</p>
-                  <button type="button" onClick={() => setEditing(null)} className="text-white/40 hover:text-white" aria-label={t(lang, "cancel")}>
+                  <Pencil className="h-3.5 w-3.5 text-flamingo shrink-0" />
+                  <p className="flex-1 min-w-0 truncate text-white/70">{t(lang, "chat_editing")}</p>
+                  <button type="button" onClick={() => setEditing(null)} className="shrink-0 text-white/40 hover:text-white" aria-label={t(lang, "cancel")}>
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </>
               ) : replyTo ? (
                 <>
-                  <Reply className="h-3.5 w-3.5 text-flamingo" />
-                  <p className="flex-1 truncate text-white/70">
+                  <Reply className="h-3.5 w-3.5 text-flamingo shrink-0" />
+                  <p className="flex-1 min-w-0 truncate text-white/70">
                     <span className="font-display text-white/90">{replyTo.name}</span>
                     {": "}
                     {replyTo.body ?? (replyTo.gifUrl ? "GIF" : t(lang, "chat_card"))}
                   </p>
-                  <button type="button" onClick={() => setReplyTo(null)} className="text-white/40 hover:text-white" aria-label={t(lang, "cancel")}>
+                  <button type="button" onClick={() => setReplyTo(null)} className="shrink-0 text-white/40 hover:text-white" aria-label={t(lang, "cancel")}>
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </>
@@ -1001,73 +1007,114 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
               </button>
             </div>
           )}
-          {/* Composer pill. No send button — Enter (or the keyboard's
-              "send" key) sends. Photo + GIF sit on the right. */}
-          <div className="flex items-end gap-1 rounded-2xl border border-white/15 bg-black/40 px-1.5 py-1.5 transition focus-within:border-white/30">
-            <ContentEditableInput
-              innerRef={taRef}
-              enterKeyHint="send"
-              value={editing ? editBody : body}
-              onChange={(v) =>
-                editing ? setEditBody(v.slice(0, 2000)) : onComposerChange(v)
-              }
-              onPaste={editing ? undefined : onPaste}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  if (editing) submitEdit();
-                  else send();
+          {/* Composer pill + the @-mention popover. The popover anchors
+              to the pill (bottom-full of THIS wrapper, not the parent),
+              so it sits flush above the keyboard line and overlays any
+              reply/pending chip rather than being shoved up the screen. */}
+          <div className="relative">
+            <AnimatePresence>
+              {mentionMatches.length > 0 && !editing && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.14 }}
+                  className="absolute bottom-full left-0 right-0 mb-2 z-30 rounded-2xl bg-black/90
+                             ring-1 ring-white/12 backdrop-blur-md overflow-hidden shadow-xl"
+                >
+                  {mentionMatches.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      // Don't pull focus from the composer — keeps the
+                      // keyboard up, so picking a mention isn't a "tap
+                      // dismisses everything" surprise.
+                      onMouseDown={(e) => e.preventDefault()}
+                      onTouchStart={(e) => e.preventDefault()}
+                      onClick={() => insertMention(n)}
+                      className="flex w-full items-center gap-2 h-12 px-4 text-sm text-white
+                                 hover:bg-white/8 active:bg-white/12 transition text-left"
+                    >
+                      <span className="text-flamingo font-display">@</span>
+                      {n}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {/* Composer pill. No send button — Enter (or the keyboard's
+                "send" key) sends. Photo + GIF sit on the right. */}
+            <div className="flex items-end gap-1 rounded-2xl border border-white/15 bg-black/40 px-1.5 py-1.5 transition focus-within:border-white/30">
+              <ContentEditableInput
+                innerRef={taRef}
+                enterKeyHint="send"
+                value={editing ? editBody : body}
+                onChange={(v) =>
+                  editing ? setEditBody(v.slice(0, 2000)) : onComposerChange(v)
                 }
-              }}
-              onFocus={() => {
-                setComposerFocused(true);
-                window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: true }));
-              }}
-              onBlur={() => {
-                setComposerFocused(false);
-                if (!editing) clearTyping();
-                window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: false }));
-              }}
-              placeholder={editing ? t(lang, "chat_edit_placeholder") : t(lang, "chat_placeholder")}
-              className="flex-1 min-w-0 max-h-[120px] overflow-y-auto bg-transparent px-1.5 py-2
-                         text-base leading-snug text-white whitespace-pre-wrap break-words focus:outline-none"
-            />
-            {!editing && (
-              <div className="flex items-center gap-0.5 shrink-0">
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  tabIndex={-1}
-                  aria-hidden
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    e.target.value = "";
-                    if (f) queueImage(f);
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setGifOpen(true)}
-                  aria-label={t(lang, "gif_pick")}
-                  className="h-9 px-2 shrink-0 rounded-full grid place-items-center text-white/55
-                             hover:text-white hover:bg-white/10 transition active:scale-[0.92]"
-                >
-                  <span className="text-[11px] font-display font-bold tracking-tight leading-none">GIF</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={uploading}
-                  aria-label={t(lang, "chat_send_photo")}
-                  className="h-9 w-9 shrink-0 rounded-full grid place-items-center text-white/55
-                             hover:text-white hover:bg-white/10 transition active:scale-[0.92] disabled:opacity-50"
-                >
-                  {uploading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <ImagePlus className="h-[18px] w-[18px]" />}
-                </button>
-              </div>
-            )}
+                onPaste={editing ? undefined : onPaste}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (editing) submitEdit();
+                    else send();
+                  }
+                }}
+                onFocus={() => {
+                  setComposerFocused(true);
+                  window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: true }));
+                }}
+                onBlur={() => {
+                  setComposerFocused(false);
+                  if (!editing) clearTyping();
+                  window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: false }));
+                }}
+                placeholder={editing ? t(lang, "chat_edit_placeholder") : t(lang, "chat_placeholder")}
+                className="flex-1 min-w-0 max-h-[120px] overflow-y-auto bg-transparent px-1.5 py-2
+                           text-base leading-snug text-white whitespace-pre-wrap break-words focus:outline-none"
+              />
+              {!editing && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    tabIndex={-1}
+                    aria-hidden
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (f) queueImage(f);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    // Keep the keyboard up when tapping the attach buttons.
+                    onMouseDown={(e) => e.preventDefault()}
+                    onTouchStart={(e) => e.preventDefault()}
+                    onClick={() => setGifOpen(true)}
+                    aria-label={t(lang, "gif_pick")}
+                    className="h-9 px-2.5 shrink-0 rounded-full grid place-items-center text-white
+                               bg-white/[0.04] hover:bg-white/15 transition active:scale-[0.92]"
+                  >
+                    <span className="text-[11px] font-display font-bold tracking-tight leading-none">GIF</span>
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onTouchStart={(e) => e.preventDefault()}
+                    onClick={() => fileRef.current?.click()}
+                    disabled={uploading}
+                    aria-label={t(lang, "chat_send_photo")}
+                    className="h-9 w-9 shrink-0 rounded-full grid place-items-center text-white
+                               bg-white/[0.04] hover:bg-white/15 transition active:scale-[0.92] disabled:opacity-50"
+                  >
+                    {uploading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <ImagePlus className="h-[18px] w-[18px]" />}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

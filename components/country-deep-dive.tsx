@@ -8,7 +8,8 @@ import { getCountry, countryName } from "@/lib/countries";
 import { participantPhoto } from "@/lib/participants";
 import { optimizedSrc } from "@/lib/img";
 import { artistSocials, type ArtistSocials } from "@/lib/socials";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // Country deep-dive sheet — opens on a country code, shows the chip,
 // artist, song, running order, plus a one-tap shortcut to search the

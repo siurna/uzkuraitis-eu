@@ -6,13 +6,19 @@ import { motion, AnimatePresence } from "motion/react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { isValidRoomCode, normalizeRoomCode } from "@/lib/rooms";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 import { Button } from "@/components/ui/button";
 import { CodeInput } from "@/components/code-input";
 import { HeartbeatBackdrop } from "@/components/heartbeat-backdrop";
 import { Logo2026 } from "@/components/logo-2026";
+import { TurnstileWidget } from "@/components/turnstile";
 
 const LAST_ROOM_KEY = "uzk_last_room";
+// Public site key gets inlined at build time when configured. When it
+// isn't set we render the gate without the widget and the server-side
+// verify endpoint passes everything through — same flow, no friction.
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? null;
 
 export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
   const router = useRouter();
@@ -22,6 +28,9 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
 
   const [code, setCode] = useState(prefilled);
   const [pending, startTransition] = useTransition();
+  // Turnstile token from the widget — null until the user clears the
+  // challenge. When the env var isn't set we don't gate on it.
+  const [tsToken, setTsToken] = useState<string | null>(null);
 
   // While we're checking a remembered room, we want to show a loading
   // splash instead of flashing the empty input box. Distinct from `pending`
@@ -92,10 +101,23 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
       toast.error(t(lang, "bad_format"));
       return;
     }
+    if (TURNSTILE_SITE_KEY && !tsToken) {
+      // Widget hasn't fired its callback yet. The button is disabled in
+      // that state, so this only catches Enter-key submissions.
+      return;
+    }
     startTransition(async () => {
-      const res = await fetch(`/api/rooms/${normalized}`, { cache: "no-store" });
+      // /api/rooms/verify-join checks Turnstile + room existence in
+      // one call and sets the per-room cookie middleware looks for.
+      const res = await fetch("/api/rooms/verify-join", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code: normalized, token: tsToken ?? undefined }),
+      });
       if (!res.ok) {
-        toast.error(t(lang, "bad_code"));
+        const { error } = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(error ?? t(lang, "bad_code"));
+        setTsToken(null); // force the user to clear a fresh challenge
         return;
       }
       localStorage.setItem(LAST_ROOM_KEY, normalized);
@@ -159,9 +181,20 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
                 autoFocus
                 disabled={pending}
               />
+              {TURNSTILE_SITE_KEY && (
+                <TurnstileWidget
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onToken={setTsToken}
+                  onExpire={() => setTsToken(null)}
+                />
+              )}
               <Button
                 type="submit"
-                disabled={pending || code.length < 6}
+                disabled={
+                  pending ||
+                  code.length < 6 ||
+                  (!!TURNSTILE_SITE_KEY && !tsToken)
+                }
                 className="h-12 w-full font-display text-[19px] pt-[10px]
                            bg-gradient-to-r from-gold via-flamingo to-purple
                            text-white shadow-glow-pink

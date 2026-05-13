@@ -3,8 +3,11 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "./db";
 import { rooms, type Room } from "./db/schema";
 
-// Six-character codes from an unambiguous alphabet (no 0/O/1/I/L). Aim for
-// codes you can read aloud at a watch party without typos.
+// Six-character codes from an unambiguous alphabet (no 0/O/I/L). The
+// auto-generator skips ambiguous chars; the validator additionally
+// allows `1` so a host can type a memorable custom code like "PARTY1"
+// (we draw the line at characters that are visually indistinguishable
+// from each other: 0/O, I/L).
 const ROOM_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 const generateCode = customAlphabet(ROOM_CODE_ALPHABET, 6);
 
@@ -14,11 +17,17 @@ const ADMIN_TOKEN_ALPHABET =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 const generateAdminToken = customAlphabet(ADMIN_TOKEN_ALPHABET, 32);
 
-// Match the alphabet letter-for-letter so the validator can't accept a
-// character the generator would never produce (the previous A-HJ-NP-Z
-// range silently allowed L, which the generator excludes).
+// Validator alphabet: the generator's set + `1`. Hosts typing a custom
+// code can include digits; the generator stays conservative.
+export const ROOM_CODE_REGEX = /^[1-9ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/;
+
 export function isValidRoomCode(code: string): boolean {
-  return /^[2-9ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/.test(code);
+  return ROOM_CODE_REGEX.test(code);
+}
+
+// Suggest a fresh code (uses the conservative auto-generator alphabet).
+export function suggestRoomCode(): string {
+  return generateCode();
 }
 
 export function normalizeRoomCode(code: string): string {
@@ -45,10 +54,37 @@ export async function touchRoom(roomId: string): Promise<void> {
     .where(eq(rooms.id, roomId));
 }
 
-export async function createRoom(name: string): Promise<Room> {
+export async function createRoom(name: string, preferredCode?: string): Promise<Room | { error: "code_taken" } | { error: "code_invalid" }> {
+  const normalizedPreferred = preferredCode ? normalizeRoomCode(preferredCode) : null;
+  if (normalizedPreferred && !isValidRoomCode(normalizedPreferred)) {
+    return { error: "code_invalid" };
+  }
+  const adminToken = generateAdminToken();
+
+  // Caller-supplied code: try once, surface the conflict — don't silently
+  // fall back to a random one, the admin asked for that specific code.
+  if (normalizedPreferred) {
+    try {
+      const [room] = await db
+        .insert(rooms)
+        .values({
+          code: normalizedPreferred,
+          name: name.trim() || "Eurovision party",
+          adminToken,
+        })
+        .returning();
+      return room;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes("rooms_code_unique") || message.includes("duplicate")) {
+        return { error: "code_taken" };
+      }
+      throw err;
+    }
+  }
+
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateCode();
-    const adminToken = generateAdminToken();
     try {
       const [room] = await db
         .insert(rooms)
@@ -119,5 +155,9 @@ export async function getOrCreateRoom(
     const existing = await findRoomByCode(code);
     if (existing) return existing;
   }
-  return createRoom(fallbackName);
+  const result = await createRoom(fallbackName);
+  if ("error" in result) {
+    throw new Error(`createRoom failed: ${result.error}`);
+  }
+  return result;
 }

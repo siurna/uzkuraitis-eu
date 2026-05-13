@@ -7,7 +7,7 @@ import { useEventListener } from "@/lib/liveblocks";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { Flag } from "@/components/flag";
-import { useLang } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // The orchestrated "X is on stage" takeover. Fires on every
 // now-playing:change carrying a country code: a full-screen wash in

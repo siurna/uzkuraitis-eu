@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useRoomLive } from "@/components/room-shell";
-import { useLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // Full-screen, can't-miss takeover when the host flips voting state.
 // false→true  → "Europe, start voting now!" (the iconic line)

@@ -14,8 +14,11 @@ export async function shareTopTen(opts: {
   roomCode: string;
   voterId: string;
   caption: string;
+  lang?: "en" | "lt";
 }): Promise<ShareResult> {
-  const url = `${window.location.origin}/api/og/${opts.roomCode}/${opts.voterId}`;
+  const url = `${window.location.origin}/api/og/${opts.roomCode}/${opts.voterId}${
+    opts.lang ? `?lang=${opts.lang}` : ""
+  }`;
 
   const canShareFiles =
     typeof navigator !== "undefined" &&

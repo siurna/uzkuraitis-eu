@@ -29,6 +29,29 @@ export function ensureSessionId(): string {
   return s;
 }
 
+// Per-page-lifetime guard so we only hit /api/identity once even though
+// useIdentity is mounted in many places.
+let identityMinted = false;
+
+// Fire-and-forget: ask the server to mint a signed cookie for our
+// sessionId. Without this, every per-session write (chat, vote,
+// reaction, trivia) is rejected as 401. Cheap (single HMAC + Set-Cookie
+// on the server), idempotent, runs once per tab.
+export function mintSignedSession(): void {
+  if (identityMinted || typeof window === "undefined") return;
+  identityMinted = true;
+  const sessionId = ensureSessionId();
+  if (!sessionId) return;
+  fetch("/api/identity", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ sessionId }),
+  }).catch(() => {
+    // Network blip — retry next time the hook mounts in a new tab.
+    identityMinted = false;
+  });
+}
+
 export type Identity = {
   /** Display name, "" if not set yet. */
   name: string;
@@ -50,6 +73,7 @@ export function useIdentity(): Identity {
 
   useEffect(() => {
     ensureSessionId();
+    mintSignedSession();
     const read = () => {
       setNameState(window.localStorage.getItem(NAME_KEY) ?? "");
       setAvatarIdState(window.localStorage.getItem(AVATAR_KEY));

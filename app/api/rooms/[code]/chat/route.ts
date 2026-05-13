@@ -6,6 +6,8 @@ import { chatMessages, chatReactions, type ChatMessageKind } from "@/lib/db/sche
 import { findRoomByCode } from "@/lib/rooms";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 import { pushToRoom } from "@/lib/push";
+import { guardSession } from "@/lib/server-session";
+import { checkAndIncrement } from "@/lib/rate-limit";
 
 // Per-room chat. GET returns a window of messages with their reactions
 // folded in; POST inserts a new message and fans-out chat:new +
@@ -14,7 +16,12 @@ import { pushToRoom } from "@/lib/push";
 type RouteCtx = { params: Promise<{ code: string }> };
 
 const PostSchema = z.object({
-  session: z.string().min(8).max(64),
+  // Reject the two reserved session strings used internally for system
+  // / commentator posts so a client can't impersonate them.
+  session: z.string().min(8).max(64).refine(
+    (s) => s !== "system" && s !== "commentator",
+    { message: "Reserved session id" },
+  ),
   name: z.string().trim().min(1).max(40),
   avatarId: z.string().min(1).max(64).nullable().optional(),
   body: z.string().trim().max(2000).optional(),
@@ -29,25 +36,11 @@ const PostSchema = z.object({
 
 const PAGE_SIZE = 50;
 
-// Best-effort, per-warm-instance flood guard: max N posts per session in
-// a rolling window. Not a hard limit (serverless instances are
-// ephemeral), but enough to blunt a hype-moment spam burst.
-const FLOOD_WINDOW_MS = 10_000;
-const FLOOD_MAX = 12;
-const recentPosts = new Map<string, number[]>();
-function floodCheck(session: string): boolean {
-  const now = Date.now();
-  const arr = (recentPosts.get(session) ?? []).filter((t) => now - t < FLOOD_WINDOW_MS);
-  arr.push(now);
-  recentPosts.set(session, arr);
-  if (recentPosts.size > 500) {
-    // crude GC so the map can't grow unbounded
-    for (const [k, v] of recentPosts) {
-      if (v.every((t) => now - t > FLOOD_WINDOW_MS)) recentPosts.delete(k);
-    }
-  }
-  return arr.length <= FLOOD_MAX;
-}
+// Token-bucket caps live in the DB now (lib/rate-limit.ts) — durable
+// across warm instances. 12 messages per 10 seconds per session is the
+// floor; spam past that returns 429.
+const CHAT_RATE_MAX = 12;
+const CHAT_RATE_WINDOW_MS = 10_000;
 
 export async function GET(req: Request, { params }: RouteCtx) {
   const { code } = await params;
@@ -139,7 +132,16 @@ export async function POST(req: Request, { params }: RouteCtx) {
   }
   const data = parsed.data;
 
-  if (!floodCheck(data.session)) {
+  // Cookie must vouch for the session the client claims to be.
+  const guard = await guardSession(data.session);
+  if (guard) return guard;
+
+  const rl = await checkAndIncrement(
+    `chat:${room.id}:${data.session}`,
+    CHAT_RATE_MAX,
+    CHAT_RATE_WINDOW_MS,
+  );
+  if (!rl.ok) {
     return NextResponse.json({ error: "Too many messages — slow down." }, { status: 429 });
   }
 
@@ -152,6 +154,26 @@ export async function POST(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Message is empty" }, { status: 400 });
   }
 
+  // A reply must point at a message that lives in *this* room — anything
+  // else would let someone with a stray UUID reply across rooms.
+  if (data.replyTo) {
+    const [parent] = await db
+      .select({ roomId: chatMessages.roomId })
+      .from(chatMessages)
+      .where(eq(chatMessages.id, data.replyTo))
+      .limit(1);
+    if (!parent || parent.roomId !== room.id) {
+      return NextResponse.json(
+        { error: "That reply target isn't in this room" },
+        { status: 400 },
+      );
+    }
+  }
+
+  const finalMeta = room.nowPlayingCode
+    ? { ...(data.meta ?? {}), nowPlaying: room.nowPlayingCode }
+    : (data.meta ?? null);
+
   const [row] = await db
     .insert(chatMessages)
     .values({
@@ -163,15 +185,29 @@ export async function POST(req: Request, { params }: RouteCtx) {
       body: data.body ?? null,
       gifUrl: data.gifUrl ?? null,
       replyTo: data.replyTo ?? null,
-      // Snapshot the country on stage when this was sent — the Home
-      // "Highlights of the evening" shows it next to the message.
-      meta: room.nowPlayingCode
-        ? { ...(data.meta ?? {}), nowPlaying: room.nowPlayingCode }
-        : (data.meta ?? null),
+      meta: finalMeta,
     })
-    .returning({ id: chatMessages.id });
+    .returning();
 
-  await broadcastToRoom(code, { type: "chat:new", id: row.id });
+  // Embed the full message inline so every connected client can append
+  // without a follow-up GET — drops the refetch storm under hype-moment
+  // load. `reactions` is always empty for a brand-new row.
+  await broadcastToRoom(code, {
+    type: "chat:new",
+    id: row.id,
+    message: {
+      id: row.id,
+      sessionId: row.sessionId,
+      name: row.name,
+      avatarId: row.avatarId,
+      kind: row.kind,
+      body: row.body,
+      gifUrl: row.gifUrl,
+      replyTo: row.replyTo,
+      meta: row.meta,
+      createdAt: row.createdAt.toISOString(),
+    },
+  });
 
   // Push: chatAll subscribers OR (chatReplies && replyTo author === them).
   pushToRoom(

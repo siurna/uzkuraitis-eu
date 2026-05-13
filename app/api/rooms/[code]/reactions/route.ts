@@ -4,6 +4,8 @@ import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { reactions } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
+import { guardAnySession, readSignedSessionId } from "@/lib/server-session";
+import { checkAndIncrement } from "@/lib/rate-limit";
 
 const ReactionSchema = z.object({
   countryCode: z.string().length(2),
@@ -20,6 +22,27 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const room = await findRoomByCode(code);
   if (!room) {
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
+  }
+
+  const guard = await guardAnySession();
+  if (guard) return guard;
+
+  // Reactions are high-volume during a song's climax, so the bucket is
+  // forgiving (60 per minute) — but bounded enough to stop a script
+  // from inflating fake reaction counts on a single country.
+  const session = await readSignedSessionId();
+  if (session) {
+    const rl = await checkAndIncrement(
+      `reactions:${room.id}:${session}`,
+      60,
+      60_000,
+    );
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Slow down on the reactions." },
+        { status: 429 },
+      );
+    }
   }
 
   let body: unknown;

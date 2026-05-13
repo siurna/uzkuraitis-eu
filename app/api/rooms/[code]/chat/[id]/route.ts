@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { chatMessages } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { guardSession } from "@/lib/server-session";
 
 // Per-message ops. The voter can:
 //   - PATCH their own message within EDIT_WINDOW_MS to fix typos.
@@ -29,6 +30,9 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
   const { session, body } = parsed.data;
+
+  const guard = await guardSession(session);
+  if (guard) return guard;
 
   const [msg] = await db
     .select()
@@ -78,6 +82,9 @@ export async function DELETE(req: Request, { params }: RouteCtx) {
   const url = new URL(req.url);
   const session = url.searchParams.get("session");
   if (!session) return NextResponse.json({ error: "Missing session" }, { status: 400 });
+
+  const guard = await guardSession(session);
+  if (guard) return guard;
 
   const deleted = await db
     .delete(chatMessages)

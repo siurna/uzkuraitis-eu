@@ -15,26 +15,28 @@ export function getLiveblocksServer(): Liveblocks | null {
   return cached;
 }
 
-// JSON-shaped payloads only (Liveblocks type-checks against its own Json
-// alias). Callers pass plain objects/arrays of primitives.
-type JsonPayload =
+// Fire-and-forget helper. Logs failures but never throws so the calling
+// route doesn't fail just because the realtime hint couldn't be sent.
+// The Liveblocks Node client narrows to its internal Json type at the
+// call boundary; we accept any JSON-shaped object so callers don't have
+// to fight TS over Record<string, unknown> meta fields.
+type JsonValue =
   | string
   | number
   | boolean
   | null
-  | JsonPayload[]
-  | { [k: string]: JsonPayload };
+  | undefined
+  | JsonValue[]
+  | { [k: string]: JsonValue | unknown };
 
-// Fire-and-forget helper. Logs failures but never throws so the calling
-// route doesn't fail just because the realtime hint couldn't be sent.
 export async function broadcastToRoom(
   roomCode: string,
-  data: JsonPayload,
+  data: JsonValue,
 ): Promise<void> {
   const lb = getLiveblocksServer();
   if (!lb) return;
   try {
-    await lb.broadcastEvent(`room:${roomCode}`, data);
+    await lb.broadcastEvent(`room:${roomCode}`, data as Parameters<typeof lb.broadcastEvent>[1]);
   } catch (err) {
     console.warn("[liveblocks] broadcast failed:", err);
   }

@@ -5,7 +5,10 @@ import { motion } from "motion/react";
 import { useOthers, useSelf } from "@/lib/liveblocks";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
-import { useLang, t } from "@/lib/i18n";
+import { ensureSessionId } from "@/lib/use-identity";
+import { useProfile } from "@/components/profile-sheet";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // Home widget: the party, made visible. Everyone currently in the room
 // shows up as an avatar bubble in a loose honeycomb that drifts/bobs
@@ -13,6 +16,8 @@ import { useLang, t } from "@/lib/i18n";
 // "···" tag while they're typing in chat and their last floating-reaction
 // emoji popping up over their head. Reads straight off Liveblocks
 // presence — no DB, no API.
+//
+// Tapping a bubble opens that participant's profile drawer.
 
 type Person = {
   key: string;
@@ -21,6 +26,10 @@ type Person = {
   emoji: string | null;
   typing: boolean;
   isSelf: boolean;
+  /** Their stable browser-session id (set in presence by the name gate).
+   *  May be null for older clients that haven't upgraded; in that case
+   *  the bubble is non-tappable. */
+  sessionId: string | null;
 };
 
 // Cheap deterministic hue from a name → the no-photo bubble fill, so a
@@ -35,6 +44,7 @@ export function WhosHere() {
   const lang = useLang();
   const self = useSelf();
   const others = useOthers();
+  const { open: openProfile } = useProfile();
 
   const people = useMemo<Person[]>(() => {
     const list: Person[] = [];
@@ -46,6 +56,7 @@ export function WhosHere() {
         emoji: self.presence.emoji ?? null,
         typing: !!self.presence.typing,
         isSelf: true,
+        sessionId: self.presence.sessionId ?? ensureSessionId(),
       });
     }
     for (const o of others) {
@@ -57,6 +68,7 @@ export function WhosHere() {
         emoji: o.presence.emoji ?? null,
         typing: !!o.presence.typing,
         isSelf: false,
+        sessionId: o.presence.sessionId ?? null,
       });
     }
     return list;
@@ -84,7 +96,11 @@ export function WhosHere() {
         <ul className="relative flex flex-wrap items-start justify-center gap-x-2 gap-y-1">
           {people.map((p, i) => (
             <li key={p.key} className={i % 2 ? "mt-4" : ""}>
-              <Bubble person={p} index={i} />
+              <Bubble
+                person={p}
+                index={i}
+                onOpen={() => p.sessionId && openProfile(p.sessionId)}
+              />
             </li>
           ))}
         </ul>
@@ -93,7 +109,15 @@ export function WhosHere() {
   );
 }
 
-function Bubble({ person, index }: { person: Person; index: number }) {
+function Bubble({
+  person,
+  index,
+  onOpen,
+}: {
+  person: Person;
+  index: number;
+  onOpen: () => void;
+}) {
   const avatar = person.avatarId ? getAvatar(person.avatarId) : null;
   const photo = avatar?.photo ?? null;
   // Each bubble drifts on its own clock so the cluster looks alive
@@ -101,6 +125,7 @@ function Bubble({ person, index }: { person: Person; index: number }) {
   const dur = 3 + (index % 5) * 0.45;
   const delay = (index % 7) * 0.22;
   const rot = index % 2 ? 3 : -3;
+  const canOpen = person.sessionId != null;
 
   return (
     <motion.div
@@ -108,10 +133,15 @@ function Bubble({ person, index }: { person: Person; index: number }) {
       animate={{ y: [0, -4, 0, 3, 0], rotate: [0, rot, 0, -rot, 0] }}
       transition={{ duration: dur, repeat: Infinity, ease: "easeInOut", delay }}
     >
-      <div
-        className={`h-11 w-11 rounded-full overflow-hidden ring-2 bg-dark-blue-800 ${
-          person.isSelf ? "ring-flamingo" : "ring-white/15"
-        }`}
+      <button
+        type="button"
+        onClick={onOpen}
+        disabled={!canOpen}
+        aria-label={person.name}
+        className={`relative h-11 w-11 rounded-full overflow-hidden ring-2 bg-dark-blue-800 transition transform-gpu
+                    active:scale-[0.92] disabled:cursor-default
+                    ${person.isSelf ? "ring-flamingo" : "ring-white/15"}
+                    ${canOpen ? "hover:ring-white/35" : ""}`}
       >
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -129,12 +159,12 @@ function Bubble({ person, index }: { person: Person; index: number }) {
             {person.name.charAt(0).toUpperCase()}
           </div>
         )}
-      </div>
+      </button>
 
       {/* Thought bubble: typing dots take priority, otherwise the last
           reaction emoji this person sent. */}
       {person.typing ? (
-        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5 rounded-full bg-white/12 ring-1 ring-white/15 px-1.5 py-1 backdrop-blur-sm">
+        <span className="pointer-events-none absolute -top-2.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5 rounded-full bg-white/12 ring-1 ring-white/15 px-1.5 py-1 backdrop-blur-sm">
           {[0, 1, 2].map((d) => (
             <motion.span
               key={d}
@@ -150,7 +180,7 @@ function Bubble({ person, index }: { person: Person; index: number }) {
           initial={{ scale: 0, y: 4 }}
           animate={{ scale: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 500, damping: 18 }}
-          className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-white/10 ring-1 ring-white/15 px-1.5 py-0.5 text-sm leading-none backdrop-blur-sm"
+          className="pointer-events-none absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-white/10 ring-1 ring-white/15 px-1.5 py-0.5 text-sm leading-none backdrop-blur-sm"
         >
           {person.emoji}
         </motion.span>
