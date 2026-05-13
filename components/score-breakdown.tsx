@@ -45,23 +45,39 @@ export function ScoreBreakdown({
     { label: t(lang, "trivia_eyebrow"), pts: trivia },
   ];
   return (
-    <ul className="flex flex-col gap-0.5 text-sm">
-      {lines.map((l) => (
+    // Every component renders at the same visual weight so the
+    // breakdown reads as a complete scorecard (which bets you hit,
+    // which you missed) rather than a list of wins with the misses
+    // half-faded. Zero-point rows get a quiet "0" chip + muted label
+    // colour; non-zero rows get the flamingo +N chip.
+    <ul className="flex flex-col">
+      {lines.map((l, i) => (
         <li
           key={l.label}
-          className={`flex items-center justify-between py-1 ${
-            l.pts === 0 ? "text-white/35" : "text-white/80"
+          className={`flex items-center justify-between py-2 ${
+            i > 0 ? "border-t border-white/5" : ""
           }`}
         >
-          <span className="truncate pr-2">{l.label}</span>
-          <span className={`font-display tabular-nums shrink-0 ${l.pts > 0 ? "text-flamingo" : "text-white/30"}`}>
-            {l.pts > 0 ? `+${l.pts}` : "—"}
+          <span
+            className={`text-sm truncate pr-2 ${l.pts > 0 ? "text-white/90" : "text-white/55"}`}
+          >
+            {l.label}
+          </span>
+          <span
+            className={`shrink-0 inline-flex items-center justify-center rounded-full px-2 h-6 text-xs font-display tabular-nums
+                        ${
+                          l.pts > 0
+                            ? "bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo"
+                            : "bg-white/[0.04] ring-1 ring-white/10 text-white/40"
+                        }`}
+          >
+            {l.pts > 0 ? `+${l.pts}` : "0"}
           </span>
         </li>
       ))}
-      <li className="flex items-center justify-between pt-2 mt-1 border-t border-white/8">
-        <span className="font-display">{t(lang, "breakdown_total")}</span>
-        <span className="font-display text-flamingo tabular-nums text-base">{total}</span>
+      <li className="flex items-center justify-between pt-3 mt-2 border-t border-white/15">
+        <span className="font-display text-base">{t(lang, "breakdown_total")}</span>
+        <span className="font-display text-flamingo tabular-nums text-lg">{total}</span>
       </li>
     </ul>
   );

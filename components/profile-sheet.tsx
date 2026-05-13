@@ -8,7 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { MessageCircle, Heart, Flame, Sparkles, Dices, HelpCircle as TriviaIcon, Lock } from "lucide-react";
+import { MessageCircle, Heart, Flame, Sparkles, Target, Brain, Lock } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Flag, HeartFlag } from "@/components/flag";
 import { getAvatar } from "@/lib/avatars";
@@ -180,53 +180,61 @@ function ProfileSheet({
   const isSelf = !!sessionId && sessionId === mySession;
 
   return (
-    // No title prop — the identity hero below carries the name in big
-    // type so a sheet header would just repeat it.
-    <BottomSheet open={!!sessionId} onClose={onClose}>
+    // Name lives in the sheet header. The identity card below it
+    // expands on who they picked (avatar artist + song + country + year)
+    // rather than re-printing their display name.
+    <BottomSheet open={!!sessionId} onClose={onClose} title={view?.name}>
       {loading && !view && (
         <p className="text-sm text-white/45 text-center py-6">{t(lang, "profile_loading")}</p>
       )}
       {view && (
         <div className="flex flex-col gap-4">
-          {/* Identity hero — name lives here (and ONLY here). */}
-          <div className="flex items-center gap-3">
-            <span className="h-16 w-16 shrink-0 rounded-2xl overflow-hidden ring-1 ring-white/15 bg-white/[0.06]">
-              {avatar?.photo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={optimizedSrc(avatar.photo, 256)}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  style={{
-                    objectPosition: avatar.focal
-                      ? `${avatar.focal.x}% ${avatar.focal.y}%`
-                      : "50% 30%",
-                  }}
-                />
-              ) : (
-                <span className="h-full w-full grid place-items-center text-2xl font-display text-white/55">
-                  {view.name.charAt(0).toUpperCase()}
-                </span>
-              )}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-display text-2xl truncate gradient-text leading-tight">
-                {view.name}
-              </p>
-              <p className="text-xs text-white/55 leading-snug truncate flex items-center gap-1.5 mt-0.5">
+          {/* Picked-artist card — avatar photo on the left, then the
+              artist's metadata stacked: artist name → song → country +
+              year. No display name (it's already in the sheet title). */}
+          {avatar ? (
+            <div className="flex items-center gap-4 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 p-3">
+              <span className="h-20 w-20 shrink-0 rounded-2xl overflow-hidden ring-1 ring-white/15 bg-white/[0.06]">
+                {avatar.photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={optimizedSrc(avatar.photo, 320)}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    style={{
+                      objectPosition: avatar.focal
+                        ? `${avatar.focal.x}% ${avatar.focal.y}%`
+                        : "50% 30%",
+                    }}
+                  />
+                ) : (
+                  <span className="h-full w-full grid place-items-center text-3xl font-display text-white/55">
+                    {view.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
                 {isSelf && (
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-flamingo font-display">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-flamingo font-display mb-0.5">
                     {t(lang, "profile_you")}
-                  </span>
+                  </p>
                 )}
-                {avatar && (
-                  <span className="truncate">
-                    {t(lang, "profile_picked_artist")} · {avatar.artist} · {avatar.year}
-                  </span>
+                <p className="font-display text-lg truncate leading-tight">{avatar.artist}</p>
+                {avatar.song && (
+                  <p className="text-sm text-white/65 leading-snug truncate italic">{avatar.song}</p>
                 )}
-              </p>
+                <p className="text-xs text-white/45 tabular-nums leading-snug truncate mt-0.5">
+                  {countryName(avatar.country, lang)} · {avatar.year}
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            isSelf && (
+              <p className="text-[10px] uppercase tracking-[0.2em] text-flamingo font-display">
+                {t(lang, "profile_you")}
+              </p>
+            )
+          )}
 
           {/* Stats grid — all icons filled + a hair larger for legibility.
               Trivia tile always renders; "—/—" is fine and reads as
@@ -236,9 +244,14 @@ function ProfileSheet({
             <StatTile icon={Heart} label={t(lang, "profile_stat_loves")} value={view.stats.reactionsReceived} />
             <StatTile icon={Flame} label={t(lang, "profile_stat_highlights")} value={view.stats.highlights} />
             <StatTile icon={Sparkles} label={t(lang, "profile_stat_bingo")} value={view.stats.bingoStrikes} />
-            <StatTile icon={Dices} label={t(lang, "profile_stat_bets")} value={view.stats.bets} />
+            {/* Bets used a filled-Dices glyph which looked off; Target
+                reads cleaner when filled (a single bullseye), still
+                ties to the "predictions" idea. */}
+            <StatTile icon={Target} label={t(lang, "profile_stat_bets")} value={view.stats.bets} />
+            {/* Brain over HelpCircle — HelpCircle when filled reads
+                as a solid ? blob; Brain stays legible filled. */}
             <StatTile
-              icon={TriviaIcon}
+              icon={Brain}
               label={t(lang, "profile_stat_trivia")}
               value={view.stats.triviaCorrect}
               suffix={view.stats.triviaTotal > 0 ? `/${view.stats.triviaTotal}` : null}

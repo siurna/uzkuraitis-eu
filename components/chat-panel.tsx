@@ -102,23 +102,29 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   // The current visual viewport (the bit of the page that's actually
-  // visible — i.e. above the on-screen keyboard). The chat panel is
-  // sized to this directly, so the composer always sits flush above the
-  // keyboard with no dead gap. `composerFocused` toggles whether we
-  // reserve space for the bottom dock (it's hidden while typing on
-  // mobile). On desktop the dock stays visible no matter what, so we
-  // ALSO check whether a keyboard is actually up — focused without a
-  // keyboard (i.e. desktop) keeps the dock-reserve.
   const [viewport, setViewport] = useState<{ h: number; top: number } | null>(null);
   const [composerFocused, setComposerFocused] = useState(false);
-  // A keyboard is "up" when the visual viewport is meaningfully shorter
-  // than the window's layout viewport (≈100px of difference catches
-  // virtually every mobile keyboard while ignoring the few-pixel jitter
-  // that desktop sometimes produces when an input focuses).
-  const keyboardUp =
-    !!viewport &&
-    typeof window !== "undefined" &&
-    window.innerHeight - viewport.h > 100;
+  // True at the md+ breakpoint. On mobile the bottom dock CSS-hides
+  // when the composer is focused (room-shell adds max-md:hidden) and
+  // the chat panel consumes the full visual viewport so the composer
+  // sits flush above the keyboard. On desktop the dock stays put, so
+  // we always reserve its 4.75rem of space — composer never gets
+  // covered. Using a media query instead of trying to sniff "is a
+  // keyboard up" from the visual viewport delta — that heuristic was
+  // misfiring on some mobile browsers and leaving a blank strip.
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  // The dock + header are CSS-hidden when both: composer is focused
+  // AND we're on mobile. That's the only state where the chat panel
+  // gets to consume the full viewport height.
+  const dockHidden = composerFocused && !isDesktop;
   const dragDepth = useRef(0);
 
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -850,19 +856,20 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     // mounted, scroll + state intact) when off the chat tab.
     <main
       className={`fixed inset-x-0 z-10 flex justify-center px-3 sm:px-4 ${
-        composerFocused && keyboardUp
+        dockHidden
           ? "pt-[env(safe-area-inset-top)]"
           : "pt-[calc(env(safe-area-inset-top)+3.5rem)]"
       }`}
       style={{
         top: viewport?.top ?? 0,
-        // The "consume the full visual viewport" mode is for the
-        // mobile-keyboard-up case (chat hugs the keyboard top, dock is
-        // CSS-hidden below md). On desktop, focus doesn't summon a
-        // keyboard, so we keep reserving the dock space — otherwise
-        // the dock overlaps the composer.
+        // dockHidden = mobile + composer focused. In that one state the
+        // dock + header are gone, so the chat panel takes the full
+        // visual viewport (which on mobile is already shrunk by the
+        // keyboard — composer ends flush above the keyboard, no gap).
+        // Otherwise reserve the 4.75rem of dock space so the bottom
+        // tab bar never overlaps the composer.
         height: viewport
-          ? composerFocused && keyboardUp
+          ? dockHidden
             ? viewport.h
             : `calc(${viewport.h}px - env(safe-area-inset-bottom) - 4.75rem)`
           : "calc(100dvh - env(safe-area-inset-bottom) - 4.75rem)",
@@ -1210,7 +1217,12 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         </div>
       </div>
 
-      <GifPicker open={gifOpen} onClose={() => setGifOpen(false)} onPick={(url) => sendGif(url)} />
+      <GifPicker
+        open={gifOpen}
+        onClose={() => setGifOpen(false)}
+        onPick={(url) => sendGif(url)}
+        nowPlayingCode={nowPlayingCode}
+      />
       <Lightbox url={lightbox} onClose={() => setLightbox(null)} closeLabel={t(lang, "close")} />
     </main>
   );

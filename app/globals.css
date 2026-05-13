@@ -423,7 +423,7 @@
 
 /* Loading skeletons: a slow opacity fade that's deliberately calmer than
    the heartbeat. `animate-pulse` from Tailwind would also work, but we
-   want a distinct motion language — hearts pulse, skeletons breathe —
+   want a distinct motion language: hearts pulse, skeletons breathe —
    so the brand reads clean. Apply with className="skeleton". */
 @keyframes uzk-skeleton {
   0%, 100% { opacity: 0.55; }
@@ -432,6 +432,27 @@
 .skeleton {
   animation: uzk-skeleton 1.8s ease-in-out infinite;
 }
+
+/* Subtle "fire" glow underlay for the Vakaro akcentai widget. Three
+   radial blobs drift upward + fade, each at a different speed +
+   horizontal anchor. Stays under all foreground content (place inside
+   a relatively-positioned card with `overflow-hidden`). */
+@keyframes uzk-fire-rise {
+  0%   { transform: translate3d(0, 35%, 0) scale(0.7);  opacity: 0;    }
+  20%  { opacity: 0.55; }
+  100% { transform: translate3d(0, -40%, 0) scale(1.3); opacity: 0;    }
+}
+.fire-blob {
+  background: radial-gradient(50% 60% at 50% 80%,
+                              oklch(85% 0.22 70  / 0.55) 0%,
+                              oklch(70% 0.27 30  / 0.40) 35%,
+                              transparent 70%);
+  filter: blur(8px);
+  animation: uzk-fire-rise 4.6s ease-in-out infinite;
+}
+.fire-blob-a { left: -18%; right: auto; width: 55%; animation-duration: 4.2s; animation-delay: 0s;   }
+.fire-blob-b { left: 28%;  right: auto; width: 50%; animation-duration: 5.4s; animation-delay: 1.6s; }
+.fire-blob-c { left: 55%;  right: auto; width: 60%; animation-duration: 6.1s; animation-delay: 0.8s; }
 
 input, button, textarea, select {
   -webkit-appearance: none;

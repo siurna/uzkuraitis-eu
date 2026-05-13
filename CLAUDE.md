@@ -8,6 +8,10 @@ A Eurovision 2026 second-screen companion app. Multi-room voting, scoreboard, bo
 
 Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the deep dive.
 
+## Writing rules (USER-FACING strings only)
+
+- **No em dashes (`—`) anywhere in user-facing strings.** Period. They land as a Claude-fingerprint and read clunky in LT. Use a comma, a period, or rephrase. (Comments, doc-block prose, commit messages, and PR bodies stay free to use them.)
+
 ## Conventions that matter
 
 1. **Brand language is non-negotiable.** Every country chip is a `<HeartFlag/>`, every CTA is `bg-white text-dark-blue rounded-2xl` inside a `rainbow-border`, every list row is `bg-white/[0.04] ring-1 ring-white/8 rounded-2xl`. New surfaces must echo this language.

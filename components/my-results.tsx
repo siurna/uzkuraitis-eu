@@ -69,7 +69,14 @@ export function MyResults() {
         className="relative block w-full overflow-hidden rounded-3xl text-left
                    ring-1 ring-white/10
                    shadow-[0_20px_60px_-22px_oklch(45%_0.18_345_/_0.55),inset_0_1px_0_rgba(255,255,255,0.18)]"
-        style={{ background: "linear-gradient(155deg, #f5a302 0%, #d61570 48%, #4c0a54 100%)" }}
+        style={{
+          // Cooler trophy gradient (gold > turquoise > deep navy) so the
+          // results card doesn't collide with the pink-flamingo Vote
+          // hero or the orange-fire Highlights card stacked above it.
+          // Three distinct palette families on Home reads as variety
+          // instead of "everything is pink".
+          background: "linear-gradient(155deg, #f5a302 0%, #00b8b0 48%, #0a2c4a 100%)",
+        }}
       >
         {/* Top gloss — gives the card a polished, skeumorphic top edge. */}
         <span
@@ -133,10 +140,6 @@ export function MyResults() {
                   <Chip label={t(lang, "trivia_eyebrow")} value={`+${me.trivia}`} />
                 )}
               </ul>
-              {/* Tap-affordance hint */}
-              <p className="text-[11px] uppercase tracking-[0.18em] text-white/65 font-display text-center">
-                {t(lang, "home_my_results_tap")}
-              </p>
             </>
           ) : null}
         </div>

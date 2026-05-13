@@ -329,7 +329,7 @@ export default async function AdminRoomDetailPage({
               // <details> per participant. The summary uses the same grid
               // template as the header so cells line up cleanly. Expanded
               // rows show the full ballot + recent messages strip.
-              <div className="rounded-lg bg-white/[0.02] border border-white/5 overflow-hidden">
+              <div className="rounded-lg bg-white/[0.03] border border-white/8 overflow-hidden backdrop-blur-md backdrop-saturate-150 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                 {/* Column labels. Hidden on small screens — the row falls
                     back to a single-line "name + 'tap for details'" view
                     so the table doesn't get squished. */}

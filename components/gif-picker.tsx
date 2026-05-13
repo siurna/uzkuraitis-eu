@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Search, X } from "lucide-react";
+import { getCountry } from "@/lib/countries";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 
@@ -43,10 +44,14 @@ export function GifPicker({
   open,
   onClose,
   onPick,
+  nowPlayingCode,
 }: {
   open: boolean;
   onClose: () => void;
   onPick: (url: string) => void;
+  /** When a country is on stage, surface its name as the first quick
+   *  suggestion (great for reaction GIFs about the act on screen). */
+  nowPlayingCode?: string | null;
 }) {
   const lang = useLang();
   const [query, setQuery] = useState("");
@@ -228,25 +233,34 @@ export function GifPicker({
                 query.trim() ? (
                   <p className="text-center text-white/40 text-sm py-10">{t(lang, "gif_empty")}</p>
                 ) : (
-                  // Empty-state: pill suggestions instead of a hint
-                  // string. Tapping one drops the query straight into
-                  // the search box and fires the debounced fetch.
+                  // Empty-state: pill suggestions. If a country is on
+                  // stage, its name leads — most reaction GIFs sent
+                  // during a song are about the act on screen.
                   <div className="flex flex-wrap justify-center gap-2 pt-6 px-2">
-                    {QUICK_QUERIES.map((q) => (
-                      <button
-                        key={q}
-                        type="button"
-                        onClick={() => {
-                          setQuery(q);
-                          inputRef.current?.focus();
-                        }}
-                        className="h-9 px-4 rounded-full bg-white/[0.06] ring-1 ring-white/12
-                                   text-sm text-white/85 hover:bg-white/[0.12] hover:ring-white/25
-                                   active:scale-[0.97] transition transform-gpu"
-                      >
-                        {q}
-                      </button>
-                    ))}
+                    {(() => {
+                      const np = nowPlayingCode ? getCountry(nowPlayingCode) : null;
+                      const head = np ? [np.name] : [];
+                      const list = [...head, ...QUICK_QUERIES];
+                      return list.map((q, i) => (
+                        <button
+                          key={q}
+                          type="button"
+                          onClick={() => {
+                            setQuery(q);
+                            inputRef.current?.focus();
+                          }}
+                          className={`h-9 px-4 rounded-full text-sm transition transform-gpu active:scale-[0.97]
+                                      ${
+                                        i === 0 && np
+                                          ? "bg-flamingo/20 ring-1 ring-flamingo/45 text-white hover:bg-flamingo/30"
+                                          : "bg-white/[0.06] ring-1 ring-white/12 text-white/85 hover:bg-white/[0.12] hover:ring-white/25"
+                                      }`}
+                        >
+                          {i === 0 && np && <span className="mr-1">{np.flag}</span>}
+                          {q}
+                        </button>
+                      ));
+                    })()}
                   </div>
                 )
               ) : (

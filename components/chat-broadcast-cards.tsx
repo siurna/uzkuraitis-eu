@@ -7,8 +7,9 @@ import { HeartFlag } from "@/components/flag";
 import { countryName, getCountry } from "@/lib/countries";
 import { isSupported as pushIsSupported } from "@/lib/push-client";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
-import { t, tDyn, type MessageKey } from "@/lib/i18n";
+import { fmt, t, tDyn, type MessageKey } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
+import { HOST_COUNTRY } from "@/lib/scoring";
 
 // Bet definitions for the broadcast suggestion picker. Keys match the
 // `Bets` shape in localStorage (lib/scoring.ts). When the host fires
@@ -100,9 +101,9 @@ function NotificationsCard({ lang }: { lang: Language }) {
   }, []);
 
   const onOpen = () => {
-    window.dispatchEvent(
-      new CustomEvent("uzk:open-settings", { detail: { section: "notifications" } }),
-    );
+    // Standalone notifications drawer — does NOT open the full settings
+    // drawer behind it. presence-bar listens for this event.
+    window.dispatchEvent(new Event("uzk:open-notifications-only"));
   };
 
   return (
@@ -174,48 +175,63 @@ function VoteOpenCard({ lang }: { lang: Language }) {
   const pct = Math.min(100, (filled / 10) * 100);
   const done = filled >= 10;
   return (
+    // Repurposes the Home Vote-hero language: same flamingo→fuchsia→
+    // purple gradient + an equalizer-style stack of bars on the right.
+    // The progress bar lives below the eyebrow so "this is a CTA and
+    // you're 6/10 of the way through" reads in one glance.
     <motion.button
       type="button"
       onClick={() => setTab("vote")}
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      className="rainbow-border rounded-2xl w-full block text-left"
+      className="rainbow-border rounded-3xl w-full block text-left text-balance"
     >
       <div
-        className="rounded-[14px] p-5 flex flex-col gap-3
-                   bg-gradient-to-br from-flamingo/30 via-fuchsia/20 to-purple/30"
+        className="relative overflow-hidden rounded-[22px] px-5 pt-5 pb-5 min-h-[8.5rem] flex flex-col gap-3"
+        style={{ background: "linear-gradient(125deg, #f10d59 0%, #ff3ede 46%, #6020c6 100%)" }}
       >
-        <div className="flex items-center gap-3">
-          <span className="shrink-0 grid place-items-center h-12 w-12 rounded-2xl bg-white/15 ring-1 ring-white/25 text-white">
-            <ListChecks className="h-6 w-6" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-lg text-white leading-tight">
-              {t(lang, "sys_cta_vote_title")}
-            </p>
-            <p className="text-xs text-white/75 leading-snug mt-0.5">
-              {done
-                ? t(lang, "sys_cta_vote_sub_done")
-                : filled > 0
-                  ? tDyn(lang, "sys_cta_vote_sub_progress", filled)
-                  : t(lang, "sys_cta_vote_sub_empty")}
-            </p>
-          </div>
-          <ChevronRight className="h-5 w-5 text-white/65 shrink-0" />
+        {/* Equalizer art — fixed bars off the right, behind the wash. */}
+        <div className="pointer-events-none absolute inset-y-0 -right-3 flex items-end gap-1.5 pb-7 opacity-95">
+          {[20, 56, 38, 72, 30].map((h, i) => (
+            <span
+              key={i}
+              className="w-2 rounded-t-full bg-white/85 shadow-[0_0_10px_rgba(255,255,255,0.35)]"
+              style={{ height: `${h}%` }}
+            />
+          ))}
+        </div>
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.5) 0%, rgba(8,9,28,0.22) 38%, transparent 66%)" }}
+        />
+        <div className="relative flex flex-col gap-1.5 pr-[28%]">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-white/85 font-display leading-tight flex items-center gap-1.5">
+            <ListChecks className="h-3 w-3" />
+            {t(lang, "sys_cta_vote_title")}
+          </p>
+          <p className="font-display text-xl sm:text-2xl text-white leading-tight drop-shadow">
+            {done
+              ? t(lang, "sys_cta_vote_sub_done")
+              : filled > 0
+                ? tDyn(lang, "sys_cta_vote_sub_progress", filled)
+                : t(lang, "sys_cta_vote_sub_empty")}
+          </p>
         </div>
         {/* Progress bar — caps at 10 picks. */}
-        <div className="relative h-2 rounded-full bg-white/15 overflow-hidden">
-          <motion.div
-            className="absolute inset-y-0 left-0 rounded-full bg-white"
-            initial={{ width: 0 }}
-            animate={{ width: `${pct}%` }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          />
+        <div className="relative">
+          <div className="h-2 rounded-full bg-white/20 overflow-hidden">
+            <motion.div
+              className="absolute inset-y-0 left-0 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.55)]"
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            />
+          </div>
+          <p className="absolute -top-5 right-0 text-[11px] font-display tabular-nums text-white/85 tracking-wider">
+            {filled}/10
+          </p>
         </div>
-        <p className="text-[11px] font-display tabular-nums text-white/85 tracking-wider self-end">
-          {filled}/10
-        </p>
       </div>
     </motion.button>
   );
@@ -225,7 +241,7 @@ function VoteOpenCard({ lang }: { lang: Language }) {
 // viewer hasn't set yet and surfaces it as a concrete suggestion.
 function BonusBetCard({ lang }: { lang: Language }) {
   const { setTab } = useRoomTab();
-  const { code } = useRoomLive();
+  const { code, homeCountryCode } = useRoomLive();
   const suggestion = useMemo(() => {
     if (typeof window === "undefined" || !code) return null;
     try {
@@ -245,7 +261,17 @@ function BonusBetCard({ lang }: { lang: Language }) {
     }
   }, [code]);
 
+  // Resolve any {home}/{host} placeholders in the suggested bet label.
+  // Without this we'd literally print "Where does {home} finish?" in
+  // the card.
+  const homeName = homeCountryCode ? countryName(homeCountryCode, lang) : "";
+  const hostName = countryName(HOST_COUNTRY, lang);
+  const labelTemplate = suggestion ? t(lang, suggestion.labelKey) : "";
+  const labelResolved = fmt(labelTemplate, { home: homeName, host: hostName });
+
   return (
+    // Repurposes the Home Bonus-bets banner: same magenta→ESC-pink
+    // wash with a marching strip of bet-flavour chips off the right.
     <motion.button
       type="button"
       onClick={() => {
@@ -256,28 +282,63 @@ function BonusBetCard({ lang }: { lang: Language }) {
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      className="rainbow-border rounded-2xl w-full block text-left"
+      className="rainbow-border rounded-3xl w-full block text-left text-balance"
     >
       <div
-        className="rounded-[14px] p-5 flex items-center gap-4
-                   bg-gradient-to-br from-orange/25 via-flamingo/25 to-fuchsia/25"
+        className="relative overflow-hidden rounded-[22px] px-5 pt-5 pb-5 min-h-[7.5rem] flex items-center gap-4"
+        style={{ background: "linear-gradient(135deg, #bc1475 0%, #f10d59 100%)" }}
       >
-        <span className="shrink-0 grid place-items-center h-12 w-12 rounded-2xl bg-white/15 ring-1 ring-white/25 text-white text-2xl">
-          <Dices className="h-6 w-6" />
+        {/* Chip strip — two counter-rotating short marquees, masked
+            on either side. Same pattern as the Home banner. */}
+        <span
+          className="pointer-events-none absolute inset-y-0 -right-3 w-40 overflow-hidden
+                     [mask-image:linear-gradient(90deg,transparent,#000_22%,#000_82%,transparent)]"
+          aria-hidden
+        >
+          <span
+            className="absolute top-2 left-0 flex w-max"
+            style={{ animation: "uzk-marquee 22s linear infinite" }}
+          >
+            {["🏆", "🎯", "🎲", "🎤", "🥄", "🎙️", "🎺"].concat(["🏆", "🎯", "🎲", "🎤", "🥄", "🎙️", "🎺"]).map((c, i) => (
+              <span
+                key={`a${i}`}
+                className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-base shadow-md"
+              >
+                {c}
+              </span>
+            ))}
+          </span>
+          <span
+            className="absolute bottom-2 left-0 flex w-max"
+            style={{ animation: "uzk-marquee 28s linear infinite reverse" }}
+          >
+            {["💎", "🎼", "🍿", "📺", "🔮", "🌟", "✨"].concat(["💎", "🎼", "🍿", "📺", "🔮", "🌟", "✨"]).map((c, i) => (
+              <span
+                key={`b${i}`}
+                className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-base shadow-md"
+              >
+                {c}
+              </span>
+            ))}
+          </span>
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-display text-base text-white leading-tight">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.5) 0%, rgba(8,9,28,0.22) 38%, transparent 64%)" }}
+        />
+        <div className="relative flex flex-col gap-1 pr-[40%]">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-white/85 font-display leading-tight flex items-center gap-1.5">
+            <Dices className="h-3 w-3" />
             {suggestion
               ? t(lang, "sys_cta_bet_title_suggest")
               : t(lang, "sys_cta_bet_title_done")}
           </p>
-          <p className="text-xs text-white/75 leading-snug mt-0.5 truncate">
+          <p className="font-display text-lg text-white leading-tight drop-shadow">
             {suggestion
-              ? tDyn(lang, "sys_cta_bet_suggest_sub", t(lang, suggestion.labelKey))
+              ? tDyn(lang, "sys_cta_bet_suggest_sub", labelResolved)
               : t(lang, "sys_cta_bet_sub_done")}
           </p>
         </div>
-        <ChevronRight className="h-5 w-5 text-white/65 shrink-0" />
       </div>
     </motion.button>
   );

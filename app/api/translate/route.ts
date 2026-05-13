@@ -95,11 +95,24 @@ export async function POST(req: Request) {
   // Identify the caller. Falls back to a coarse IP bucket so anonymous
   // hits can't bypass the limit. Cache hits above don't count against
   // the budget — only fresh model calls do.
+  //
+  // The cap is generous: when a viewer flips translate ON for the first
+  // time, every non-English message currently rendered fetches in
+  // parallel. A 50-message chat history would blow through a 60/min
+  // cap; we let through 240/min per session before saying "slow down",
+  // which still keeps spend bounded. The IP fallback stays tight
+  // (60/min) because that bucket catches the unauthenticated abuse
+  // case, not the legit-user-just-toggled-on case.
   const session = await readSignedSessionId();
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const usingSession = !!session;
   const bucket = `translate:${session ?? `ip:${ip}`}`;
-  const limited = await checkAndIncrement(bucket, 60, 60_000);
+  const limited = await checkAndIncrement(
+    bucket,
+    usingSession ? 240 : 60,
+    60_000,
+  );
   if (limited) {
     return NextResponse.json({ translate: false, text: "" }, { status: 429 });
   }
