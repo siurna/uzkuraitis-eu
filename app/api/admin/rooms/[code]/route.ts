@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { rooms, voters, votes } from "@/lib/db/schema";
-import { findRoomByCode } from "@/lib/rooms";
+import { findRoomByCode, changeRoomCode } from "@/lib/rooms";
 import { isAdminAuthed } from "@/lib/admin/session";
 import { broadcastToRoom } from "@/lib/liveblocks-server";
 
@@ -12,6 +12,8 @@ type RouteCtx = { params: Promise<{ code: string }> };
 const PatchSchema = z.object({
   votingEnabled: z.boolean().optional(),
   name: z.string().trim().min(1).max(60).optional(),
+  commentatorEnabled: z.boolean().optional(),
+  code: z.string().length(6).optional(),
 });
 
 async function requireAdmin() {
@@ -36,11 +38,22 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  await db.update(rooms).set(parsed.data).where(eq(rooms.id, room.id));
+  const { code: nextCode, ...rest } = parsed.data;
+  if (Object.keys(rest).length > 0) {
+    await db.update(rooms).set(rest).where(eq(rooms.id, room.id));
+  }
+  let newCode = room.code;
+  if (nextCode && nextCode.toUpperCase() !== room.code) {
+    const updated = await changeRoomCode(room.id, nextCode);
+    if (!updated) {
+      return NextResponse.json({ error: "That code is taken or invalid." }, { status: 409 });
+    }
+    newCode = updated.code;
+  }
   // Push room props change to every connected client so e.g. the standings
   // page hides the vote CTA the moment voting toggles closed.
-  await broadcastToRoom(room.code, { type: "room:updated" });
-  return NextResponse.json({ ok: true });
+  await broadcastToRoom(newCode, { type: "room:updated" });
+  return NextResponse.json({ ok: true, code: newCode });
 }
 
 // Wipe all votes (and voters) inside a room. The room itself stays, so the

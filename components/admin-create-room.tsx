@@ -2,11 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 
 export function AdminCreateRoom() {
   const router = useRouter();
@@ -39,65 +39,55 @@ export function AdminCreateRoom() {
       } catch {
         toast.success(`Room ${code} created.`);
       }
+      setOpen(false);
+      setName("");
       router.push(`/admin/rooms/${code}`);
     });
   };
 
   return (
-    <div className="relative">
-      <AnimatePresence mode="wait" initial={false}>
-        {open ? (
-          <motion.form
-            key="form"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            onSubmit={submit}
-            className="flex gap-2"
-          >
-            <Input
-              autoFocus
-              value={name}
-              onChange={(e) => setName(e.target.value.slice(0, 60))}
-              placeholder="Party name"
-              className="h-10 w-40 sm:w-56"
-              maxLength={60}
-              disabled={pending}
-            />
-            <Button type="submit" size="sm" disabled={pending}>
-              {pending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Create"
-              )}
-            </Button>
+    <>
+      <Button size="sm" onClick={() => setOpen(true)}>
+        <Plus className="h-4 w-4 mr-1.5" />
+        Create room
+      </Button>
+
+      <BottomSheet
+        open={open}
+        onClose={() => !pending && setOpen(false)}
+        title="New room"
+        sub="Spin up a fresh room — you'll get a host link to hand off."
+        footer={
+          <div className="flex gap-2">
             <Button
               type="button"
-              size="sm"
               variant="ghost"
-              onClick={() => {
-                setOpen(false);
-                setName("");
-              }}
+              className="flex-1"
+              onClick={() => setOpen(false)}
               disabled={pending}
             >
               Cancel
             </Button>
-          </motion.form>
-        ) : (
-          <motion.div
-            key="btn"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-          >
-            <Button size="sm" onClick={() => setOpen(true)}>
-              <Plus className="h-4 w-4 mr-1.5" />
-              Create room
+            <Button type="submit" form="admin-create-room-form" className="flex-1" disabled={pending}>
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create room"}
             </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+          </div>
+        }
+      >
+        <form id="admin-create-room-form" onSubmit={submit} className="flex flex-col gap-2 py-1">
+          <label className="text-xs uppercase tracking-[0.18em] text-white/40 font-display">Party name</label>
+          <Input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value.slice(0, 60))}
+            placeholder="Eurovision party"
+            className="h-11"
+            maxLength={60}
+            disabled={pending}
+          />
+          <p className="text-[11px] text-white/35">Leave blank for the default name — you can rename it later.</p>
+        </form>
+      </BottomSheet>
+    </>
   );
 }

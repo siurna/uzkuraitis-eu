@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { desc, sql } from "drizzle-orm";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Vote } from "lucide-react";
 import { db } from "@/lib/db";
 import { rooms, voters } from "@/lib/db/schema";
 import { AdminRoomToggle } from "@/components/admin-room-toggle";
 import { AdminCreateRoom } from "@/components/admin-create-room";
+import { AdminPageTitle } from "@/components/admin-page-title";
 
 // One-shot SQL query: every room with its vote count + last-active timestamp.
 async function loadRooms() {
@@ -42,8 +43,8 @@ export default async function AdminRoomsPage() {
     <div className="flex flex-col gap-6">
       <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl gradient-text heading-rise">Rooms</h1>
-          <p className="text-sm text-white/50 mt-1">
+          <AdminPageTitle icon={Vote}>Rooms</AdminPageTitle>
+          <p className="text-sm text-white/50 mt-2">
             {list.length} {list.length === 1 ? "room" : "rooms"} on this
             installation.
           </p>

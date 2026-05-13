@@ -3,10 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Copy, Check, Mic, Trophy, Eraser } from "lucide-react";
+import { Copy, Check, Mic, Megaphone, Trophy, Eraser, Hash } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { RoomLiveControls, type ShowStatus } from "@/components/room-live-controls";
+
+const ROOM_CODE_RE = /^[2-9ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/;
 
 // Magic-link host page. Three blocks:
 //   1. Live — show status + country-on-stage controls (also on
@@ -18,6 +21,7 @@ type Room = {
   name: string;
   votingEnabled: boolean;
   tallyEnabled: boolean;
+  commentatorEnabled: boolean;
   nowPlayingCode: string | null;
   showStatus: ShowStatus;
 };
@@ -32,9 +36,12 @@ export function RoomManage({
   const router = useRouter();
   const [voting, setVoting] = useState(room.votingEnabled);
   const [tally, setTally] = useState(room.tallyEnabled);
+  const [commentator, setCommentator] = useState(room.commentatorEnabled);
   const [pending, start] = useTransition();
   const [copied, setCopied] = useState(false);
   const [confirmClean, setConfirmClean] = useState(false);
+  const [codeDraft, setCodeDraft] = useState(room.code);
+  const [savingCode, setSavingCode] = useState(false);
 
   const headers = {
     "content-type": "application/json",
@@ -66,6 +73,38 @@ export function RoomManage({
     const next = !tally;
     setTally(next);
     patch({ tallyEnabled: next });
+  };
+
+  const toggleCommentator = () => {
+    const next = !commentator;
+    setCommentator(next);
+    patch({ commentatorEnabled: next });
+  };
+
+  const saveCode = () => {
+    const next = codeDraft.trim().toUpperCase();
+    if (next === room.code) return;
+    if (!ROOM_CODE_RE.test(next)) {
+      toast.error("Codes are 6 characters: 2-9 and A-Z (no 0, 1, I, L, O).");
+      return;
+    }
+    setSavingCode(true);
+    start(async () => {
+      const res = await fetch(`/api/rooms/${room.code}/manage`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ code: next }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; code?: string; error?: string };
+      setSavingCode(false);
+      if (!res.ok || !data.ok) {
+        toast.error(data.error ?? "Couldn't change the code.");
+        return;
+      }
+      toast.success(`Code is now ${data.code ?? next}.`);
+      router.push(`/r/${data.code ?? next}/manage?key=${adminToken}`);
+      router.refresh();
+    });
   };
 
   const cleanOut = () => {
@@ -154,7 +193,54 @@ export function RoomManage({
           onChange={toggleTally}
           disabled={pending}
         />
+
+        <ToggleCard
+          icon={<Megaphone className="h-5 w-5" />}
+          title="Live commentator"
+          sub={
+            commentator
+              ? "The bot drops a line in chat when a country hits the stage."
+              : "Bot is muted in this room (it's still on elsewhere)."
+          }
+          on={commentator}
+          onChange={toggleCommentator}
+          disabled={pending}
+        />
       </div>
+
+      <section className="glass-card w-full max-w-md rounded-2xl p-4 flex flex-col gap-2">
+        <div className="flex items-center gap-2 text-white/70">
+          <Hash className="h-4 w-4 text-white/40" />
+          <span className="font-display text-sm">Join code</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            value={codeDraft}
+            onChange={(e) =>
+              setCodeDraft(
+                e.target.value
+                  .toUpperCase()
+                  .replace(/[^2-9A-Z]/g, "")
+                  .slice(0, 6),
+              )
+            }
+            className="h-10 flex-1 font-mono tracking-[0.3em] text-center uppercase"
+            maxLength={6}
+            spellCheck={false}
+            autoCapitalize="characters"
+          />
+          <Button
+            size="sm"
+            onClick={saveCode}
+            disabled={savingCode || pending || codeDraft.trim().toUpperCase() === room.code}
+          >
+            {savingCode ? "Saving…" : "Change"}
+          </Button>
+        </div>
+        <p className="text-[11px] text-white/35">
+          Changing this breaks any old links and QR codes for the room.
+        </p>
+      </section>
 
       <section className="glass-card w-full max-w-md rounded-2xl p-4 flex items-center gap-2">
         <code className="flex-1 truncate text-xs bg-black/30 rounded-md px-3 py-2 font-mono">
