@@ -1,13 +1,18 @@
 "use client";
 
-import Image from "next/image";
 import { motion } from "motion/react";
 
 // Decorative giant 70-year heart pulsing behind the join screen. Sits
 // at z-0 (above the page bg, below the form content), with a soft
 // blur so the form on top is still legible but the heart is clearly
-// visible — not a ghost. Two-beat lub-dub matched to the .heartbeat
+// visible, not a ghost. Two-beat lub-dub matched to the .heartbeat
 // keyframes used elsewhere on the site.
+//
+// Plain <img> instead of next/image: the wrapper span next/image
+// injects on iOS Safari causes `filter: drop-shadow` to render
+// against the bounding box for the first paint frame (transparent
+// square halo around the heart). Plain <img> avoids that AND keeps
+// the asset-priority hint via fetchpriority.
 export function HeartbeatBackdrop() {
   return (
     <div
@@ -30,13 +35,12 @@ export function HeartbeatBackdrop() {
         className="relative aspect-square w-[80vmin] sm:w-[70vmin]"
         style={{ filter: "blur(2px) saturate(1.05)" }}
       >
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src="/images/70-heart.webp"
           alt=""
-          fill
-          priority
-          sizes="80vmin"
-          className="object-contain drop-shadow-[0_0_60px_rgba(255,46,222,0.35)]"
+          fetchPriority="high"
+          className="absolute inset-0 h-full w-full object-contain drop-shadow-[0_0_60px_rgba(255,46,222,0.35)]"
         />
       </motion.div>
       {/* Inner glow + outer fade so it bleeds into the page background */}

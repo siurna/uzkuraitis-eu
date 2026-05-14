@@ -16,6 +16,8 @@ export type RoomLite = {
   name: string;
   votingEnabled: boolean;
   tallyEnabled: boolean;
+  triviaMaxAnswerers: number | null;
+  highlightThreshold: number | null;
 };
 
 const ROOM_STORAGE_KEY = "uzk_admin_live_room";
@@ -65,6 +67,8 @@ export function AdminLiveRoomColumn({ rooms }: { rooms: RoomLite[] }) {
         room={selected?.code ?? ""}
         initialVoting={selected?.votingEnabled ?? false}
         initialTally={selected?.tallyEnabled ?? false}
+        initialTriviaCap={selected?.triviaMaxAnswerers ?? null}
+        initialHighlightThreshold={selected?.highlightThreshold ?? null}
       />
     </div>
   );

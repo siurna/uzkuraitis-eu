@@ -19,6 +19,8 @@ export default async function AdminLivePage() {
       nowPlayingCode: rooms.nowPlayingCode,
       votingEnabled: rooms.votingEnabled,
       tallyEnabled: rooms.tallyEnabled,
+      triviaMaxAnswerers: rooms.triviaMaxAnswerers,
+      highlightThreshold: rooms.highlightThreshold,
       lastActiveAt: rooms.lastActiveAt,
     })
     .from(rooms)
@@ -63,6 +65,8 @@ export default async function AdminLivePage() {
               name: r.name,
               votingEnabled: r.votingEnabled,
               tallyEnabled: r.tallyEnabled,
+              triviaMaxAnswerers: r.triviaMaxAnswerers,
+              highlightThreshold: r.highlightThreshold,
             }))}
           />
         </section>

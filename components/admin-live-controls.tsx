@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { motion } from "motion/react";
 import { Loader2, Megaphone, Vote, Trophy, ChevronRight, Check } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { AdminRoomTriviaThreshold } from "@/components/admin-room-trivia-threshold";
+import { AdminRoomHighlightThreshold } from "@/components/admin-room-highlight-threshold";
 import { timeAgo } from "@/lib/utils";
 
 // Unified Live-room controls: one "Controls" CTA on the page that
@@ -46,11 +48,15 @@ export function AdminLiveControls({
   room,
   initialVoting,
   initialTally,
+  initialTriviaCap,
+  initialHighlightThreshold,
 }: {
   rooms: { code: string; name: string }[];
   room: string;
   initialVoting: boolean;
   initialTally: boolean;
+  initialTriviaCap: number | null;
+  initialHighlightThreshold: number | null;
 }) {
   const [open, setOpen] = useState(false);
   const [voting, setVoting] = useState(initialVoting);
@@ -187,6 +193,29 @@ export function AdminLiveControls({
           disabled={pending || noRoom}
           onChange={flipTally}
         />
+        {/* Trivia + highlight caps live on the page too, under the
+            voting/results switches. They're the same per-room knobs
+            you'd otherwise hunt down in /admin/rooms/[code]: trivia
+            caps how many players can lock an answer per question,
+            highlight threshold is the reaction count needed for a
+            chat message to count as a "highlight" (bonus points +
+            badge). Re-keyed by `room` so swapping room in the picker
+            remounts the cards with fresh initial values, otherwise
+            you'd see stale numbers from the previous selection. */}
+        {!noRoom && (
+          <>
+            <AdminRoomTriviaThreshold
+              key={`trivia-${room}`}
+              code={room}
+              initialMax={initialTriviaCap}
+            />
+            <AdminRoomHighlightThreshold
+              key={`highlight-${room}`}
+              code={room}
+              initialThreshold={initialHighlightThreshold ?? 5}
+            />
+          </>
+        )}
       </div>
 
       <button
