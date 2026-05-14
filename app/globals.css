@@ -272,6 +272,14 @@
   }
 }
 
+/* Poll-card backdrop shine. Slow conic gradient rotation that
+   keeps the card feeling alive between vote events. GPU-cheap +
+   reduce-motion respects the user's preference. */
+@keyframes poll-shine {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* WhosHere bobble. Each bubble in the honeycomb gets its own
    duration / delay / rotation amplitude via CSS custom properties
    (--bob-dur / --bob-delay / --bob-rot), so the cluster looks alive

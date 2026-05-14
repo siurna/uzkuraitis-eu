@@ -2,25 +2,19 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { BarChart3, Loader2 } from "lucide-react";
+import { BarChart3, Loader2, Crown } from "lucide-react";
 import { useIdentity } from "@/lib/use-identity";
 import { useRoomLive } from "@/components/room-shell";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { t } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
 import type { Reactions } from "@/components/chat-row";
 
-// Inline "vibe check" poll. The host fires it from admin broadcasts;
-// the server inserts a chat message with kind="poll" and the question
-// + 4 emoji choices baked into meta. Votes ride on top of the existing
-// chat_reactions table (one reaction per choice = one vote), so the
-// existing chat:react broadcast keeps the tally bars in sync across
-// every viewer for free.
-//
-// Single-choice is enforced client-side: tapping a different option
-// toggles the previous reaction off first, then adds the new one. Mild
-// race-condition risk if a second tap lands mid-flight; the
-// `submitting` guard plus the existing toggle endpoint converges
-// state correctly on the next refetch.
+// Inline "vibe check" poll. Votes ride on top of the existing
+// chat_reactions table (one reaction = one vote, single-choice
+// enforced client-side by toggling the prior pick off first), so
+// the chat:react broadcast keeps the bars in sync for every viewer
+// without a new event type or table.
 
 type PollChoice = { emoji: string; en: string; lt: string };
 
@@ -51,12 +45,21 @@ export function ChatPollCard({
     [meta],
   );
 
-  // Tallies + which emoji this session already picked. `reactions` is
-  // the same shape chat-row uses for every other message, so the
-  // chat:react broadcast already keeps us live.
-  const tallies = useMemo(() => {
-    const total = choices.reduce((n, c) => n + (reactions[c.emoji]?.count ?? 0), 0);
-    return { total, total_safe: Math.max(total, 1) };
+  // Tallies — total votes + which choice this session picked + the
+  // current leading choice (highlighted with a small crown).
+  const tally = useMemo(() => {
+    let total = 0;
+    let max = 0;
+    let leader: string | null = null;
+    for (const c of choices) {
+      const n = reactions[c.emoji]?.count ?? 0;
+      total += n;
+      if (n > max) {
+        max = n;
+        leader = c.emoji;
+      }
+    }
+    return { total, leader, safe: Math.max(total, 1) };
   }, [choices, reactions]);
 
   const myEmoji = useMemo(() => {
@@ -69,16 +72,10 @@ export function ChatPollCard({
   const vote = useCallback(
     async (emoji: string) => {
       if (submitting || !code) return;
-      // Re-tap your current choice → undo it (poll endpoint toggles,
-      // so a second tap on the same emoji clears your vote).
       const session = getSession();
       const senderName = (name ?? "").trim() || "anonymous";
       setSubmitting(emoji);
       try {
-        // If switching, drop the prior reaction first so we don't
-        // end up with multiple "mine" rows on the same message. The
-        // react endpoint is a toggle, so a fresh POST adds it back
-        // for the new choice below.
         if (myEmoji && myEmoji !== emoji) {
           await fetch(`/api/rooms/${code}/chat/${messageId}/react`, {
             method: "POST",
@@ -104,17 +101,32 @@ export function ChatPollCard({
   const voted = myEmoji != null;
 
   return (
-    <div className="rounded-3xl ring-1 ring-fuchsia/45 shadow-[0_18px_44px_-18px_oklch(58%_0.24_335_/_0.5)] overflow-hidden">
+    <div className="rounded-3xl ring-1 ring-white/15 shadow-[0_24px_48px_-22px_oklch(45%_0.2_336_/_0.55)] overflow-hidden">
       <div
-        className="relative overflow-hidden p-5 flex flex-col gap-4"
-        style={{ background: "linear-gradient(150deg, #2a17e6 0%, #6020c6 45%, #c91475 100%)" }}
+        className="relative overflow-hidden px-5 pt-5 pb-4 flex flex-col gap-4"
+        style={{
+          background:
+            "radial-gradient(120% 90% at 10% 0%, oklch(58% 0.22 336 / 0.42) 0%, transparent 55%), radial-gradient(120% 100% at 90% 100%, oklch(70% 0.18 200 / 0.32) 0%, transparent 60%), linear-gradient(155deg, #1a0f2d 0%, #2a1664 50%, #0b1444 100%)",
+        }}
       >
-        <header className="flex items-center gap-3">
+        {/* Subtle moving spotlight behind the choices — keeps the
+            card "alive" between vote events without crossing into
+            casino-flashy. Pure CSS, GPU-cheap. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -inset-32 opacity-40 motion-safe:[animation:poll-shine_18s_linear_infinite]"
+          style={{
+            background:
+              "conic-gradient(from 0deg, transparent 0deg, oklch(80% 0.15 200 / 0.18) 30deg, transparent 60deg, transparent 360deg)",
+          }}
+        />
+
+        <header className="relative flex items-center gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/25 text-white">
             <BarChart3 className="h-5 w-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-white/85 font-display leading-tight">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-white/75 font-display leading-tight">
               {t(lang, "poll_eyebrow")}
             </p>
             <p className="font-display text-base sm:text-lg text-white leading-snug mt-0.5 text-balance">
@@ -123,60 +135,125 @@ export function ChatPollCard({
           </div>
         </header>
 
-        <ul className="flex flex-col gap-2">
-          {choices.map((c) => {
+        <ul className="relative flex flex-col gap-2">
+          {choices.map((c, i) => {
             const count = reactions[c.emoji]?.count ?? 0;
-            const pct = (count / tallies.total_safe) * 100;
+            const pct = (count / tally.safe) * 100;
             const mine = myEmoji === c.emoji;
             const busy = submitting === c.emoji;
+            const isLeader = voted && tally.leader === c.emoji && tally.total > 0;
             return (
               <li key={c.emoji}>
-                <button
+                <motion.button
                   type="button"
                   onClick={() => vote(c.emoji)}
                   disabled={submitting != null}
                   aria-pressed={mine}
-                  className={`relative w-full overflow-hidden rounded-xl px-3 py-2.5 text-left
-                              transition transform-gpu active:scale-[0.99]
+                  whileTap={{ scale: 0.985 }}
+                  animate={mine ? { scale: [1, 1.03, 1] } : { scale: 1 }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  initial={{ opacity: 0, y: 4 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className={`group relative w-full overflow-hidden rounded-2xl px-3 py-2.5 text-left
+                              transition-colors transform-gpu
                               ${mine
-                                ? "bg-white/[0.18] ring-1 ring-white/55"
-                                : "bg-white/[0.06] ring-1 ring-white/15 hover:bg-white/[0.12]"}`}
+                                ? "bg-white/[0.22] ring-1 ring-white/55"
+                                : "bg-white/[0.08] ring-1 ring-white/15 hover:bg-white/[0.14]"}`}
+                  style={{ animationDelay: `${i * 0.04}s` }}
                 >
-                  {/* The tally bar fills behind the row — narrow when
-                      nobody's picked it, wide when most of the room
-                      has. Lighter on the leader so the eye lands on
-                      it first. */}
+                  {/* Tally bar fills behind the row. Gold-tinted for
+                      the leader, white for the picked, faded for
+                      everyone else. Spring transition feels alive
+                      when votes land. */}
                   <motion.span
-                    className={`absolute inset-y-0 left-0 ${mine ? "bg-white/30" : "bg-white/15"}`}
+                    className={`absolute inset-y-0 left-0 origin-left
+                                ${isLeader
+                                  ? "bg-gradient-to-r from-yellow/55 to-yellow/30"
+                                  : mine
+                                    ? "bg-gradient-to-r from-white/40 to-white/15"
+                                    : "bg-white/15"}`}
                     initial={false}
                     animate={{ width: `${voted ? pct : 0}%` }}
-                    transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{ type: "spring", stiffness: 180, damping: 26 }}
                     aria-hidden
                   />
+                  {/* Glow halo when someone's vote nudges the bar */}
+                  {voted && pct > 0 && (
+                    <motion.span
+                      className="pointer-events-none absolute inset-y-0 origin-left"
+                      style={{
+                        width: `${pct}%`,
+                        boxShadow: isLeader
+                          ? "0 0 32px -4px oklch(80% 0.18 90 / 0.35) inset"
+                          : "0 0 24px -6px oklch(80% 0.12 200 / 0.25) inset",
+                      }}
+                      aria-hidden
+                    />
+                  )}
                   <span className="relative flex items-center gap-3">
-                    <span className="text-2xl leading-none shrink-0">{c.emoji}</span>
-                    <span className="flex-1 min-w-0 text-sm sm:text-base font-display text-white truncate">
-                      {(c[lang] ?? c.en) || c.emoji}
+                    <motion.span
+                      className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-black/35 ring-1 ring-white/15"
+                      animate={mine ? { rotate: [0, -8, 6, 0] } : {}}
+                      transition={{ duration: 0.45, ease: "easeOut" }}
+                    >
+                      <FluentEmoji glyph={c.emoji} size={28} />
+                    </motion.span>
+                    <span className="flex-1 min-w-0 flex items-center gap-2">
+                      <span className="font-display text-sm sm:text-base text-white truncate">
+                        {(c[lang] ?? c.en) || c.emoji}
+                      </span>
+                      {isLeader && (
+                        <Crown
+                          className="h-3.5 w-3.5 text-yellow shrink-0"
+                          fill="currentColor"
+                          aria-label="leading"
+                        />
+                      )}
                     </span>
                     {voted ? (
-                      <span className="shrink-0 text-xs font-display tabular-nums text-white/90">
-                        {count} ({Math.round(pct)}%)
+                      <span className="shrink-0 inline-flex items-baseline gap-1 font-display tabular-nums text-white/95">
+                        <motion.span
+                          key={count}
+                          initial={{ y: -2, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          transition={{ duration: 0.22 }}
+                          className="text-base"
+                        >
+                          {Math.round(pct)}%
+                        </motion.span>
+                        <span className="text-[10px] uppercase tracking-wider text-white/55">
+                          {count}
+                        </span>
                       </span>
                     ) : busy ? (
                       <Loader2 className="h-4 w-4 text-white/80 animate-spin shrink-0" />
-                    ) : null}
+                    ) : (
+                      <span className="shrink-0 text-[10px] uppercase tracking-[0.22em] text-white/45 font-display">
+                        {t(lang, "poll_tap")}
+                      </span>
+                    )}
                   </span>
-                </button>
+                </motion.button>
               </li>
             );
           })}
         </ul>
 
-        <p className="text-[11px] text-white/70 leading-snug">
-          {voted
-            ? t(lang, "poll_voted", tallies.total)
-            : t(lang, "poll_prompt")}
-        </p>
+        <footer className="relative flex items-center justify-between">
+          <p className="text-[11px] text-white/65 leading-snug">
+            {voted ? t(lang, "poll_voted", tally.total) : t(lang, "poll_prompt")}
+          </p>
+          {voted && (
+            <button
+              type="button"
+              onClick={() => myEmoji && vote(myEmoji)}
+              className="text-[10px] uppercase tracking-[0.18em] text-white/45 font-display hover:text-white/75 transition"
+            >
+              {t(lang, "poll_undo")}
+            </button>
+          )}
+        </footer>
       </div>
     </div>
   );

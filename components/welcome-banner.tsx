@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { ChevronRight } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { useLang } from "@/lib/i18n-client";
 import { t, type Language } from "@/lib/i18n";
 
@@ -64,16 +65,16 @@ export function WelcomeBanner() {
           aria-hidden
         />
         <div className="relative flex items-center gap-4 p-5">
-          {/* Waving hand emoji, large + sporadically waving. Same
+          {/* Fluent 3D waving hand, large + sporadically waving. Same
               wave choreography lives in `globals.css` — every ~7s
               the hand tilts left/right twice then rests. */}
           <span
             className="shrink-0 grid place-items-center h-12 w-12 rounded-2xl
-                       bg-white/12 ring-1 ring-white/20 text-2xl leading-none
+                       bg-white/12 ring-1 ring-white/20
                        motion-safe:[animation:waving-hand_7s_ease-in-out_infinite] origin-[70%_70%]"
             aria-hidden
           >
-            👋
+            <FluentEmoji glyph="👋" size={30} />
           </span>
           <div className="min-w-0 flex-1">
             <p className="font-display text-lg text-white leading-tight text-balance">

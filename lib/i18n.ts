@@ -167,8 +167,6 @@ const S = {
   home_vs_room_outlier:    { en: "Lone wolf. Barely any of your picks crack the room's top 10", lt: "Vienišas vilkas. Beveik nė vienas tavo favoritas nepatenka į kitų TOP 10" },
   home_vs_room_empty_title: { en: "How do you stack up?", lt: "Kaip atrodai prieš kitus?" },
   home_vs_room_empty_sub:   { en: "Cast your TOP 10 to compare with the room.", lt: "Balsuok ir palygink savo TOP 10 su kitais." },
-  home_vs_room_you:    { en: "You", lt: "Tu" },
-  home_vs_room_them:   { en: "Room", lt: "Kiti" },
   chat_np_my_rank:     { en: (n: number) => `My #${n}`, lt: (n: number) => `Mano #${n}` },
   chat_np_my_rank_aria:{ en: (n: number) => `Your #${n} in your TOP 10 — tap to change`, lt: (n: number) => `Tavo #${n} TOP 10 sąraše — palieskite, kad pakeistumėte` },
   home_results:        { en: "Results are in", lt: "Rezultatai jau čia" },
@@ -180,7 +178,6 @@ const S = {
   home_my_results:     { en: "Your results", lt: "Tavo rezultatai" },
   home_results_in:     { en: "Results are in", lt: "Rezultatai jau čia" },
   home_results_in_sub: { en: "See how everyone did", lt: "Pažiūrėk, kaip visiems sekėsi" },
-  home_my_results_tap: { en: "Tap for full breakdown", lt: "Bakstelėk pilnai išklotinei" },
   home_my_results_rank: { en: (rank: number, total: number) => `Ranked ${rank} of ${total}, tap for the breakdown`, lt: (rank: number, total: number) => `${rank} vieta iš ${total}, bakstelėk išklotinei` },
   results_tab_me:      { en: "My breakdown", lt: "Mano išklotinė" },
   results_tab_board:   { en: "Leaderboard", lt: "Lyderių lentelė" },
@@ -244,7 +241,6 @@ const S = {
   sys_cta_bet_sub_done:      { en: "Nice. Now relax and wait for the points.", lt: "Šaunu. Dabar atsipalaiduok ir lauk taškų." },
   sys_cta_top3:      { en: (arg: string) => `🏆 Leading the room right now: ${arg}`, lt: (arg: string) => `🏆 Šiuo metu pirmauja: ${arg}` },
   sys_cta_top3_eyebrow: { en: "Top 3 right now", lt: "Šiuo metu pirmauja" },
-  sys_cta_top3_first:   { en: "Leading", lt: "Pirmauja" },
   sys_cta_top3_empty:{ en: "🏆 No votes yet, be the first!", lt: "🏆 Dar nebalsuota, būk pirmas!" },
   sys_cta_results_breakdown: { en: "Your breakdown", lt: "Tavo išklotinė" },
   sys_cta_results_breakdown_disabled: { en: "You didn't cast a ballot", lt: "Nebalsavai šįvakar" },
@@ -262,6 +258,8 @@ const S = {
   poll_eyebrow:              { en: "Vibe check", lt: "Nuotaikos pulsas" },
   poll_prompt:               { en: "Tap your pick. You can switch later.", lt: "Bakstelėk variantą. Galėsi persigalvoti." },
   poll_voted:                { en: (n: number) => `Locked in. ${n} ${n === 1 ? "vote" : "votes"} so far.`, lt: (n: number) => `Užfiksuota. Šiuo metu balsų: ${n}.` },
+  poll_tap:                  { en: "Tap", lt: "Spausti" },
+  poll_undo:                 { en: "Undo my vote", lt: "Atšaukti balsą" },
   // ── Push notifications (rendered server-side per subscriber's
   //    `lang` column, so a LT viewer gets LT even when an EN sender
   //    triggered the broadcast).

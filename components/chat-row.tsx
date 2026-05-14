@@ -20,6 +20,7 @@ import { TranslationBubble } from "@/components/translation-bubble";
 import { BeginnerBubble } from "@/components/beginner-bubble";
 import { ChatTriviaCard } from "@/components/chat-trivia-inline";
 import { ChatPollCard } from "@/components/chat-poll-card";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { useTranslateEnabled } from "@/lib/translate-client";
 import { useBeginnerEnabled } from "@/lib/beginner-client";
 import { useSwipeToReply } from "@/lib/use-swipe-to-reply";
@@ -1042,7 +1043,7 @@ export function ChatRow({
                                               : "ring-1 ring-white/20"
                                         }`}
                           >
-                            <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">{emoji}</span>
+                            <FluentEmoji glyph={emoji} size={26} className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
                             {picked && (
                               <span
                                 className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-flamingo ring-2 ring-black/80"

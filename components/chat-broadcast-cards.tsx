@@ -6,6 +6,7 @@ import { Bell, Dices, Medal, ListChecks, ChevronRight, Camera, Loader2, Sparkles
 import { toast } from "sonner";
 import { HeartFlag } from "@/components/flag";
 import { WelcomeMarkdown } from "@/components/welcome-banner";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { countryName, getCountry } from "@/lib/countries";
 import { isSupported as pushIsSupported } from "@/lib/push-client";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
@@ -326,9 +327,9 @@ function BonusBetCard({ lang }: { lang: Language }) {
             {["🏆", "🎤", "🎯", "🥄", "🎺", "🎙️", "🎲"].concat(["🏆", "🎤", "🎯", "🥄", "🎺", "🎙️", "🎲"]).map((c, i) => (
               <span
                 key={`a${i}`}
-                className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-base shadow-md"
+                className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"
               >
-                {c}
+                <FluentEmoji glyph={c} size={22} />
               </span>
             ))}
           </span>
@@ -339,9 +340,9 @@ function BonusBetCard({ lang }: { lang: Language }) {
             {["💎", "🌟", "🎼", "🍿", "✨", "📺", "🔮"].concat(["💎", "🌟", "🎼", "🍿", "✨", "📺", "🔮"]).map((c, i) => (
               <span
                 key={`b${i}`}
-                className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-base shadow-md"
+                className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"
               >
-                {c}
+                <FluentEmoji glyph={c} size={22} />
               </span>
             ))}
           </span>
@@ -423,7 +424,7 @@ function Top3PodiumCard({
               <HeartFlag code={first} size="lg" />
             </span>
             <div className="min-w-0 flex-1 flex items-center gap-2">
-              <span className="text-2xl leading-none shrink-0" aria-hidden>🥇</span>
+              <FluentEmoji glyph="🥇" size={28} className="shrink-0" ariaLabel="first place" />
               <p className="font-display text-2xl text-white leading-tight truncate drop-shadow">
                 {countryName(first, lang) ?? first.toUpperCase()}
               </p>
@@ -526,7 +527,7 @@ function PodiumChip({
   const medal = rank === 2 ? "🥈" : "🥉";
   return (
     <div className="flex items-center gap-2 rounded-xl bg-white/[0.08] ring-1 ring-white/15 px-3 py-2 min-w-0">
-      <span className="text-base leading-none shrink-0">{medal}</span>
+      <FluentEmoji glyph={medal} size={18} className="shrink-0" ariaLabel={`rank ${rank}`} />
       <HeartFlag code={code} size="sm" />
       <span className="text-xs font-display text-white truncate flex-1">
         {countryName(code, lang) ?? code.toUpperCase()}
