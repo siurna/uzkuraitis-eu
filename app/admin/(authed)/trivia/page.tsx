@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { triviaAnswers } from "@/lib/db/schema";
 import { loadMergedDeck } from "@/lib/trivia-store";
 import { countries } from "@/lib/countries";
-import { AdminPageTitle } from "@/components/admin-page-title";
 import { AdminTrivia, type TriviaRow } from "@/components/admin-trivia";
 
 export default async function AdminTriviaPage() {
@@ -40,12 +39,10 @@ export default async function AdminTriviaPage() {
     };
   });
 
-  return (
-    <div className="flex flex-col gap-6">
-      <AdminPageTitle>Trivia</AdminPageTitle>
-      <AdminTrivia initial={initial} />
-    </div>
-  );
+  // AdminTrivia owns its own page header now (title + subtitle +
+  // Export/Import buttons sit in one row at the top), so the page
+  // wrapper stays a single fragment.
+  return <AdminTrivia initial={initial} />;
 }
 
 export const dynamic = "force-dynamic";

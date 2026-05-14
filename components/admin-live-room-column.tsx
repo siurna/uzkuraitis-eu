@@ -5,6 +5,7 @@ import { Trophy } from "lucide-react";
 import { AdminBroadcasts } from "@/components/admin-broadcasts";
 import { AdminRoomVotingToggleCard } from "@/components/admin-room-voting-toggle-card";
 import { AdminRoomTallyToggle } from "@/components/admin-room-tally-toggle";
+import { AdminRoomPicker } from "@/components/admin-room-picker";
 
 // Right column of /admin/live: a single room selector at the top
 // that drives BOTH the broadcasts widget and the per-room voting /
@@ -42,30 +43,21 @@ export function AdminLiveRoomColumn({ rooms }: { rooms: RoomLite[] }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Shared room selector. Sits above both the broadcasts widget
+      {/* Shared room picker. Sits above both the broadcasts widget
           and the voting/results card so picking a room once drives
-          every action in this column. */}
-      <label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-        <span className="text-xs uppercase tracking-[0.18em] text-white/40 font-display sm:w-20 shrink-0">
+          every action in this column. Drawer-style trigger on the
+          right, same component reused by /admin/settings. */}
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs uppercase tracking-[0.18em] text-white/40 font-display">
           Room
         </span>
-        {rooms.length === 0 ? (
-          <span className="text-sm text-white/40">No rooms yet.</span>
-        ) : (
-          <select
-            value={room}
-            onChange={(e) => choose(e.target.value)}
-            className="h-10 rounded-lg bg-black/30 border border-white/15 px-3 text-sm text-white
-                       focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 w-full"
-          >
-            {rooms.map((r) => (
-              <option key={r.code} value={r.code} className="bg-dark-blue-900">
-                {r.name} ({r.code})
-              </option>
-            ))}
-          </select>
-        )}
-      </label>
+        <AdminRoomPicker
+          rooms={rooms}
+          value={room}
+          onChange={choose}
+          className="min-w-[12rem]"
+        />
+      </div>
 
       <AdminBroadcasts rooms={rooms} room={room} onRoomChange={choose} hideRoomPicker />
 

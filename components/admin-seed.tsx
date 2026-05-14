@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { FlaskConical, Users, Trophy, Flame, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AdminRoomPicker } from "@/components/admin-room-picker";
 
 type Mode = "voters" | "highlights" | "results" | "reroll";
 
@@ -67,26 +68,18 @@ export function AdminSeed({ rooms }: { rooms: { code: string; name: string }[] }
         </div>
       </header>
 
-      {/* room scope — used by the per-room actions below */}
-      <label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-        <span className="text-xs uppercase tracking-[0.18em] text-white/40 font-display sm:w-28 shrink-0">Room</span>
-        {rooms.length === 0 ? (
-          <span className="text-sm text-white/40">No rooms yet.</span>
-        ) : (
-          <select
-            value={room}
-            onChange={(e) => setRoom(e.target.value)}
-            className="h-10 rounded-lg bg-black/30 border border-white/15 px-3 text-sm text-white
-                       focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 w-full sm:w-72"
-          >
-            {rooms.map((r) => (
-              <option key={r.code} value={r.code} className="bg-dark-blue-900">
-                {r.name} ({r.code})
-              </option>
-            ))}
-          </select>
-        )}
-      </label>
+      {/* room scope — used by the per-room actions below. Drawer
+          trigger sits on the right so the row reads as "scope: pick
+          room"; matches the room picker on /admin/live. */}
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs uppercase tracking-[0.18em] text-white/40 font-display">Room</span>
+        <AdminRoomPicker
+          rooms={rooms}
+          value={room}
+          onChange={setRoom}
+          className="min-w-[12rem]"
+        />
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <SeedCard

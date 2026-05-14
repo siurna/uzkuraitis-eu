@@ -2,13 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Hash } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ROOM_CODE_REGEX } from "@/lib/room-code";
 
-// Admin › room › Settings: change the human-friendly join code.
-// Heads-up: this invalidates any links/QRs already handed out.
+// Tile-shaped join-code editor. Same shape as the rename row + the
+// behaviour toggles so Identity reads as a single visual family.
 export function AdminRoomCode({ code }: { code: string }) {
   const router = useRouter();
   const [draft, setDraft] = useState(code);
@@ -41,7 +42,21 @@ export function AdminRoomCode({ code }: { code: string }) {
   };
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-2">
+    <form
+      onSubmit={submit}
+      className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3 flex flex-col gap-3"
+    >
+      <div className="flex items-center gap-3">
+        <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/65">
+          <Hash className="h-5 w-5" />
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block font-display text-base">Join code</span>
+          <span className="block text-xs text-white/50 leading-snug">
+            The 6 chars voters type at /. Changing breaks old links + QRs.
+          </span>
+        </span>
+      </div>
       <div className="flex gap-2">
         <Input
           value={draft}
@@ -55,7 +70,6 @@ export function AdminRoomCode({ code }: { code: string }) {
           {pending ? "Saving…" : "Change"}
         </Button>
       </div>
-      <p className="text-[11px] text-white/35">Changing this breaks any old links and QR codes for the room.</p>
     </form>
   );
 }

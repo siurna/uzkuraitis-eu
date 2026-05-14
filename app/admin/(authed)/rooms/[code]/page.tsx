@@ -434,26 +434,19 @@ export default async function AdminRoomDetailPage({
           </section>
         }
         settings={
-          // Three groups: Identity (what the room IS), Behaviour (what it
-          // DOES), and Operations (host link / wipe). One glass-card per
-          // group, inner rows separated by a thin divider — instead of
-          // five identical cards stacked.
+          // Three groups, every row carrying the same tile shape (icon
+          // tile + title + sub + body) so Identity, Behaviour and
+          // Operations read as one visual family. Outer cards stripped
+          // of internal h2s — the section header on the page does that
+          // job; the per-row label inside each tile is the heading.
           <div className="flex flex-col gap-6">
-            <section className="glass-card rounded-xl p-5 flex flex-col gap-5">
+            <section className="glass-card rounded-xl p-5 flex flex-col gap-3">
               <header>
                 <h2 className="font-display text-xl leading-tight">Identity</h2>
                 <p className="text-xs text-white/45 mt-0.5">What this room is called and how guests join it.</p>
               </header>
-              <div className="flex flex-col gap-5 divide-y divide-white/5 [&>*]:pt-5 [&>*:first-child]:pt-0">
-                <div>
-                  <p className="text-sm font-display text-white/85 mb-2">Room name</p>
-                  <AdminRoomRename code={room.code} initialName={room.name} />
-                </div>
-                <div>
-                  <p className="text-sm font-display text-white/85 mb-2">Join code</p>
-                  <AdminRoomCode code={room.code} />
-                </div>
-              </div>
+              <AdminRoomRename code={room.code} initialName={room.name} />
+              <AdminRoomCode code={room.code} />
             </section>
 
             <section className="glass-card rounded-xl p-5 flex flex-col gap-3">
@@ -461,9 +454,6 @@ export default async function AdminRoomDetailPage({
                 <h2 className="font-display text-xl leading-tight">Behaviour</h2>
                 <p className="text-xs text-white/45 mt-0.5">Toggles that change what the room does during the show.</p>
               </header>
-              {/* Each toggle already shows its own label + sub inside the
-                  tile, so we drop the per-row title (it was the same
-                  string twice). */}
               <AdminRoomTallyToggle code={room.code} initialEnabled={room.tallyEnabled} />
               <AdminRoomCommentatorToggle
                 code={room.code}
@@ -475,10 +465,10 @@ export default async function AdminRoomDetailPage({
               />
             </section>
 
-            <section className="flex flex-col gap-4">
+            <section className="glass-card rounded-xl p-5 flex flex-col gap-3">
               <header>
                 <h2 className="font-display text-xl leading-tight">Operations</h2>
-                <p className="text-xs text-white/45 mt-0.5">The host magic link and the wipe-everything escape hatch.</p>
+                <p className="text-xs text-white/45 mt-0.5">Links the host + voters need, plus the wipe-everything escape hatch.</p>
               </header>
               <AdminRoomManageLink code={room.code} adminToken={room.adminToken} />
               <AdminRoomDangerZone code={room.code} />

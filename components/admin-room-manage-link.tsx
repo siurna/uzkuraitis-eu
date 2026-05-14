@@ -3,13 +3,15 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Copy, Check, RotateCw, Link as LinkIcon } from "lucide-react";
+import { Copy, Check, RotateCw, Link as LinkIcon, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
-// Per-room admin URL section + regenerate-join-code button. Lives on the
-// global admin's per-room page (/admin/rooms/[code]) so the meta-admin
-// can copy the host's manage URL or roll the join code if it leaks.
+// Two tile-shaped rows that share their look with the behaviour
+// toggles + the identity rows: host link to copy + voter join link
+// to copy / regenerate. Lives under the Operations section header
+// on the room detail page (no per-card "Links" h2 of its own — the
+// section header on the page does that work).
 export function AdminRoomManageLink({
   code,
   adminToken,
@@ -59,21 +61,22 @@ export function AdminRoomManageLink({
   };
 
   return (
-    <section className="glass-card rounded-xl p-5 flex flex-col gap-4">
-      <header className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
-          <LinkIcon className="h-5 w-5" />
-        </span>
-        <div>
-          <h2 className="font-display text-xl leading-tight">Links</h2>
-          <p className="text-xs text-white/45 mt-0.5">Copy URLs the host + voters need.</p>
+    <div className="flex flex-col gap-3">
+      {/* Host magic link. Tile shape mirrors the rename + code rows
+          and the behaviour toggles — the URL preview lives in the
+          body, the copy action sits on the right. */}
+      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3 flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/65">
+            <LinkIcon className="h-5 w-5" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block font-display text-base">Host link</span>
+            <span className="block text-xs text-white/50 leading-snug">
+              The magic link the host runs the room from. Two toggles, no passkey.
+            </span>
+          </span>
         </div>
-      </header>
-
-      <div className="flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-widest text-white/50">
-          Per-room admin (host)
-        </p>
         <div className="flex items-center gap-2">
           <code className="flex-1 truncate text-xs bg-black/30 rounded-md px-3 py-2 font-mono">
             {manageUrl}
@@ -94,16 +97,22 @@ export function AdminRoomManageLink({
             )}
           </Button>
         </div>
-        <p className="text-[11px] text-white/40">
-          Share with whoever runs the watch-along. Two toggles: voting open
-          + tally bets. No global passkey needed.
-        </p>
       </div>
 
-      <div className="flex flex-col gap-2 pt-3 border-t border-white/5">
-        <p className="text-xs uppercase tracking-widest text-white/50">
-          Join link (for voters)
-        </p>
+      {/* Voter join link. Same shape; the regen button is the only
+          extra control. */}
+      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3 flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/65">
+            <QrCode className="h-5 w-5" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block font-display text-base">Join link</span>
+            <span className="block text-xs text-white/50 leading-snug">
+              Share with voters. Regen rotates the 6-char code — old links 404.
+            </span>
+          </span>
+        </div>
         <div className="flex items-center gap-2">
           <code className="flex-1 truncate text-xs bg-black/30 rounded-md px-3 py-2 font-mono">
             {joinUrl}
@@ -136,11 +145,7 @@ export function AdminRoomManageLink({
             </Button>
           </motion.span>
         </div>
-        <p className="text-[11px] text-white/40">
-          The 6-character code voters type at /. Click the rotate icon to
-          regenerate; old code stops working immediately.
-        </p>
       </div>
-    </section>
+    </div>
   );
 }

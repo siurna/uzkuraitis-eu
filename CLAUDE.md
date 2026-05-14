@@ -30,7 +30,7 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the deep dive.
 
 8. **Admin pages stay English.** Voter-facing surfaces use `t(lang, key)`. Admin uses literal English strings — by design.
 
-9. **Admin pages share one chrome.** Every `/admin/*` page opens with `<AdminPageTitle>Title</AdminPageTitle>` (`components/admin-page-title.tsx`) — a large gradient `<h1>`, no icon. The nav tabs (`components/admin-nav.tsx`) still carry icons (Live → `Radio`, Rooms → `Vote`, Trivia → `Lightbulb`, Commentator → `Mic`, Welcome → `Sparkles`, Results → `Trophy`, Settings → `Settings`); the page title doesn't repeat them. Card-section headers inside a page do keep the `h-10 w-10` flamingo-tinted icon-tile pattern.
+9. **Admin pages share one chrome.** Every `/admin/*` page opens with `<AdminPageTitle>Title</AdminPageTitle>` (`components/admin-page-title.tsx`) — a large gradient `<h1>`, no icon. The nav tabs (`components/admin-nav.tsx`) still carry icons (Live → `Radio`, Rooms → `Vote`, Trivia → `Lightbulb`, Commentator → `Mic`, Results → `Trophy`, Settings → `Settings`); the page title doesn't repeat them. The "Hello folks" welcome markdown lives as the first section inside Settings, not its own tab. Card-section headers inside a page do keep the `h-10 w-10` flamingo-tinted icon-tile pattern.
 
 ## Useful scripts
 

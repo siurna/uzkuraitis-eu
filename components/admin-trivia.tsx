@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Lightbulb, Check, Download, Upload } from "lucide-react";
+import { Check, Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeartFlag } from "@/components/flag";
+import { AdminPageTitle } from "@/components/admin-page-title";
 
 // Admin trivia surface. Lists every finalist country with its current
 // question (file default unless overridden in DB) + answer stats from
@@ -188,27 +189,29 @@ export function AdminTrivia({ initial }: { initial: TriviaRow[] }) {
   const filled = rows.filter((r) => r.hasCard).length;
 
   return (
-    <section className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-5">
-      <header className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
-          <Lightbulb className="h-5 w-5" fill="currentColor" />
-        </span>
-        <div className="flex-1 min-w-0">
-          <h2 className="font-display text-xl leading-tight">Question deck</h2>
-          <p className="text-sm text-white/45 leading-snug mt-0.5">
-            {filled}/{rows.length} countries have a question. Countries without
-            one are skipped when they take the stage.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button type="button" size="sm" variant="ghost" onClick={exportDeck}>
-            <Download className="h-4 w-4 mr-1.5" /> Export
-          </Button>
-          <Button type="button" size="sm" onClick={openEditor}>
-            <Upload className="h-4 w-4 mr-1.5" /> Import JSON
-          </Button>
-        </div>
-      </header>
+    <div className="flex flex-col gap-6">
+      {/* Page header lives here instead of the page wrapper so the
+          Export + Import buttons can sit on the right of the gradient
+          title; the per-deck status reads as the page subtitle. The
+          inner "Question deck" card header is gone — it was a
+          duplicate heading inside a single-section page. */}
+      <AdminPageTitle
+        subtitle={`${filled}/${rows.length} countries have a question. Countries without one are skipped when they take the stage.`}
+        trailing={
+          <div className="flex items-center gap-2">
+            <Button type="button" size="sm" variant="ghost" onClick={exportDeck}>
+              <Download className="h-4 w-4 mr-1.5" /> Export
+            </Button>
+            <Button type="button" size="sm" onClick={openEditor}>
+              <Upload className="h-4 w-4 mr-1.5" /> Import JSON
+            </Button>
+          </div>
+        }
+      >
+        Trivia
+      </AdminPageTitle>
+
+      <section className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-5">
 
       {open && (
         <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/10 p-4 flex flex-col gap-3">
@@ -315,6 +318,7 @@ export function AdminTrivia({ initial }: { initial: TriviaRow[] }) {
         ))}
       </ol>
 
-    </section>
+      </section>
+    </div>
   );
 }
