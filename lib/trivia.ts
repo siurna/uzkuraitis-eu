@@ -38,12 +38,6 @@ export const TRIVIA_DECK: readonly TriviaCard[] = [
     lt: { question: "Kokios spalvos giedras dangus?", choices: ["Žalias", "Mėlynas", "Raudonas", "Geltonas"] },
   },
   {
-    country: "am",
-    correctIndex: 2,
-    en: { question: "What is 2 + 2?", choices: ["3", "22", "4", "5"] },
-    lt: { question: "Kiek yra 2 + 2?", choices: ["3", "22", "4", "5"] },
-  },
-  {
     country: "au",
     correctIndex: 2,
     en: { question: "What sound does a cat make?", choices: ["Woof", "Moo", "Meow", "Quack"] },
@@ -54,12 +48,6 @@ export const TRIVIA_DECK: readonly TriviaCard[] = [
     correctIndex: 3,
     en: { question: "In which direction does the sun rise?", choices: ["North", "South", "West", "East"] },
     lt: { question: "Iš kurios pusės teka saulė?", choices: ["Šiaurės", "Pietų", "Vakarų", "Rytų"] },
-  },
-  {
-    country: "az",
-    correctIndex: 2,
-    en: { question: "How many days are in a week?", choices: ["5", "6", "7", "8"] },
-    lt: { question: "Kiek dienų yra savaitėje?", choices: ["5", "6", "7", "8"] },
   },
   {
     country: "be",
@@ -146,22 +134,10 @@ export const TRIVIA_DECK: readonly TriviaCard[] = [
     lt: { question: "Kas yra Saulė?", choices: ["Planeta", "Žvaigždė", "Mėnulis", "Kometa"] },
   },
   {
-    country: "lv",
-    correctIndex: 2,
-    en: { question: "What does H₂O refer to?", choices: ["Salt", "Oxygen", "Water", "Hydrogen"] },
-    lt: { question: "Ką žymi H₂O?", choices: ["Druska", "Deguonis", "Vanduo", "Vandenilis"] },
-  },
-  {
     country: "lt",
     correctIndex: 3,
     en: { question: "Which is the largest planet in our solar system?", choices: ["Earth", "Mars", "Saturn", "Jupiter"] },
     lt: { question: "Kuri yra didžiausia mūsų Saulės sistemos planeta?", choices: ["Žemė", "Marsas", "Saturnas", "Jupiteris"] },
-  },
-  {
-    country: "lu",
-    correctIndex: 1,
-    en: { question: "What shape is the Earth?", choices: ["Flat", "Sphere (roughly round)", "Cube", "Pyramid"] },
-    lt: { question: "Kokios formos Žemė?", choices: ["Plokščia", "Apvali (rutulys)", "Kubas", "Piramidė"] },
   },
   {
     country: "mt",

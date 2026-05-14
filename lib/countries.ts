@@ -80,10 +80,8 @@ export function countryName(code: string, lang: "en" | "lt"): string {
 
 export const countries: Country[] = [
   { code: "al", name: "Albania",        flag: "🇦🇱", artist: "Alis",                                  song: "Nân",                  order: 1  },
-  { code: "am", name: "Armenia",        flag: "🇦🇲", artist: "SIMÓN",                                 song: "Paloma Rumba",         order: 2  },
   { code: "au", name: "Australia",      flag: "🇦🇺", artist: "Delta Goodrem",                         song: "Eclipse",              order: 3  },
   { code: "at", name: "Austria",        flag: "🇦🇹", artist: "COSMÓ",                                 song: "Tanzschein",           order: 4  },
-  { code: "az", name: "Azerbaijan",     flag: "🇦🇿", artist: "JIVA",                                  song: "Just Go",              order: 5  },
   { code: "be", name: "Belgium",        flag: "🇧🇪", artist: "ESSYLA",                                song: "Dancing on the Ice",   order: 6  },
   { code: "bg", name: "Bulgaria",       flag: "🇧🇬", artist: "DARA",                                  song: "Bangaranga",           order: 7  },
   { code: "hr", name: "Croatia",        flag: "🇭🇷", artist: "LELEK",                                 song: "Andromeda",            order: 8  },
@@ -98,9 +96,7 @@ export const countries: Country[] = [
   { code: "gr", name: "Greece",         flag: "🇬🇷", artist: "Akylas",                                song: "Ferto",                order: 17 },
   { code: "il", name: "Israel",         flag: "🇮🇱", artist: "Noam Bettan",                           song: "Michelle",             order: 18 },
   { code: "it", name: "Italy",          flag: "🇮🇹", artist: "Sal Da Vinci",                          song: "Per Sempre Sì",        order: 19 },
-  { code: "lv", name: "Latvia",         flag: "🇱🇻", artist: "Atvara",                                song: "Ēnā",                  order: 20 },
   { code: "lt", name: "Lithuania",      flag: "🇱🇹", artist: "Lion Ceccah",                           song: "Sólo Quiero Más",      order: 21 },
-  { code: "lu", name: "Luxembourg",     flag: "🇱🇺", artist: "Eva Marija",                            song: "Mother Nature",        order: 22 },
   { code: "mt", name: "Malta",          flag: "🇲🇹", artist: "AIDAN",                                 song: "Bella",                order: 23 },
   { code: "md", name: "Moldova",        flag: "🇲🇩", artist: "Satoshi",                               song: "Viva, Moldova!",       order: 24 },
   { code: "me", name: "Montenegro",     flag: "🇲🇪", artist: "Tamara Živković",                       song: "Nova Zora",            order: 25 },
@@ -111,7 +107,6 @@ export const countries: Country[] = [
   { code: "sm", name: "San Marino",     flag: "🇸🇲", artist: "SENHIT",                                song: "Superstar",            order: 30 },
   { code: "rs", name: "Serbia",         flag: "🇷🇸", artist: "LAVINA",                                song: "Kraj Mene",            order: 31 },
   { code: "se", name: "Sweden",         flag: "🇸🇪", artist: "FELICIA",                               song: "My System",            order: 32 },
-  { code: "ch", name: "Switzerland",    flag: "🇨🇭", artist: "Veronica Fusaro",                       song: "Alice",                order: 33 },
   { code: "ua", name: "Ukraine",        flag: "🇺🇦", artist: "LELÉKA",                                song: "Ridnym",               order: 34 },
   { code: "gb", name: "United Kingdom", flag: "🇬🇧", artist: "TBD",                                   song: "TBD",                  order: 35 },
 ];
