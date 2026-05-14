@@ -293,6 +293,22 @@ const S = {
   // direct read-the-whole-thing surface.
   welcome_drawer_title:      { en: "Welcome!", lt: "Sveiki atvykę!" },
   welcome_read_more:         { en: "Read more", lt: "Skaityti daugiau" },
+
+  // Show identity — surfaces that print the host city, contest year,
+  // or the final's date (header eyebrow, brand chip on the landing
+  // gate, the chat-ticket stub, etc). Keeping them here means the
+  // 2027 cutover is a one-line edit per locale.
+  host_city:                 { en: "Vienna", lt: "Viena" },
+  host_year:                 { en: "2026", lt: "2026" },
+  host_city_year:            { en: "Vienna 2026", lt: "Viena 2026" },
+  final_date:                { en: "16 May", lt: "Gegužės 16" },
+  // Ticket-stub microcopy. ADMIT ONE in EN ↔ "Bilietas" reads
+  // friendlier than a literal "Įleidžiamas vienas" in LT.
+  ticket_admit_one:          { en: "Admit one", lt: "Bilietas" },
+  ticket_show_eyebrow:       { en: "Show", lt: "Renginys" },
+  // Tabular serial number on the ticket. EN uses the № glyph, LT
+  // the more familiar "Nr." prefix.
+  ticket_serial:             { en: "№ 70", lt: "Nr. 70" },
   // Plain-text fallback for the chat CTA card (rendered when a viewer
   // sees the chat row but no card matches, or for screen readers).
   sys_cta_welcome:           { en: "👋 Hello folks, a few housekeeping notes", lt: "👋 Sveiki, keletas tvarkos taisyklių" },

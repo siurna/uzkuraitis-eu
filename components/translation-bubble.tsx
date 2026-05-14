@@ -46,6 +46,18 @@ export function TranslationBubble({
   // Nothing if the model said "no need" or we don't have a result yet.
   if (!hit || !hit.translate || !hit.text) return null;
 
+  // Split the response into a literal rendering and the optional
+  // `[bracketed context note]` the prompt emits when the message
+  // hangs on a Lithuanian reference. We split on the FIRST `[` so a
+  // model that returns "rendering [note]" lands the rendering above
+  // and the explanation on its own italic line. When there's no
+  // bracket the whole text reads as one inline span.
+  const open = hit.text.indexOf("[");
+  const close = open >= 0 ? hit.text.lastIndexOf("]") : -1;
+  const hasNote = open >= 0 && close > open;
+  const body = hasNote ? hit.text.slice(0, open).trim() : hit.text;
+  const note = hasNote ? hit.text.slice(open + 1, close).trim() : "";
+
   return (
     <AnimatePresence>
       <motion.div
@@ -61,7 +73,14 @@ export function TranslationBubble({
             the Languages glyph carry the "this is a translation"
             signal without needing the redundant label. */}
         <Languages className="inline h-3 w-3 text-flamingo mr-1.5 align-[-0.05em]" />
-        <span className="break-words">{hit.text}</span>
+        <span className="break-words">{body}</span>
+        {note && (
+          // Context note on its own line, italic + dimmer so it
+          // reads as a footnote, not the translation itself.
+          <span className="block mt-1 italic text-white/65 break-words">
+            {note}
+          </span>
+        )}
       </motion.div>
     </AnimatePresence>
   );

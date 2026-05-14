@@ -1107,7 +1107,12 @@ export function ChatRow({
             <TranslationBubble text={m.body} mine={mine} />
           )}
 
-          {beginnerOn && !mine && m.kind === "text" && m.body && (
+          {/* Beginner gloss only fires when auto-translate is OFF —
+              the translate prompt already emits a [bracketed context
+              note] for Lithuanian-specific references, so showing
+              both bubbles under the same line is a duplicate. If a
+              viewer wants the gloss, they uncheck translate. */}
+          {beginnerOn && !translateOn && !mine && m.kind === "text" && m.body && (
             <BeginnerBubble text={m.body} lang={lang} mine={mine} />
           )}
 

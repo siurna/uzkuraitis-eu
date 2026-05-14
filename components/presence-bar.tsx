@@ -159,7 +159,7 @@ export function PresenceBar() {
                   exit={{ opacity: 0 }}
                   className="text-[11px] uppercase tracking-[0.32em] text-white/70 font-display"
                 >
-                  Vienna 2026
+                  {t(lang, "host_city_year")}
                 </motion.p>
               )}
             </AnimatePresence>

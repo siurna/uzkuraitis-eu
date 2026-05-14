@@ -588,10 +588,10 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
             the ticket "serial" reads as real ephemera. */}
         <div className="relative px-4 pt-2.5 pb-2 flex items-center justify-between border-b border-dashed border-yellow/25">
           <span className="text-[9px] uppercase tracking-[0.32em] font-display text-yellow/85">
-            Admit one
+            {t(lang, "ticket_admit_one")}
           </span>
           <span className="text-[9px] uppercase tracking-[0.28em] font-display text-yellow/60 tabular-nums">
-            № 70
+            {t(lang, "ticket_serial")}
           </span>
         </div>
 
@@ -600,15 +600,15 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
               event title, location + date underneath. */}
           <div className="border-r border-dashed border-yellow/25 px-3 py-3.5 flex flex-col justify-center gap-1 text-center">
             <span className="text-[9px] uppercase tracking-[0.22em] font-display text-yellow/55">
-              Show
+              {t(lang, "ticket_show_eyebrow")}
             </span>
             <span className="font-display text-lg leading-tight text-yellow tracking-wide">
-              ESC 2026
+              ESC {t(lang, "host_year")}
             </span>
             <span className="text-[10px] text-yellow/55 leading-tight">
-              Vienna
+              {t(lang, "host_city")}
               <br />
-              16 May
+              {t(lang, "final_date")}
             </span>
           </div>
 

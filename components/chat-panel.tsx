@@ -34,6 +34,7 @@ import { bumpVibe } from "@/lib/use-vibe-tracker";
 import { GifPicker } from "@/components/gif-picker";
 import { ChatRow, type Message, type MessageKind } from "@/components/chat-row";
 import { Lightbox } from "@/components/chat-lightbox";
+import { prefetchProfile } from "@/components/profile-sheet";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 import { haptic } from "@/lib/haptics";
@@ -187,6 +188,39 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       updatePresence({ typing: false });
     };
   }, [updatePresence]);
+
+  // Warm the profile cache for recently active chat authors so taps
+  // on an avatar bubble feel instant — the prefetchProfile helper
+  // dedupes by (room, target, viewer) so repeat invocations don't
+  // re-hit the API, and we stagger by 80ms so a freshly mounted
+  // panel doesn't thunder-herd the profile endpoint with 10 parallel
+  // GETs. Scoped to the 10 most-recent unique authors (excluding our
+  // own session) because that's where the user is most likely to tap.
+  useEffect(() => {
+    if (!code || !mySession || messages.length === 0) return;
+    const seen = new Set<string>();
+    const recentAuthors: string[] = [];
+    for (let i = messages.length - 1; i >= 0 && recentAuthors.length < 10; i--) {
+      const sid = messages[i].sessionId;
+      if (!sid || sid === mySession || sid === "system" || sid === "commentator") continue;
+      if (seen.has(sid)) continue;
+      seen.add(sid);
+      recentAuthors.push(sid);
+    }
+    let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    recentAuthors.forEach((sid, idx) => {
+      const t = setTimeout(() => {
+        if (cancelled) return;
+        prefetchProfile(code, sid, mySession);
+      }, idx * 80);
+      timers.push(t);
+    });
+    return () => {
+      cancelled = true;
+      for (const t of timers) clearTimeout(t);
+    };
+  }, [code, mySession, messages]);
 
   // ----- fetch -----
   const fetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

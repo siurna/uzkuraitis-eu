@@ -29,7 +29,11 @@ import { useLang } from "@/lib/i18n-client";
 // per-pick breakdown).
 type CacheEntry = { data: unknown; until: number };
 const profileCache = new Map<string, CacheEntry>();
-const PROFILE_CACHE_TTL_MS = 30_000;
+// 60s TTL mirrors the server's Cache-Control max-age so a "still
+// fresh" cache hit on the client matches whatever the browser HTTP
+// cache would serve. Stale entries past the window still paint
+// instantly and silently revalidate in the background.
+const PROFILE_CACHE_TTL_MS = 60_000;
 const cacheKey = (code: string, target: string, viewer: string) =>
   `${code}|${target}|${viewer}`;
 export function bustProfileCache(): void {

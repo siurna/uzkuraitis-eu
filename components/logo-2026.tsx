@@ -3,11 +3,14 @@
 import Image from "next/image";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
+import { useLang } from "@/lib/i18n-client";
 
 // Official Eurovision 2026 70-year wordmark + UBM ribbon, scraped from
 // eurovision.com/static/images/. The whole stack fades in on mount with a
 // staggered reveal so the gate doesn't pop into existence.
 export function Logo2026({ className }: { className?: string }) {
+  const lang = useLang();
   return (
     <motion.div
       initial="hidden"
@@ -78,7 +81,7 @@ export function Logo2026({ className }: { className?: string }) {
         transition={{ duration: 0.6 }}
         className="text-xs uppercase tracking-[0.4em] text-white font-display"
       >
-        Vienna 2026
+        {t(lang, "host_city_year")}
       </motion.p>
     </motion.div>
   );

@@ -230,7 +230,7 @@ export async function GET(req: Request, { params }: RouteCtx) {
     ballot = scoreTopTenBreakdown({}, {});
   }
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     sessionId,
     name,
     avatarId,
@@ -257,6 +257,13 @@ export async function GET(req: Request, { params }: RouteCtx) {
         }
       : null,
   });
+  // Browser-private 60s cache: repeat opens of the same profile during
+  // a single show segment skip the network entirely. SWR in the sheet
+  // doubles up so a stale browser cache still gets a silent revalidate.
+  // `must-revalidate` keeps the cache off CDNs (would leak ballot data
+  // across viewers) while letting the browser cache it for the viewer.
+  res.headers.set("Cache-Control", "private, max-age=60, must-revalidate");
+  return res;
 }
 
 export const dynamic = "force-dynamic";
