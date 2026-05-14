@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { motion } from "motion/react";
 import { Mic, Music, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -53,9 +53,26 @@ export function Standings() {
     fetchScores();
   }, [fetchScores]);
 
+  // Coalesce vote-storm broadcasts. Each ballot save fans out
+  // `scores:updated` to every viewer; 50 viewers × 50 ballots tweaked
+  // during the voting window = 2500 GETs to /scores. A 2s leading-
+  // throttle collapses any vote storm to a single refetch per 2s
+  // per client — the snapshot stays roughly current without us
+  // hammering the endpoint.
+  const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEventListener(({ event }) => {
-    if (event.type === "scores:updated") fetchScores();
+    if (event.type !== "scores:updated") return;
+    if (refetchTimer.current) return;
+    refetchTimer.current = setTimeout(() => {
+      refetchTimer.current = null;
+      fetchScores();
+    }, 2_000);
   });
+  useEffect(() => {
+    return () => {
+      if (refetchTimer.current) clearTimeout(refetchTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     setHasVoted(localStorage.getItem(`uzk_voted_${code}`) === "1");

@@ -15,10 +15,26 @@ import { FluentEmoji } from "@/components/fluent-emoji";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { useRoomLive } from "@/components/room-shell";
+import { useEventListener } from "@/lib/realtime";
 import { useIdentity } from "@/lib/use-identity";
 import { countryName, getCountry } from "@/lib/countries";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
+
+// Module-level cache for /profile responses. Tapping the same avatar
+// twice during a show used to fire two synchronous GETs against a
+// heavy join query; with 50 viewers averaging a handful of profile
+// peeks each, those add up. We hold the response for 30s and bust on
+// `leaderboard:updated` (the only event that materially changes the
+// per-pick breakdown).
+type CacheEntry = { data: unknown; until: number };
+const profileCache = new Map<string, CacheEntry>();
+const PROFILE_CACHE_TTL_MS = 30_000;
+const cacheKey = (code: string, target: string, viewer: string) =>
+  `${code}|${target}|${viewer}`;
+export function bustProfileCache(): void {
+  profileCache.clear();
+}
 
 // "Tap an avatar, see who they are" — the participant profile drawer.
 //
@@ -124,6 +140,14 @@ function ProfileSheet({
       setShellOnly(false);
       return;
     }
+    const key = cacheKey(code, sessionId, mySession);
+    const cached = profileCache.get(key);
+    if (cached && cached.until > Date.now()) {
+      setData(cached.data as ProfileData);
+      setShellOnly(false);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setShellOnly(false);
@@ -134,8 +158,12 @@ function ProfileSheet({
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancelled) return;
-        if (!d) setShellOnly(true);
-        else setData(d as ProfileData);
+        if (!d) {
+          setShellOnly(true);
+        } else {
+          setData(d as ProfileData);
+          profileCache.set(key, { data: d, until: Date.now() + PROFILE_CACHE_TTL_MS });
+        }
       })
       .catch(() => {
         if (!cancelled) setShellOnly(true);
@@ -147,6 +175,15 @@ function ProfileSheet({
       cancelled = true;
     };
   }, [sessionId, code, mySession]);
+
+  // Bust the profile cache when authoritative scoring inputs change.
+  // `leaderboard:updated` covers admin edits of placements/facts (per-
+  // pick breakdown rows shift). Reaction storms (`chat:react`) don't
+  // affect the cached payload meaningfully enough to be worth re-
+  // fetching during a single 30s window.
+  useEventListener(({ event }) => {
+    if (event.type === "leaderboard:updated") bustProfileCache();
+  });
 
   // "Shell" view: API returned 404 (no chat messages, no vote) but we
   // still know who they are from the bubble that opened this drawer.

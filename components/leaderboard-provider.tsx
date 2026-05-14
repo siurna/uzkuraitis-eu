@@ -73,6 +73,11 @@ export function LeaderboardProvider({ children }: { children: ReactNode }) {
   // Without this, every `leaderboard:updated` fan-out fires N copies
   // of the same query.
   const inflight = useRef<Promise<void> | null>(null);
+  // Vote-storm coalesce: a 2s leading-edge throttle absorbs the
+  // dozens of `scores:updated` broadcasts that fan out during a
+  // ballot-tweaking window. Without it, each of 50 viewers ends up
+  // GETting /leaderboard every ~50ms while the room fiddles.
+  const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(() => {
     if (inflight.current) return;
@@ -97,13 +102,30 @@ export function LeaderboardProvider({ children }: { children: ReactNode }) {
   }, [tallyEnabled, refresh]);
 
   useEventListener(({ event }) => {
-    // Both leaderboard:updated (admin entered results) and
-    // scores:updated (a fresh ballot landed) invalidate the cached
-    // payload — the leaderboard's totals fold in those ballots.
-    if (event.type === "leaderboard:updated" || event.type === "scores:updated") {
+    // `leaderboard:updated` (admin entered results, edited placements,
+    // etc.) is a deliberate signal — refresh immediately so the room
+    // sees the reveal land. `scores:updated` (a ballot was tweaked)
+    // only matters once tally is on; before that, it's a vote-storm
+    // event with no payload to invalidate, so we'd be GETting a
+    // "hasResults:false" reply on every keystroke for nothing.
+    if (event.type === "leaderboard:updated") {
       refresh();
+      return;
+    }
+    if (event.type === "scores:updated" && tallyEnabled) {
+      if (refetchTimer.current) return;
+      refetchTimer.current = setTimeout(() => {
+        refetchTimer.current = null;
+        refresh();
+      }, 2_000);
     }
   });
+
+  useEffect(() => {
+    return () => {
+      if (refetchTimer.current) clearTimeout(refetchTimer.current);
+    };
+  }, []);
 
   return <Context.Provider value={{ payload, refresh }}>{children}</Context.Provider>;
 }
