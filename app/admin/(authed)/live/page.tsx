@@ -1,4 +1,4 @@
-import { desc, gt, sql } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { rooms, voters } from "@/lib/db/schema";
 import { AdminLivePanel } from "@/components/admin-live-panel";
@@ -11,14 +11,12 @@ import { AdminPageTitle } from "@/components/admin-page-title";
 // after the fact. The running-order position is derived server-side from
 // the country's startlist order — no separate control.
 export default async function AdminLivePage() {
-  // "Recently active" cutoff for the per-room voter headcount badge
-  // shown on the room picker. Any voter whose `updatedAt` lands inside
-  // this window counts as "still in the room". Two minutes mirrors the
-  // app's other "active in the last bit" heuristics and keeps the
-  // count stable enough to read between page paints.
-  const ACTIVE_WINDOW_MS = 2 * 60 * 1000;
-  const activeSince = new Date(Date.now() - ACTIVE_WINDOW_MS);
-
+  // Per-room participant headcount used by the picker badge. Total
+  // joiners (no time filter) — the earlier "updated in last 2 min"
+  // window only counted voters who had just hit save, so a room of
+  // passive watchers showed zero and the badge silently disappeared.
+  // Polling at 15s on the client keeps the value fresh as new
+  // people join.
   const [rows, activeRows] = await Promise.all([
     db
       .select({
@@ -41,7 +39,6 @@ export default async function AdminLivePage() {
         n: sql<number>`COUNT(*)::int`,
       })
       .from(voters)
-      .where(gt(voters.updatedAt, activeSince))
       .groupBy(voters.roomId),
   ]);
   const activeByRoom = new Map(activeRows.map((r) => [r.roomId, r.n]));

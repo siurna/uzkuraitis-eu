@@ -15,6 +15,7 @@ import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
 import { readLang, withLangTransition, writeLang } from "@/lib/i18n-client";
+import { readBeginner, writeBeginner } from "@/lib/beginner-client";
 
 const NAME_KEY = "uzk_name";
 const AVATAR_KEY = "uzk_avatar";
@@ -39,6 +40,7 @@ export function SettingsModal({
   const lastGoodName = useRef("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [lang, setLang] = useState<Language>("lt");
+  const [beginner, setBeginner] = useState(false);
   const [copied, setCopied] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [notifSheetOpen, setNotifSheetOpen] = useState(false);
@@ -48,6 +50,7 @@ export function SettingsModal({
     if (!open) return;
     const initial = localStorage.getItem(NAME_KEY) ?? "";
     setName(initial);
+    setBeginner(readBeginner());
     lastGoodName.current = initial;
     setAvatar(localStorage.getItem(AVATAR_KEY) ?? null);
     setLang(readLang());
@@ -166,12 +169,40 @@ export function SettingsModal({
             </div>
           </Section>
 
-          {/* Translation + Beginner-mode toggles used to live here but
-              read as neon noise — niche features that weren't pulling
-              their weight in the settings real estate. The features
-              themselves stay wired (the toggles can still be flipped
-              programmatically), they're just no longer surfaced in
-              the drawer. */}
+          {/* Beginner-mode toggle. The earlier flamingo-tinted
+              explainer card with copy + icon is gone (it read as
+              neon noise next to the avatar picker), but the toggle
+              itself stays — it's the only way for a viewer to flip
+              the per-message gloss on. Plain row treatment to match
+              the rest of the drawer. */}
+          <Section label={t(lang, "settings_beginner_h")}>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !beginner;
+                setBeginner(next);
+                writeBeginner(next);
+              }}
+              aria-pressed={beginner}
+              className="w-full flex items-center gap-3 rounded-2xl px-3 py-2.5
+                         bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition text-left"
+            >
+              <span className="flex-1 min-w-0">
+                <span className="block text-xs text-white/55 leading-snug">
+                  {t(lang, "settings_beginner_sub")}
+                </span>
+              </span>
+              <span
+                className={`shrink-0 inline-flex items-center h-6 w-10 rounded-full transition
+                            ${beginner ? "bg-success/85" : "bg-white/15"}`}
+              >
+                <span
+                  className={`block h-5 w-5 rounded-full bg-white transition-transform
+                              ${beginner ? "translate-x-[18px]" : "translate-x-0.5"}`}
+                />
+              </span>
+            </button>
+          </Section>
 
           <Section label={t(lang, "pick_avatar")}>
             <button

@@ -84,7 +84,7 @@ export function AdminRoomBooleanToggle({
           {enabled ? subOn : subOff}
         </span>
       </span>
-      <TogglePill on={enabled} accent="neutral" />
+      <TogglePill on={enabled} />
     </button>
   );
 }

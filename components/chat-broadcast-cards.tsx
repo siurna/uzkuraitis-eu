@@ -745,13 +745,15 @@ function ThanksCard({ lang }: { lang: Language }) {
   }, []);
 
   // {next} substitution: drop the next year's number into the
-  // closing line. Falls back to the literal i18n value if the
-  // current year math goes sideways for any reason.
+  // closing line. `fmt` does the placeholder swap because the i18n
+  // entry is a plain template string ("See you in {next}.") — using
+  // tDyn alone returned the raw `{next}` literal, which read as a
+  // bug at the ‘Thank you Europe’ moment.
   const nextYear = useMemo(() => {
     const y = new Date().getFullYear() + 1;
     return Number.isFinite(y) ? String(y) : t(lang, "sys_cta_thanks_next");
   }, [lang]);
-  const sub = tDyn(lang, "sys_cta_thanks_sub", nextYear);
+  const sub = fmt(t(lang, "sys_cta_thanks_sub"), { next: nextYear });
 
   return (
     <motion.div

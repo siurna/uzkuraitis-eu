@@ -47,19 +47,19 @@ export async function PUT(request: Request) {
     );
   }
 
-  // Reject placements pointing at unknown countries.
+  // Filter out placements pointing at countries no longer in the
+  // running order — happens when a non-finalist (Luxembourg etc) was
+  // dropped from `lib/countries.ts` mid-session but their saved row
+  // is still in the admin UI's draft. Silently drop them here so the
+  // admin can still save the rest; the missing rows reappear empty
+  // on next render.
   const validCodes = new Set(countries.map((c) => c.code));
-  for (const row of parsed.data.results) {
-    if (!validCodes.has(row.countryCode)) {
-      return NextResponse.json(
-        { error: `Unknown country code: ${row.countryCode}` },
-        { status: 400 },
-      );
-    }
-  }
+  const cleaned = parsed.data.results.filter((row) =>
+    validCodes.has(row.countryCode),
+  );
 
   // Reject duplicate placements (two countries can't share a position).
-  const placements = parsed.data.results.map((r) => r.placement);
+  const placements = cleaned.map((r) => r.placement);
   if (new Set(placements).size !== placements.length) {
     return NextResponse.json(
       { error: "Duplicate placements detected." },
@@ -70,8 +70,8 @@ export async function PUT(request: Request) {
   // Wipe and reinsert. The brief "no results" window between the two
   // statements is acceptable for an admin save.
   await db.delete(officialResults);
-  if (parsed.data.results.length > 0) {
-    await db.insert(officialResults).values(parsed.data.results);
+  if (cleaned.length > 0) {
+    await db.insert(officialResults).values(cleaned);
   }
 
   // Tell every room to refresh its leaderboard. Cheap blast.

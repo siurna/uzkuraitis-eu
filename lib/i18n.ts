@@ -84,6 +84,9 @@ const S = {
 
   // ── RoomGate (entrance code screen) ──────────────────────────────
   enter_room:        { en: "Enter room", lt: "Įeiti" },
+  // Disabled-state copy for the join CTA when the user hasn't typed
+  // the full 6-char code yet. Reads as a hint, not a dead button.
+  enter_code_hint:   { en: "Enter room code", lt: "Įvesk kambario kodą" },
   checking:          { en: "Checking…", lt: "Tikrinama…" },
   // Turnstile status pill copy — explains the disabled join button so
   // it doesn't read as "broken form".

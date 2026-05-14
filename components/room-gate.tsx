@@ -318,6 +318,12 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
                         <Loader2 className="h-4 w-4 animate-spin" />
                         {t(lang, "ts_waiting_to_submit")}
                       </span>
+                    ) : code.length < 6 ? (
+                      // Disabled "type your code" hint instead of a
+                      // dead-looking "Enter room" — reads as guidance,
+                      // flips back to the active CTA the moment the
+                      // 6th character lands.
+                      <span className="text-dark-blue/55">{t(lang, "enter_code_hint")}</span>
                     ) : (
                       t(lang, "enter_room")
                     )}

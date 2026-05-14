@@ -88,7 +88,7 @@ export function AdminWelcome({
               </span>
               <div className="rounded-2xl ring-1 ring-white/10 bg-black/30 p-4 min-h-[6rem]">
                 {src.trim() ? (
-                  <WelcomeMarkdown source={src} />
+                  <WelcomeMarkdown source={src} showDivider />
                 ) : (
                   <p className="text-sm text-white/40 italic">Nothing to preview yet.</p>
                 )}

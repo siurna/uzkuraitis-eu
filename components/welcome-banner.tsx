@@ -155,7 +155,17 @@ function renderInline(s: string, key: string): React.ReactNode {
   return parts.length > 0 ? parts : s;
 }
 
-export function WelcomeMarkdown({ source }: { source: string }) {
+export function WelcomeMarkdown({
+  source,
+  showDivider = false,
+}: {
+  source: string;
+  /** When true, render `---[Label]---` lines as a visible chip so
+   *  the admin's preview shows where the short-version cut is.
+   *  Default false: the chat ticket + home banner drawer hide the
+   *  marker because it's content metadata, not body copy. */
+  showDivider?: boolean;
+}) {
   // Group lines into blocks: contiguous bullet lines fold into a
   // single <ul>; blank lines split paragraphs; `#`/`##`/`###` at the
   // start of a line lifts into h1/h2/h3 (with the level visible by
@@ -164,7 +174,8 @@ export function WelcomeMarkdown({ source }: { source: string }) {
   type Block =
     | { kind: "p"; text: string }
     | { kind: "h"; level: 1 | 2 | 3; text: string }
-    | { kind: "ul"; items: string[] };
+    | { kind: "ul"; items: string[] }
+    | { kind: "divider"; label: string };
   const blocks: Block[] = [];
   let buf: string[] = [];
   let listBuf: string[] = [];
@@ -182,14 +193,19 @@ export function WelcomeMarkdown({ source }: { source: string }) {
   };
   // Lines matching the `---[Label]---` chat-ticket split marker
   // are content metadata (they tell the chat ticket where the
-  // short-version cut is), not visible text — drop them from the
-  // rendered output entirely.
+  // short-version cut is). Public surfaces strip them; the admin
+  // preview opts into rendering them via `showDivider` so the
+  // host can see where their cut lands.
   const DIVIDER_RE = /^---\s*\[(.+?)\]\s*---$/;
   for (const raw of lines) {
     const line = raw.trim();
-    if (DIVIDER_RE.test(line)) {
+    const div = DIVIDER_RE.exec(line);
+    if (div) {
       flushP();
       flushUl();
+      if (showDivider) {
+        blocks.push({ kind: "divider", label: div[1].trim() || "More" });
+      }
       continue;
     }
     const heading = /^(#{1,3})\s+(.+)$/.exec(line);
@@ -234,6 +250,24 @@ export function WelcomeMarkdown({ source }: { source: string }) {
             <p key={i} className="text-balance whitespace-pre-line">
               {renderInline(b.text, `p-${i}`)}
             </p>
+          );
+        }
+        if (b.kind === "divider") {
+          return (
+            // Admin-preview-only marker so the host can see where the
+            // chat-ticket cut lands. Dashed rule + small flamingo
+            // label chip with the divider's button copy.
+            <div
+              key={i}
+              className="my-2 flex items-center gap-3 text-[10px] uppercase tracking-[0.22em] font-display text-flamingo/85"
+              aria-hidden
+            >
+              <span className="h-px flex-1 bg-flamingo/30" />
+              <span className="rounded-full bg-flamingo/12 ring-1 ring-flamingo/35 px-2.5 h-6 inline-flex items-center">
+                {b.label}
+              </span>
+              <span className="h-px flex-1 bg-flamingo/30" />
+            </div>
           );
         }
         return (

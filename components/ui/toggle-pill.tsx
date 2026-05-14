@@ -19,7 +19,7 @@ export function TogglePill({
    *  that shouldn't read as celebratory). */
   accent?: "success" | "neutral";
 }) {
-  const onBg = accent === "success" ? "bg-success/70" : "bg-white/50";
+  const onBg = accent === "success" ? "bg-success/90" : "bg-white/50";
   return (
     <span
       className={`relative h-6 w-11 rounded-full transition shrink-0 ${

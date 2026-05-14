@@ -60,8 +60,19 @@ export function FluentEmoji({
       decoding="async"
       draggable={false}
       onError={() => setFailed(true)}
-      className={`inline-block select-none ${className}`}
-      style={{ width: size, height: size }}
+      // `object-cover` + `shrink-0` defends against parents that
+      // constrain only one axis (sonner toast icon slot, flex rows
+      // with `items-stretch`) — without these the 1:1 PNG gets
+      // resampled into the parent's non-square box and reads as
+      // squished. minWidth/minHeight stops the box itself from
+      // collapsing below the requested pixel size.
+      className={`inline-block select-none shrink-0 object-cover ${className}`}
+      style={{
+        width: size,
+        height: size,
+        minWidth: size,
+        minHeight: size,
+      }}
     />
   );
 }

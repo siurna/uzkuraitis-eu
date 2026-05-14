@@ -630,9 +630,24 @@
 /* Language toggle pill: opt out of the View Transitions crossfade
    so it snaps instantly to the picked side instead of fading
    across. Everything else on the page still crossfades via the
-   root snapshot. */
-::view-transition-group(uzk-lang-pill) {
-  animation: none;
+   root snapshot. The earlier rule only killed the GROUP animation
+   (which controls layout movement); the OLD + NEW pseudo-elements
+   keep their own opacity fades by default, which read as a slide
+   from the picked side back to the new picked side. Killing all
+   four pseudo-elements forces an immediate cut. */
+::view-transition-group(uzk-lang-pill),
+::view-transition-image-pair(uzk-lang-pill),
+::view-transition-old(uzk-lang-pill),
+::view-transition-new(uzk-lang-pill) {
+  animation: none !important;
+}
+/* Also: zero-duration on the new snapshot so it appears at the new
+   left position the moment the transition starts, no easing pause. */
+::view-transition-new(uzk-lang-pill) {
+  opacity: 1;
+}
+::view-transition-old(uzk-lang-pill) {
+  opacity: 0;
 }
 
 input, button, textarea, select {
