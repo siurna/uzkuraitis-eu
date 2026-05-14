@@ -1,6 +1,6 @@
-import { desc } from "drizzle-orm";
+import { desc, gt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { rooms } from "@/lib/db/schema";
+import { rooms, voters } from "@/lib/db/schema";
 import { AdminLivePanel } from "@/components/admin-live-panel";
 import { AdminLiveRoomColumn } from "@/components/admin-live-room-column";
 import { AdminPageTitle } from "@/components/admin-page-title";
@@ -11,20 +11,40 @@ import { AdminPageTitle } from "@/components/admin-page-title";
 // after the fact. The running-order position is derived server-side from
 // the country's startlist order — no separate control.
 export default async function AdminLivePage() {
-  const rows = await db
-    .select({
-      code: rooms.code,
-      name: rooms.name,
-      showStatus: rooms.showStatus,
-      nowPlayingCode: rooms.nowPlayingCode,
-      votingEnabled: rooms.votingEnabled,
-      tallyEnabled: rooms.tallyEnabled,
-      triviaMaxAnswerers: rooms.triviaMaxAnswerers,
-      highlightThreshold: rooms.highlightThreshold,
-      lastActiveAt: rooms.lastActiveAt,
-    })
-    .from(rooms)
-    .orderBy(desc(rooms.lastActiveAt));
+  // "Recently active" cutoff for the per-room voter headcount badge
+  // shown on the room picker. Any voter whose `updatedAt` lands inside
+  // this window counts as "still in the room". Two minutes mirrors the
+  // app's other "active in the last bit" heuristics and keeps the
+  // count stable enough to read between page paints.
+  const ACTIVE_WINDOW_MS = 2 * 60 * 1000;
+  const activeSince = new Date(Date.now() - ACTIVE_WINDOW_MS);
+
+  const [rows, activeRows] = await Promise.all([
+    db
+      .select({
+        code: rooms.code,
+        name: rooms.name,
+        showStatus: rooms.showStatus,
+        nowPlayingCode: rooms.nowPlayingCode,
+        votingEnabled: rooms.votingEnabled,
+        tallyEnabled: rooms.tallyEnabled,
+        triviaMaxAnswerers: rooms.triviaMaxAnswerers,
+        highlightThreshold: rooms.highlightThreshold,
+        lastActiveAt: rooms.lastActiveAt,
+        id: rooms.id,
+      })
+      .from(rooms)
+      .orderBy(desc(rooms.lastActiveAt)),
+    db
+      .select({
+        roomId: voters.roomId,
+        n: sql<number>`COUNT(*)::int`,
+      })
+      .from(voters)
+      .where(gt(voters.updatedAt, activeSince))
+      .groupBy(voters.roomId),
+  ]);
+  const activeByRoom = new Map(activeRows.map((r) => [r.roomId, r.n]));
 
   const mode = <T extends string | number | null>(values: T[]): T | null => {
     const counts = new Map<string, { value: T; n: number }>();
@@ -67,6 +87,7 @@ export default async function AdminLivePage() {
               tallyEnabled: r.tallyEnabled,
               triviaMaxAnswerers: r.triviaMaxAnswerers,
               highlightThreshold: r.highlightThreshold,
+              activeCount: activeByRoom.get(r.id) ?? 0,
             }))}
           />
         </section>

@@ -18,6 +18,9 @@ export type RoomLite = {
   tallyEnabled: boolean;
   triviaMaxAnswerers: number | null;
   highlightThreshold: number | null;
+  /** Recently active voter count (within the last ~2 minutes). Shown
+   *  as a small dot+number badge on the picker chip. */
+  activeCount: number;
 };
 
 const ROOM_STORAGE_KEY = "uzk_admin_live_room";

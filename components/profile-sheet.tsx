@@ -185,12 +185,15 @@ function ProfileSheet({
     if (event.type === "leaderboard:updated") bustProfileCache();
   });
 
-  // "Shell" view: API returned 404 (no chat messages, no vote) but we
-  // still know who they are from the bubble that opened this drawer.
-  // Show their identity + a friendly "they're here but haven't done
-  // anything yet" line instead of failing closed.
-  const shell: ProfileData | null = useMemo(() => {
-    if (!sessionId || !shellOnly) return null;
+  // Placeholder view built from the bubble's seed (name + avatar id)
+  // so the drawer renders an identity card from frame one — no
+  // "Loading…" paragraph while the network is in flight. Stats below
+  // gate on the real `data` arriving and show a skeleton until then.
+  // Same shape is reused for the "Shell" 404 fallback (the server
+  // doesn't recognise the session, but the bubble we tapped DOES
+  // know who they are, so we show the identity anyway).
+  const placeholder: ProfileData | null = useMemo(() => {
+    if (!sessionId) return null;
     return {
       sessionId,
       name: seed.name ?? "—",
@@ -211,9 +214,15 @@ function ProfileSheet({
       ballotHidden: false,
       topHighlight: null,
     };
-  }, [sessionId, shellOnly, seed.name, seed.avatarId]);
+  }, [sessionId, seed.name, seed.avatarId]);
 
-  const view = data ?? shell;
+  // Real data wins. While the API call is in flight, we render from
+  // the seed placeholder so the avatar + name are visible
+  // immediately. statsReady gates the per-tile shimmer — true once
+  // real data arrived, OR once we know it's a 404 shell (API
+  // doesn't know this session yet; stats genuinely are zeroes).
+  const view = data ?? placeholder;
+  const statsReady = data != null || shellOnly;
   const avatar = view?.avatarId ? getAvatar(view.avatarId) : null;
   const isSelf = !!sessionId && sessionId === mySession;
 
@@ -222,9 +231,6 @@ function ProfileSheet({
     // expands on who they picked (avatar artist + song + country + year)
     // rather than re-printing their display name.
     <BottomSheet open={!!sessionId} onClose={onClose} title={view?.name}>
-      {loading && !view && (
-        <p className="text-sm text-white/45 text-center py-6">{t(lang, "profile_loading")}</p>
-      )}
       {view && (
         <div className="flex flex-col gap-4">
           {/* Picked-artist card — avatar photo on the left, then the
@@ -274,17 +280,16 @@ function ProfileSheet({
             )
           )}
 
-          {/* Stats grid — all icons filled + a hair larger for legibility.
-              Trivia tile always renders; "—/—" is fine and reads as
-              "hasn't played any" rather than absence. */}
-          <div className="grid grid-cols-3 gap-2">
-            <StatTile icon={MessageCircle} label={t(lang, "profile_stat_messages")} value={view.stats.messages} />
-            <StatTile icon={Heart} label={t(lang, "profile_stat_loves")} value={view.stats.reactionsReceived} />
-            <StatTile icon={Flame} label={t(lang, "profile_stat_highlights")} value={view.stats.highlights} />
-            <StatTile icon={Sparkles} label={t(lang, "profile_stat_bingo")} value={view.stats.bingoStrikes} />
-            {/* Bets → Crown ("crowning a winner"). Reads clean filled
-                where the previous filled-Dices/Target options didn't. */}
-            <StatTile icon={Crown} label={t(lang, "profile_stat_bets")} value={view.stats.bets} />
+          {/* Stats grid. Until the real payload arrives, render the
+              tiles as a skeleton (icons visible, value pulses) so the
+              drawer is populated from frame one and only the numbers
+              fade in — instead of "Loading…" for 400ms. */}
+          <div className={`grid grid-cols-3 gap-2 ${statsReady ? "" : "opacity-60"}`}>
+            <StatTile icon={MessageCircle} label={t(lang, "profile_stat_messages")} value={view.stats.messages} loading={!statsReady} />
+            <StatTile icon={Heart} label={t(lang, "profile_stat_loves")} value={view.stats.reactionsReceived} loading={!statsReady} />
+            <StatTile icon={Flame} label={t(lang, "profile_stat_highlights")} value={view.stats.highlights} loading={!statsReady} />
+            <StatTile icon={Sparkles} label={t(lang, "profile_stat_bingo")} value={view.stats.bingoStrikes} loading={!statsReady} />
+            <StatTile icon={Crown} label={t(lang, "profile_stat_bets")} value={view.stats.bets} loading={!statsReady} />
             {/* Trivia → Lightbulb. Brain filled looked anatomical;
                 lightbulb is the universal "got it / answered" cue. */}
             <StatTile
@@ -293,6 +298,7 @@ function ProfileSheet({
               value={view.stats.triviaCorrect}
               suffix={view.stats.triviaTotal > 0 ? `/${view.stats.triviaTotal}` : null}
               muted={view.stats.triviaTotal === 0}
+              loading={!statsReady}
             />
           </div>
 
@@ -353,6 +359,7 @@ function StatTile({
   value,
   suffix,
   muted,
+  loading,
 }: {
   icon: typeof MessageCircle;
   label: string;
@@ -360,20 +367,25 @@ function StatTile({
   /** Appended after the value (e.g. "/7" for trivia "3 / 7"). */
   suffix?: string | null;
   muted?: boolean;
+  /** Skeleton state while the profile payload is in flight. The icon
+   *  + label are visible immediately so the grid is populated; only
+   *  the number swaps to a shimmer bar. */
+  loading?: boolean;
 }) {
   return (
-    // Bigger tile, bigger icon, ALL icons filled. The previous
-    // mix-of-outlined-and-filled read inconsistent — locking everything
-    // to filled makes the row of tiles feel like one stat strip.
     <div
       className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-4
                   ${muted ? "bg-white/[0.025] ring-1 ring-white/8 text-white/55" : "glass-surface text-white/90"}`}
     >
       <Icon className="h-6 w-6" fill="currentColor" strokeWidth={1.5} />
-      <span className="font-display text-2xl tabular-nums leading-none">
-        {value}
-        {suffix && <span className="text-white/55 text-base">{suffix}</span>}
-      </span>
+      {loading ? (
+        <span className="h-6 w-8 rounded-md bg-white/8 skeleton" aria-hidden />
+      ) : (
+        <span className="font-display text-2xl tabular-nums leading-none">
+          {value}
+          {suffix && <span className="text-white/55 text-base">{suffix}</span>}
+        </span>
+      )}
       <span className="text-[10px] uppercase tracking-[0.15em] text-white/45 font-display leading-none text-center">
         {label}
       </span>

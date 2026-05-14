@@ -17,7 +17,7 @@ export function AdminRoomPicker({
   emptyLabel = "No rooms yet",
   className = "",
 }: {
-  rooms: { code: string; name: string }[];
+  rooms: { code: string; name: string; activeCount?: number }[];
   value: string;
   onChange: (code: string) => void;
   /** Shown inside the trigger when there are no rooms to pick from. */
@@ -26,6 +26,21 @@ export function AdminRoomPicker({
 }) {
   const [open, setOpen] = useState(false);
   const selected = rooms.find((r) => r.code === value) ?? null;
+  // Live badge: a tiny dot + count for "voters active in this room
+  // right now" (cutoff ~2min, computed server-side at page load).
+  // Pulsing dot when >0 so the chip reads as live.
+  const renderBadge = (n: number | undefined) => {
+    if (!n || n <= 0) return null;
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-success/15 ring-1 ring-success/35 px-1.5 h-5 text-[10px] font-display tabular-nums text-success">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-success/60 animate-ping" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-success" />
+        </span>
+        {n}
+      </span>
+    );
+  };
 
   return (
     <>
@@ -40,11 +55,11 @@ export function AdminRoomPicker({
                     ${className}`}
       >
         {selected ? (
-          // `flex-1` pushes the chevron to the far right of the
-          // trigger so the affordance is always at the edge, not
-          // hugging the end of the title.
           <span className="flex flex-1 min-w-0 flex-col leading-tight text-left">
-            <span className="font-display text-sm text-white truncate">{selected.name}</span>
+            <span className="flex items-center gap-2">
+              <span className="font-display text-sm text-white truncate">{selected.name}</span>
+              {renderBadge(selected.activeCount)}
+            </span>
             <span className="text-[10px] uppercase tracking-[0.22em] text-white/45 tabular-nums leading-none">
               {selected.code}
             </span>
@@ -84,7 +99,10 @@ export function AdminRoomPicker({
                     <Vote className="h-4 w-4" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-display text-sm text-white truncate">{r.name}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="block font-display text-sm text-white truncate">{r.name}</span>
+                      {renderBadge(r.activeCount)}
+                    </span>
                     <span className="block text-[10px] uppercase tracking-[0.24em] text-white/40 tabular-nums">
                       {r.code}
                     </span>

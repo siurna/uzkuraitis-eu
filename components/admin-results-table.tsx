@@ -103,6 +103,11 @@ export function AdminResultsTable({
   });
   const [factDraft, setFactDraft] = useState<Record<string, string>>(initialFacts);
   const [pending, start] = useTransition();
+  // Which TOP-10 placement is currently being edited via the country-
+  // picker drawer. The drawer replaces a native <select> that was
+  // awkward on mobile (tiny touch target, OS-styled, broke the
+  // surface treatment of the row).
+  const [pickerPlacement, setPickerPlacement] = useState<number | null>(null);
 
   const setRowCountry = (placement: number, countryCode: string) => {
     setRows((prev) =>
@@ -218,43 +223,43 @@ export function AdminResultsTable({
 
       <section className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-4">
       <ol className="flex flex-col">
-        {rows.map((row, i) => (
-          <li
-            key={row.placement}
-            className={`flex items-center gap-3 ${i > 0 ? "py-2 border-t border-white/8" : "pb-2 pt-0"}`}
-          >
-            <span
-              className={`shrink-0 w-8 text-center font-display text-lg tabular-nums ${
-                row.placement === 1
-                  ? "text-gold"
-                  : row.placement === 2
-                    ? "text-flamingo"
-                    : row.placement === 3
-                      ? "text-orange"
-                      : "text-white/55"
-              }`}
+        {rows.map((row, i) => {
+          const picked = row.countryCode ? getCountry(row.countryCode) : null;
+          return (
+            <li
+              key={row.placement}
+              className={`${i > 0 ? "py-1 border-t border-white/8" : "pb-1 pt-0"}`}
             >
-              {row.placement}
-            </span>
-            {row.countryCode ? (
-              <Flag code={row.countryCode} size="md" />
-            ) : (
-              <span className="shrink-0 h-6 w-8 rounded-[3px] bg-white/5 border border-dashed border-white/15" />
-            )}
-            <select
-              value={row.countryCode}
-              onChange={(e) => setRowCountry(row.placement, e.target.value)}
-              className="h-9 flex-1 rounded-md border border-white/12 bg-black/30 px-2 text-sm"
-            >
-              <option value="">—</option>
-              {countries.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </li>
-        ))}
+              <button
+                type="button"
+                onClick={() => setPickerPlacement(row.placement)}
+                className="w-full flex items-center gap-3 py-1.5 text-left hover:bg-white/[0.03] rounded-lg px-1 -mx-1 transition"
+              >
+                <span
+                  className={`shrink-0 w-8 text-center font-display text-lg tabular-nums ${
+                    row.placement === 1
+                      ? "text-gold"
+                      : row.placement === 2
+                        ? "text-flamingo"
+                        : row.placement === 3
+                          ? "text-orange"
+                          : "text-white/55"
+                  }`}
+                >
+                  {row.placement}
+                </span>
+                {row.countryCode ? (
+                  <Flag code={row.countryCode} size="md" />
+                ) : (
+                  <span className="shrink-0 h-6 w-8 rounded-[3px] bg-white/5 border border-dashed border-white/15" />
+                )}
+                <span className="flex-1 text-sm text-white/90 truncate">
+                  {picked ? picked.name : <span className="text-white/40 italic">Pick country</span>}
+                </span>
+              </button>
+            </li>
+          );
+        })}
         {FACTS.map((f) => (
           <FactRow
             key={f.key}
@@ -289,6 +294,30 @@ export function AdminResultsTable({
         </Button>
       </div>
       </section>
+
+      {/* Country picker for the TOP-10 rows. Single mode so the
+          first tap closes the sheet. Filtering out the empty token
+          would only matter for the multi case. */}
+      <CountryDrawer
+        open={pickerPlacement != null}
+        onClose={() => setPickerPlacement(null)}
+        title={
+          pickerPlacement != null
+            ? `Pick place #${pickerPlacement}`
+            : "Pick country"
+        }
+        selected={
+          pickerPlacement != null
+            ? [rows.find((r) => r.placement === pickerPlacement)?.countryCode ?? ""].filter(Boolean)
+            : []
+        }
+        onPick={(code) => {
+          if (pickerPlacement != null && typeof code === "string") {
+            setRowCountry(pickerPlacement, code);
+          }
+        }}
+        mode="single"
+      />
     </div>
   );
 }
