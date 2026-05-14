@@ -129,7 +129,6 @@ type ProfileData = {
   lastActiveAt: string | null;
   stats: {
     messages: number;
-    reactionsGiven: number;
     reactionsReceived: number;
     highlights: number;
     bingoStrikes: number;
@@ -233,7 +232,6 @@ function ProfileSheet({
       lastActiveAt: null,
       stats: {
         messages: 0,
-        reactionsGiven: 0,
         reactionsReceived: 0,
         highlights: 0,
         bingoStrikes: 0,

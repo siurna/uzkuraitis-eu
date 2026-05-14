@@ -61,15 +61,23 @@ export async function GET(req: Request, { params }: RouteCtx) {
     reaction_count: number;
   };
 
-  type ReactionsRow = { reactions_given: number; reactions_received: number };
   type BallotJoinRow = { points: number; country_code: string };
 
   const canMaybeSeeBallot = room.tallyEnabled || isSelf;
 
+  // PERF: dropped the separate `reactions` query entirely. It used to
+  // count reactionsGiven + reactionsReceived in one statement using an
+  // OR across two different tables' columns — `r.session_id = X OR
+  // m.session_id = X` — which the planner couldn't index and easily
+  // ran ~500ms on a busy room. The profile UI never displayed
+  // reactionsGiven (the admin per-room page computes that one
+  // separately from its own bulk roll-up), so reactionsReceived is
+  // now derived for free from `authoredRows.reaction_count` — we
+  // already scan every message this session authored, so summing the
+  // per-message counts is in-memory and zero RTT.
   const [
     voterRow,
     authoredRows,
-    reactionsRow,
     triviaStatsRow,
     ballotRows,
     overrideRows,
@@ -96,15 +104,6 @@ export async function GET(req: Request, { params }: RouteCtx) {
         AND m.session_id = ${sessionId}
       GROUP BY m.id
     `),
-    db.execute<ReactionsRow>(sql`
-      SELECT
-        COUNT(*) FILTER (WHERE r.session_id = ${sessionId})::int AS reactions_given,
-        COUNT(*) FILTER (WHERE m.session_id = ${sessionId})::int AS reactions_received
-      FROM ${chatReactions} r
-      INNER JOIN ${chatMessages} m ON m.id = r.message_id
-      WHERE m.room_id = ${room.id}
-        AND (r.session_id = ${sessionId} OR m.session_id = ${sessionId})
-    `).then((rows) => rows[0]),
     db
       .select({
         total: sql<number>`COUNT(*)::int`,
@@ -139,12 +138,18 @@ export async function GET(req: Request, { params }: RouteCtx) {
       : Promise.resolve([] as { countryCode: string; placement: number }[]),
   ]);
 
-  // Derive the four chat-roll-up shapes the old query plan computed
-  // separately from the single authored-rows scan.
+  // Derive the chat-roll-up shapes (messages, bingo strikes,
+  // reactionsReceived, highlights, top + latest) from the single
+  // authored-rows scan. reactionsReceived is just the sum of
+  // per-message reaction counts — no extra DB hit.
   const messagesRow = { messages: authoredRows.length };
   const bingoStrikesRow = {
     bingoStrikes: authoredRows.filter((r) => r.kind === "bingo_strike").length,
   };
+  const reactionsReceived = authoredRows.reduce(
+    (sum, r) => sum + (r.reaction_count ?? 0),
+    0,
+  );
   // Per-room threshold override (falls back to the global default).
   const threshold = room.highlightThreshold ?? HIGHLIGHT_THRESHOLD;
   const highlightRows = authoredRows.filter(
@@ -233,8 +238,7 @@ export async function GET(req: Request, { params }: RouteCtx) {
     lastActiveAt: voterRow?.updatedAt ?? latestMsg?.createdAt ?? null,
     stats: {
       messages: messagesRow?.messages ?? 0,
-      reactionsGiven: reactionsRow?.reactions_given ?? 0,
-      reactionsReceived: reactionsRow?.reactions_received ?? 0,
+      reactionsReceived,
       highlights: highlightRows.length,
       bingoStrikes: bingoStrikesRow?.bingoStrikes ?? 0,
       bets: betsPlaced,
