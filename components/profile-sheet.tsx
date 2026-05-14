@@ -172,15 +172,28 @@ function ProfileSheet({
     }
     const key = cacheKey(code, sessionId, mySession);
     const cached = profileCache.get(key);
-    if (cached && cached.until > Date.now()) {
+    // Stale-while-revalidate: if we have ANY cached payload for
+    // this person (fresh OR stale), paint it instantly. Stats land
+    // with their last-seen numbers; a background refetch swaps in
+    // the up-to-date row when the response arrives. The user never
+    // sees a skeleton state on second + open of the same profile.
+    if (cached) {
       setData(cached.data as ProfileData);
       setShellOnly(false);
+      const stale = cached.until <= Date.now();
+      // Fresh cache: nothing else to do.
+      if (!stale) {
+        setLoading(false);
+        return;
+      }
+      // Stale: keep the stale paint, fire a silent revalidate
+      // (loading=false because we have something to show).
       setLoading(false);
-      return;
+    } else {
+      setLoading(true);
+      setShellOnly(false);
     }
     let cancelled = false;
-    setLoading(true);
-    setShellOnly(false);
     fetch(
       `/api/rooms/${code}/profile/${encodeURIComponent(sessionId)}?as=${encodeURIComponent(mySession)}`,
       { cache: "no-store" },

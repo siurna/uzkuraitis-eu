@@ -94,7 +94,7 @@ export function BottomSheet({
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             // Edge-to-edge on mobile (the sheet hugs the bottom flush so
             // the home indicator sits over its own background, not a
             // gap), centred at max-w-md on tablets/desktops. Rounded
