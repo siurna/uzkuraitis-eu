@@ -31,7 +31,7 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     ORDER BY total_points DESC
   `);
 
-  const scores = scoreRows.rows.map((r) => {
+  const scores = scoreRows.map((r) => {
     const c = countries.find((c) => c.code === r.country_code);
     return {
       code: r.country_code,

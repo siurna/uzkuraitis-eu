@@ -1,13 +1,17 @@
+import "server-only";
 import { customAlphabet } from "nanoid";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "./db";
 import { rooms, type Room } from "./db/schema";
+// Re-exported for legacy importers; client components should import
+// from `lib/room-code` directly to avoid pulling the DB client.
+import { isValidRoomCode, normalizeRoomCode } from "./room-code";
+export { ROOM_CODE_REGEX, isValidRoomCode, normalizeRoomCode } from "./room-code";
 
 // Six-character codes from an unambiguous alphabet (no 0/O/I/L). The
-// auto-generator skips ambiguous chars; the validator additionally
-// allows `1` so a host can type a memorable custom code like "PARTY1"
-// (we draw the line at characters that are visually indistinguishable
-// from each other: 0/O, I/L).
+// auto-generator skips ambiguous chars; the validator (in
+// `lib/room-code.ts`) additionally allows `1` so a host can type a
+// memorable custom code like "PARTY1".
 const ROOM_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 const generateCode = customAlphabet(ROOM_CODE_ALPHABET, 6);
 
@@ -17,21 +21,9 @@ const ADMIN_TOKEN_ALPHABET =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 const generateAdminToken = customAlphabet(ADMIN_TOKEN_ALPHABET, 32);
 
-// Validator alphabet: the generator's set + `1`. Hosts typing a custom
-// code can include digits; the generator stays conservative.
-export const ROOM_CODE_REGEX = /^[1-9ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/;
-
-export function isValidRoomCode(code: string): boolean {
-  return ROOM_CODE_REGEX.test(code);
-}
-
 // Suggest a fresh code (uses the conservative auto-generator alphabet).
 export function suggestRoomCode(): string {
   return generateCode();
-}
-
-export function normalizeRoomCode(code: string): string {
-  return code.trim().toUpperCase();
 }
 
 // PERF: tiny per-warm-instance cache keyed on the upper-cased room

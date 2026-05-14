@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RoomLiveControls, type ShowStatus } from "@/components/room-live-controls";
-import { ROOM_CODE_REGEX } from "@/lib/rooms";
+import { ROOM_CODE_REGEX } from "@/lib/room-code";
 
 // Magic-link host page. Three blocks:
 //   1. Live — show status + country-on-stage controls (also on

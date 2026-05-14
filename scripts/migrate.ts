@@ -1,8 +1,8 @@
 /**
  * One-shot migration runner. Reads every `drizzle/*.sql` file in order
- * and applies them against DATABASE_URL via the Neon HTTP driver.
- * Strips leading comments and splits on `;` so each statement runs as
- * its own roundtrip. Idempotent if migration files use `IF NOT EXISTS`
+ * and applies them against DATABASE_URL via postgres-js. Strips
+ * leading comments and splits on `;` so each statement runs as its
+ * own roundtrip. Idempotent if migration files use `IF NOT EXISTS`
  * (ours do).
  *
  * Run: pnpm tsx scripts/migrate.ts [from]
@@ -10,14 +10,14 @@
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { neon } from "@neondatabase/serverless";
+import postgres from "postgres";
 
 const url = process.env.DATABASE_URL;
 if (!url) {
   console.error("DATABASE_URL is not set.");
   process.exit(1);
 }
-const sql = neon(url);
+const sql = postgres(url, { prepare: false, max: 1 });
 
 const from = Number(process.argv[2] ?? 0);
 
@@ -32,9 +32,6 @@ function migrationNumber(file: string): number {
 }
 
 function splitStatements(body: string): string[] {
-  // Strip lines starting with `--` (Drizzle's banner) and then split on
-  // semicolons. Multi-statement files in our drizzle/ dir don't use
-  // strings with `;` in them so this is safe.
   const stripped = body
     .split("\n")
     .filter((l) => !l.trim().startsWith("--"))
@@ -57,11 +54,9 @@ async function main() {
     console.log(`→ ${f} (${stmts.length} stmts)`);
     for (const stmt of stmts) {
       try {
-        await sql([stmt] as unknown as TemplateStringsArray);
+        await sql.unsafe(stmt);
       } catch (err) {
         const msg = (err as Error).message;
-        // Tolerate "already exists" + "duplicate" + "does not exist"
-        // (idempotent reruns). Surface everything else.
         if (
           /already exists/i.test(msg) ||
           /duplicate (column|key|object)/i.test(msg)
@@ -77,9 +72,11 @@ async function main() {
     console.log(`✓ ${f}`);
   }
   console.log("all migrations applied.");
+  await sql.end();
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error(err);
+  await sql.end();
   process.exit(1);
 });

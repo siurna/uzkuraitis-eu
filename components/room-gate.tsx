@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import Image from "next/image";
 import { toast } from "sonner";
-import { isValidRoomCode, normalizeRoomCode } from "@/lib/rooms";
+import { isValidRoomCode, normalizeRoomCode } from "@/lib/room-code";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 import { Button } from "@/components/ui/button";

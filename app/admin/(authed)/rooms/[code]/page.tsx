@@ -124,7 +124,7 @@ export default async function AdminRoomDetailPage({
     ORDER BY session_id, created_at DESC
   `);
   const messagesBySession = new Map<string, AdminMessageRow[]>();
-  for (const r of recentMessageRows.rows) {
+  for (const r of recentMessageRows) {
     const arr = messagesBySession.get(r.session_id) ?? [];
     arr.push({
       id: r.id,
