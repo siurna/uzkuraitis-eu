@@ -323,7 +323,7 @@ function BonusBetCard({ lang }: { lang: Language }) {
             className="flex w-max"
             style={{ animation: "uzk-marquee 22s linear infinite" }}
           >
-            {["🏆", "🎯", "🎲", "🎤", "🥄", "🎙️", "🎺"].concat(["🏆", "🎯", "🎲", "🎤", "🥄", "🎙️", "🎺"]).map((c, i) => (
+            {["🏆", "🎤", "🎯", "🥄", "🎺", "🎙️", "🎲"].concat(["🏆", "🎤", "🎯", "🥄", "🎺", "🎙️", "🎲"]).map((c, i) => (
               <span
                 key={`a${i}`}
                 className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-base shadow-md"
@@ -336,7 +336,7 @@ function BonusBetCard({ lang }: { lang: Language }) {
             className="flex w-max"
             style={{ animation: "uzk-marquee 28s linear infinite reverse" }}
           >
-            {["💎", "🎼", "🍿", "📺", "🔮", "🌟", "✨"].concat(["💎", "🎼", "🍿", "📺", "🔮", "🌟", "✨"]).map((c, i) => (
+            {["💎", "🌟", "🎼", "🍿", "✨", "📺", "🔮"].concat(["💎", "🌟", "🎼", "🍿", "✨", "📺", "🔮"]).map((c, i) => (
               <span
                 key={`b${i}`}
                 className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-base shadow-md"
@@ -581,58 +581,109 @@ function SelfieCard({ lang }: { lang: Language }) {
     }
   };
 
+  // Polaroid styling — cream cardstock frame with a thicker bottom
+  // ledge, the "photo" sits inside as a glassy preview window, and
+  // the whole card tilts ~2° at rest. A tiny tape strip in the
+  // corner pins the polaroid look down. The hidden input + onPick
+  // flow is unchanged.
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      className="rounded-3xl ring-1 ring-flamingo/55 shadow-[0_18px_44px_-18px_oklch(58%_0.24_336_/_0.55)] overflow-hidden"
+      initial={{ opacity: 0, scale: 0.94, rotate: -3 }}
+      animate={{ opacity: 1, scale: 1, rotate: -1.5 }}
+      whileHover={{ rotate: 0, scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
+      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+      className="relative mx-auto max-w-[19rem]"
     >
-      <div
-        className="relative overflow-hidden p-5 flex items-center gap-4"
-        style={{ background: "linear-gradient(135deg, #ff3ede 0%, #c91475 55%, #5a22a9 100%)" }}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        capture="user"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) void onPick(f);
+        }}
+      />
+      {/* The polaroid card itself — cream with a satisfying bottom
+          ledge that holds the caption. Shadow is offset down + right
+          so it reads as a physical print, not a flat card. */}
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        className="relative block w-full text-left p-3 pb-1 rounded-sm
+                   bg-[#f5efe2]
+                   shadow-[0_18px_44px_-18px_rgba(0,0,0,0.55),0_2px_6px_-2px_rgba(0,0,0,0.4)]
+                   active:scale-[0.99] transition transform-gpu disabled:opacity-70"
       >
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          capture="user"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            e.target.value = "";
-            if (f) void onPick(f);
-          }}
+        {/* Tape strip pinning the top-left corner. Slightly
+            translucent yellow so it reads like masking tape. */}
+        <span
+          className="pointer-events-none absolute -top-2 left-6 h-5 w-16 rotate-[-6deg]
+                     bg-[oklch(95%_0.08_95_/_0.7)] ring-1 ring-[oklch(85%_0.12_95_/_0.45)]
+                     shadow-[0_2px_4px_-2px_rgba(0,0,0,0.3)]"
+          aria-hidden
         />
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/30 text-white">
-          <Camera className="h-6 w-6" />
+        {/* The "photo window" — a dark glassy panel where a developed
+            photo would sit. Houses the camera icon as the call-to-
+            action. Aspect square so the polaroid feels right. */}
+        <span className="relative block aspect-square rounded-sm overflow-hidden
+                          bg-gradient-to-br from-[#1a0f2b] via-[#2a1664] to-[#4a1f7a]">
+          {/* Soft brand vignette in the corners so it reads as a
+              moody developed picture, not a blank box. */}
+          <span
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(80% 60% at 50% 35%, oklch(58% 0.22 336 / 0.4) 0%, transparent 60%), radial-gradient(60% 70% at 90% 90%, oklch(70% 0.18 220 / 0.35) 0%, transparent 60%)",
+            }}
+            aria-hidden
+          />
+          {/* Big camera glyph centred — the "click to capture" hint. */}
+          <span className="relative h-full w-full grid place-items-center">
+            <span className="grid h-20 w-20 place-items-center rounded-full
+                              bg-white/15 ring-1 ring-white/30 backdrop-blur-sm
+                              text-white shadow-[0_8px_24px_-8px_rgba(0,0,0,0.4)]">
+              {busy ? (
+                <Loader2 className="h-10 w-10 animate-spin" />
+              ) : (
+                <Camera className="h-10 w-10" fill="currentColor" />
+              )}
+            </span>
+          </span>
+          {/* Tiny "REC" / film-frame dot in the upper-right of the
+              picture window to dial up the analog camera feel. */}
+          <span
+            className="absolute top-3 right-3 flex items-center gap-1.5 text-[9px]
+                       uppercase tracking-[0.2em] font-display text-white/85"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-flamingo animate-pulse" />
+            REC
+          </span>
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-white/85 font-display leading-tight">
+        {/* Polaroid caption — handwritten-feel italic on the cream
+            ledge. Two lines: eyebrow + title; the sub goes underneath
+            in a smaller weight. */}
+        <span className="block px-1 pt-3 pb-2 text-center">
+          <span
+            className="block font-display text-[10px] uppercase tracking-[0.32em] text-[#8a614a]"
+          >
             {t(lang, "sys_cta_selfie_eyebrow")}
-          </p>
-          <p className="font-display text-base text-white leading-snug mt-0.5 text-balance">
-            {t(lang, "sys_cta_selfie_title")}
-          </p>
-          <p className="text-xs text-white/80 leading-snug mt-0.5">
+          </span>
+          <span
+            className="block font-display text-lg text-[#3a1f12] leading-tight mt-0.5"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {busy ? t(lang, "sys_cta_selfie_sending") : t(lang, "sys_cta_selfie_title")}
+          </span>
+          <span className="block text-[11px] text-[#6e4b35] leading-snug mt-1">
             {t(lang, "sys_cta_selfie_sub")}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={busy}
-          className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-white text-dark-blue font-display
-                     text-sm h-10 px-4 active:scale-[0.97] transition transform-gpu disabled:opacity-60"
-        >
-          {busy ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Camera className="h-4 w-4" />
-          )}
-          {busy ? t(lang, "sys_cta_selfie_sending") : t(lang, "sys_cta_selfie_btn")}
-        </button>
-      </div>
+          </span>
+        </span>
+      </button>
     </motion.div>
   );
 }
