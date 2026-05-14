@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
 import { Settings as SettingsIcon } from "lucide-react";
@@ -31,6 +32,12 @@ export function PresenceBar() {
   const { name, avatarId, avatar } = useIdentity();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notifOnlyOpen, setNotifOnlyOpen] = useState(false);
+  // Same defensive portal pattern as RoomTabBar + BottomSheet. The
+  // bar is `position: fixed top-0`; any ancestor that briefly
+  // acquires a transform/filter/will-change re-anchors it mid-page.
+  // Portaling to body sidesteps the whole class of bug.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // Let other surfaces (the chat "turn on notifications" broadcast
   // card) request a specific drawer. Two events:
@@ -68,7 +75,7 @@ export function PresenceBar() {
       ? getCountry(nowPlayingCode)
       : null;
 
-  return (
+  const bar = (
     <header
       className="uzk-edge-bar fixed top-0 left-0 z-30 backdrop-blur-md bg-dark-blue-900/80 border-b border-white/5 overflow-x-hidden"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
@@ -219,4 +226,7 @@ export function PresenceBar() {
       </BottomSheet>
     </header>
   );
+
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(bar, document.body);
 }
