@@ -36,35 +36,41 @@ export function bustProfileCache(): void {
   profileCache.clear();
 }
 
-// Fire-and-forget prefetch. Call sites (avatar bubbles in whos-here,
-// chat-row name+avatar header) bind it to `pointerdown` so the fetch
-// races the drawer-open animation: by the time the BottomSheet has
-// finished its 280ms slide-up, the response is already in the cache
-// and the stats render with no skeleton flicker. De-duplicates via
-// an in-flight Set so a long-press → release → re-press chain
-// doesn't double-fire.
-const inflight = new Set<string>();
+// Prefetch + dedupe. Call sites (avatar bubbles in whos-here, chat-row
+// name+avatar header) bind it to `pointerdown` so the fetch races the
+// drawer-open animation: by the time the BottomSheet has finished its
+// ~220ms slide-up, the response is already in the cache and the stats
+// render with no skeleton flicker. The in-flight Map keys the Promise
+// itself so concurrent callers (the pointerdown prefetch AND the
+// sheet's own effect once it mounts) share the same network round
+// instead of firing two parallel GETs against the same heavy join.
+const inflight = new Map<string, Promise<unknown>>();
 export function prefetchProfile(
   code: string,
   sessionId: string,
   viewerSession: string,
-): void {
-  if (typeof window === "undefined") return;
+): Promise<unknown> {
+  if (typeof window === "undefined") return Promise.resolve(null);
   const key = cacheKey(code, sessionId, viewerSession);
   const cached = profileCache.get(key);
-  if (cached && cached.until > Date.now()) return;
-  if (inflight.has(key)) return;
-  inflight.add(key);
-  fetch(
+  if (cached && cached.until > Date.now()) return Promise.resolve(cached.data);
+  const existing = inflight.get(key);
+  if (existing) return existing;
+  const p = fetch(
     `/api/rooms/${code}/profile/${encodeURIComponent(sessionId)}?as=${encodeURIComponent(viewerSession)}`,
     { cache: "no-store" },
   )
     .then((r) => (r.ok ? r.json() : null))
     .then((d) => {
       if (d) profileCache.set(key, { data: d, until: Date.now() + PROFILE_CACHE_TTL_MS });
+      return d as unknown;
     })
-    .catch(() => {})
-    .finally(() => inflight.delete(key));
+    .catch(() => null)
+    .finally(() => {
+      inflight.delete(key);
+    });
+  inflight.set(key, p);
+  return p;
 }
 
 // "Tap an avatar, see who they are" — the participant profile drawer.
@@ -194,22 +200,15 @@ function ProfileSheet({
       setShellOnly(false);
     }
     let cancelled = false;
-    fetch(
-      `/api/rooms/${code}/profile/${encodeURIComponent(sessionId)}?as=${encodeURIComponent(mySession)}`,
-      { cache: "no-store" },
-    )
-      .then((r) => (r.ok ? r.json() : null))
+    // Routes through the same `prefetchProfile` dedupe Map, so when
+    // the user's `pointerdown` already started a fetch a few ms ago
+    // we reuse that Promise instead of firing a second GET. The
+    // `prefetchProfile` helper also handles cache writes on success.
+    prefetchProfile(code, sessionId, mySession)
       .then((d) => {
         if (cancelled) return;
-        if (!d) {
-          setShellOnly(true);
-        } else {
-          setData(d as ProfileData);
-          profileCache.set(key, { data: d, until: Date.now() + PROFILE_CACHE_TTL_MS });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setShellOnly(true);
+        if (!d) setShellOnly(true);
+        else setData(d as ProfileData);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

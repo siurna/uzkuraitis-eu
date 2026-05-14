@@ -132,7 +132,22 @@ export function SettingsModal({
           </Section>
 
           <Section label={t(lang, "language")}>
-            <div className="grid grid-cols-2 gap-1 rounded-2xl bg-black/30 ring-1 ring-white/10 p-1">
+            <div className="relative grid grid-cols-2 gap-1 rounded-2xl bg-black/30 ring-1 ring-white/10 p-1">
+              {/* Active-pill: separate absolutely-positioned bg so we
+                  can opt it out of the View Transitions capture (see
+                  globals.css → ::view-transition-group(uzk-lang-pill)).
+                  The rest of the page crossfades through the root
+                  view-transition; the pill snaps instantly to the
+                  picked side, exactly the "items crossfade BUT toggle
+                  pops" behaviour the brief asked for. */}
+              <span
+                aria-hidden
+                className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-xl bg-white pointer-events-none"
+                style={{
+                  left: lang === LANGUAGES[0] ? "0.25rem" : "50%",
+                  viewTransitionName: "uzk-lang-pill",
+                }}
+              />
               {LANGUAGES.map((code) => {
                 const active = lang === code;
                 return (
@@ -140,14 +155,10 @@ export function SettingsModal({
                     key={code}
                     type="button"
                     onClick={() => setLanguage(code)}
-                    className={`relative h-11 rounded-xl font-display text-base transition-colors ${
-                      active ? "bg-white text-dark-blue" : "text-white/65"
+                    className={`relative z-10 h-11 rounded-xl font-display text-base transition-colors ${
+                      active ? "text-dark-blue" : "text-white/65"
                     }`}
                   >
-                    {/* No layoutId slide animation: the pill should
-                        snap to the picked side, not glide. The View
-                        Transitions API already crossfades the strings
-                        on the rest of the page. */}
                     <span>{LANGUAGE_NAMES[code]}</span>
                   </button>
                 );

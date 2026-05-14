@@ -549,13 +549,69 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
         className="relative rounded-2xl overflow-hidden w-full
                    bg-gradient-to-br from-[#2a1408] via-[#3a1d05] to-[#1a0d02]
                    ring-1 ring-yellow/35
-                   shadow-[0_18px_44px_-18px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]"
+                   shadow-[0_18px_44px_-18px_rgba(0,0,0,0.55),0_0_0_1px_rgba(247,184,1,0.08),inset_0_1px_0_rgba(255,255,255,0.06),inset_0_-18px_36px_-18px_rgba(247,184,1,0.18)]"
         style={ticketMask}
       >
+        {/* Foil glow — two soft radial pools of warm gold (top-left
+            corner where light "hits" + a smaller pool bottom-right)
+            sit over the base gradient so the ticket reads as actual
+            stamped foil instead of a flat brown card. */}
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(80% 60% at 8% 0%, rgba(255,215,140,0.22) 0%, transparent 55%), radial-gradient(60% 50% at 96% 100%, rgba(255,170,80,0.14) 0%, transparent 60%)",
+          }}
+        />
+        {/* Foil sweep — diagonal warm band that drifts slowly across
+            the card with `mix-blend-screen`. It's the moving light
+            catching the foil; ~12s loop so it stays ambient, never
+            distracting. */}
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none mix-blend-screen overflow-hidden"
+        >
+          <div
+            className="absolute inset-y-0 -left-1/4 w-[150%]"
+            style={{
+              background:
+                "linear-gradient(115deg, transparent 38%, rgba(255,220,140,0.14) 50%, transparent 62%)",
+              animation: "uzk-foil-sweep 12s ease-in-out infinite alternate",
+            }}
+          />
+        </div>
+        {/* Sparkle specs — five tiny twinkle dots scattered across
+            the gold strip, tear-line, and body. Different sizes +
+            staggered delays so they pulse like real foil glints,
+            not a synchronised string of lights. */}
+        <div aria-hidden className="absolute inset-0 pointer-events-none">
+          <span
+            className="absolute h-[3px] w-[3px] rounded-full bg-yellow mix-blend-screen"
+            style={{ left: "16%", top: "20%", animation: "uzk-twinkle 3s ease-in-out infinite" }}
+          />
+          <span
+            className="absolute h-[2px] w-[2px] rounded-full bg-yellow mix-blend-screen"
+            style={{ left: "42%", top: "10%", animation: "uzk-twinkle 3.6s ease-in-out 0.4s infinite" }}
+          />
+          <span
+            className="absolute h-[3px] w-[3px] rounded-full bg-yellow mix-blend-screen"
+            style={{ right: "20%", top: "38%", animation: "uzk-twinkle 4.2s ease-in-out 1.1s infinite" }}
+          />
+          <span
+            className="absolute h-[2px] w-[2px] rounded-full bg-yellow mix-blend-screen"
+            style={{ right: "14%", bottom: "22%", animation: "uzk-twinkle 2.8s ease-in-out 0.7s infinite" }}
+          />
+          <span
+            className="absolute h-[2px] w-[2px] rounded-full bg-yellow mix-blend-screen"
+            style={{ left: "26%", bottom: "32%", animation: "uzk-twinkle 3.4s ease-in-out 1.6s infinite" }}
+          />
+        </div>
+
         {/* ADMIT ONE strip across the top — runs full width across
             both halves of the stub. Tabular numerals on the right so
             the ticket "serial" reads as real ephemera. */}
-        <div className="px-4 pt-2.5 pb-2 flex items-center justify-between border-b border-dashed border-yellow/25">
+        <div className="relative px-4 pt-2.5 pb-2 flex items-center justify-between border-b border-dashed border-yellow/25">
           <span className="text-[9px] uppercase tracking-[0.32em] font-display text-yellow/85">
             Admit one
           </span>

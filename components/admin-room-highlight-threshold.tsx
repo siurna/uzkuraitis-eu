@@ -9,12 +9,17 @@ import { toast } from "sonner";
 // author, badge in the leaderboard. The global default is 5;
 // hosts can lower it for small parties (a fan-of-three room would
 // never hit 5) or raise it for big rooms.
+//
+// `size` mirrors AdminRoomTriviaThreshold: "compact" for the Live
+// cockpit, "comfortable" for the per-room settings page.
 export function AdminRoomHighlightThreshold({
   code,
   initialThreshold,
+  size = "compact",
 }: {
   code: string;
   initialThreshold: number;
+  size?: "compact" | "comfortable";
 }) {
   const [value, setValue] = useState<string>(String(initialThreshold));
   const [pending, start] = useTransition();
@@ -38,21 +43,32 @@ export function AdminRoomHighlightThreshold({
     });
   };
 
-  // Same DrawerSwitch row shape as voting + reveal-results above:
-  // smaller icon tile, tighter padding. Flamingo accent kicks in when
-  // the threshold differs from the default 5 — visual signal that
-  // "this room is non-standard".
   const accented = Number(value) !== 5;
+  const isComfy = size === "comfortable";
   return (
-    <div className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 glass-surface text-left">
+    <div
+      className={`w-full flex items-center gap-3 glass-surface text-left ${
+        isComfy ? "rounded-2xl px-4 py-3" : "rounded-xl px-3 py-2.5"
+      }`}
+    >
       <span
-        className={`shrink-0 grid place-items-center h-8 w-8 rounded-lg transition
+        className={`shrink-0 grid place-items-center transition
+                    ${isComfy ? "h-10 w-10 rounded-xl" : "h-8 w-8 rounded-lg"}
                     ${accented ? "bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo" : "bg-white/[0.06] ring-1 ring-white/12 text-white/55"}`}
       >
-        <Flame className="h-4 w-4" fill="currentColor" />
+        <Flame className={isComfy ? "h-5 w-5" : "h-4 w-4"} fill="currentColor" />
       </span>
-      <span className="flex-1 font-display text-sm text-white">
-        Highlight threshold
+      <span className="flex-1 min-w-0">
+        <span className={`block font-display text-white ${isComfy ? "text-base" : "text-sm"}`}>
+          Highlight threshold
+        </span>
+        {isComfy && (
+          <span className="block text-xs text-white/50 leading-snug">
+            {Number(value) === 5
+              ? "Five reactions to highlight a message (default)."
+              : `${value} reactions to highlight a message.`}
+          </span>
+        )}
       </span>
       <input
         type="number"

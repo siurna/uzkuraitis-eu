@@ -239,16 +239,30 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   );
 
   // Reaction-storm refetch: every chat:react used to fire a full
-  // 50-message GET. During a climax that's hundreds per minute
-  // per viewer. Throttle to one refetch per second; the trailing
-  // edge picks up any toggles that arrived during the cooldown.
+  // 50-message GET. Leading-edge throttle: the first broadcast in
+  // a cooldown window fires the refetch immediately (so poll bars
+  // and emoji tallies settle within one round-trip, not after a
+  // trailing-edge delay), and subsequent broadcasts in the same
+  // ~600ms window collapse into a single trailing refresh. The
+  // trailing fire only happens if more broadcasts arrived during
+  // the cooldown, so a single tap doesn't double-fetch.
   const reactTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reactPending = useRef(false);
   const scheduleReactRefetch = useCallback(() => {
-    if (reactTimer.current) return;
+    if (reactTimer.current) {
+      // Already in cooldown — note that more events arrived so the
+      // trailing tick fires once when the window closes.
+      reactPending.current = true;
+      return;
+    }
+    void runFetch();
     reactTimer.current = setTimeout(() => {
       reactTimer.current = null;
-      void runFetch();
-    }, 1000);
+      if (reactPending.current) {
+        reactPending.current = false;
+        void runFetch();
+      }
+    }, 600);
   }, [runFetch]);
 
   // Mount: paint the last-seen messages from sessionStorage instantly so

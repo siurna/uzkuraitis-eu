@@ -610,6 +610,31 @@
 .fire-blob-b { left: 22%;  right: auto; width: 70%; animation-duration: 5.2s; animation-delay: 1.4s; }
 .fire-blob-c { left: 50%;  right: auto; width: 80%; animation-duration: 5.9s; animation-delay: 0.7s; }
 
+/* Tiny dot that twinkles like a foil-stamp sparkle on the welcome
+   ticket. Used inline at 2-3px sizes; scale stretches faintly so
+   neighbouring dots don't all peak together. */
+@keyframes uzk-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.7); }
+  40%      { opacity: 0.95; transform: scale(1.15); }
+  60%      { opacity: 0.95; transform: scale(1.15); }
+}
+
+/* Slow gold sheen sweep — runs across the foil stripe overlay on
+   the welcome ticket so the light catches it like real stamped
+   foil. Long cycle so it's "ambient", not noisy. */
+@keyframes uzk-foil-sweep {
+  0%   { transform: translateX(-30%); }
+  100% { transform: translateX(30%); }
+}
+
+/* Language toggle pill: opt out of the View Transitions crossfade
+   so it snaps instantly to the picked side instead of fading
+   across. Everything else on the page still crossfades via the
+   root snapshot. */
+::view-transition-group(uzk-lang-pill) {
+  animation: none;
+}
+
 input, button, textarea, select {
   -webkit-appearance: none;
   appearance: none;

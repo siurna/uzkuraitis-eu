@@ -465,10 +465,12 @@ export default async function AdminRoomDetailPage({
               <AdminRoomTriviaThreshold
                 code={room.code}
                 initialMax={room.triviaMaxAnswerers}
+                size="comfortable"
               />
               <AdminRoomHighlightThreshold
                 code={room.code}
                 initialThreshold={room.highlightThreshold ?? 5}
+                size="comfortable"
               />
             </section>
 

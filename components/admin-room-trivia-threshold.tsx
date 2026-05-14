@@ -9,12 +9,19 @@ import { toast } from "sonner";
 // (the default). The server enforces the cap in
 // /api/rooms/[code]/trivia — fresh-session answers past the threshold
 // get a 409.
+//
+// `size`: "compact" (default) mirrors the DrawerSwitch row shape on
+// the Live cockpit; "comfortable" matches AdminRoomBooleanToggle so
+// the Behaviour section on the per-room settings page reads as one
+// visual family with the tally / commentator toggles.
 export function AdminRoomTriviaThreshold({
   code,
   initialMax,
+  size = "compact",
 }: {
   code: string;
   initialMax: number | null;
+  size?: "compact" | "comfortable";
 }) {
   const [value, setValue] = useState<string>(
     initialMax != null ? String(initialMax) : "",
@@ -43,25 +50,32 @@ export function AdminRoomTriviaThreshold({
     });
   };
 
-  // Matches the DrawerSwitch row shape used by voting + reveal-results
-  // on the same Live cockpit: smaller icon tile, tighter padding, and
-  // the same `transition` set on the icon so the tile flips colour
-  // when the cap is set to a non-default value (yellow accent = "this
-  // room has a cap on").
   const active = value.trim() !== "" && Number(value) > 0;
+  const isComfy = size === "comfortable";
   return (
     <div
-      className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5
-                 glass-surface text-left"
+      className={`w-full flex items-center gap-3 glass-surface text-left ${
+        isComfy ? "rounded-2xl px-4 py-3" : "rounded-xl px-3 py-2.5"
+      }`}
     >
       <span
-        className={`shrink-0 grid place-items-center h-8 w-8 rounded-lg transition
+        className={`shrink-0 grid place-items-center transition
+                    ${isComfy ? "h-10 w-10 rounded-xl" : "h-8 w-8 rounded-lg"}
                     ${active ? "bg-yellow/20 ring-1 ring-yellow/40 text-yellow" : "bg-white/[0.06] ring-1 ring-white/12 text-white/55"}`}
       >
-        <Lightbulb className="h-4 w-4" fill="currentColor" />
+        <Lightbulb className={isComfy ? "h-5 w-5" : "h-4 w-4"} fill="currentColor" />
       </span>
-      <span className="flex-1 font-display text-sm text-white">
-        Trivia answer cap
+      <span className="flex-1 min-w-0">
+        <span className={`block font-display text-white ${isComfy ? "text-base" : "text-sm"}`}>
+          Trivia answer cap
+        </span>
+        {isComfy && (
+          <span className="block text-xs text-white/50 leading-snug">
+            {active
+              ? `Capped at ${value} answers per question.`
+              : "No cap, anyone can lock an answer."}
+          </span>
+        )}
       </span>
       <input
         type="number"

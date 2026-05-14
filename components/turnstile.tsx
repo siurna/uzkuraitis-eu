@@ -60,23 +60,8 @@ export function TurnstileWidget({
   useEffect(() => {
     let cancelled = false;
 
-    // Inject the script if it isn't already loaded.
-    if (!document.querySelector(`script[src^="${SCRIPT_SRC}"]`)) {
-      const script = document.createElement("script");
-      script.src = SCRIPT_SRC;
-      script.async = true;
-      script.defer = true;
-      // If the host blocks Cloudflare's script (Brave shields, Pi-hole,
-      // strict uBlock filters) we still need a signal — the
-      // `error-callback` only fires if the widget actually mounted.
-      // Surface load failure as the same onError so the caller can
-      // render its retry chip.
-      script.onerror = () => onError?.();
-      document.head.appendChild(script);
-    }
-
     const render = () => {
-      if (cancelled) return;
+      if (cancelled) return false;
       if (!window.turnstile || !containerRef.current) return false;
       if (widgetIdRef.current) return true; // already rendered
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
@@ -89,10 +74,40 @@ export function TurnstileWidget({
       return true;
     };
 
+    // Inject the script if it isn't already loaded. Attach an
+    // `onload` listener so we render the widget the instant the
+    // global appears — saves up to ~100ms compared with the
+    // polling fallback below.
+    const existing = document.querySelector<HTMLScriptElement>(
+      `script[src^="${SCRIPT_SRC}"]`,
+    );
+    if (!existing) {
+      const script = document.createElement("script");
+      script.src = SCRIPT_SRC;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => render();
+      // If the host blocks Cloudflare's script (Brave shields, Pi-hole,
+      // strict uBlock filters) we still need a signal — the
+      // `error-callback` only fires if the widget actually mounted.
+      // Surface load failure as the same onError so the caller can
+      // render its retry chip.
+      script.onerror = () => onError?.();
+      document.head.appendChild(script);
+    } else if (!window.turnstile) {
+      // Script tag is in DOM but the global hasn't appeared yet —
+      // could be in-flight from a previous mount of this widget.
+      // Hook the existing tag's onload too (idempotent — Turnstile's
+      // explicit-render API tolerates a second render call on the
+      // same global once it lands).
+      existing.addEventListener("load", () => render(), { once: true });
+    }
+
     if (!render()) {
-      // Script not loaded yet — poll briefly until the global appears.
-      // If 8s pass without it landing, treat that as a load failure so
-      // the caller can swap in a retry affordance.
+      // Script not loaded yet — polling fallback in case the
+      // `onload` race lost (script cached + listener attached after
+      // the load event fired). 8s before treating as a hard load
+      // failure so the caller can swap in a retry affordance.
       const interval = window.setInterval(() => {
         if (render()) window.clearInterval(interval);
       }, 100);

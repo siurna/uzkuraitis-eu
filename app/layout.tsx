@@ -58,6 +58,15 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        {/* Pre-warm the TLS handshake to Cloudflare so the Turnstile
+            script + challenge endpoint don't pay DNS/TCP/TLS on cold
+            start when the gate mounts. crossOrigin attribute keeps
+            the preconnect usable for both the script fetch and the
+            subsequent challenge XHRs. ~100-300ms shaved off the
+            first-paint-to-token window in practice. */}
+        <link rel="preconnect" href="https://challenges.cloudflare.com" crossOrigin="" />
+      </head>
       {/* min-h-dvh, not 100vh: on iOS Safari `vh` is the *large* viewport
           (URL bar collapsed), so `min-h-screen` leaves a strip of phantom
           scroll whenever the URL bar is showing. dvh follows it. */}
