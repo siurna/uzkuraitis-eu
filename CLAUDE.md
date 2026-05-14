@@ -72,6 +72,7 @@ schema change is needed:
 - **Mobile first.** Test on a 390×844 viewport before desktop. Vote CTA + bottom-sheet + emoji bar all stack at the bottom; don't break that stacking.
 - **i18n.** Every user-facing string goes through `t()`. If you're typing English into JSX, you're doing it wrong.
 - **Bingo tropes (`lib/bingo-tropes.ts`) ↔ Fluent emoji manifest.** When you add or change a trope emoji, also map it in `lib/fluent-emoji.ts` so the 3D PNG renders consistently across the bingo card, list view, and home banner. `FluentEmoji` falls back to the native glyph for unmapped entries, but a mid-show inconsistency (some cells in 3D, others as the system emoji) reads as a regression.
+- **Bingo emoji rule: never a country flag, always a literal noun.** Even when a trope text is *about* a specific country ("UK finishes bottom five (again)", "France goes full chanson"), the leading emoji must be an object, symbol, or action — `🥶`, `🎶`, `🪦` — never `🇬🇧` / `🇫🇷` / etc. Microsoft Fluent doesn't ship 3D country flags (policy), so a flag-led trope falls back to a flat OS emoji and breaks the 3D matrix on the card. The text body can still name the country. Pride / surrender / chequered flags are nouns, not countries — those are fine.
 
 ## Things to avoid
 

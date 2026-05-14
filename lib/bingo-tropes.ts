@@ -45,23 +45,25 @@ export const TROPES_EN = [
   "🖤 Romania's leather corset of doom",
   "⚡ Choke Me electric tubes on the floor",
   "🎭 Lion Ceccah's hooded cloak reveal (LT)",
-  "🇱🇹 Lithuania sings in Spanish for some reason",
+  "💃 Lithuania sings in Spanish for some reason",
   "🌫️ Albania does dry ice + stars (again)",
-  "🇺🇦 Ukrainian bandura + billowing fabric",
+  "🎻 Ukrainian bandura + billowing fabric",
   "🩰 France brings full musical-theatre energy",
   "🎯 Felicia 'fights the lasers' (SE)",
   "📦 Denmark's color-shifting box prop",
   "🎬 Malta's zootrope spins on cue",
 
-  // — country running jokes for 2026 —
-  "🇮🇱 Israel gets booed audibly",
-  "🇬🇧 UK finishes bottom five (again)",
-  "🇮🇹 Italy treats this as Sanremo: The Sequel",
-  "🇫🇷 France goes full chanson + a key change",
-  "🇩🇪 Germany commits hard to a weird concept",
-  "🇸🇪 Sweden sends another Melodifestivalen banger",
-  "🇬🇷 Greece + 🇨🇾 trade 12 points like a love letter",
-  "🇱🇹 Lithuania scores higher than the bookies said",
+  // — country running jokes for 2026. Leading emoji is always a
+  //   literal noun / object, never a country flag — see CLAUDE.md
+  //   "Bingo emoji rule" for why. Text body still names the country.
+  "📣 Israel gets booed audibly",
+  "🥶 UK finishes bottom five (again)",
+  "🎭 Italy treats this as Sanremo: The Sequel",
+  "🎶 France goes full chanson + a key change",
+  "🟦 Germany commits hard to a weird concept",
+  "🪩 Sweden sends another Melodifestivalen banger",
+  "🤝 Greece and Cyprus trade 12 points like a love letter",
+  "🎲 Lithuania scores higher than the bookies said",
   "🏳️ Someone notices a country has boycotted",
   "🪦 Power ballad about a dead relative",
 
@@ -150,23 +152,25 @@ export const TROPES_LT = [
   "🖤 Rumunijos odinis korsetas",
   "⚡ „Choke Me“ elektros vamzdžiai ant grindų",
   "🎭 Lion Ceccah gobtuvinis apsiaustas (LT)",
-  "🇱🇹 Lietuva neaiškiai dainuoja ispaniškai",
+  "💃 Lietuva neaiškiai dainuoja ispaniškai",
   "🌫️ Albanija vėl traukia sausą ledą ir žvaigždes",
-  "🇺🇦 Ukrainietiška bandūra plius plevenanti drobė",
+  "🎻 Ukrainietiška bandūra plius plevenanti drobė",
   "🩰 Prancūzija įjungia miuziklo režimą",
   "🎯 Felicia „kaunasi su lazeriais“ (SE)",
   "📦 Danijos spalvas keičianti dėžė",
   "🎬 Maltos zootropas pradeda suktis",
 
-  // — kasmetiniai juokai apie šalis —
-  "🇮🇱 Izraelis garsiai nušvilpiamas",
-  "🇬🇧 JK vėl penketuke iš apačios",
-  "🇮🇹 Italija laiko tai Sanremo tęsiniu",
-  "🇫🇷 Prancūzija eina į pilną chanson + tono pakėlimas",
-  "🇩🇪 Vokietija įsivelia į keistą koncepciją",
-  "🇸🇪 Švedija atveža dar vieną Melodifestivalen hitą",
-  "🇬🇷 Graikija ir 🇨🇾 vėl keičiasi 12 taškų kaip meilės laiškais",
-  "🇱🇹 Lietuva surenka daugiau nei žadėjo bukmekeriai",
+  // — kasmetiniai juokai apie šalis. Vedantis emoji visada daiktas
+  //   ar simbolis, niekada vėliava (žr. CLAUDE.md). Tekstas vis dar
+  //   gali įvardyti šalį.
+  "📣 Izraelis garsiai nušvilpiamas",
+  "🥶 JK vėl penketuke iš apačios",
+  "🎭 Italija laiko tai Sanremo tęsiniu",
+  "🎶 Prancūzija eina į pilną chanson + tono pakėlimas",
+  "🟦 Vokietija įsivelia į keistą koncepciją",
+  "🪩 Švedija atveža dar vieną Melodifestivalen hitą",
+  "🤝 Graikija ir Kipras vėl keičiasi 12 taškų kaip meilės laiškais",
+  "🎲 Lietuva surenka daugiau nei žadėjo bukmekeriai",
   "🏳️ Kažkas pastebi, kad pora šalių boikotuoja",
   "🪦 Galinga baladė apie mirusį giminaitį",
 
