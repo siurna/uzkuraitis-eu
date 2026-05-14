@@ -3,7 +3,7 @@ import { customAlphabet } from "nanoid";
 import { eq, and, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { rooms } from "@/lib/db/schema";
-import { findRoomByCode } from "@/lib/rooms";
+import { findRoomByCode, invalidateRoomCache } from "@/lib/rooms";
 import { isAdminAuthed } from "@/lib/admin/session";
 import { broadcastToRoom } from "@/lib/realtime-server";
 
@@ -36,6 +36,11 @@ export async function POST(_req: Request, { params }: RouteCtx) {
     if (conflict) continue;
 
     await db.update(rooms).set({ code: next }).where(eq(rooms.id, room.id));
+    // Bust both the old code (now stale) and the new code cache keys
+    // so the next findRoomByCode call goes to DB instead of the 5s
+    // in-memory snapshot.
+    invalidateRoomCache(room.code);
+    invalidateRoomCache(next);
     // Tell the new room id to refresh just in case anyone has it open.
     await broadcastToRoom(next, { type: "leaderboard:updated" });
     return NextResponse.json({ ok: true, code: next });

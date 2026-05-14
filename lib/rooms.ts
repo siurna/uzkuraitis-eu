@@ -160,6 +160,17 @@ export async function changeRoomCode(
     .set({ code: normalized })
     .where(eq(rooms.id, roomId))
     .returning();
+  if (updated) {
+    // Bust BOTH cache keys: the previous code (about to be stale) and
+    // the new one (so a concurrent request doesn't seed the cache with
+    // a partial view). Without this, callers using findRoomByCode()
+    // for either code could read pre-rename data for up to 5s.
+    roomCache.delete(normalizeRoomCode(updated.code));
+    // The caller still has the old code; we don't know it here, so
+    // shadow-clear the whole cache. Rename is rare (host-initiated),
+    // a few hundred ms of cold lookups across rooms is fine.
+    roomCache.clear();
+  }
   return updated ?? null;
 }
 

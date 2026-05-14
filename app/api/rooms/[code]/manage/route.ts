@@ -6,6 +6,7 @@ import { rooms, voters } from "@/lib/db/schema";
 import {
   findRoomByCodeWithToken,
   changeRoomCode,
+  invalidateRoomCache,
 } from "@/lib/rooms";
 import { broadcastToRoom } from "@/lib/realtime-server";
 import { pushToRoom } from "@/lib/push";
@@ -110,6 +111,11 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
   }
   if (Object.keys(updates).length > 0) {
     await db.update(rooms).set(updates).where(eq(rooms.id, room.id));
+    // Bust the in-memory room cache so the next request inside this
+    // Lambda's 5s window doesn't read the pre-update row. Without
+    // this, a host could flip voting / change now-playing and watch
+    // the OLD value bleed back into responses for a few seconds.
+    invalidateRoomCache(room.code);
   }
 
   // Code change goes through changeRoomCode for collision check.
