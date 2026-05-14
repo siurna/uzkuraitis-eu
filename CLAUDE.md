@@ -18,9 +18,9 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the deep dive.
 
 2. **Hearts beat; everything else doesn't.** `@keyframes heartbeat` in `globals.css` is the single source of truth. Use `.heartbeat`, `.heartbeat-loop`, or `.heartbeat-focus`. Don't invent a new pulse.
 
-3. **Dual store, one-way flow.** Writes go to Neon. Server broadcasts a hint event over Liveblocks. Clients refetch the relevant slice. Don't put durable data in Liveblocks Storage and don't broadcast full payloads.
+3. **Dual store, one-way flow.** Writes go to Supabase Postgres. Server broadcasts a hint event over Supabase Realtime. Clients refetch the relevant slice. Don't bundle durable data in broadcast payloads.
 
-4. **Broadcast events are `<feature>:<verb>`.** Documented in `lib/liveblocks.ts`. New event? Extend the union, add a note in the doc block.
+4. **Broadcast events are `<feature>:<verb>`.** Documented in `lib/realtime.tsx`. New event? Extend the union, add a note in the doc block.
 
 5. **No transforms on the page wrapper.** `PageTransition` is opacity-only. Any ancestor transform breaks `position: fixed` for every drawer in the app.
 
@@ -30,7 +30,7 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the deep dive.
 
 8. **Admin pages stay English.** Voter-facing surfaces use `t(lang, key)`. Admin uses literal English strings — by design.
 
-9. **Admin pages share one chrome.** Every `/admin/*` page opens with `<AdminPageTitle icon={Icon}>Title</AdminPageTitle>` (`components/admin-page-title.tsx`) — a flamingo-tinted icon tile + gradient `<h1>`. The icon must match that section's icon in `components/admin-nav.tsx` (Live → `Radio`, Rooms → `Vote`, Results → `Trophy`, Settings → `Settings`). Card-section headers inside a page repeat the same icon-tile pattern at `h-10 w-10`.
+9. **Admin pages share one chrome.** Every `/admin/*` page opens with `<AdminPageTitle>Title</AdminPageTitle>` (`components/admin-page-title.tsx`) — a large gradient `<h1>`, no icon. The nav tabs (`components/admin-nav.tsx`) still carry icons (Live → `Radio`, Rooms → `Vote`, Trivia → `Brain`, Commentator → `Mic`, Results → `Trophy`, Settings → `Settings`); the page title doesn't repeat them. Card-section headers inside a page do keep the `h-10 w-10` flamingo-tinted icon-tile pattern.
 
 ## Useful scripts
 
@@ -39,7 +39,7 @@ pnpm dev         # local dev server
 pnpm typecheck   # tsc --noEmit
 pnpm build       # production build (Vercel runs this)
 pnpm db:generate # drizzle-kit generate (new migrations)
-pnpm db:migrate  # apply migrations (we usually do this manually via @neondatabase/serverless HTTP from a script)
+pnpm db:migrate  # apply migrations against SUPABASE_POSTGRES_URL (or `node scripts/migrate.ts`)
 ```
 
 ## Where things live
@@ -50,7 +50,7 @@ pnpm db:migrate  # apply migrations (we usually do this manually via @neondataba
 | A new bonus bet | `lib/scoring.ts` + `components/bonus-bets-form.tsx` + DB column + i18n keys |
 | A new admin surface | `app/admin/(authed)/<name>/page.tsx` (open with `<AdminPageTitle/>`) + maybe a tab in `components/admin-room-tabs.tsx` |
 | A new translation | `lib/i18n.ts` (both `en` and `lt`) |
-| A new broadcast event | `lib/liveblocks.ts` (union) + emit + listen |
+| A new broadcast event | `lib/realtime.tsx` (union) + emit + listen |
 | A new bottom-sheet | Wrap your content in `<BottomSheet/>` from `components/ui/bottom-sheet.tsx` |
 | A new room page (tab) | Will be `app/r/[code]/<tab>/page.tsx` once tab shell lands |
 

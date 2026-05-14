@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useOthers, useUpdateMyPresence } from "@/lib/liveblocks";
+import { useOthers, useUpdateMyPresence } from "@/lib/realtime";
 import { ensureSessionId } from "@/lib/use-identity";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

@@ -5,7 +5,8 @@ import { db } from "@/lib/db";
 import { rooms, voters, votes } from "@/lib/db/schema";
 import { findRoomByCode, changeRoomCode, invalidateRoomCache } from "@/lib/rooms";
 import { isAdminAuthed } from "@/lib/admin/session";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
+import { deletePrefix } from "@/lib/storage";
 
 type RouteCtx = { params: Promise<{ code: string }> };
 
@@ -69,8 +70,12 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
   return NextResponse.json({ ok: true, code: newCode });
 }
 
-// Wipe all votes (and voters) inside a room. The room itself stays, so the
-// shared link keeps working — the host can hit "reset" between songs.
+// Permanently delete a room. Cascades through every child table via
+// the FK ON DELETE CASCADE constraints (voters → votes, chat_messages
+// → chat_reactions, reactions, room_settings, room_results,
+// room_facts, trivia_answers). Storage files for the room live under
+// the `chat/<room_id>/` prefix in Supabase Storage and don't cascade,
+// so we wipe them explicitly before dropping the row.
 export async function DELETE(_req: Request, { params }: RouteCtx) {
   const guard = await requireAdmin();
   if (guard) return guard;
@@ -81,9 +86,25 @@ export async function DELETE(_req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
 
-  // Cascade: delete the voters → ON DELETE CASCADE drops their votes too.
-  await db.delete(voters).where(eq(voters.roomId, room.id));
-  // Belt-and-suspenders for any orphaned votes (shouldn't be any, but cheap).
+  // Storage first. If this throws, abort before we drop the DB row so
+  // the next attempt can still find the files via the room → prefix.
+  try {
+    await deletePrefix("chat", `${room.id}/`);
+  } catch (err) {
+    return NextResponse.json(
+      {
+        error: `Couldn't wipe chat uploads: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      },
+      { status: 500 },
+    );
+  }
+
+  await db.delete(rooms).where(eq(rooms.id, room.id));
+  // voters / votes / reactions / chat / etc. all CASCADE off rooms.id.
+  // The references below keep tree-shake from dropping the imports.
+  void voters;
   void votes;
   return NextResponse.json({ ok: true });
 }

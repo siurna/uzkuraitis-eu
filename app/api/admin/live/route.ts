@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { rooms } from "@/lib/db/schema";
 import { isAdminAuthed } from "@/lib/admin/session";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 import { pushToRoom } from "@/lib/push";
 import { getCountry } from "@/lib/countries";
 import { invalidateRoomCache } from "@/lib/rooms";
@@ -15,7 +15,7 @@ import {
   postTriviaMessage,
   showStatusAnnouncement,
 } from "@/lib/chat-system";
-import { getTrivia } from "@/lib/trivia";
+import { getTriviaMerged } from "@/lib/trivia-store";
 
 // Global live controller. POST sets show status / now-playing on EVERY
 // room at once and broadcasts the change to each — for running the
@@ -103,10 +103,11 @@ export async function POST(req: Request) {
           await postNowPlayingMessage(code, id, nowPlayingCode);
           await postCommentatorMessage(code, id, nowPlayingCode);
           // Trivia card lands as its own chat message right after the
-          // now-playing banner (when the country has an entry in
-          // TRIVIA_DECK). The card itself gates UI tap-state on the
-          // server's per-(room, session) answer record.
-          if (getTrivia(nowPlayingCode)) {
+          // now-playing banner (when the country has a question in the
+          // merged deck — file default + admin overrides). The card
+          // itself gates UI tap-state on the server's per-(room,
+          // session) answer record.
+          if (await getTriviaMerged(nowPlayingCode)) {
             await postTriviaMessage(code, id, nowPlayingCode);
           }
           const c = getCountry(nowPlayingCode);

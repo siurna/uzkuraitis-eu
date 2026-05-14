@@ -89,14 +89,11 @@ export function AdminCommentator({ initial }: { initial: Record<string, string> 
   return (
     <section className="glass-card rounded-xl p-5 flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl">Live commentator</h2>
-          <p className="text-sm text-white/50 mt-0.5">
-            {active
-              ? `On. ${filled}/${countries.length} country lines written — countries without one are skipped.`
-              : "Off. Give the bot a name to switch it on; it posts a line to chat whenever a country goes on stage."}
-          </p>
-        </div>
+        <p className="text-sm text-white/55 leading-snug max-w-xl">
+          {active
+            ? `On. ${filled}/${countries.length} country lines written — countries without one are skipped.`
+            : "Off. Give the bot a name to switch it on; it posts a line to chat whenever a country goes on stage."}
+        </p>
         <Button type="button" onClick={save} disabled={saving} className="h-9 shrink-0">
           {saving ? "Saving…" : "Save"}
         </Button>

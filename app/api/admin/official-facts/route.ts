@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { officialFacts, rooms } from "@/lib/db/schema";
 import { isAdminAuthed } from "@/lib/admin/session";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 
 // Generic key-value store for the side-bet ground truth (jury winner,
 // televote winner, nul-points country, etc.). One row per key. Anyone can
@@ -31,8 +31,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  // Upsert non-null entries, delete null ones. (neon-http has no
-  // transactions; sequential is fine here.)
+  // Upsert non-null entries, delete null ones.
   for (const [key, value] of Object.entries(parsed.data.facts)) {
     if (value === null || value === "") {
       await db.delete(officialFacts).where(sql`${officialFacts.key} = ${key}`);

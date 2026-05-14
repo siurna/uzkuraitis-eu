@@ -15,7 +15,7 @@ import { isAdminAuthed } from "@/lib/admin/session";
 import { findRoomByCode } from "@/lib/rooms";
 import { countries } from "@/lib/countries";
 import { AVATARS } from "@/lib/avatars";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 
 // Dev-only seeding: throw demo voters (random ballots + bets), a few
 // reaction-heavy chat messages ("highlights"), or random official

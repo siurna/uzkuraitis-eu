@@ -17,25 +17,25 @@ import { Highlights } from "@/components/highlights";
 //   2. Standings         — Vakarėlio TOP 5 widget (dark surface).
 //                          Self-hides when voting + tally are both off.
 //   3. Highlights        — the night's chat highlights.
-//   4. NotificationsCta  — self-hides once push is granted, so the
-//                          slot empties without us touching anything.
+//   4. NotificationsCta  — self-hides once push is granted.
 //   5. WhosHere          — the honeycomb of avatars (here-now).
 //   6. SharePicks        — your TOP 10 share card.
+//
+// Every child renders its own max-w-3xl container so when one returns
+// null (notifications granted, no voter, voting closed) the outer
+// gap collapses cleanly — no phantom wrapper divs adding mystery
+// blank rows between the visible widgets.
 export function HomePanel() {
   return (
-    <div className="flex flex-col gap-3 pt-3 pb-2">
+    <div className="flex flex-col gap-4 pt-3 pb-2">
       <HomeBanners />
       <div id="standings" className="scroll-mt-16">
         <Standings />
       </div>
       <Highlights />
-      <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">
-        <NotificationsCta />
-      </div>
+      <NotificationsCta />
       <WhosHere />
-      <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">
-        <SharePicks />
-      </div>
+      <SharePicks />
     </div>
   );
 }

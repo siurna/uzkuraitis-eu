@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, Trophy } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { countries, getCountry } from "@/lib/countries";
@@ -207,7 +207,6 @@ export function AdminResultsTable({
           card. The card itself then gets uniform p-5 — its top edge
           no longer carries an extra row of counter-padding. */}
       <AdminPageTitle
-        icon={Trophy}
         trailing={
           <span className="inline-flex items-center rounded-full bg-flamingo/15 ring-1 ring-flamingo/35 px-3 h-7 text-xs font-display text-flamingo tabular-nums">
             {filledCount} / {total}

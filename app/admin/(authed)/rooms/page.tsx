@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { desc, sql } from "drizzle-orm";
-import { ChevronRight, Vote } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { db } from "@/lib/db";
 import { rooms, voters } from "@/lib/db/schema";
 import { AdminRoomToggle } from "@/components/admin-room-toggle";
@@ -33,7 +33,7 @@ export default async function AdminRoomsPage() {
     <div className="flex flex-col gap-6">
       <header className="flex items-end justify-between gap-4">
         <div>
-          <AdminPageTitle icon={Vote}>Rooms</AdminPageTitle>
+          <AdminPageTitle>Rooms</AdminPageTitle>
           <p className="text-sm text-white/50 mt-2">
             {list.length} {list.length === 1 ? "room" : "rooms"} on this
             installation.

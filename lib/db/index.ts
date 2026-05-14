@@ -2,17 +2,19 @@ import postgres from "postgres";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
 
-// Postgres client over postgres-js. Works against any standard Postgres
-// (Supabase via the pgbouncer-transaction pooler today, Neon TCP, plain
-// self-hosted). We dropped @neondatabase/serverless when we migrated off
-// Neon — that driver only spoke Neon's HTTP shim. The pgbouncer pool
-// in front of Supabase requires `prepare: false` (transaction-mode
+// Postgres client over postgres-js. Talks to Supabase through the
+// pgbouncer transaction-mode pooler (port 6543). Transaction-mode
 // pooling can't keep server-side prepared statements alive across
-// connections), so we disable them globally.
+// connections, so `prepare: false` is non-negotiable.
 //
-// Lazy init: process.env.DATABASE_URL isn't readable during the
-// `next build` page-data collection pass on Vercel. Throwing at module
-// load would brick deploys. We resolve on first query instead.
+// Connection URL comes from SUPABASE_POSTGRES_URL — what Vercel's
+// Supabase integration auto-injects. We accept DATABASE_URL as a
+// fallback so this still works in environments (other hosts, local
+// dev) where the integration isn't wired.
+//
+// Lazy init: env vars aren't readable during the `next build`
+// page-data collection pass on Vercel. Throwing at module load would
+// brick deploys, so we resolve on first query instead.
 
 type Sql = ReturnType<typeof postgres>;
 
@@ -22,12 +24,13 @@ let cachedSql: Sql | null = null;
 function getConnection(): PostgresJsDatabase<typeof schema> {
   if (cachedDb) return cachedDb;
 
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString =
+    process.env.SUPABASE_POSTGRES_URL ?? process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error(
-      "DATABASE_URL is not set. Add the Supabase pooled connection string " +
-        "to .env.local or your Vercel project env vars (Production + " +
-        "Preview + Development).",
+      "SUPABASE_POSTGRES_URL is not set. Connect the Supabase " +
+        "integration in Vercel (which injects it automatically) or set " +
+        "it manually in .env.local for Production + Preview + Development.",
     );
   }
 
@@ -36,12 +39,13 @@ function getConnection(): PostgresJsDatabase<typeof schema> {
     // this — prepared statements can't survive across pooled
     // connections.
     prepare: false,
-    // One connection per Lambda invocation is enough. The free-tier
-    // Supabase project has a 60-connection cap shared across the
-    // workspace; the pooler multiplexes thousands of clients onto
-    // that. Keeping max=1 means we don't fan out within a single
-    // Lambda.
-    max: 1,
+    // Lazy-open up to 8 sockets per Lambda so Promise.all fan-outs
+    // (e.g. the profile drawer's 9 parallel queries) actually run in
+    // parallel instead of queuing on one connection. postgres-js only
+    // opens sockets when concurrent queries demand them, so the
+    // sequential-query case still costs 1 socket. pgbouncer multiplexes
+    // these onto the underlying Postgres pool.
+    max: 8,
     idle_timeout: 20,
     connect_timeout: 10,
   });

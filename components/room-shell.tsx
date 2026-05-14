@@ -7,7 +7,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { RoomProvider, useEventListener } from "@/lib/liveblocks";
+import { RoomProvider, useEventListener } from "@/lib/realtime";
 import { PresenceBar } from "@/components/presence-bar";
 import { NameGate } from "@/components/name-gate";
 import { RoomTabBar } from "@/components/room-tab-bar";
@@ -102,7 +102,7 @@ export function RoomShell({
 
   return (
     <RoomProvider
-      id={`room:${code}`}
+      id={code}
       initialPresence={{ name: null, avatar: null, emoji: null, hoveredCountry: null, typing: false, seenAt: null }}
     >
       <NameGate>

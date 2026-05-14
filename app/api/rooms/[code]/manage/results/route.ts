@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { roomResults, officialResults } from "@/lib/db/schema";
 import { findRoomByCodeWithToken } from "@/lib/rooms";
 import { countries } from "@/lib/countries";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 
 type RouteCtx = { params: Promise<{ code: string }> };
 
@@ -72,8 +72,8 @@ export async function PUT(req: Request, { params }: RouteCtx) {
     }
   }
 
-  // neon-http has no transactions; a delete-then-insert is fine for an
-  // admin save (a momentary "no results" window at worst).
+  // Delete-then-insert is fine for an admin save: a momentary
+  // "no results" window at worst.
   await db.delete(roomResults).where(eq(roomResults.roomId, room.id));
   if (parsed.data.results.length > 0) {
     await db.insert(roomResults).values(

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Flame } from "lucide-react";
-import { useEventListener } from "@/lib/liveblocks";
+import { useEventListener } from "@/lib/realtime";
 import { useRoomLive } from "@/components/room-shell";
 import { getAvatar } from "@/lib/avatars";
 import { getCountry, countryName } from "@/lib/countries";

@@ -98,7 +98,7 @@ function getClient(): Anthropic | null {
   return cachedClient;
 }
 
-export async function POST(req: Request) {
+async function _handlePost(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
@@ -212,6 +212,22 @@ export async function POST(req: Request) {
 
   if (isSingle) return NextResponse.json(results[0] ?? EMPTY);
   return NextResponse.json({ results });
+}
+
+// Thin wrapper so any uncaught throw inside the handler comes back as a
+// structured 500 instead of an empty body. The empty-body 500 we were
+// seeing in prod was Next.js's default for an unhandled rejection, which
+// hid the actual error — surface it.
+export async function POST(req: Request) {
+  try {
+    return await _handlePost(req);
+  } catch (err) {
+    console.error("[translate] fatal", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : String(err) },
+      { status: 500 },
+    );
+  }
 }
 
 export const dynamic = "force-dynamic";

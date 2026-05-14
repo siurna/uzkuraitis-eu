@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Trophy } from "lucide-react";
-import { useEventListener } from "@/lib/liveblocks";
+import { useEventListener } from "@/lib/realtime";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { ensureSessionId } from "@/lib/use-identity";
 import {

@@ -311,9 +311,11 @@ export function HomeBanners() {
   // happening AND the viewer has cast. After lines close the banner
   // serves no purpose (the ballot is final), so hide it entirely.
   const showVoteBanner = voted && votingEnabled && !showVoteHero;
-  // Hide the "place your bets" prompt once voting's off (nothing to do),
-  // but keep showing it if you've already got bets down.
-  const showBonusBanner = betsCount > 0 || votingEnabled;
+  // Bonus banner is purely an editable surface — there's nothing to do
+  // once lines close, and the leaderboard reveal carries the scoring.
+  // Hide it the moment voting is off, even if the viewer already has
+  // bets down.
+  const showBonusBanner = votingEnabled;
 
   return (
     <div className="container mx-auto max-w-3xl px-4 flex flex-col gap-3">

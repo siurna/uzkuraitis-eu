@@ -4,7 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { roomFacts, officialFacts } from "@/lib/db/schema";
 import { findRoomByCodeWithToken } from "@/lib/rooms";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 
 type RouteCtx = { params: Promise<{ code: string }> };
 
@@ -45,8 +45,8 @@ export async function PUT(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  // (neon-http has no transactions; sequential upserts/deletes are fine
-  // for an admin save — a partial write just means re-save.)
+  // Sequential upserts/deletes are fine for an admin save: a partial
+  // write just means re-save.
   for (const [key, value] of Object.entries(parsed.data.facts)) {
     if (value === null || value === "") {
       await db
