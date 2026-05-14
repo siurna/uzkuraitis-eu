@@ -38,9 +38,20 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the deep dive.
 pnpm dev         # local dev server
 pnpm typecheck   # tsc --noEmit
 pnpm build       # production build (Vercel runs this)
-pnpm db:generate # drizzle-kit generate (new migrations)
-pnpm db:migrate  # apply migrations against SUPABASE_POSTGRES_URL (or `node scripts/migrate.ts`)
 ```
+
+## Schema changes — no migration files
+
+This is a small hobby project; we don't keep a migration ledger. When a
+schema change is needed:
+
+1. Edit `lib/db/schema.ts` so the Drizzle types match the new shape.
+2. Hand the user a copy-pasteable SQL snippet (CREATE TABLE / ALTER
+   TABLE / etc.) in the reply. They paste it into the Supabase SQL
+   editor themselves.
+3. Do NOT create a file under `drizzle/`. Do NOT run `drizzle-kit
+   generate` or `drizzle-kit migrate`. The `drizzle/` folder is
+   historical only and isn't applied going forward.
 
 ## Where things live
 
