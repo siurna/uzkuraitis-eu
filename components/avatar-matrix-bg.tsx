@@ -4,23 +4,15 @@ import { useMemo } from "react";
 import { AVATARS } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 
-// Diagonal Netflix-style scrolling avatar matrix — drifts behind the
-// notification step's bell during onboarding. Three offset rows of
-// avatar photos, scrolling at slightly different speeds, masked under
-// a strong gradient + blur so the bell stays the focus and the
-// matrix reads as ambient depth not foreground content. CSS-only
-// animation (keyframe in globals.css) so it's GPU-cheap on mid-end
-// Android.
-//
-// Performance: photos go through next/image's optimizer at w=128
-// (the smallest retina size that still reads clean at the 56px tile
-// width). 12 tiles × 2 rows × 2 marquee copies = 48 image elements,
-// each ~6 KB after WebP — bounded total around 300 KB; cached by the
-// optimizer after the first viewer in a room hits each tile.
+// Three rows of past-act press-kit photos drifting diagonally behind
+// the notification-step bell. No tinted overlay (Apple "now playing"
+// dynamic-island vibe — the photos read clear in the middle and just
+// blur out at the edges via a feathered mask). Container fills the
+// step body so the bell sits centred over a fully populated matrix
+// instead of a thin top strip.
 export function AvatarMatrixBg({ className = "" }: { className?: string }) {
-  // Sample 12 avatars deterministically (different stride per row so
-  // the rows don't share the same set). Same avatars on every render
-  // so the bg doesn't reshuffle on every re-render of step 3.
+  // Three distinct samples so neighbouring rows don't repeat the
+  // same face. Stable across re-renders.
   const rows = useMemo(() => {
     const photos = AVATARS.filter((a) => a.photo).slice(0, 36);
     const take = (start: number, step: number, n: number) =>
@@ -32,24 +24,30 @@ export function AvatarMatrixBg({ className = "" }: { className?: string }) {
     <div
       aria-hidden
       className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
+      style={{
+        // Feathered mask: photos sharp through the middle 60% of
+        // every axis, fading to fully transparent at the edges. No
+        // tinted overlay over the top — the bell + copy stay
+        // readable because the mask kills the matrix exactly where
+        // they sit, not because we tint everything.
+        maskImage:
+          "radial-gradient(115% 110% at 50% 50%, #000 18%, rgba(0,0,0,0.55) 55%, transparent 92%)",
+        WebkitMaskImage:
+          "radial-gradient(115% 110% at 50% 50%, #000 18%, rgba(0,0,0,0.55) 55%, transparent 92%)",
+      }}
     >
-      <div
-        className="absolute inset-0 -rotate-12 origin-center scale-150 flex flex-col gap-3 opacity-25"
-      >
+      <div className="absolute inset-0 -rotate-12 origin-center scale-150 flex flex-col justify-center gap-3 opacity-40">
         {rows.map((row, rowIdx) => (
           <div
             key={rowIdx}
             className="flex gap-3 w-max"
             style={{
               // Each row drifts at a slightly different speed +
-              // direction so the matrix never looks like a flat
+              // direction so the matrix never reads as one flat
               // sliding texture.
               animation: `uzk-marquee ${30 + rowIdx * 8}s linear infinite${
                 rowIdx % 2 ? " reverse" : ""
               }`,
-              // Stagger the start of each row by a fraction of its
-              // cycle so the first paint already shows the rows at
-              // different phases.
               animationDelay: `${rowIdx * -7}s`,
             }}
           >
@@ -59,7 +57,7 @@ export function AvatarMatrixBg({ className = "" }: { className?: string }) {
                 key={`${rowIdx}-${i}`}
                 src={optimizedSrc(a.photo!, 128)}
                 alt=""
-                className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/10"
+                className="h-16 w-16 rounded-xl object-cover ring-1 ring-white/10"
                 style={{
                   objectPosition: a.focal
                     ? `${a.focal.x}% ${a.focal.y}%`
@@ -71,17 +69,6 @@ export function AvatarMatrixBg({ className = "" }: { className?: string }) {
           </div>
         ))}
       </div>
-      {/* Vignette fade so the matrix bleeds off the edges instead of
-          ending in a hard line, AND so the centre area where the
-          bell + CTAs sit reads with more contrast against the
-          backdrop. */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(60% 60% at 50% 50%, transparent 0%, oklch(20% 0.08 264 / 0.65) 65%, oklch(15% 0.08 264 / 0.95) 100%)",
-        }}
-      />
     </div>
   );
 }

@@ -88,15 +88,17 @@ export function AdminCommentator({ initial }: { initial: Record<string, string> 
         Banter
       </AdminPageTitle>
       <section className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-5">
-        {/* Photo on the left, upload + name fields stacked on the
-            right, so the row reads as a single identity card. */}
-        {/* Items-stretch + aspect-square on the photo so its height
-            tracks whatever the right column (upload + name) ends up
-            being — no magic h-32 number to keep in sync. The
-            <Photo emoji> sizing falls back to a percent-of-height
-            so it scales with the dynamic dimension. */}
-        <div className="flex items-stretch gap-4">
-          <span className="relative aspect-square shrink-0 grid place-items-center overflow-hidden rounded-2xl bg-white/[0.06] ring-1 ring-white/12 text-white/40">
+        {/* Photo on the left at a fixed h-28 w-28 (~112px). The
+            earlier `items-stretch + aspect-square` approach blew up
+            because the photo had no upper bound on width — once the
+            press-kit image's intrinsic width fed into aspect-square,
+            the photo box grew to the full image's natural size. Fixed
+            square sized to roughly match the right column's stacked
+            height (Replace-photo button + gap + Name label + Name
+            input ≈ 110px) so the row reads as a balanced identity
+            card. */}
+        <div className="flex items-start gap-4">
+          <span className="relative h-28 w-28 shrink-0 grid place-items-center overflow-hidden rounded-2xl bg-white/[0.06] ring-1 ring-white/12 text-white/40">
             {lines[PHOTO_KEY] ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={lines[PHOTO_KEY]} alt="" className="h-full w-full object-cover" />

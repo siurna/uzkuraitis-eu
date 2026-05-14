@@ -153,16 +153,16 @@ export function CodeInput({
             "aspect-square w-full min-w-0 p-0 bg-transparent",
             // Dashed vertical divider between cells, none after the last.
             i > 0 && "border-l border-dashed border-white/10",
-            // Focused cell gets a soft fill so you know which one's live.
-            "focus:outline-none focus:bg-flamingo/15",
-            // Filled cell stays slightly lit even when not focused.
-            char && "bg-flamingo/8",
-            // Singing Sans has top-heavy metrics — a `pt-1.5` + a
-            // tiny `pb-0.5` nudges the cap-height visually centered
-            // in the cell, fixing the "letters sit too high" feel
-            // when the cells are tall enough that line-height-none
-            // can't compensate.
-            "text-center font-display uppercase tabular-nums leading-none pt-1.5 pb-0.5",
+            // No active-cell fill. The outer pill's rainbow border
+            // glow + caret are signal enough; a per-cell flamingo
+            // background read as decorative noise on focus.
+            "focus:outline-none",
+            // Singing Sans has top-heavy metrics — pt nudges the
+            // cap-height visually centred in the cell. Extra
+            // padding-bottom moved the letters down further to fix
+            // the "floating high" feel; combined leading-none keeps
+            // the visual centre on the actual glyphs not their box.
+            "text-center font-display uppercase tabular-nums leading-none pt-2.5 pb-1.5",
             "text-3xl sm:text-4xl text-white caret-flamingo",
             // Suppress text selection: tapping a cell shouldn't drag-
             // select neighbouring cells, and auto-select-on-focus is

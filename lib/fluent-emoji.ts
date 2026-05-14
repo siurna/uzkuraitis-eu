@@ -164,10 +164,14 @@ const FLUENT_EMOJI: Record<string, FluentEntry> = {
 
 // Country-flag emojis are encoded as a pair of regional-indicator
 // code points (🇱🇹 = U+1F1F1 + U+1F1F9 → "LT"). Microsoft Fluent
-// deliberately doesn't ship country flags, so we extract the ISO
-// code here and let the `<FluentEmoji>` renderer hand off to the
-// project's own `<Flag>` component for these. Returns null when the
-// glyph isn't a flag pair.
+// deliberately doesn't ship country flags ("Country flags are not
+// included in the project" — geopolitical concerns, Taiwan/PRC,
+// etc), so the FluentEmoji renderer leans on Twemoji's flat-color
+// flag PNGs instead. Twemoji's 72x72 set sits visually closer to
+// Fluent's flat-color 2D variants than either the project's
+// rectangular `<Flag>` SVG or the OS-native emoji glyphs (which
+// vary wildly per platform). Twemoji is MIT/CC-BY licensed and
+// served via jsdelivr.
 const REGIONAL_INDICATOR_BASE = 0x1f1e6; // 🇦
 const REGIONAL_INDICATOR_LAST = 0x1f1ff; // 🇿
 export function flagIsoFromGlyph(glyph: string): string | null {
@@ -184,6 +188,23 @@ export function flagIsoFromGlyph(glyph: string): string | null {
   const a = String.fromCharCode(0x41 + (cps[0] - REGIONAL_INDICATOR_BASE));
   const b = String.fromCharCode(0x41 + (cps[1] - REGIONAL_INDICATOR_BASE));
   return (a + b).toLowerCase();
+}
+
+// CDN URL for Twemoji's 72x72 country flag PNG matching a regional-
+// indicator emoji pair. Returns null when the glyph isn't a flag.
+export function twemojiFlagUrl(glyph: string): string | null {
+  const cps = Array.from(glyph).map((c) => c.codePointAt(0) ?? 0);
+  if (cps.length !== 2) return null;
+  if (
+    cps[0] < REGIONAL_INDICATOR_BASE ||
+    cps[0] > REGIONAL_INDICATOR_LAST ||
+    cps[1] < REGIONAL_INDICATOR_BASE ||
+    cps[1] > REGIONAL_INDICATOR_LAST
+  ) {
+    return null;
+  }
+  const hex = cps.map((cp) => cp.toString(16)).join("-");
+  return `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/${hex}.png`;
 }
 
 export function fluentEmojiUrl(glyph: string): string | null {

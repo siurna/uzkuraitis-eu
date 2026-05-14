@@ -27,13 +27,13 @@ export function FluentEmoji({
 }) {
   const [failed, setFailed] = useState(false);
 
-  // Microsoft Fluent doesn't ship country flags. Earlier this
-  // component intercepted regional-indicator pairs and rendered them
-  // via HeartFlag, but inside emoji marquees + bingo cells the
-  // heart-chip read as a different shape language and looked out of
-  // place. Flag glyphs now fall through to the native emoji span
-  // below — the OS-rendered flat flag sits closer to the Fluent
-  // set's footprint than the branded chip does in those contexts.
+  // Country flags fall through to the native emoji span below
+  // (`fluentEmojiUrl` returns null since flags aren't in the
+  // manifest). MS Fluent doesn't ship country flags by policy, and
+  // shipping a third-party set (Twemoji etc) blew up the brand
+  // language. OS-native flat flags are good enough — Apple/Android
+  // render them cleanly; Windows users see letter pairs but they're
+  // <2% of the audience.
   const url = fluentEmojiUrl(glyph);
 
   if (!url || failed) {

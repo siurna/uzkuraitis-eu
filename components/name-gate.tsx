@@ -216,17 +216,17 @@ export function NameGate({
                 </Button>
               ) : step === 3 ? (
                 // "Maybe later" sits on the LEFT (where Back would be
-                // on step 2) — visually balances the "Turn on" CTA
-                // anchored on the right and reads as the secondary /
-                // dismissive action.
-                <Button
+                // on step 2). Plain text button — Button ghost variant
+                // was inheriting an accent hover that read red in the
+                // dark theme. Skipping a notif prompt isn't a
+                // destructive action, so it shouldn't look like one.
+                <button
                   type="button"
-                  variant="ghost"
                   onClick={skipNotifications}
-                  className="text-white/65 shrink-0"
+                  className="shrink-0 px-2 h-9 text-sm font-display text-white/55 hover:text-white/85 transition"
                 >
                   {t(lang, "notif_gate_skip")}
-                </Button>
+                </button>
               ) : (
                 <span className="w-9 shrink-0" aria-hidden />
               )}
@@ -355,14 +355,18 @@ export function NameGate({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -8 }}
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-            className="relative flex flex-col items-center gap-4 pt-6 pb-3 min-h-[42dvh] -mx-5"
+            className="relative flex flex-col items-center justify-center gap-4 min-h-[52dvh] -mx-5 px-5"
           >
             <AvatarMatrixBg />
             <span className="ringing-bell relative">
-              <FluentEmoji glyph="🔔" size={96} ariaLabel="bell" />
+              <FluentEmoji glyph="🔔" size={120} ariaLabel="bell" />
             </span>
             {platform === "ios-safari" && !isInstalledPwa() && (
-              <div className="relative w-full mx-5 rounded-2xl bg-flamingo/10 ring-1 ring-flamingo/25 px-4 py-3 flex flex-col gap-1.5" style={{ width: "calc(100% - 2.5rem)" }}>
+              // Push disabled on iOS-not-PWA. Banner sits below the
+              // bell with the install steps so the user knows WHY
+              // the "Turn on" CTA is gone — otherwise this step
+              // would read as confusing (bell + no primary action).
+              <div className="relative w-full rounded-2xl bg-flamingo/10 ring-1 ring-flamingo/25 px-4 py-3 flex flex-col gap-1.5 backdrop-blur-sm">
                 <p className="font-display text-sm text-white">
                   {t(lang, "notif_gate_install_hint")}
                 </p>

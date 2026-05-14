@@ -5,13 +5,13 @@ import { motion } from "motion/react";
 import { Bell, Dices, ListChecks, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { HeartFlag } from "@/components/flag";
-import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { WelcomeMarkdown } from "@/components/welcome-banner";
 import { FluentEmoji } from "@/components/fluent-emoji";
 import { countryName, getCountry } from "@/lib/countries";
 import { isSupported as pushIsSupported } from "@/lib/push-client";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { useParticles } from "@/components/particle-layer";
+import { useLeaderboard } from "@/components/leaderboard-provider";
 import { useIdentity } from "@/lib/use-identity";
 import { fmt, t, tDyn, type MessageKey } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
@@ -432,16 +432,18 @@ function Top3PodiumCard({
             country name; the secondary "Leading" eyebrow is gone (the
             podium ordering carries that signal on its own). */}
         {first && (
-          <div className="relative flex items-center gap-4">
+          // Medal leads the row: 🥇 then heart-flag then country name.
+          // Reads left-to-right as "this is the #1, and it's <country>"
+          // — the gold trophy was previously between the flag and
+          // name, which made the order ambiguous.
+          <div className="relative flex items-center gap-3">
+            <FluentEmoji glyph="🥇" size={44} className="shrink-0" ariaLabel="first place" />
             <span className="shrink-0">
               <HeartFlag code={first} size="lg" />
             </span>
-            <div className="min-w-0 flex-1 flex items-center gap-2">
-              <FluentEmoji glyph="🥇" size={44} className="shrink-0" ariaLabel="first place" />
-              <p className="font-display text-2xl text-white leading-tight truncate drop-shadow">
-                {countryName(first, lang) ?? first.toUpperCase()}
-              </p>
-            </div>
+            <p className="min-w-0 flex-1 font-display text-2xl text-white leading-tight truncate drop-shadow">
+              {countryName(first, lang) ?? first.toUpperCase()}
+            </p>
           </div>
         )}
 
@@ -596,18 +598,29 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
                 return (
                   <>
                     <WelcomeMarkdown source={split.before} />
-                    {split.after && split.label && (
-                      <button
-                        type="button"
-                        onClick={() => setMoreOpen(true)}
-                        className="mt-2 inline-flex items-center gap-1 rounded-full
-                                   bg-yellow/15 ring-1 ring-yellow/40 text-yellow
-                                   px-3 h-7 text-xs font-display tracking-wide
-                                   active:scale-[0.97] transition"
-                      >
-                        {split.label}
-                        <ChevronRight className="h-3 w-3" />
-                      </button>
+                    {split.after && split.label && !moreOpen && (
+                      // Button pinned bottom-right of the ticket
+                      // body so the message reads left-to-right
+                      // ending in the affordance. Compact pill
+                      // matches the ADMIT ONE strip's tracking.
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setMoreOpen(true)}
+                          className="inline-flex items-center gap-1 rounded-full
+                                     bg-yellow/15 ring-1 ring-yellow/40 text-yellow
+                                     px-3 h-7 text-[11px] font-display tracking-[0.18em] uppercase
+                                     hover:bg-yellow/25 active:scale-[0.97] transition"
+                        >
+                          {split.label}
+                          <ChevronRight className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                    {split.after && moreOpen && (
+                      <div className="mt-3 pt-3 border-t border-dashed border-yellow/20">
+                        <WelcomeMarkdown source={split.after} />
+                      </div>
                     )}
                   </>
                 );
@@ -620,65 +633,62 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
           </div>
         </div>
       </div>
-      {/* "More" drawer — only opens when the host's markdown had a
-          `---[Label]---` marker. Full content fits comfortably
-          here, ticket stub stays compact. */}
-      {(() => {
-        const split = splitWelcome(md);
-        if (!split.after) return null;
-        return (
-          <BottomSheet
-            open={moreOpen}
-            onClose={() => setMoreOpen(false)}
-            title={split.label ?? ""}
-          >
-            <WelcomeMarkdown source={split.after} />
-          </BottomSheet>
-        );
-      })()}
     </motion.div>
   );
 }
 
-// Closing-credits card. Fires once when mounted: a confetti shower
-// from the centre + the gold gradient. Reads as "the show is done,
-// thanks for being here". Server posts this via the `thanks` admin
-// broadcast kind; the message persists in chat, but the confetti
-// only fires for whoever's actively viewing the moment it lands
-// (subsequent re-renders / scroll-backs see the card without
-// fresh particles).
+// Closing-credits card. Fires once when mounted: a screen-wide
+// confetti shower + the gold gradient. Reads as "the show is done,
+// thanks for being here". The winning country's heart-flag crowns
+// the card (pulled from the leaderboard provider once results
+// land). Server posts this via the `thanks` admin broadcast kind;
+// the message persists in chat, but the confetti only fires for
+// whoever's actively viewing the moment it lands (subsequent
+// re-renders / scroll-backs see the card without fresh particles).
 function ThanksCard({ lang }: { lang: Language }) {
   const particles = useParticles();
-  const ref = useRef<HTMLDivElement | null>(null);
+  const { payload } = useLeaderboard();
   const fired = useRef(false);
+
+  // Winner country: derived from the official placements payload
+  // (placement === 1). Null until the host has entered results.
+  const winner = useMemo(() => {
+    if (!payload?.placements) return null;
+    const entry = Object.entries(payload.placements).find(([, p]) => p === 1);
+    return entry?.[0] ?? null;
+  }, [payload]);
 
   useEffect(() => {
     if (fired.current) return;
-    const el = ref.current;
-    if (!el) return;
-    const box = el.getBoundingClientRect();
-    const cx = box.left + box.width / 2;
-    const cy = box.top + box.height / 2;
-    // Two sweeps so the burst feels like real cascading confetti
-    // instead of one synchronised pop. First wave is mostly party
-    // poppers + sparkles, second wave is hearts + stars.
-    const glyphs1 = ["🎉", "✨", "🎊", "🎉", "⭐", "🎉", "✨"];
-    const glyphs2 = ["❤️", "⭐", "🎉", "✨", "❤️", "🎊", "🎉"];
+    fired.current = true;
+    // Screen-wide cascade — three staggered waves spawned across the
+    // full viewport width, falling from above the top edge. Reads as
+    // confetti raining over the whole screen instead of a contained
+    // pop from one card. Each particle picks a random x along the
+    // viewport, an above-fold y so it drops into view, and a long
+    // duration so the cascade lingers ~3s.
+    const vw = typeof window !== "undefined" ? window.innerWidth : 360;
+    const vh = typeof window !== "undefined" ? window.innerHeight : 640;
+    const waveGlyphs = [
+      ["🎉", "✨", "🎊", "🎉", "⭐", "🎉", "✨", "🎊", "⭐", "🎉"],
+      ["❤️", "⭐", "🎉", "✨", "❤️", "🎊", "🎉", "✨", "❤️", "🎉"],
+      ["🎉", "🎊", "✨", "❤️", "⭐", "🎉", "🎊", "✨", "🎉", "❤️"],
+    ];
     const fire = (glyphs: string[]) => {
       particles.spawnMany(
         glyphs.map((g) => ({
           asset: { type: "emoji" as const, glyph: g },
-          from: { x: cx + (Math.random() - 0.5) * box.width * 0.6, y: cy },
-          driftRange: 240,
-          size: 42 + Math.random() * 18,
-          durationMs: 2000 + Math.random() * 1200,
-          rotate: 280,
+          from: { x: Math.random() * vw, y: -40 - Math.random() * 60 },
+          to: { x: Math.random() * vw, y: vh + 60 },
+          size: 36 + Math.random() * 22,
+          durationMs: 2400 + Math.random() * 1400,
+          rotate: 360,
         })),
       );
     };
-    fire(glyphs1);
-    setTimeout(() => fire(glyphs2), 420);
-    fired.current = true;
+    fire(waveGlyphs[0]);
+    setTimeout(() => fire(waveGlyphs[1]), 380);
+    setTimeout(() => fire(waveGlyphs[2]), 780);
   }, [particles]);
 
   const nextYear = t(lang, "sys_cta_thanks_next");
@@ -686,7 +696,6 @@ function ThanksCard({ lang }: { lang: Language }) {
 
   return (
     <motion.div
-      ref={ref}
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
@@ -697,7 +706,26 @@ function ThanksCard({ lang }: { lang: Language }) {
           "radial-gradient(120% 90% at 50% 0%, oklch(95% 0.19 95 / 0.55) 0%, transparent 55%), linear-gradient(155deg, #4a1d05 0%, #6e2b07 45%, #2a1208 100%)",
       }}
     >
-      <div className="relative px-5 py-7 flex flex-col items-center text-center gap-3">
+      <div className="relative px-5 py-8 flex flex-col items-center text-center gap-3">
+        {/* Winning country's heart crowns the card when leaderboard
+            data has landed. Until then the eyebrow text alone reads
+            as the headline — a missing flag is preferable to a
+            placeholder while results are still being typed. */}
+        {winner && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{
+              type: "spring",
+              stiffness: 220,
+              damping: 18,
+              delay: 0.18,
+            }}
+            className="mb-1"
+          >
+            <HeartFlag code={winner} size="lg" />
+          </motion.div>
+        )}
         <p className="text-[10px] uppercase tracking-[0.3em] font-display text-yellow/85">
           {t(lang, "sys_cta_thanks_eyebrow")}
         </p>
@@ -705,6 +733,9 @@ function ThanksCard({ lang }: { lang: Language }) {
           {t(lang, "sys_cta_thanks_title")}
         </p>
         <p className="text-sm text-white/80 leading-snug">{sub}</p>
+        <p className="font-display text-3xl text-yellow tracking-[0.2em] tabular-nums mt-1 drop-shadow-sm">
+          {nextYear}
+        </p>
       </div>
     </motion.div>
   );
