@@ -37,13 +37,13 @@ const DEFAULT_PREFS: PushPrefs = {
 //   "android"    → install via Chrome/Brave menu → Install app
 //   "desktop"    → install via address-bar icon
 //   "other"      → generic instructions
-function detectPlatform(): "ios-safari" | "android" | "desktop" | "other" {
+export function detectPlatform(): "ios-safari" | "android" | "desktop" | "other" {
   if (typeof navigator === "undefined") return "other";
   const ua = navigator.userAgent;
   const standalone =
     typeof window !== "undefined" &&
     window.matchMedia("(display-mode: standalone)").matches;
-  // Already running as PWA — nothing to install.
+  // Already running as PWA, nothing to install.
   if (standalone) return "other";
   if (/iPhone|iPad|iPod/.test(ua)) return "ios-safari";
   if (/Android/.test(ua)) return "android";
@@ -51,7 +51,7 @@ function detectPlatform(): "ios-safari" | "android" | "desktop" | "other" {
   return "other";
 }
 
-function isInstalledPwa(): boolean {
+export function isInstalledPwa(): boolean {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(display-mode: standalone)").matches;
 }

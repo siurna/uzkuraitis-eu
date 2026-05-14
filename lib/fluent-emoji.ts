@@ -138,6 +138,10 @@ const FLUENT_EMOJI: Record<string, FluentEntry> = {
   "🪦":  { folder: "Headstone", slug: "headstone" },
   "🪩":  { folder: "Mirror ball", slug: "mirror_ball" },
   "🫀":  { folder: "Anatomical heart", slug: "anatomical_heart" },
+
+  // Notification onboarding step.
+  "🔔":  { folder: "Bell", slug: "bell" },
+  "🔕":  { folder: "Bell with slash", slug: "bell_with_slash" },
 };
 
 export function fluentEmojiUrl(glyph: string): string | null {

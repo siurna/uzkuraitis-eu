@@ -386,6 +386,12 @@ const S = {
   push_help_blocked_2:     { en: "Change Notifications from Blocked to Ask or Allow.", lt: "Pakeisk „Notifications“ iš „Blocked“ į „Ask“ arba „Allow“." },
   push_help_blocked_3:     { en: "Refresh this page and try again.", lt: "Atnaujink puslapį ir bandyk dar kartą." },
 
+  // Onboarding step inside the NameGate sheet.
+  notif_gate_title:        { en: "Stay in the loop", lt: "Niekur nepražiopsok" },
+  notif_gate_sub:          { en: "We'll only ping for replies, lines opening, and results landing.", lt: "Pinguosime tik kai kažkas tau atrašo, atsidaro balsavimas ar paskelbiami rezultatai." },
+  notif_gate_skip:         { en: "Maybe later", lt: "Galbūt vėliau" },
+  notif_gate_install_hint: { en: "Install the app first to receive notifications.", lt: "Įdiek aplikaciją, kad gautum pranešimus." },
+
   // ── Bonus bets, labels + descriptions. `{home}` / `{host}` get
   //    substituted with fmt(). ──────────────────────────────────────
   bet_lt_placement:      { en: "{home} placement", lt: "Kurią vietą užims {home}?" },

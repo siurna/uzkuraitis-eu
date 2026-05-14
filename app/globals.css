@@ -161,6 +161,15 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    /* Paint the dark backdrop on the root element too so iOS Safari's
+       cold-start frame (before body styles + React hydrate) is navy,
+       not the white flash. Belt-and-suspenders with body's bg below
+       — for the in-PWA launch splash itself, iOS 16+ uses
+       manifest.background_color (set to #10142a in app/manifest.ts)
+       and Android does the same, so the lock-screen-to-app frame
+       lands on brand colour without us needing per-device
+       apple-touch-startup-image PNGs. */
+    background-color: var(--color-dark-blue-900);
   }
 
   /* Tailwind v4 dropped the default cursor:pointer on buttons. */
@@ -302,6 +311,23 @@
   91%           { transform: rotate(12deg); }
   94%           { transform: rotate(-10deg); }
   97%           { transform: rotate(6deg); }
+}
+
+/* Bell-ring animation for the notifications onboarding step. Long
+   resting pause (~4s), then a short rapid ding cluster. Pivot off
+   the top of the bell so it reads as a hanging bell ringing rather
+   than the whole element spinning. */
+@keyframes ringing-bell {
+  0%, 80%, 100% { transform: rotate(0deg); }
+  82%           { transform: rotate(-18deg); }
+  85%           { transform: rotate(16deg); }
+  88%           { transform: rotate(-12deg); }
+  91%           { transform: rotate(8deg); }
+  94%           { transform: rotate(-4deg); }
+}
+.ringing-bell {
+  animation: ringing-bell 5s ease-in-out infinite;
+  transform-origin: 50% 16%;
 }
 
 /* Same 2px ESC stroke, but the gradient loops L→R so the border

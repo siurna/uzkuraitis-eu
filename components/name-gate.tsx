@@ -1,19 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useOthers, useUpdateMyPresence } from "@/lib/realtime";
-import { ensureSessionId } from "@/lib/use-identity";
+import { ensureSessionId, SESSION_KEY } from "@/lib/use-identity";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { SelectedAvatarCard } from "@/components/selected-avatar-card";
+import { FluentEmoji } from "@/components/fluent-emoji";
+import {
+  detectPlatform,
+  isInstalledPwa,
+} from "@/components/notification-toggles";
+import { useRoomLive } from "@/components/room-shell";
+import { getState, subscribe, isSupported } from "@/lib/push-client";
 import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
 import { readLang, writeLang } from "@/lib/i18n-client";
 
 const NAME_KEY = "uzk_name";
 const AVATAR_KEY = "uzk_avatar";
+
+// Default prefs for the on-gate subscribe. Mirrors NotificationToggles'
+// DEFAULT_PREFS so a fresh subscriber lands on the same "useful only"
+// preset whether they opt-in here or from Settings.
+const ONBOARD_PREFS = {
+  chatAll: false,
+  chatReplies: true,
+  nowPlaying: false,
+  votingState: true,
+  resultsTallied: true,
+} as const;
 
 // Two-step welcome gate:
 //   step 1 — name + language. Drawer stays compact (auto-height).
@@ -26,12 +44,19 @@ export function NameGate({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
-  const [step, setStep] = useState<1 | 2>(1);
+  // Step 3 (notifications) only appears once name + avatar are committed.
+  // While the user is still on the welcome flow we render steps 1 and 2;
+  // step 3 is the "okay you're in, want pings?" sheet that pops as soon
+  // as the gate would otherwise close.
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [draftName, setDraftName] = useState("");
   const [draftAvatar, setDraftAvatar] = useState<string | null>(null);
   const [lang, setLang] = useState<Language>("lt");
+  const [pushOnboardComplete, setPushOnboardComplete] = useState(false);
   const updatePresence = useUpdateMyPresence();
   const others = useOthers();
+  const { code: roomCode } = useRoomLive();
+  const platform = useMemo(() => detectPlatform(), []);
 
   // Cheeky heads-up if someone in the room already goes by this name —
   // we don't block it, just nudge them to disambiguate.
@@ -71,7 +96,11 @@ export function NameGate({ children }: { children: React.ReactNode }) {
     setStep(2);
   };
 
-  const finish = () => {
+  // After step 2 we commit the identity, then either drop straight
+  // into the room OR show step 3 (notifications) when push has any
+  // chance of being useful (supported, not already on, not blocked).
+  // Once the user picks Enable or Skip we close the sheet entirely.
+  const finish = async () => {
     const cleanName = draftName.trim().slice(0, 40);
     if (!cleanName || !draftAvatar) return;
     localStorage.setItem(NAME_KEY, cleanName);
@@ -80,11 +109,56 @@ export function NameGate({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new Event("uzk:avatar-change"));
     setName(cleanName);
     setAvatar(draftAvatar);
+
+    // Decide whether to invite to enable push. iOS-not-PWA still gets
+    // the step (we'll show install instructions); fully unsupported
+    // browsers + already-on don't.
+    if (!isSupported()) {
+      setPushOnboardComplete(true);
+      return;
+    }
+    const session = ensureSessionId();
+    try {
+      const state = await getState(roomCode, session);
+      if (state.kind === "on" || state.kind === "blocked") {
+        setPushOnboardComplete(true);
+        return;
+      }
+    } catch {
+      /* surface the gate anyway; user can skip */
+    }
+    setStep(3);
   };
+
+  const enableNotifications = async () => {
+    const session = ensureSessionId();
+    const storedName = localStorage.getItem(NAME_KEY) ?? "";
+    const state = await getState(roomCode, session);
+    if (state.kind !== "off" || !state.vapidKey) {
+      setPushOnboardComplete(true);
+      return;
+    }
+    // Best-effort; if the user denies the OS prompt the call resolves
+    // false and we close the gate anyway. The Settings drawer has a
+    // recovery path with the same help copy.
+    await subscribe(
+      roomCode,
+      session,
+      storedName,
+      { ...ONBOARD_PREFS },
+      state.vapidKey,
+      lang,
+    );
+    setPushOnboardComplete(true);
+  };
+
+  const skipNotifications = () => setPushOnboardComplete(true);
 
   if (!hydrated) return null;
 
-  const open = !name || !avatar;
+  // Step 3 only appears once name + avatar are committed. After the
+  // user finishes the push prompt (enable OR skip) the gate closes.
+  const open = !name || !avatar || (step === 3 && !pushOnboardComplete);
 
   return (
     <>
@@ -95,11 +169,23 @@ export function NameGate({ children }: { children: React.ReactNode }) {
           /* not dismissible without submit */
         }}
         dismissible={false}
-        title={step === 1 ? t(lang, "welcome") : t(lang, "pick_avatar")}
-        sub={step === 1 ? t(lang, "name_prompt") : undefined}
+        title={
+          step === 1
+            ? t(lang, "welcome")
+            : step === 2
+              ? t(lang, "pick_avatar")
+              : t(lang, "notif_gate_title")
+        }
+        sub={
+          step === 1
+            ? t(lang, "name_prompt")
+            : step === 3
+              ? t(lang, "notif_gate_sub")
+              : undefined
+        }
         footer={
           // On step 2 the picked-artist card lives in the (fixed) footer
-          // so it stays glued above the buttons — same pattern as the
+          // so it stays glued above the buttons, same pattern as the
           // settings avatar sheet, not "sticky" inside the scroll area
           // where it floated. Step dots are absolutely centred so they
           // don't shift when the Back button appears on step 2.
@@ -120,7 +206,7 @@ export function NameGate({ children }: { children: React.ReactNode }) {
                 <span className="w-9 shrink-0" aria-hidden />
               )}
               <span className="pointer-events-none absolute left-1/2 -translate-x-1/2">
-                <StepDots current={step} total={2} />
+                <StepDots current={step} total={3} />
               </span>
               <div className="flex-1" />
               {step === 1 ? (
@@ -135,7 +221,7 @@ export function NameGate({ children }: { children: React.ReactNode }) {
                   {t(lang, "next")}
                   <ArrowRight className="h-4 w-4 ml-1.5" />
                 </Button>
-              ) : (
+              ) : step === 2 ? (
                 <Button
                   type="button"
                   onClick={finish}
@@ -146,6 +232,31 @@ export function NameGate({ children }: { children: React.ReactNode }) {
                 >
                   {t(lang, "join_party")}
                 </Button>
+              ) : (
+                // Step 3: notification step. The primary CTA changes
+                // between "Turn on" and "Maybe later" depending on
+                // whether push can be requested here at all. iOS not-
+                // PWA users see install hints inline + Skip.
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={skipNotifications}
+                    className="text-white/65"
+                  >
+                    {t(lang, "notif_gate_skip")}
+                  </Button>
+                  {platform !== "ios-safari" || isInstalledPwa() ? (
+                    <Button
+                      type="button"
+                      onClick={enableNotifications}
+                      className="font-display rounded-2xl
+                                 bg-white text-dark-blue hover:bg-dark-blue-50"
+                    >
+                      {t(lang, "push_cta_enable")}
+                    </Button>
+                  ) : null}
+                </div>
               )}
             </div>
           </div>
@@ -192,12 +303,33 @@ export function NameGate({ children }: { children: React.ReactNode }) {
               ))}
             </div>
           </form>
-        ) : (
+        ) : step === 2 ? (
           // Step 2 expands the sheet; the grid scrolls inside the
           // existing overflow container. The picked-artist card sits in
           // the footer (above), not inline here.
           <div className="flex flex-col gap-3 min-h-[60dvh]">
             <AvatarPicker value={draftAvatar} onChange={setDraftAvatar} />
+          </div>
+        ) : (
+          // Step 3: the friendly nudge to enable notifications. Big
+          // ringing Fluent bell, copy, and (on iOS-no-PWA) the
+          // install-as-app steps inline. Footer carries the CTA pair.
+          <div className="flex flex-col items-center gap-4 pt-2 pb-1">
+            <span className="ringing-bell">
+              <FluentEmoji glyph="🔔" size={96} ariaLabel="bell" />
+            </span>
+            {platform === "ios-safari" && !isInstalledPwa() && (
+              <div className="w-full rounded-2xl bg-flamingo/10 ring-1 ring-flamingo/25 px-4 py-3 flex flex-col gap-1.5">
+                <p className="font-display text-sm text-white">
+                  {t(lang, "notif_gate_install_hint")}
+                </p>
+                <ol className="list-decimal pl-5 text-[13px] text-white/75 leading-relaxed flex flex-col gap-0.5">
+                  <li>{t(lang, "push_help_ios_1")}</li>
+                  <li>{t(lang, "push_help_ios_2")}</li>
+                  <li>{t(lang, "push_help_ios_3")}</li>
+                </ol>
+              </div>
+            )}
           </div>
         )}
       </BottomSheet>
