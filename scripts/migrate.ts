@@ -1,8 +1,8 @@
 /**
  * One-shot migration runner. Reads every `drizzle/*.sql` file in order
- * and applies them against DATABASE_URL via postgres-js. Strips
- * leading comments and splits on `;` so each statement runs as its
- * own roundtrip. Idempotent if migration files use `IF NOT EXISTS`
+ * and applies them against SUPABASE_POSTGRES_URL via postgres-js.
+ * Strips leading comments and splits on `;` so each statement runs as
+ * its own roundtrip. Idempotent if migration files use `IF NOT EXISTS`
  * (ours do).
  *
  * Run: pnpm tsx scripts/migrate.ts [from]
@@ -12,9 +12,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import postgres from "postgres";
 
-const url = process.env.DATABASE_URL;
+const url = process.env.SUPABASE_POSTGRES_URL ?? process.env.DATABASE_URL;
 if (!url) {
-  console.error("DATABASE_URL is not set.");
+  console.error("SUPABASE_POSTGRES_URL is not set.");
   process.exit(1);
 }
 const sql = postgres(url, { prepare: false, max: 1 });

@@ -20,9 +20,9 @@
  *   node --env-file-if-exists=.env.local scripts/migrate-blobs-to-buckets.mjs
  *
  * Needs: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
- * DATABASE_URL (any of the unpooled / pooled Postgres URLs work).
- * Idempotent — each row's gif_url switches over once it's rewritten,
- * so re-running re-skips already-migrated rows.
+ * SUPABASE_POSTGRES_URL (any of the unpooled / pooled Postgres URLs
+ * work). Idempotent — each row's gif_url switches over once it's
+ * rewritten, so re-running re-skips already-migrated rows.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, extname, basename } from "node:path";
@@ -35,10 +35,10 @@ const AVATARS_JSON = join(ROOT, "lib", "avatar-photos.json");
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const DB = process.env.DATABASE_URL;
+const DB = process.env.SUPABASE_POSTGRES_URL ?? process.env.DATABASE_URL;
 if (!URL || !KEY || !DB) {
   console.error(
-    "Missing env: need NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL.",
+    "Missing env: need NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_POSTGRES_URL.",
   );
   process.exit(1);
 }

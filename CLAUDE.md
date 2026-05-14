@@ -39,7 +39,7 @@ pnpm dev         # local dev server
 pnpm typecheck   # tsc --noEmit
 pnpm build       # production build (Vercel runs this)
 pnpm db:generate # drizzle-kit generate (new migrations)
-pnpm db:migrate  # apply migrations against DATABASE_URL (or `node scripts/migrate.ts`)
+pnpm db:migrate  # apply migrations against SUPABASE_POSTGRES_URL (or `node scripts/migrate.ts`)
 ```
 
 ## Where things live

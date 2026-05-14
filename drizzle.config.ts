@@ -7,10 +7,11 @@ export default {
   dbCredentials: {
     // drizzle-kit doesn't introspect well through the pgbouncer pooler.
     // Prefer the direct/unpooled URL when available, fall back to the
-    // pooled DATABASE_URL.
+    // pooled URL. Names match what Vercel's Supabase integration
+    // auto-injects.
     url:
-      process.env.DATABASE_URL_UNPOOLED ??
-      process.env.POSTGRES_URL_NON_POOLING ??
+      process.env.SUPABASE_POSTGRES_URL_NON_POOLING ??
+      process.env.SUPABASE_POSTGRES_URL ??
       process.env.DATABASE_URL ??
       "",
   },
