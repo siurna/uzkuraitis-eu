@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import Image from "next/image";
 import { toast } from "sonner";
+import { Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 import { isValidRoomCode, normalizeRoomCode } from "@/lib/room-code";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
@@ -31,6 +31,16 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
   // Turnstile token from the widget — null until the user clears the
   // challenge. When the env var isn't set we don't gate on it.
   const [tsToken, setTsToken] = useState<string | null>(null);
+  // "couldn't reach Cloudflare" state — script blocked / hard fail.
+  // Surfaces a retry chip so the join button doesn't sit dead forever.
+  const [tsError, setTsError] = useState(false);
+  // Bump to force the widget to re-mount on Retry.
+  const [tsResetKey, setTsResetKey] = useState(0);
+  // "User finished typing the code before the token arrived" guard.
+  // When true, the moment the token lands we auto-submit so the form
+  // feels like it caught up. Without this the user types six chars,
+  // sees nothing happen for several seconds, and assumes it's broken.
+  const armedRef = useRef(false);
 
   // While we're checking a remembered room, we want to show a loading
   // splash instead of flashing the empty input box. Distinct from `pending`
@@ -95,34 +105,69 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
     if (isLeaving) localStorage.removeItem(LAST_ROOM_KEY);
   }, [isLeaving]);
 
-  const submit = (next: string) => {
-    const normalized = normalizeRoomCode(next);
-    if (!isValidRoomCode(normalized)) {
-      toast.error(t(lang, "bad_format"));
-      return;
-    }
-    if (TURNSTILE_SITE_KEY && !tsToken) {
-      // Widget hasn't fired its callback yet. The button is disabled in
-      // that state, so this only catches Enter-key submissions.
-      return;
-    }
-    startTransition(async () => {
-      // /api/rooms/verify-join checks Turnstile + room existence in
-      // one call and sets the per-room cookie middleware looks for.
-      const res = await fetch("/api/rooms/verify-join", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code: normalized, token: tsToken ?? undefined }),
-      });
-      if (!res.ok) {
-        const { error } = (await res.json().catch(() => ({}))) as { error?: string };
-        toast.error(error ?? t(lang, "bad_code"));
-        setTsToken(null); // force the user to clear a fresh challenge
+  const submit = useCallback(
+    (next: string) => {
+      const normalized = normalizeRoomCode(next);
+      if (!isValidRoomCode(normalized)) {
+        toast.error(t(lang, "bad_format"));
         return;
       }
-      localStorage.setItem(LAST_ROOM_KEY, normalized);
-      router.push(`/r/${normalized}`);
-    });
+      if (TURNSTILE_SITE_KEY && !tsToken) {
+        // Token hasn't landed yet. Arm so the next token arrival
+        // auto-submits with this code in hand — no second tap from
+        // the user. The button stays disabled visually so they know
+        // we're waiting, the status pill explains why.
+        armedRef.current = true;
+        return;
+      }
+      armedRef.current = false;
+      startTransition(async () => {
+        // /api/rooms/verify-join checks Turnstile + room existence in
+        // one call and sets the per-room cookie middleware looks for.
+        const res = await fetch("/api/rooms/verify-join", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ code: normalized, token: tsToken ?? undefined }),
+        });
+        if (!res.ok) {
+          const { error } = (await res.json().catch(() => ({}))) as { error?: string };
+          toast.error(error ?? t(lang, "bad_code"));
+          setTsToken(null); // force the user to clear a fresh challenge
+          setTsResetKey((k) => k + 1); // re-mount widget to fetch a new token
+          return;
+        }
+        localStorage.setItem(LAST_ROOM_KEY, normalized);
+        router.push(`/r/${normalized}`);
+      });
+    },
+    [lang, router, tsToken],
+  );
+
+  // Wire the token callback to drain `armedRef`: if the user already
+  // finished typing the 6-char code, the form auto-submits the moment
+  // the token lands. Otherwise this is a no-op and the user taps Enter
+  // themselves with the now-enabled button.
+  const onTurnstileToken = useCallback(
+    (token: string) => {
+      setTsToken(token);
+      setTsError(false);
+      if (armedRef.current && code.length === 6) {
+        submit(code);
+      }
+    },
+    [code, submit],
+  );
+
+  const onTurnstileError = useCallback(() => {
+    setTsToken(null);
+    setTsError(true);
+    armedRef.current = false;
+  }, []);
+
+  const retryTurnstile = () => {
+    setTsError(false);
+    setTsToken(null);
+    setTsResetKey((k) => k + 1);
   };
 
   return (
@@ -138,16 +183,18 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
             className="flex flex-col items-center gap-4 text-white/50"
           >
             {/* The 70-heart pulses while we check for a remembered
-                room — same lub-dub as the rest of the brand, sized
-                small. When loading completes, the gate fades in and
-                Logo2026's full mark takes over. */}
+                room. Plain `<img>` instead of `next/image`: iOS
+                Safari computes `drop-shadow` against the wrapper
+                span's bounding box until the WebP fully decodes,
+                which renders a transparent square halo around the
+                heart for the first frame. */}
             <div className="heartbeat-loop">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/images/70-heart.webp"
                 alt=""
                 width={64}
                 height={64}
-                priority
                 className="h-16 w-16 object-contain
                            drop-shadow-[0_0_24px_rgba(255,46,222,0.5)]"
               />
@@ -182,26 +229,90 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
                 disabled={pending}
               />
               {TURNSTILE_SITE_KEY && (
-                <TurnstileWidget
-                  siteKey={TURNSTILE_SITE_KEY}
-                  onToken={setTsToken}
-                  onExpire={() => setTsToken(null)}
-                />
+                <>
+                  <TurnstileWidget
+                    siteKey={TURNSTILE_SITE_KEY}
+                    onToken={onTurnstileToken}
+                    onExpire={() => setTsToken(null)}
+                    onError={onTurnstileError}
+                    resetKey={tsResetKey}
+                  />
+                  {/* Status chip — explains the disabled state so it
+                      doesn't read as "the form is broken". Three
+                      cases: load failure (retry chip), verifying
+                      (spinner), verified (green tick that fades). */}
+                  <AnimatePresence mode="wait">
+                    {tsError ? (
+                      <motion.button
+                        key="ts-error"
+                        type="button"
+                        onClick={retryTurnstile}
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="self-stretch inline-flex items-center gap-2 rounded-xl
+                                   bg-error/12 ring-1 ring-error/35 text-error/95
+                                   px-3 h-9 text-xs font-display active:scale-[0.98] transition"
+                      >
+                        <ShieldAlert className="h-3.5 w-3.5" />
+                        {t(lang, "ts_error")}
+                      </motion.button>
+                    ) : !tsToken ? (
+                      <motion.div
+                        key="ts-checking"
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="self-stretch inline-flex items-center gap-2 rounded-xl
+                                   bg-white/[0.04] ring-1 ring-white/10 text-white/55
+                                   px-3 h-9 text-xs font-display"
+                      >
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-flamingo" />
+                        {t(lang, "ts_checking")}
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="ts-ok"
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="self-stretch inline-flex items-center gap-2 rounded-xl
+                                   bg-turquoise/10 ring-1 ring-turquoise/30 text-turquoise/95
+                                   px-3 h-9 text-xs font-display"
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        {t(lang, "ts_ok")}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </>
               )}
               <button
                 type="submit"
                 disabled={
                   pending ||
                   code.length < 6 ||
-                  (!!TURNSTILE_SITE_KEY && !tsToken)
+                  (!!TURNSTILE_SITE_KEY && !tsToken && !tsError)
                 }
                 className="rainbow-border rounded-2xl w-full block disabled:opacity-40 transition"
               >
                 <span
-                  className="block w-full h-12 rounded-[14px] grid place-items-center
+                  className="block w-full h-12 rounded-[14px] grid place-items-center gap-2
                              bg-white text-dark-blue font-display text-[19px] pt-[2px]"
                 >
-                  {pending ? t(lang, "checking") : t(lang, "enter_room")}
+                  {pending ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {t(lang, "checking")}
+                    </span>
+                  ) : armedRef.current && code.length === 6 ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {t(lang, "ts_waiting_to_submit")}
+                    </span>
+                  ) : (
+                    t(lang, "enter_room")
+                  )}
                 </span>
               </button>
             </form>

@@ -39,6 +39,9 @@ const PostSchema = z.object({
   name: z.string().trim().max(40).optional(),
   subscription: SubscriptionSchema,
   prefs: PrefsSchema.optional().default({}),
+  /** Voter's UI language at subscribe time. Persisted so every push
+   *  body renders in their language, not the sender's. */
+  lang: z.enum(["en", "lt"]).optional(),
 });
 
 const PatchSchema = z.object({
@@ -91,7 +94,7 @@ export async function POST(req: Request, { params }: RouteCtx) {
       { status: 400 },
     );
   }
-  const { session, name, subscription, prefs } = parsed.data;
+  const { session, name, subscription, prefs, lang } = parsed.data;
 
   const guard = await guardSession(session);
   if (guard) return guard;
@@ -106,6 +109,7 @@ export async function POST(req: Request, { params }: RouteCtx) {
       p256dh: subscription.keys.p256dh,
       auth: subscription.keys.auth,
       prefs,
+      lang: lang ?? null,
     })
     .onConflictDoUpdate({
       target: [pushSubscriptions.roomId, pushSubscriptions.endpoint],
@@ -115,6 +119,7 @@ export async function POST(req: Request, { params }: RouteCtx) {
         p256dh: subscription.keys.p256dh,
         auth: subscription.keys.auth,
         prefs,
+        lang: lang ?? null,
         updatedAt: sql`now()`,
       },
     });

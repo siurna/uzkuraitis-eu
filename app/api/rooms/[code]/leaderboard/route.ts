@@ -14,7 +14,12 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
 
-  const result = await computeRoomLeaderboard(room);
+  const result = await computeRoomLeaderboard({
+    id: room.id,
+    homeCountryCode: room.homeCountryCode,
+    tallyEnabled: room.tallyEnabled,
+    highlightThreshold: room.highlightThreshold,
+  });
   const body = !result.hasResults
     ? {
         hasResults: false as const,

@@ -76,7 +76,7 @@ export function AdminCreateRoom() {
         open={open}
         onClose={() => !pending && setOpen(false)}
         title="New room"
-        sub="Spin up a fresh room — you'll get a host link to hand off."
+        sub="Spin up a fresh room. You'll get a host link to hand off."
         footer={
           <div className="flex gap-2 w-full">
             <Button
@@ -106,7 +106,7 @@ export function AdminCreateRoom() {
               maxLength={60}
               disabled={pending}
             />
-            <p className="text-[11px] text-white/35">Leave blank for the default name — you can rename it later.</p>
+            <p className="text-[11px] text-white/35">Leave blank for the default name. You can rename it later.</p>
           </div>
 
           <div className="flex flex-col gap-2">

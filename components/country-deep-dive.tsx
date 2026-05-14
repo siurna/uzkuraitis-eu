@@ -168,7 +168,7 @@ function Row({
 }) {
   return (
     <div className="flex items-start gap-3 rounded-2xl px-4 py-3
-                    bg-white/[0.04] ring-1 ring-white/8">
+                    glass-surface">
       <span className="shrink-0 mt-0.5">{icon}</span>
       <div className="min-w-0 flex-1">
         <p className="text-[11px] uppercase tracking-[0.2em] text-white/45 font-display mb-0.5">

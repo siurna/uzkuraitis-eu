@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode, type CSSProperties } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, ChevronRight } from "lucide-react";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
@@ -10,6 +10,7 @@ import { participantPhoto } from "@/lib/participants";
 import { optimizedSrc } from "@/lib/img";
 import { buildBingoCard, FREE_SQUARE, tropeEmoji, tropeText } from "@/lib/bingo-tropes";
 import { HeartFlag } from "@/components/flag";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { MyResults } from "@/components/my-results";
 import { t, type Language } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
@@ -384,7 +385,9 @@ export function HomeBanners() {
                       key={i}
                       className="relative h-9 w-9 grid place-items-center text-lg leading-none rounded-lg bg-white/12 ring-1 ring-white/15"
                     >
-                      <span className={x ? "opacity-30 grayscale" : ""}>{tropeEmoji(idx)}</span>
+                      <span className={x ? "opacity-30 grayscale" : ""}>
+                        <FluentEmoji glyph={tropeEmoji(idx)} size={22} />
+                      </span>
                       {x && <span className="absolute inset-0 grid place-items-center text-white text-xl font-bold leading-none">✕</span>}
                     </span>
                   );
@@ -436,9 +439,9 @@ export function HomeBanners() {
                     {[...BET_CHIPS, ...BET_CHIPS].map((c, i) => (
                       <span
                         key={`top-${i}`}
-                        className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-lg shadow-md"
+                        className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"
                       >
-                        {c}
+                        <FluentEmoji glyph={c} size={22} />
                       </span>
                     ))}
                   </span>
@@ -449,9 +452,9 @@ export function HomeBanners() {
                     {[...BET_CHIPS, ...BET_CHIPS].map((c, i) => (
                       <span
                         key={`bot-${i}`}
-                        className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-lg shadow-md"
+                        className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"
                       >
-                        {c}
+                        <FluentEmoji glyph={c} size={22} />
                       </span>
                     ))}
                   </span>
@@ -460,6 +463,7 @@ export function HomeBanners() {
             />
           </motion.div>
         )}
+
       </AnimatePresence>
     </div>
   );
@@ -621,9 +625,15 @@ function VoteHeroCard({
   onOpen: () => void;
 }) {
   return (
-    <button type="button" onClick={onOpen} className="rainbow-border rounded-3xl w-full block">
+    <button
+      type="button"
+      onClick={onOpen}
+      // Animated rainbow stroke — same brand colours, looping L→R so
+      // the border reads as "live" without being garish.
+      className="rainbow-border-anim rounded-3xl w-full block text-left"
+    >
       <div
-        className="relative overflow-hidden rounded-[22px] px-5 pt-5 pb-6 sm:px-6 min-h-[8.75rem] flex flex-col justify-center"
+        className="relative overflow-hidden rounded-[22px] px-5 pt-5 pb-5 sm:px-6 min-h-[8.75rem] flex flex-col items-start gap-3"
         style={{ background: "linear-gradient(125deg, #f10d59 0%, #ff3ede 46%, #6020c6 100%)" }}
       >
         <div className="pointer-events-none absolute inset-y-0 -right-5 flex items-center">
@@ -633,7 +643,7 @@ function VoteHeroCard({
           className="pointer-events-none absolute inset-0"
           style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.5) 0%, rgba(8,9,28,0.22) 40%, transparent 66%)" }}
         />
-        <div className="relative flex flex-col gap-1 pr-[34%]">
+        <div className="relative flex flex-col items-start gap-1 pr-[34%] text-left">
           <p className="text-[10px] uppercase tracking-[0.32em] text-white/85 font-display leading-tight flex items-center gap-1.5">
             <LiveDot />
             {t(lang, "live")}
@@ -645,6 +655,17 @@ function VoteHeroCard({
             {t(lang, voted ? "home_vote_done_sub" : "home_vote_open_sub")}
           </p>
         </div>
+        {/* Explicit CTA pill — reads as an action, not just "the card
+            is a button". White-on-flamingo so it pops off the
+            gradient; pointer-events:none means the outer button still
+            owns the tap target. */}
+        <span
+          className="relative pointer-events-none inline-flex items-center gap-1.5
+                     h-9 px-4 rounded-xl bg-white text-dark-blue font-display text-sm"
+        >
+          {t(lang, voted ? "sys_cta_vote_btn_adjust" : "sys_cta_vote_btn_cast")}
+          <ChevronRight className="h-4 w-4" />
+        </span>
       </div>
     </button>
   );

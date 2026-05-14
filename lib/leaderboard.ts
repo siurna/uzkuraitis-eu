@@ -13,6 +13,7 @@ import {
 } from "@/lib/db/schema";
 import {
   scoreVoter,
+  precomputeScoringContext,
   HIGHLIGHT_THRESHOLD,
   HIGHLIGHT_POINTS_PER,
   HIGHLIGHT_POINTS_MAX,
@@ -70,7 +71,10 @@ export async function computeRoomLeaderboard(room: {
   id: string;
   homeCountryCode: string;
   tallyEnabled: boolean;
+  /** Per-room override; falls back to global HIGHLIGHT_THRESHOLD. */
+  highlightThreshold?: number | null;
 }): Promise<RoomLeaderboard> {
+  const threshold = room.highlightThreshold ?? HIGHLIGHT_THRESHOLD;
   const [officialRows, factRows, roomResultRows, roomFactRows] = await Promise.all([
     db.select().from(officialResults),
     db.select().from(officialFacts),
@@ -105,30 +109,54 @@ export async function computeRoomLeaderboard(room: {
     return { ...base, hasResults: false, leaderboard: [] };
   }
 
-  const voterRows = await db
-    .select({
-      id: voters.id,
-      sessionId: voters.sessionId,
-      name: voters.name,
-      homeCountryPrediction: voters.homeCountryPrediction,
-      betWoodenSpoon: voters.betWoodenSpoon,
-      betLt12To: voters.betLt12To,
-      betHighestBig5: voters.betHighestBig5,
-      betJuryWinner: voters.betJuryWinner,
-      betTelevoteWinner: voters.betTelevoteWinner,
-      betNulTelevote: voters.betNulTelevote,
-      betHostTop3: voters.betHostTop3,
-      betWinnerSolo: voters.betWinnerSolo,
-      betLtTotalPoints: voters.betLtTotalPoints,
-    })
-    .from(voters)
-    .where(eq(voters.roomId, room.id));
-
-  const ballotRows = await db
-    .select({ voterId: votes.voterId, points: votes.points, countryCode: votes.countryCode })
-    .from(votes)
-    .innerJoin(voters, eq(voters.id, votes.voterId))
-    .where(eq(voters.roomId, room.id));
+  // PERF: every per-room rollup fans out together. The earlier shape
+  // was voterRows → ballotRows → highlightRows → triviaRows
+  // sequentially, a 4-roundtrip waterfall; none of them depend on one
+  // another (same room id, no shared state) so the latency is now
+  // capped by the slowest single query instead of the sum.
+  const [voterRows, ballotRows, highlightRows, triviaRows] = await Promise.all([
+    db
+      .select({
+        id: voters.id,
+        sessionId: voters.sessionId,
+        name: voters.name,
+        homeCountryPrediction: voters.homeCountryPrediction,
+        betWoodenSpoon: voters.betWoodenSpoon,
+        betLt12To: voters.betLt12To,
+        betHighestBig5: voters.betHighestBig5,
+        betJuryWinner: voters.betJuryWinner,
+        betTelevoteWinner: voters.betTelevoteWinner,
+        betNulTelevote: voters.betNulTelevote,
+        betHostTop3: voters.betHostTop3,
+        betWinnerSolo: voters.betWinnerSolo,
+        betLtTotalPoints: voters.betLtTotalPoints,
+      })
+      .from(voters)
+      .where(eq(voters.roomId, room.id)),
+    db
+      .select({ voterId: votes.voterId, points: votes.points, countryCode: votes.countryCode })
+      .from(votes)
+      .innerJoin(voters, eq(voters.id, votes.voterId))
+      .where(eq(voters.roomId, room.id)),
+    db
+      .select({
+        sessionId: chatMessages.sessionId,
+        reactionCount: sql<number>`count(${chatReactions.messageId})`,
+      })
+      .from(chatMessages)
+      .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
+      .where(eq(chatMessages.roomId, room.id))
+      .groupBy(chatMessages.id, chatMessages.sessionId)
+      .having(sql`count(${chatReactions.messageId}) >= ${threshold}`),
+    db
+      .select({
+        sessionId: triviaAnswers.sessionId,
+        hits: sql<number>`COUNT(*) FILTER (WHERE ${triviaAnswers.correct})::int`,
+      })
+      .from(triviaAnswers)
+      .where(eq(triviaAnswers.roomId, room.id))
+      .groupBy(triviaAnswers.sessionId),
+  ]);
 
   const ballotByVoter = new Map<string, Ballot>();
   for (const r of ballotRows) {
@@ -136,18 +164,6 @@ export async function computeRoomLeaderboard(room: {
     ballotByVoter.get(r.voterId)![String(r.points)] = r.countryCode;
   }
 
-  // One row per highlighted message (≥ threshold reactions) → tally how
-  // many each session authored → bonus points (capped).
-  const highlightRows = await db
-    .select({
-      sessionId: chatMessages.sessionId,
-      reactionCount: sql<number>`count(${chatReactions.messageId})`,
-    })
-    .from(chatMessages)
-    .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
-    .where(eq(chatMessages.roomId, room.id))
-    .groupBy(chatMessages.id, chatMessages.sessionId)
-    .having(sql`count(${chatReactions.messageId}) >= ${HIGHLIGHT_THRESHOLD}`);
   const highlightCountBySession = new Map<string, number>();
   for (const r of highlightRows) {
     highlightCountBySession.set(r.sessionId, (highlightCountBySession.get(r.sessionId) ?? 0) + 1);
@@ -155,15 +171,6 @@ export async function computeRoomLeaderboard(room: {
   const highlightPoints = (sessionId: string) =>
     Math.min((highlightCountBySession.get(sessionId) ?? 0) * HIGHLIGHT_POINTS_PER, HIGHLIGHT_POINTS_MAX);
 
-  // Trivia: count of correct answers per session, × TRIVIA_POINTS.
-  const triviaRows = await db
-    .select({
-      sessionId: triviaAnswers.sessionId,
-      hits: sql<number>`COUNT(*) FILTER (WHERE ${triviaAnswers.correct})::int`,
-    })
-    .from(triviaAnswers)
-    .where(eq(triviaAnswers.roomId, room.id))
-    .groupBy(triviaAnswers.sessionId);
   const triviaPointsBySession = new Map<string, number>();
   for (const r of triviaRows) {
     triviaPointsBySession.set(r.sessionId, (r.hits ?? 0) * TRIVIA_POINTS);
@@ -172,6 +179,19 @@ export async function computeRoomLeaderboard(room: {
 
   const totalFinalists = countries.length;
   const officialHome = placements[room.homeCountryCode] ?? null;
+
+  // PERF: hoist the scoring context out of the per-voter loop. The
+  // maps inside `ScoringContext` (officialTop10, placementToCountry,
+  // bestBig5, nulTrueSet, …) depend only on the room-level facts +
+  // placements, not on any voter. Building them once instead of
+  // once-per-voter is the cheapest leaderboard-compute win we have
+  // for a 50+ person room.
+  const scoringCtx = precomputeScoringContext(
+    placements,
+    facts,
+    totalFinalists,
+    room.homeCountryCode,
+  );
 
   const leaderboard = voterRows
     .map((v) => {
@@ -194,6 +214,7 @@ export async function computeRoomLeaderboard(room: {
         officialPlacements: placements,
         facts,
         totalFinalists,
+        ctx: scoringCtx,
       });
       const highlights = highlightPoints(v.sessionId);
       const trivia = triviaPoints(v.sessionId);

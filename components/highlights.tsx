@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Flame } from "lucide-react";
 import { useEventListener } from "@/lib/realtime";
 import { useRoomLive } from "@/components/room-shell";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { getAvatar } from "@/lib/avatars";
 import { getCountry, countryName } from "@/lib/countries";
 import { optimizedSrc } from "@/lib/img";
@@ -51,14 +52,20 @@ export function Highlights() {
     load();
   }, [load]);
 
+  // Highlights are a derived view of "messages with ≥ threshold
+  // reactions". A fresh chat:new never qualifies on its own; only
+  // chat:react and chat:delete can change the set. Throttle to one
+  // refetch per 5s so a reaction storm doesn't slam the GET with N
+  // viewers × M reactions/min. The endpoint is already SWR-cached,
+  // but the round-trip JS + parse still costs every client.
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEventListener(({ event }) => {
-    if (
-      event.type === "chat:react" ||
-      event.type === "chat:new" ||
-      event.type === "chat:delete"
-    ) {
+    if (event.type !== "chat:react" && event.type !== "chat:delete") return;
+    if (highlightTimer.current) return;
+    highlightTimer.current = setTimeout(() => {
+      highlightTimer.current = null;
       load();
-    }
+    }, 5_000);
   });
 
   if (items.length === 0) return null;
@@ -138,7 +145,8 @@ export function Highlights() {
               )}
             </div>
             <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/20 ring-1 ring-white/30 px-2.5 h-7 text-sm text-white tabular-nums font-display">
-              ❤️ {top.reactionCount}
+              <FluentEmoji glyph="❤️" size={14} />
+              {top.reactionCount}
             </span>
           </div>
           {/* The quote itself */}
@@ -181,7 +189,7 @@ export function Highlights() {
             return (
               <li
                 key={h.id}
-                className="flex flex-col gap-2 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 p-3"
+                className="flex flex-col gap-2 rounded-2xl glass-surface p-3"
               >
                 {/* Header row: avatar + name + country chip + heart count.
                     Reads as a chat-card header so the drawer feels like
@@ -213,7 +221,8 @@ export function Highlights() {
                     )}
                   </div>
                   <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange/15 ring-1 ring-orange/35 px-2 h-6 text-xs text-orange tabular-nums font-display">
-                    ❤️ {h.reactionCount}
+                    <FluentEmoji glyph="❤️" size={12} />
+                    {h.reactionCount}
                   </span>
                 </div>
 
@@ -228,7 +237,10 @@ export function Highlights() {
                     className="rounded-xl ring-1 ring-white/10 max-h-44 w-auto self-start"
                   />
                 ) : h.kind === "bingo_strike" ? (
-                  <p className="text-sm text-white/85">🎯 Bingo!</p>
+                  <p className="text-sm text-white/85 inline-flex items-center gap-1.5">
+                    <FluentEmoji glyph="🎯" size={16} />
+                    Bingo!
+                  </p>
                 ) : text ? (
                   <p className="text-[15px] text-white leading-snug text-balance pl-12">
                     {text}

@@ -57,6 +57,13 @@ export const rooms = pgTable(
     // trivia feel like a race (first 5 players, etc.) rather than a
     // group exercise. Server enforces in /api/rooms/[code]/trivia.
     triviaMaxAnswerers: integer("trivia_max_answerers"),
+    // How many reactions a chat message needs before it counts as a
+    // "highlight" (worth bonus points + flagged in the leaderboard's
+    // highlights tally). Higher = harder to game in big rooms, lower
+    // = quicker wins in small parties. NULL falls back to the global
+    // default (5). The leaderboard + profile aggregations honour
+    // whichever is set per-room.
+    highlightThreshold: integer("highlight_threshold"),
     // Beginner mode is a PER-USER preference (localStorage toggle,
     // same shape as translate mode), not a per-room setting. No
     // column lives on `rooms` for it. The shared `chat_helper_cache`
@@ -278,7 +285,15 @@ export type ChatMessageKind =
   // has a trivia entry in lib/trivia.ts). Renders inline in the
   // thread; player taps an option to lock their answer. Replaces the
   // floating popup the old TriviaCard component used.
-  | "trivia";
+  | "trivia"
+  // "poll": a one-tap "vibe check" the host fires from the admin
+  // broadcast panel. Meta carries the question + 4 emoji choices;
+  // votes ride on top of the existing chat_reactions table (one
+  // reaction = one vote, the client enforces single-choice by
+  // toggling any prior choice off before adding the new one), so
+  // the chat:react broadcast already keeps every viewer's tally in
+  // sync without a new event type.
+  | "poll";
 
 export const chatMessages = pgTable(
   "chat_messages",
@@ -329,6 +344,13 @@ export const chatReactions = pgTable(
   (t) => [
     primaryKey({ columns: [t.messageId, t.sessionId, t.emoji] }),
     index("chat_react_msg_idx").on(t.messageId),
+    // Per-session lookup: the profile route's "reactions given"
+    // count + the chat-edit moderation join filter on session_id
+    // alone. The PK is leftmost-prefix (message_id, session_id, …)
+    // so the planner can't use it for session-only filters; this
+    // covering index keeps those endpoints off a seq-scan as the
+    // table grows.
+    index("chat_react_session_idx").on(t.sessionId),
   ],
 );
 
@@ -397,6 +419,10 @@ export const pushSubscriptions = pgTable(
     p256dh: text("p256dh").notNull(),
     auth: text("auth").notNull(),
     prefs: jsonb("prefs").$type<PushPrefs>().notNull().default({}),
+    /** Subscriber's preferred language at subscribe time. Persisted
+     *  so push bodies can be rendered in their language (not the
+     *  sender's). NULL falls back to LT (the app default). */
+    lang: varchar("lang", { length: 2 }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -430,9 +456,14 @@ export const triviaAnswers = pgTable(
       .defaultNow(),
   },
   // Primary key (room_id, session_id, country_code) doubles as the
-  // room-only lookup index via leftmost-prefix matching, so no
-  // separate single-column index here.
-  (t) => [primaryKey({ columns: [t.roomId, t.sessionId, t.countryCode] })],
+  // room-only lookup index via leftmost-prefix matching. The trivia
+  // answer cap also does `COUNT(*) WHERE room_id=? AND country_code=?`
+  // which the PK can't serve (session_id is in the middle of the
+  // PK), so a covering (room_id, country_code) index sits alongside.
+  (t) => [
+    primaryKey({ columns: [t.roomId, t.sessionId, t.countryCode] }),
+    index("trivia_room_country_idx").on(t.roomId, t.countryCode),
+  ],
 );
 
 // Editable trivia deck (one row per finalist country). lib/trivia.ts
@@ -447,6 +478,20 @@ export const triviaQuestions = pgTable("trivia_questions", {
   enChoices: text("en_choices").array().notNull(),
   ltQuestion: text("lt_question").notNull(),
   ltChoices: text("lt_choices").array().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// Tiny global key/value store for editable site content. Today it
+// carries `welcome_md_en` / `welcome_md_lt` (the housekeeping markdown
+// rendered as the closing widget on the room home), but the shape is
+// intentionally generic — future surfaces can add a new key without a
+// migration. Kept separate from `official_facts` so any-fact-exists
+// heuristics in scoring don't pick up unrelated content.
+export const siteContent = pgTable("site_content", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

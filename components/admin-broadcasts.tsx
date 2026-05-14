@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Megaphone, Bell, Vote, Dices, Medal, Sparkles, Loader2 } from "lucide-react";
+import { Megaphone, Bell, Vote, Dices, Medal, Sparkles, Loader2, Camera, BarChart3, MessageCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { timeAgo } from "@/lib/utils";
 
-type Kind = "notifications" | "vote" | "bet" | "top3" | "final";
+type Kind = "notifications" | "vote" | "bet" | "top3" | "final" | "selfie" | "drunk_poll" | "welcome";
 
 const ROOM_STORAGE_KEY = "uzk_admin_broadcast_room";
 // Local "when did I last fire X in room Y" log. Persisting in localStorage
@@ -16,9 +16,12 @@ const ROOM_STORAGE_KEY = "uzk_admin_broadcast_room";
 const FIRED_KEY = (room: string, kind: Kind) => `uzk_broadcast_${room}_${kind}`;
 
 const SHOTS: { kind: Kind; icon: LucideIcon; title: string; desc: string }[] = [
+  { kind: "welcome", icon: MessageCircle, title: "Hello folks", desc: "Drops the housekeeping notes you wrote into chat." },
   { kind: "notifications", icon: Bell, title: "Turn on notifications", desc: "Nudge the room to enable push." },
   { kind: "vote", icon: Vote, title: "Lines are open", desc: "Tell everyone to lock their TOP 10." },
   { kind: "bet", icon: Dices, title: "Don't forget bonus bets", desc: "Reminder that bets are free points." },
+  { kind: "selfie", icon: Camera, title: "Selfie time", desc: "Prompts everyone to drop a selfie in chat." },
+  { kind: "drunk_poll", icon: BarChart3, title: "How drunk are you?", desc: "Vibe-check poll with a live tally bar." },
   { kind: "top3", icon: Medal, title: "Room top 3 right now", desc: "Posts the live fan aggregate leaders." },
   { kind: "final", icon: Sparkles, title: "Final results", desc: "Drops the scored leaderboard podium." },
 ];

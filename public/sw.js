@@ -11,15 +11,26 @@
  * step, and we want the SW to load instantly without a bundler.
  */
 
-const CACHE = "esc-2026-v3";
+const CACHE = "esc-2026-v4";
+// Icons live on a Supabase bucket now (see app/manifest.ts), so the
+// precache list only carries first-party static assets. The bucket
+// CDN handles the icon URLs on its own and we don't want a precache
+// miss on a third-party host to blow up the install step.
 const PRECACHE = [
   "/",
-  "/icon.png",
   "/images/70-heart.webp",
   "/images/70-heart-sm.webp",
   "/images/70-logo@2x.webp",
   "/images/participant-backdrop@2x.webp",
 ];
+// Same bucket app/layout.tsx + app/manifest.ts use. Icons attached to
+// push notifications still need a URL the OS can fetch; pointing
+// straight at the bucket keeps things consistent and avoids us
+// shipping the binary in /public.
+const ICON_BUCKET =
+  "https://mbgkujipbdfsdvjobtrf.supabase.co/storage/v1/object/public/icons";
+const NOTIFICATION_ICON = `${ICON_BUCKET}/icon-192.png`;
+const NOTIFICATION_BADGE = `${ICON_BUCKET}/icon-192.png`;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -103,8 +114,8 @@ self.addEventListener("push", (event) => {
       }
       return self.registration.showNotification(title, {
         body,
-        icon: "/icon.png",
-        badge: "/icon.png",
+        icon: NOTIFICATION_ICON,
+        badge: NOTIFICATION_BADGE,
         image: payload.image || undefined,
         tag,
         renotify: !!tag,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { motion } from "motion/react";
 import { Mic, Music, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,17 +43,36 @@ export function Standings() {
     }
   }, [code]);
 
-  // Initial load + slow fallback poll; primary update path is the
-  // Liveblocks "scores:updated" broadcast.
+  // Initial load only. The primary update path is the
+  // `scores:updated` broadcast; an extra 60s poll on top of N
+  // viewers turns into thousands of pointless GETs during the
+  // show. If the websocket drops, the next vote / broadcast will
+  // re-trigger anyway, and a stale snapshot for a minute is
+  // acceptable.
   useEffect(() => {
     fetchScores();
-    const id = setInterval(fetchScores, 60_000);
-    return () => clearInterval(id);
   }, [fetchScores]);
 
+  // Coalesce vote-storm broadcasts. Each ballot save fans out
+  // `scores:updated` to every viewer; 50 viewers × 50 ballots tweaked
+  // during the voting window = 2500 GETs to /scores. A 2s leading-
+  // throttle collapses any vote storm to a single refetch per 2s
+  // per client — the snapshot stays roughly current without us
+  // hammering the endpoint.
+  const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEventListener(({ event }) => {
-    if (event.type === "scores:updated") fetchScores();
+    if (event.type !== "scores:updated") return;
+    if (refetchTimer.current) return;
+    refetchTimer.current = setTimeout(() => {
+      refetchTimer.current = null;
+      fetchScores();
+    }, 2_000);
   });
+  useEffect(() => {
+    return () => {
+      if (refetchTimer.current) clearTimeout(refetchTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     setHasVoted(localStorage.getItem(`uzk_voted_${code}`) === "1");
@@ -109,7 +128,13 @@ export function Standings() {
             aria-hidden
           />
           <span
-            className="font-display text-lg uppercase tracking-[0.22em] leading-none bg-clip-text text-transparent drop-shadow-[0_1px_0_rgba(0,0,0,0.35)]"
+            // `leading-none` was clipping the dot on Ė (Lithuanian's
+            // capital-with-overdot eats vertical space above the cap
+            // line). `leading-[1.15]` gives the diacritic room without
+            // changing the visual centring of the row. Also keep
+            // `pt-[2px]` so the text sits true to the sparkle icons
+            // either side.
+            className="font-display text-lg uppercase tracking-[0.22em] leading-[1.15] pt-[2px] bg-clip-text text-transparent drop-shadow-[0_1px_0_rgba(0,0,0,0.35)]"
             style={{
               backgroundImage:
                 "linear-gradient(180deg, #fff3c2 0%, #f4c869 45%, #c98a2f 100%)",

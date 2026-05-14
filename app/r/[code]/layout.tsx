@@ -24,13 +24,16 @@ export default async function RoomLayout({
   const { code } = await params;
   const room = await findRoomByCode(code);
   if (!room) notFound();
-  await touchRoom(room.id);
+  // Fire-and-forget — the client doesn't read the timestamp so it
+  // doesn't belong on the critical path.
+  touchRoom(room.id).catch(() => {});
 
   return (
     <RoomShell
       code={room.code}
       name={room.name}
       votingEnabled={room.votingEnabled}
+      tallyEnabled={room.tallyEnabled}
       homeCountryCode={room.homeCountryCode}
       nowPlayingCode={room.nowPlayingCode}
       showStatus={room.showStatus}

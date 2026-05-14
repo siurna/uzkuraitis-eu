@@ -159,13 +159,65 @@ export async function postNowPlayingMessage(
   }
 }
 
+// Quick poll card the host fires from admin broadcasts. Carries the
+// question + 4 emoji choices in meta so each viewer can render the
+// card in their own language without a round-trip. Votes ride on the
+// existing chat_reactions table — one reaction = one vote, with the
+// client enforcing single-choice — so the chat:react broadcast on the
+// existing reaction endpoint keeps every viewer's tally bar live for
+// free. NOT quiet on purpose: a fresh poll is worth a chat-tab badge.
+export type PollChoice = {
+  emoji: string;
+  en: string;
+  lt: string;
+};
+
+export async function postPollMessage(
+  roomCode: string,
+  roomId: string,
+  question: { en: string; lt: string },
+  choices: PollChoice[],
+): Promise<void> {
+  try {
+    const [row] = await db
+      .insert(chatMessages)
+      .values({
+        roomId,
+        sessionId: "system",
+        name: "system",
+        kind: "poll",
+        body: null,
+        meta: {
+          poll: true,
+          question,
+          // Snapshot the choices into meta so admin edits to the
+          // canned poll list don't rewrite cards already in the thread.
+          choices,
+        },
+      })
+      .returning();
+    await broadcastToRoom(roomCode, {
+      type: "chat:new",
+      id: row.id,
+      message: toChatPayload(row),
+    });
+  } catch {
+    /* not worth a 500 */
+  }
+}
+
 // "🏆 Results are in" podium card — posted when the host flips the
 // tally toggle on. Computes the leaderboard and carries the top 3 in
 // `meta` so the client renders a podium. NOT quiet — this one's worth
 // a chat badge. Pass the *post-flip* tallyEnabled (true).
 export async function postResultsMessage(
   roomCode: string,
-  room: { id: string; homeCountryCode: string; tallyEnabled: boolean },
+  room: {
+    id: string;
+    homeCountryCode: string;
+    tallyEnabled: boolean;
+    highlightThreshold?: number | null;
+  },
 ): Promise<void> {
   try {
     const { hasResults, leaderboard } = await computeRoomLeaderboard(room);

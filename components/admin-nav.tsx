@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { Route } from "next";
-import { Trophy, Settings, Vote, LogOut, Radio, Brain, Mic } from "lucide-react";
+import { Trophy, Settings, Vote, LogOut, Radio, Mic, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 const navItems: { path: Route; label: string; icon: typeof Vote }[] = [
   { path: "/admin/live" as Route,        label: "Live",        icon: Radio },
   { path: "/admin/rooms" as Route,       label: "Rooms",       icon: Vote },
-  { path: "/admin/trivia" as Route,      label: "Trivia",      icon: Brain },
-  { path: "/admin/commentator" as Route, label: "Commentator", icon: Mic },
+  { path: "/admin/trivia" as Route,      label: "Trivia",      icon: Lightbulb },
+  { path: "/admin/commentator" as Route, label: "Banter", icon: Mic },
   { path: "/admin/results" as Route,     label: "Results",     icon: Trophy },
   { path: "/admin/settings" as Route,    label: "Settings",    icon: Settings },
 ];

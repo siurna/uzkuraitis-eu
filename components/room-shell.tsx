@@ -20,6 +20,7 @@ import { CountryDeepDiveProvider } from "@/components/country-deep-dive";
 import { ProfileProvider } from "@/components/profile-sheet";
 import { VotingAnnouncement } from "@/components/voting-announcement";
 import { NowPlayingTakeover } from "@/components/now-playing-takeover";
+import { LeaderboardProvider } from "@/components/leaderboard-provider";
 
 const LAST_ROOM_KEY = "uzk_last_room";
 
@@ -76,6 +77,7 @@ export function RoomShell({
   code,
   name,
   votingEnabled,
+  tallyEnabled = false,
   homeCountryCode,
   nowPlayingCode = null,
   showStatus = "not_started",
@@ -85,6 +87,10 @@ export function RoomShell({
   code: string;
   name: string;
   votingEnabled: boolean;
+  /** Seeded from the server so the home `MyResults` banner +
+   *  ResultsPanel can render in their final state on first paint
+   *  without paying for a boot `/api/rooms/[code]` round-trip. */
+  tallyEnabled?: boolean;
   homeCountryCode: string;
   // Seeded from the server so the now-playing hero (Home) and the header
   // strip render in their final state on first paint — no content shift.
@@ -111,7 +117,7 @@ export function RoomShell({
             code,
             name,
             votingEnabled,
-            tallyEnabled: false,
+            tallyEnabled,
             homeCountryCode,
             nowPlayingCode,
             showStatus: (showStatus ?? "not_started") as ShowStatus,
@@ -121,13 +127,15 @@ export function RoomShell({
           <ParticleLayer>
             <CountryDeepDiveProvider>
               <ProfileProvider>
-                <NowPlayingTakeover />
-                <VotingAnnouncement />
-                {/* TriviaCard (the floating popup) was removed —
-                    trivia now lands as a chat message (kind="trivia")
-                    rendered inline in the thread. See
-                    components/chat-trivia-inline.tsx. */}
-                <RoomBody>{children}</RoomBody>
+                <LeaderboardProvider>
+                  <NowPlayingTakeover />
+                  <VotingAnnouncement />
+                  {/* TriviaCard (the floating popup) was removed —
+                      trivia now lands as a chat message (kind="trivia")
+                      rendered inline in the thread. See
+                      components/chat-trivia-inline.tsx. */}
+                  <RoomBody>{children}</RoomBody>
+                </LeaderboardProvider>
               </ProfileProvider>
             </CountryDeepDiveProvider>
           </ParticleLayer>
@@ -168,6 +176,14 @@ function RoomBody({ children }: { children: React.ReactNode }) {
         if (typeof window !== "undefined") {
           const url = next === "home" ? `/r/${code}` : `/r/${code}?tab=${next}`;
           window.history.replaceState(window.history.state, "", url);
+          // Per-room "last tab" memory so reopening the room lands
+          // on whichever tab the user left it on. Not used when a
+          // deep-link ?tab= is present (that wins).
+          try {
+            localStorage.setItem(`uzk_last_tab_${code}`, next);
+          } catch {
+            /* private mode */
+          }
           // Each tab starts at the top, the way a fresh screen would.
           window.scrollTo(0, 0);
         }
@@ -177,10 +193,20 @@ function RoomBody({ children }: { children: React.ReactNode }) {
     [code],
   );
 
-  // Read ?tab= once on mount (deep links / redirect shims land here).
+  // On mount: deep-link ?tab= wins; otherwise restore the per-room
+  // last-tab memory from localStorage so reopening feels native.
   useEffect(() => {
     const param = new URLSearchParams(window.location.search).get("tab");
-    if (isRoomTab(param) && param !== "home") setTab(param);
+    if (isRoomTab(param) && param !== "home") {
+      setTab(param);
+      return;
+    }
+    try {
+      const saved = localStorage.getItem(`uzk_last_tab_${code}`);
+      if (saved && isRoomTab(saved) && saved !== "home") setTab(saved);
+    } catch {
+      /* ignore */
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -305,11 +331,13 @@ function RoomLiveProvider({
     }
   }, [initial.code, initial.homeCountryCode]);
 
-  // Pull the initial nowPlayingCode after mount so the header reflects
-  // server state without waiting for a broadcast.
-  useEffect(() => {
-    refetch();
-  }, [refetch]);
+  // PERF: the boot `/api/rooms/[code]` refetch is gone — the server
+  // page passes every field (code, name, votingEnabled, tallyEnabled,
+  // homeCountryCode, nowPlayingCode, showStatus, runningOrderPos)
+  // into <RoomShell> as props, so the very first paint already has
+  // the right state. The `room:updated` broadcast handler below
+  // still refetches on remote changes, so admin toggles continue to
+  // propagate live.
 
   useEventListener(({ event }) => {
     if (event.type === "room:updated") {

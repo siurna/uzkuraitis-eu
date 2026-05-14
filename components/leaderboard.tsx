@@ -1,36 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Crown, ChevronDown } from "lucide-react";
-import { useEventListener } from "@/lib/realtime";
 import { getCountry, countryName } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 import { ScoreBreakdown } from "@/components/score-breakdown";
-import type { BetBreakdown } from "@/lib/scoring";
+import { useLeaderboard } from "@/components/leaderboard-provider";
+import { FluentEmoji } from "@/components/fluent-emoji";
+import { ensureSessionId } from "@/lib/use-identity";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
-
-type Row = {
-  voterId: string;
-  sessionId: string;
-  name: string;
-  homePrediction: number | null;
-  topTen: number;
-  home: number;
-  bets: BetBreakdown;
-  betsTotal: number;
-  highlights: number;
-  trivia?: number;
-  total: number;
-};
-
-type Response = {
-  hasResults: boolean;
-  homeCountryCode: string;
-  homeCountryOfficialPlacement?: number | null;
-  leaderboard: Row[];
-};
 
 // Per-room betting leaderboard. Hidden until the admin has entered the
 // official Eurovision result; once entered, scores are computed server-side
@@ -39,43 +19,27 @@ type Response = {
 //
 // Click a row to expand and see the per-component breakdown (top-10 ballot,
 // home placement, every side bet) so a player can see exactly where they
-// scored and where they whiffed.
+// scored and where they whiffed. Reads the same shared payload as
+// MyResults + ResultsPanel via the room-level provider — no third
+// redundant fetch.
+//
+// `code` kept in the props signature for backwards compatibility with
+// existing call sites; the payload itself comes from context now.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function Leaderboard({ code }: { code: string }) {
-  const [data, setData] = useState<Response | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { payload: data } = useLeaderboard();
   const [expanded, setExpanded] = useState<string | null>(null);
   const lang = useLang();
 
-  const fetchLeaderboard = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/rooms/${code}/leaderboard`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return;
-      const json = (await res.json()) as Response;
-      setData(json);
-    } finally {
-      setLoading(false);
-    }
-  }, [code]);
-
-  useEffect(() => {
-    fetchLeaderboard();
-  }, [fetchLeaderboard]);
-
-  useEventListener(({ event }) => {
-    if (event.type === "leaderboard:updated" || event.type === "scores:updated") {
-      fetchLeaderboard();
-    }
-  });
-
-  if (loading || !data?.hasResults) return null;
+  if (!data?.hasResults) return null;
 
   const { leaderboard, homeCountryCode, homeCountryOfficialPlacement } = data;
   if (leaderboard.length === 0) return null;
 
   const topTotal = leaderboard[0]?.total ?? 0;
   const home = getCountry(homeCountryCode);
+  const mySession = typeof window !== "undefined" ? ensureSessionId() : "";
+  const total = leaderboard.length;
 
   return (
     <section className="flex flex-col gap-3">
@@ -93,6 +57,8 @@ export function Leaderboard({ code }: { code: string }) {
         <AnimatePresence initial={false}>
           {leaderboard.map((row, i) => {
             const isOpen = expanded === row.voterId;
+            const isMe = !!mySession && row.sessionId === mySession;
+            const rank = i + 1;
             return (
               <motion.li
                 key={row.voterId}
@@ -103,7 +69,15 @@ export function Leaderboard({ code }: { code: string }) {
                 transition={{
                   layout: { type: "spring", stiffness: 320, damping: 30 },
                 }}
-                className="list-card-hover glass-card rounded-xl overflow-hidden"
+                // "Me" row glows with a flamingo ring + tint so the
+                // viewer can spot themselves at a glance without
+                // scanning names. Everyone else keeps the cool glass
+                // shell.
+                className={`list-card-hover rounded-xl overflow-hidden ${
+                  isMe
+                    ? "bg-flamingo/12 ring-1 ring-flamingo/45 shadow-[0_4px_24px_-8px_oklch(70%_0.27_336_/_0.45)]"
+                    : "glass-card"
+                }`}
               >
                 <button
                   type="button"
@@ -112,6 +86,11 @@ export function Leaderboard({ code }: { code: string }) {
                              transition active:scale-[0.99]"
                   aria-expanded={isOpen}
                 >
+                  {/* Reverted to the original medal-disc badge — gold
+                      crown for #1, silver / bronze for 2 / 3, flamingo
+                      pill for the rest. The room-position (10/14)
+                      signal moved to the Results tab pill itself so
+                      this row stays clean. */}
                   <div
                     className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center font-display text-base ${
                       i === 0
@@ -123,7 +102,7 @@ export function Leaderboard({ code }: { code: string }) {
                             : "bg-flamingo/80 text-white"
                     }`}
                   >
-                    {i === 0 ? <Crown className="h-5 w-5" /> : i + 1}
+                    {i === 0 ? <Crown className="h-5 w-5" /> : rank}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-display truncate">{row.name}</p>
@@ -133,7 +112,11 @@ export function Leaderboard({ code }: { code: string }) {
                         <> + {row.home} {home?.name ?? "home"}</>
                       )}
                       {row.betsTotal > 0 && <> + {row.betsTotal} {t(lang, "bonuses_label")}</>}
-                      {row.highlights > 0 && <> + {row.highlights} ✨</>}
+                      {row.highlights > 0 && (
+                        <> + {row.highlights}{" "}
+                          <FluentEmoji glyph="✨" size={11} className="align-[-0.05em]" />
+                        </>
+                      )}
                     </p>
                   </div>
                   <div className="text-right">

@@ -9,6 +9,8 @@ import { readSignedSessionId } from "@/lib/server-session";
 import { checkAndIncrement } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { chatHelperCache } from "@/lib/db/schema";
+import { getCountry } from "@/lib/countries";
+import { getRecentEntries, type HistoricalEntry } from "@/lib/eurovision-history";
 
 // POST /api/explain
 //
@@ -30,10 +32,47 @@ import { chatHelperCache } from "@/lib/db/schema";
 // (same input + same lang → same explanation), so heavy use across many
 // rooms shares one set of cached gloss.
 
+// Optional live context — when the client passes `nowCountry`, the
+// route looks up the country's name + recent entries server-side
+// (the client doesn't need to ship the whole history table). Used
+// in the prompt so the LLM can say "Tonight's Italian entry follows
+// Måneskin 2021…" instead of "this country often…".
 const Body = z.object({
   texts: z.array(z.string().min(1).max(2000)).min(1).max(50),
   lang: z.enum(["en", "lt"]),
+  ctx: z
+    .object({
+      nowCountry: z
+        .string()
+        .toLowerCase()
+        .regex(/^[a-z]{2}$/)
+        .optional(),
+      nowYear: z.number().int().min(2000).max(2100).optional(),
+    })
+    .optional(),
 });
+
+type LiveCtx = {
+  nowCountry: string;
+  nowYear: number;
+  nowCountryName: string | null;
+  nowArtist: string | null;
+  nowSong: string | null;
+  recent: HistoricalEntry[];
+};
+
+function resolveCtx(input: { nowCountry?: string; nowYear?: number } | undefined): LiveCtx | null {
+  if (!input?.nowCountry) return null;
+  const c = getCountry(input.nowCountry);
+  return {
+    nowCountry: input.nowCountry,
+    nowYear: input.nowYear ?? new Date().getFullYear(),
+    nowCountryName: c?.name ?? null,
+    nowArtist: c?.artist ?? null,
+    nowSong: c?.song ?? null,
+    recent: getRecentEntries(input.nowCountry).slice(0, 5),
+  };
+}
 
 const Item = zv4.object({
   index: zv4
@@ -72,36 +111,75 @@ function memSet(k: string, hit: CachedHit): void {
 const EMPTY: CachedHit = { explain: false, text: "" };
 const KIND = "beginner";
 
-function hashText(text: string): string {
-  return createHash("sha256").update(text).digest("hex");
+// Cache fingerprint. The scope is folded into the digest so the
+// durable chat_helper_cache table (keyed on `(kind, text_key, lang)`)
+// stays unchanged: a "live:se" answer for the same text gets a
+// different text_key than the global "lore" answer, instead of
+// overwriting each other.
+function hashText(text: string, scope: string): string {
+  return createHash("sha256").update(scope).update("\n").update(text).digest("hex");
 }
 
-function systemPrompt(lang: "en" | "lt"): string {
+function systemPrompt(lang: "en" | "lt", ctx: LiveCtx | null): string {
   const target = lang === "lt" ? "Lithuanian" : "English";
+  // When the client passes `ctx`, give the model a small structured
+  // brief of the moment — who's on stage right now + that country's
+  // most recent entries — so it can land "Tonight's Italian entry
+  // follows Måneskin 2021…" callbacks instead of generic filler.
+  const ctxBlock = ctx
+    ? [
+        "",
+        "LIVE CONTEXT (use this — names are authoritative, do NOT contradict it):",
+        `- Right now (${ctx.nowYear}): ${ctx.nowCountryName ?? ctx.nowCountry.toUpperCase()} is on stage with ${ctx.nowArtist ?? "an artist"}${ctx.nowSong ? `, "${ctx.nowSong}"` : ""}.`,
+        ctx.recent.length > 0
+          ? `- ${ctx.nowCountryName ?? ctx.nowCountry.toUpperCase()}'s last entries: ${ctx.recent
+              .map(
+                (e) =>
+                  `${e.year} ${e.artist}, "${e.song}"${e.placement != null ? ` (#${e.placement})` : ""}`,
+              )
+              .join("; ")}.`
+          : `- I don't have ${ctx.nowCountryName ?? ctx.nowCountry.toUpperCase()}'s recent entries cached; if you're not sure, say so plainly instead of inventing.`,
+        "When a line is about the current performer or that country, USE these names. \"Reminds me of last year's Italy\" → name the actual prior-year entry from the list above.",
+        "",
+      ].join("\n")
+    : "";
   return [
-    `You help a Eurovision newcomer follow a watch-party chat. Output language: ${target}.`,
-    "Input: a JSON array of chat messages, each `{ index, text }`.",
-    "Output: a `results` array with ONE entry per input. Each entry MUST include the matching `index`. Include every index exactly once.",
+    `You help someone follow a Lithuanian Eurovision watch-party chat. Output language: ${target}.`,
+    "Input: a JSON array `{ index, text }`. Output: `{ results: [{ index, explain, text }] }`, exactly one entry per input, indices unique.",
+    ctxBlock,
     "",
-    "DECIDE FIRST: does this message hang on a Eurovision-specific reference that an outsider would miss?",
-    "Eligible references include: past contestants by NAME (Lordi, Verka Serduchka, Måneskin, Salvador Sobral, Käärijä, etc.); the artist or song from a specific year (Italy's 2021 \"Zitti e buoni\", Sweden's 2012 \"Euphoria\"); a country's recurring shtick (Ireland's Wild Youth meta, San Marino's Senhit comebacks, Iceland's Daði og Gagnamagnið); running jokes (key change, dancing grannies, postcards, nul points, jury vs televote split, Big Five, Junior Eurovision); a host-country bit; the dress rehearsal / semi-final lore.",
-    "Casual reactions (\"🔥\", \"go!\", \"omg\", \"so good\", \"this slaps\") are NOT references — skip them.",
+    "STEP 1. Does this line hang on a SPECIFIC, NAMED Eurovision fact a newcomer can be handed and remember? Real facts only — named artists, named songs, real placements, real years, real running jokes.",
     "",
-    "CRITICAL — FACT-CHECK before you write anything:",
-    "- Only invoke facts you are confident about. Specific artist names, song titles, years, placements MUST be ones you actually know to be real — not plausibly-sounding inventions.",
-    "- DO NOT generalise (\"Latvia had a yellow visual aesthetic in the 2000s\" — you don't know that, don't say it). Vague handwaves about a country's general style are NOT references. Skip them: explain=false.",
-    "- If the user names a year + a country, identify the actual entry for that country in that year and reference it by name. \"Reminds me of Germany's entrance last year\" → name the specific 2025 act if known (Abor & Tynna with \"Baller\"). If you cannot identify it confidently, say so plainly in the gloss.",
-    "- If the message hints at something but you cannot pin down the specific reference, set explain=true with text that says explicitly: \"Unclear which Lithuanian/Eurovision reference is meant here — possibly X or Y\" (in the target language). Honest uncertainty is fine. Confident invention is not.",
+    "ELIGIBLE FUEL (use this kind of thing — never less specific):",
+    "- A named past act + year + country: \"Lordi 2006 FI, Hard Rock Hallelujah.\" \"Måneskin 2021 IT, Zitti e buoni.\" \"Salvador Sobral 2017 PT, Amar pelos dois.\" \"Käärijä 2023 FI, Cha Cha Cha.\" \"Loreen 2012 + 2023 SE.\" \"Conchita Wurst 2014 AT, Rise Like a Phoenix.\" \"Netta 2018 IL, Toy.\" \"Verka Serduchka 2007 UA, Dancing Lasha Tumbai.\"",
+    "- Named running joke / EBU fact: the \"death slot\" (second in the order), the Big Five auto-qualifiers, jury-vs-televote 50/50 split, the postcard between acts, Cyprus and Greece swapping 12 points, Sweden's hit-factory pipeline, Italy's Sanremo qualifier, San Marino fielding outside acts. Each of these IS a fact you can drop.",
+    "- A specific LT cultural reference (LT slang, Lithuanian internet meme, Lithuanian moment in the contest like LT United 2006 \"We Are the Winners\", Donny Montell, The Roop \"Discoteque\", Monika Linkytė \"Stay\", Silvester Belt, Katarsis).",
     "",
-    "WRITE THE GLOSS",
-    `- Output in ${target}.`,
-    "- Lead with the SPECIFIC act/song/year/country, not a generic category.",
-    "- Then one sentence on why this reference is relevant to the line of chat (sound, staging, attitude, nationality).",
-    "- 2-3 sentences total, ≤320 chars. Don't repeat the message back.",
-    "- Examples of GOOD: \"Lordi won Eurovision 2006 for Finland with 'Hard Rock Hallelujah' — Finland's first win, masked monsters, a high-camp metal moment. The line means the current act feels equally theatrical/over-the-top.\" / \"Italy's 2021 entry 'Zitti e buoni' by Måneskin — glam-rock revival, won the contest, kicked off their global run.\"",
-    "- Examples of BAD: \"Italy has sent many memorable entries.\" / \"Latvia had a distinctive visual aesthetic.\" / \"Germany's Eurovision entries are often theatrical.\" These are vague non-references and must be skipped (explain=false).",
+    "NEVER ELIGIBLE — skip every time with explain=false, text=\"\":",
+    "- Anything that could plausibly be said about ANY country (\"swap test\"). \"This country often sends memorable entries\" → swap any country in, still works → skip.",
+    "- Filler vocabulary: \"the performer's stage presence is striking\", \"comparison suggests similar aesthetic or fashion choices\", \"this is a reference to a past performer\", \"hints at a stylistic comparison\". These are BANNED phrases. If your draft contains them, set explain=false.",
+    "- \"Iconic\", \"fierce\", \"serving\", \"slay\" as standalone descriptions. Skip.",
+    "- Any output that has ZERO proper nouns and ZERO years. Hard rule.",
+    "- Casual chat reactions (\"🔥\", \"go!\", \"omg\", \"this slaps\", \"so good\").",
     "",
-    "If no Eurovision-specific reference, or you can't pin down a SPECIFIC one: set explain=false and text=\"\".",
+    "STEP 2. Write the gloss only if you cleared Step 1:",
+    `- In ${target}. 1 to 3 sentences, ≤280 chars. No em dashes — use a comma or a period.`,
+    "- Format: [the fact, with a name + year + country] + [why that ties to the line].",
+    "- Lead with the named entry, not the country. \"Loreen won twice for Sweden, 2012 Euphoria and 2023 Tattoo\" beats \"Sweden has a strong Eurovision history\".",
+    "- If the line names a year + country and you cannot CONFIDENTLY pin the actual entry, do not invent. Say so plainly in the target language: \"I don't have that exact entry on hand, but [country] sent [one named entry you do know].\"",
+    "",
+    "GOOD examples (study the shape):",
+    "- \"Loreen wins twice for Sweden, 2012 with Euphoria and 2023 with Tattoo. She's the only artist with two trophies, which is why every Swedish ballad gets compared back to her.\"",
+    "- \"Italy's Måneskin won 2021 with Zitti e buoni and turned into the biggest post-Eurovision rock export of the decade. The line means tonight's Italian entry is fishing in the same glam-rock lane.\"",
+    "- \"Verka Serduchka was Ukraine's 2007 act, a drag persona in a foil cone hat with Dancing Lasha Tumbai. 'Pulling a Verka' means leaning all the way into camp / comedy.\"",
+    "",
+    "BAD examples (do not emit anything that reads like these):",
+    "- \"Comparison suggests the current performer shares similar aesthetic or fashion choices.\" → vague, swap test fails, banned phrasing. Skip.",
+    "- \"This country often sends memorable entries.\" → swap test fails. Skip.",
+    "- \"The performer's stage presence is striking.\" → could be any act. Skip.",
+    "- \"Latvia had a yellow visual aesthetic.\" → invented filler. Skip.",
+    "",
+    "REMEMBER: honest \"explain=false\" is better than a lame \"explain=true\" with empty filler. If your output doesn't include a proper noun + (a year OR a named running joke), set explain=false.",
   ].join("\n");
 }
 
@@ -186,11 +264,19 @@ async function _handlePost(req: Request) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
   const { texts, lang } = parsed.data;
+  const ctx = resolveCtx(parsed.data.ctx);
+  // Cache scope: when the client gives us a live nowCountry, the
+  // answer depends on who's on stage right now — fold the country
+  // into the cache key so a "this country" gloss for Sweden doesn't
+  // serve when Italy's on stage. No ctx → "lore" entries share
+  // across every room.
+  const cacheScope = ctx ? `live:${ctx.nowCountry}` : "lore";
+  const keyOf = (textKey: string) => `${lang}\n${cacheScope}\n${textKey}`;
 
   // Per-text routing tables: original index → final hit, plus the list
   // of unique-uncached texts we'll actually send to the model.
   const results: CachedHit[] = new Array<CachedHit>(texts.length).fill(EMPTY);
-  const textKeys = texts.map(hashText);
+  const textKeys = texts.map((t) => hashText(t, cacheScope));
   const missingText: string[] = [];
   const missingKeys: string[] = [];
   const missingIdx: number[] = [];
@@ -200,7 +286,7 @@ async function _handlePost(req: Request) {
   const dbCandidateKeys: string[] = [];
   const dbCandidateIdx: number[] = [];
   for (let i = 0; i < texts.length; i++) {
-    const memKey = `${lang}\n${textKeys[i]}`;
+    const memKey = keyOf(textKeys[i]);
     const m = memGet(memKey);
     if (m) {
       results[i] = m;
@@ -220,7 +306,7 @@ async function _handlePost(req: Request) {
       const idx = dbCandidateIdx[i];
       const hit = fromDb.get(key);
       if (hit) {
-        memSet(`${lang}\n${key}`, hit);
+        memSet(keyOf(key), hit);
         results[idx] = hit;
       } else {
         missingText.push(texts[idx]);
@@ -252,7 +338,7 @@ async function _handlePost(req: Request) {
           const response = await client.messages.parse({
             model: process.env.ANTHROPIC_EXPLAIN_MODEL ?? "claude-haiku-4-5",
             max_tokens: maxTokens,
-            system: systemPrompt(lang),
+            system: systemPrompt(lang, ctx),
             messages: [{ role: "user", content: payload }],
             output_config: { format: zodOutputFormat(Batch) },
           });
@@ -268,7 +354,7 @@ async function _handlePost(req: Request) {
                 explain: !!r.explain,
                 text: r.explain ? (r.text ?? "").slice(0, 240) : "",
               };
-              memSet(`${lang}\n${missingKeys[idx]}`, hit);
+              memSet(keyOf(missingKeys[idx]), hit);
               results[missingIdx[idx]] = hit;
               toStore.push({ textKey: missingKeys[idx], payload: hit });
             }
@@ -276,7 +362,7 @@ async function _handlePost(req: Request) {
             // again about the same near-empty inputs forever.
             for (let j = 0; j < missingText.length; j++) {
               if (!placed.has(j)) {
-                memSet(`${lang}\n${missingKeys[j]}`, EMPTY);
+                memSet(keyOf(missingKeys[j]), EMPTY);
                 toStore.push({ textKey: missingKeys[j], payload: EMPTY });
               }
             }
@@ -303,7 +389,7 @@ async function _handlePost(req: Request) {
   // Backfill duplicate slots within the request from in-memory cache.
   for (let i = 0; i < texts.length; i++) {
     if (results[i] === EMPTY) {
-      const m = memGet(`${lang}\n${textKeys[i]}`);
+      const m = memGet(keyOf(textKeys[i]));
       if (m) results[i] = m;
     }
   }

@@ -30,7 +30,7 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the deep dive.
 
 8. **Admin pages stay English.** Voter-facing surfaces use `t(lang, key)`. Admin uses literal English strings — by design.
 
-9. **Admin pages share one chrome.** Every `/admin/*` page opens with `<AdminPageTitle>Title</AdminPageTitle>` (`components/admin-page-title.tsx`) — a large gradient `<h1>`, no icon. The nav tabs (`components/admin-nav.tsx`) still carry icons (Live → `Radio`, Rooms → `Vote`, Trivia → `Brain`, Commentator → `Mic`, Results → `Trophy`, Settings → `Settings`); the page title doesn't repeat them. Card-section headers inside a page do keep the `h-10 w-10` flamingo-tinted icon-tile pattern.
+9. **Admin pages share one chrome.** Every `/admin/*` page opens with `<AdminPageTitle>Title</AdminPageTitle>` (`components/admin-page-title.tsx`) — a large gradient `<h1>`, no icon. The nav tabs (`components/admin-nav.tsx`) still carry icons (Live → `Radio`, Rooms → `Vote`, Trivia → `Lightbulb`, MC → `Mic`, Results → `Trophy`, Settings → `Settings`); the page title doesn't repeat them. The "Hello folks" welcome markdown lives as the first section inside Settings, not its own tab. Card-section headers inside a page do keep the `h-10 w-10` flamingo-tinted icon-tile pattern.
 
 ## Useful scripts
 
@@ -38,9 +38,20 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the deep dive.
 pnpm dev         # local dev server
 pnpm typecheck   # tsc --noEmit
 pnpm build       # production build (Vercel runs this)
-pnpm db:generate # drizzle-kit generate (new migrations)
-pnpm db:migrate  # apply migrations against SUPABASE_POSTGRES_URL (or `node scripts/migrate.ts`)
 ```
+
+## Schema changes — no migration files
+
+This is a small hobby project; we don't keep a migration ledger. When a
+schema change is needed:
+
+1. Edit `lib/db/schema.ts` so the Drizzle types match the new shape.
+2. Hand the user a copy-pasteable SQL snippet (CREATE TABLE / ALTER
+   TABLE / etc.) in the reply. They paste it into the Supabase SQL
+   editor themselves.
+3. Do NOT create a file under `drizzle/`. Do NOT run `drizzle-kit
+   generate` or `drizzle-kit migrate`. The `drizzle/` folder is
+   historical only and isn't applied going forward.
 
 ## Where things live
 
@@ -60,6 +71,7 @@ pnpm db:migrate  # apply migrations against SUPABASE_POSTGRES_URL (or `node scri
 - **Does this need DB durability or is broadcast enough?** Chat/votes/bets = durable. Reactions/floating emoji = ephemeral.
 - **Mobile first.** Test on a 390×844 viewport before desktop. Vote CTA + bottom-sheet + emoji bar all stack at the bottom; don't break that stacking.
 - **i18n.** Every user-facing string goes through `t()`. If you're typing English into JSX, you're doing it wrong.
+- **Bingo tropes (`lib/bingo-tropes.ts`) ↔ Fluent emoji manifest.** When you add or change a trope emoji, also map it in `lib/fluent-emoji.ts` so the 3D PNG renders consistently across the bingo card, list view, and home banner. `FluentEmoji` falls back to the native glyph for unmapped entries, but a mid-show inconsistency (some cells in 3D, others as the system emoji) reads as a regression.
 
 ## Things to avoid
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { motion, AnimatePresence } from "motion/react";
@@ -65,7 +65,21 @@ export function VoteForm({
   const [showCongrats, setShowCongrats] = useState(false);
   const [voterId, setVoterId] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
-  const [tab, setTab] = useState<VoteTab>("ballot");
+  // Per-room sub-tab memory: persist the last ballot/bets/rules
+  // pick so reopening the Vote tab feels native — same shape as
+  // the room-level tab persistence in RoomShell.
+  const [tab, _setTab] = useState<VoteTab>("ballot");
+  const setTab = useCallback(
+    (next: VoteTab) => {
+      _setTab(next);
+      try {
+        localStorage.setItem(`uzk_vote_subtab_${roomCode}`, next);
+      } catch {
+        /* private mode */
+      }
+    },
+    [roomCode],
+  );
   // Which ballot slot is currently being edited via the country drawer.
   const [pickingPoints, setPickingPoints] = useState<Points | null>(null);
   // Slot that just got filled / moved into — gets a one-shot heartbeat
@@ -141,6 +155,17 @@ export function VoteForm({
     };
     window.addEventListener("uzk:vote-tab", onVoteTab);
     return () => window.removeEventListener("uzk:vote-tab", onVoteTab);
+  }, [setTab]);
+
+  // Restore last sub-tab on mount unless a deep-link already fired.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`uzk_vote_subtab_${roomCode}`);
+      if (saved === "ballot" || saved === "bets" || saved === "rules") _setTab(saved);
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -548,7 +573,7 @@ function RulesPanel({
       <h2 className="font-display text-xl gradient-text text-balance px-1">{t(lang, "rules_title")}</h2>
 
       {/* TOP 10 ballot */}
-      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-2.5">
+      <div className="rounded-2xl glass-surface px-4 py-4 flex flex-col gap-2.5">
         <p className="font-display text-base text-white/90">{t(lang, "rules_top10_h")}</p>
         <p className="text-[15px] text-white/65 leading-relaxed text-pretty">{t(lang, "rules_top10_b")}</p>
         <p className="text-[13px] text-white/45 leading-relaxed pt-0.5">{t(lang, "rules_top10_eg")}</p>
@@ -556,14 +581,14 @@ function RulesPanel({
       </div>
 
       {/* Home-country placement */}
-      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-2.5">
+      <div className="rounded-2xl glass-surface px-4 py-4 flex flex-col gap-2.5">
         <p className="font-display text-base text-white/90">{t(lang, "rules_home_h")}</p>
         <p className="text-[15px] text-white/65 leading-relaxed text-pretty">{tr("rules_home_b")}</p>
         <ScaleRow items={[["0", 12], ["1", 10], ["2", 8], ["3", 7], ["5", 5], ["9", 1]]} />
       </div>
 
       {/* Bonus bets */}
-      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-3">
+      <div className="rounded-2xl glass-surface px-4 py-4 flex flex-col gap-3">
         <p className="font-display text-base text-white/90">{t(lang, "rules_bets_h")}</p>
         <p className="text-[13px] text-white/50 leading-relaxed">{t(lang, "rules_bets_intro")}</p>
         <ul className="flex flex-col">
@@ -591,7 +616,7 @@ function RulesPanel({
       </div>
 
       {/* Chat highlights bonus */}
-      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-4 flex flex-col gap-2">
+      <div className="rounded-2xl glass-surface px-4 py-4 flex flex-col gap-2">
         <p className="font-display text-base text-white/90">{t(lang, "breakdown_highlights")}</p>
         <p className="text-[15px] text-white/65 leading-relaxed text-pretty">{t(lang, "rules_highlights_b")}</p>
       </div>
@@ -672,7 +697,7 @@ function BallotSlotInner({
                       ? "bg-flamingo/[0.14] ring-1 ring-flamingo/45"
                       : country && isTop
                         ? "bg-gold/[0.07] ring-1 ring-gold/25"
-                        : "bg-white/[0.04] ring-1 ring-white/8"
+                        : "glass-surface"
                   }`}
     >
       {/* Dedicated drag handle — small, touch-action:none so dnd-kit's

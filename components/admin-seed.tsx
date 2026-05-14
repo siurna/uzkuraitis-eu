@@ -5,14 +5,30 @@ import { toast } from "sonner";
 import { FlaskConical, Users, Trophy, Flame, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AdminRoomPicker } from "@/components/admin-room-picker";
 
 type Mode = "voters" | "highlights" | "results" | "reroll";
 
-// Admin › Settings: a tidy dev-seed panel — demo voters, random official
-// results + facts, and reaction-heavy "highlights" — so the leaderboard
-// and Home widgets have something to chew on without a real crowd.
-export function AdminSeed({ rooms }: { rooms: { code: string; name: string }[] }) {
-  const [room, setRoom] = useState(rooms[0]?.code ?? "");
+// Admin dev-seed panel — demo voters, random official results + facts,
+// reaction-heavy "highlights" — so the leaderboard + Home widgets
+// have something to chew on without a real crowd.
+//
+// Two modes:
+//   - Standalone (default): picker chip in the title row, host can
+//     hop between rooms without leaving the page.
+//   - Embedded: pinned to a single room (the per-room detail page
+//     under Operations). The picker is hidden and the title chrome
+//     compacts since the room context is already shown above.
+export function AdminSeed({
+  rooms,
+  embeddedRoom,
+}: {
+  rooms: { code: string; name: string }[];
+  /** When set, hides the room picker and uses this code as the
+   *  scope for every action. Used on /admin/rooms/[code]. */
+  embeddedRoom?: string;
+}) {
+  const [room, setRoom] = useState(embeddedRoom ?? rooms[0]?.code ?? "");
   const [voterN, setVoterN] = useState(8);
   const [busy, setBusy] = useState<Mode | null>(null);
 
@@ -55,38 +71,35 @@ export function AdminSeed({ rooms }: { rooms: { code: string; name: string }[] }
     }
   };
 
-  return (
-    <section className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-5">
-      <header className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
-          <FlaskConical className="h-5 w-5" />
-        </span>
-        <div>
-          <h2 className="font-display text-xl leading-tight">Seed data</h2>
-          <p className="text-sm text-white/45 leading-snug mt-0.5">Dev only. Fills a room (or the whole show) with throwaway data. There's no undo.</p>
-        </div>
-      </header>
+  // Embedded mode (per-room page): the section sits inside an
+  // outer glass-card already, so we drop the panel's own glass-card
+  // shell + page-title header. Standalone mode keeps both.
+  const shellClass = embeddedRoom
+    ? "flex flex-col gap-4"
+    : "glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-5";
 
-      {/* room scope — used by the per-room actions below */}
-      <label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-        <span className="text-xs uppercase tracking-[0.18em] text-white/40 font-display sm:w-28 shrink-0">Room</span>
-        {rooms.length === 0 ? (
-          <span className="text-sm text-white/40">No rooms yet.</span>
-        ) : (
-          <select
+  return (
+    <section className={shellClass}>
+      {!embeddedRoom && (
+        <header className="flex items-center gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+            <FlaskConical className="h-5 w-5" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <h2 className="font-display text-xl leading-tight">Seed data</h2>
+            <p className="text-sm text-white/45 leading-snug mt-0.5">Dev only. Fills a room (or the whole show) with throwaway data. There's no undo.</p>
+          </div>
+          {/* Room scope picker sits in the title row on the right — no
+              "Room" label, the picker chip's own subscript already
+              shows the active code. */}
+          <AdminRoomPicker
+            rooms={rooms}
             value={room}
-            onChange={(e) => setRoom(e.target.value)}
-            className="h-10 rounded-lg bg-black/30 border border-white/15 px-3 text-sm text-white
-                       focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 w-full sm:w-72"
-          >
-            {rooms.map((r) => (
-              <option key={r.code} value={r.code} className="bg-dark-blue-900">
-                {r.name} ({r.code})
-              </option>
-            ))}
-          </select>
-        )}
-      </label>
+            onChange={setRoom}
+            className="shrink-0 min-w-[10rem]"
+          />
+        </header>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <SeedCard
@@ -112,14 +125,14 @@ export function AdminSeed({ rooms }: { rooms: { code: string; name: string }[] }
         <SeedCard
           icon={<Shuffle className="h-4 w-4" />}
           title="Re-roll ballots"
-          desc="Re-randomize the TOP 10 &amp; bonus bets of everyone already in this room — no new voters"
+          desc="Re-randomize the TOP 10 &amp; bonus bets of everyone already in this room, no new voters"
           busy={busy === "reroll"}
           onClick={() => run("reroll", { needsRoom: true })}
         />
         <SeedCard
           icon={<Trophy className="h-4 w-4" />}
           title="Results &amp; facts"
-          desc="Random final placements + jury/televote winners, nul-points, host, solo, LT total — installation-wide"
+          desc="Random final placements + jury/televote winners, nul-points, host, solo, LT total, installation-wide"
           busy={busy === "results"}
           onClick={() => run("results")}
         />

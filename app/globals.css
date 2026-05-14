@@ -23,6 +23,15 @@
   font-weight: 400;
   font-style: normal;
   font-display: swap;
+  /* Singing Sans's intrinsic metrics put more space below the
+     baseline than above the cap. In tight centered containers
+     (pill badges, chips, button labels, code cells) the cap reads
+     ~1px low. Nudging ascent up + descent down by ~3% each
+     re-centres the cap visually for every uppercase/display use
+     globally — no per-badge `pt-[1px]` workaround needed. */
+  ascent-override: 91%;
+  descent-override: 22%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Neulis Neue";
@@ -137,6 +146,11 @@
   --rainbow-thickness: 2px;
   --rainbow-gradient:
     linear-gradient(-195deg, #f10d59, #ff3ede 24%, #00d4cc 95%);
+  /* Animated variant — same brand colours laid out as a wider
+     gradient that loops left→right. The Vote-now hero uses this so
+     the border reads as "live" instead of static decoration. */
+  --rainbow-gradient-anim:
+    linear-gradient(90deg, #f10d59, #ff3ede 25%, #00d4cc 50%, #ff3ede 75%, #f10d59);
 }
 
 @layer base {
@@ -147,6 +161,15 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    /* Paint the dark backdrop on the root element too so iOS Safari's
+       cold-start frame (before body styles + React hydrate) is navy,
+       not the white flash. Belt-and-suspenders with body's bg below
+       — for the in-PWA launch splash itself, iOS 16+ uses
+       manifest.background_color (set to #10142a in app/manifest.ts)
+       and Android does the same, so the lock-screen-to-app frame
+       lands on brand colour without us needing per-device
+       apple-touch-startup-image PNGs. */
+    background-color: var(--color-dark-blue-900);
   }
 
   /* Tailwind v4 dropped the default cursor:pointer on buttons. */
@@ -246,11 +269,133 @@
   display: block;
 }
 
+/* iOS Safari pulls its native bottom sheet with a chunky ~40px top
+   radius; matching that in our portaled drawer makes the room feel
+   native there without changing the PWA standalone shell. Scoped
+   via display-mode so the same drawer in PWA / desktop keeps the
+   regular 24px (rounded-3xl) we set in Tailwind. */
+@media (display-mode: browser) {
+  .uzk-sheet-ios-radius {
+    border-top-left-radius: 40px;
+    border-top-right-radius: 40px;
+  }
+}
+
+/* Poll-card backdrop shine. Slow conic gradient rotation that
+   keeps the card feeling alive between vote events. GPU-cheap +
+   reduce-motion respects the user's preference. */
+@keyframes poll-shine {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* WhosHere bobble. Each bubble in the honeycomb gets its own
+   duration / delay / rotation amplitude via CSS custom properties
+   (--bob-dur / --bob-delay / --bob-rot), so the cluster looks alive
+   without each bubble owning a motion-react infinite tween. Runs
+   on the compositor thread = ~0 JS cost; multiplies cleanly across
+   50+ viewers on a mid-range Android. */
+@keyframes whos-bob {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  25%      { transform: translateY(-4px) rotate(var(--bob-rot, 0deg)); }
+  50%      { transform: translateY(0) rotate(0); }
+  75%      { transform: translateY(3px) rotate(calc(var(--bob-rot, 0deg) * -1)); }
+}
+
+/* Sporadic "hi 👋" wave for the welcome home widget. Mostly idle so
+   it doesn't pull focus, then a quick two-beat tilt every ~7 seconds.
+   Origin sits at the wrist (70/70%) so the hand pivots correctly. */
+@keyframes waving-hand {
+  0%, 85%, 100% { transform: rotate(0deg); }
+  88%           { transform: rotate(-14deg); }
+  91%           { transform: rotate(12deg); }
+  94%           { transform: rotate(-10deg); }
+  97%           { transform: rotate(6deg); }
+}
+
+/* Bell-ring animation for the notifications onboarding step. Long
+   resting pause (~4s), then a short rapid ding cluster. Pivot off
+   the top of the bell so it reads as a hanging bell ringing rather
+   than the whole element spinning. */
+@keyframes ringing-bell {
+  0%, 80%, 100% { transform: rotate(0deg); }
+  82%           { transform: rotate(-18deg); }
+  85%           { transform: rotate(16deg); }
+  88%           { transform: rotate(-12deg); }
+  91%           { transform: rotate(8deg); }
+  94%           { transform: rotate(-4deg); }
+}
+.ringing-bell {
+  animation: ringing-bell 5s ease-in-out infinite;
+  transform-origin: 50% 16%;
+}
+
+/* Same 2px ESC stroke, but the gradient loops L→R so the border
+   reads as live. Used by the home Vote-now hero (the rest of the
+   app sticks with the static .rainbow-border so nothing else flickers
+   in your peripheral vision). */
+@keyframes rainbow-flow {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+.rainbow-border-anim {
+  padding: var(--rainbow-thickness);
+  background-image: var(--rainbow-gradient-anim);
+  background-size: 200% 100%;
+  /* Tile seamlessly: the gradient starts and ends with the same
+     colour stop (#f10d59) so a `repeat` background hides the
+     pixel-boundary between loops. Explicit `repeat-x` here defends
+     against future Tailwind defaults changing the background-repeat
+     basics. */
+  background-repeat: repeat-x;
+  display: block;
+  animation: rainbow-flow 6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rainbow-border-anim { animation: none; }
+}
+
+/* App-bar gradient fade strips (the chrome that masks chat / vote
+   tab content under the fixed tab bar) sometimes show a 1px gap on
+   the right because Tailwind's `inset-x-0` + sub-pixel rendering
+   doesn't always cover the final column. Pin the bar width with a
+   defensive 100vw fallback so the gradient always reaches the right
+   edge regardless of scrollbar gutter rounding. Applied via the
+   `.uzk-edge-bar` utility — the room-tab-bar and presence-bar opt
+   in below. */
+.uzk-edge-bar {
+  /* `100dvw` accounts for the dynamic viewport (URL bar collapse on
+     iOS), `100%` is the fallback. */
+  width: 100%;
+  width: 100dvw;
+  /* When a vertical scrollbar takes pixels off the inline size, the
+     gradient should still cover all of them. */
+  background-clip: border-box;
+}
+
 /* Glass surface, intentionally cool + quiet. Hairline white-low border,
    restrained drop shadow, no inset bevels, no flamingo glow.
    No `position` here — that fights Tailwind's positioning utilities
    (the bottom-sheet uses `fixed` and we want that to win). Callers
    that need a positioning context should add `relative` themselves. */
+/* Tile / row surface used everywhere a list-row or toggle sits over
+   the page bg. Bare `bg-white/[0.04] ring-1 ring-white/8` was repeated
+   in ~25 places across the admin + voter UI; pulling it into a class
+   keeps the surface treatment consistent and lets us tweak the
+   alpha once without hunting through components. Note this is NOT
+   `.glass-card` — that one is a heavier blurred chrome for sheets +
+   header bars. `.glass-surface` is the lighter, non-blurred sibling
+   for inline rows. */
+.glass-surface {
+  background-color: oklch(100% 0 0 / 0.04);
+  /* Outset 1px to match Tailwind's `ring-1 ring-white/8`, which is
+     what every caller used inline before this shortcut existed. An
+     `inset` shadow renders inside the border-box and trims a pixel
+     off the corner radius; outset sits on top, matching the ring
+     visual exactly. */
+  box-shadow: 0 0 0 1px oklch(100% 0 0 / 0.08);
+}
+
 .glass-card {
   /* Lower-alpha tint so the backdrop blur is the dominant visual,
      not the gradient overlay sitting on top of it. The previous

@@ -85,6 +85,12 @@ const S = {
   // ── RoomGate (entrance code screen) ──────────────────────────────
   enter_room:        { en: "Enter room", lt: "Įeiti" },
   checking:          { en: "Checking…", lt: "Tikrinama…" },
+  // Turnstile status pill copy — explains the disabled join button so
+  // it doesn't read as "broken form".
+  ts_checking:       { en: "Verifying you're human…", lt: "Patvirtinama, kad žmogus…" },
+  ts_ok:             { en: "All clear, you can enter", lt: "Viskas tvarkoj, gali eiti" },
+  ts_error:          { en: "Couldn't verify you. Tap to retry.", lt: "Nepavyko patvirtinti. Bakstelėk dar kartą." },
+  ts_waiting_to_submit: { en: "One sec, finishing the check…", lt: "Akimirką, baigiam patikrinti…" },
   bad_code:          { en: "No room with that code.", lt: "Nėra kambario tokiu kodu." },
   bad_format:        { en: "Codes are 6 characters (A–Z, 2–9).", lt: "Kodas, 6 simboliai (A–Z, 2–9)." },
   reconnecting:      { en: "Reconnecting…", lt: "Jungiamasi…" },
@@ -161,10 +167,8 @@ const S = {
   home_vs_room_outlier:    { en: "Lone wolf. Barely any of your picks crack the room's top 10", lt: "Vienišas vilkas. Beveik nė vienas tavo favoritas nepatenka į kitų TOP 10" },
   home_vs_room_empty_title: { en: "How do you stack up?", lt: "Kaip atrodai prieš kitus?" },
   home_vs_room_empty_sub:   { en: "Cast your TOP 10 to compare with the room.", lt: "Balsuok ir palygink savo TOP 10 su kitais." },
-  home_vs_room_you:    { en: "You", lt: "Tu" },
-  home_vs_room_them:   { en: "Room", lt: "Kiti" },
   chat_np_my_rank:     { en: (n: number) => `My #${n}`, lt: (n: number) => `Mano #${n}` },
-  chat_np_my_rank_aria:{ en: (n: number) => `Your #${n} in your TOP 10 — tap to change`, lt: (n: number) => `Tavo #${n} TOP 10 sąraše — palieskite, kad pakeistumėte` },
+  chat_np_my_rank_aria:{ en: (n: number) => `Your #${n} in your TOP 10, tap to change`, lt: (n: number) => `Tavo #${n} TOP 10 sąraše, palieskite, kad pakeistumėte` },
   home_results:        { en: "Results are in", lt: "Rezultatai jau čia" },
   home_bingo_won:      { en: "Bingo! 🎉 Tap to see your card", lt: "Bingo! 🎉 Bakstelėk savo kortelę" },
   bingo_widget_title:  { en: "Play bingo!", lt: "Žaisk bingo!" },
@@ -174,7 +178,6 @@ const S = {
   home_my_results:     { en: "Your results", lt: "Tavo rezultatai" },
   home_results_in:     { en: "Results are in", lt: "Rezultatai jau čia" },
   home_results_in_sub: { en: "See how everyone did", lt: "Pažiūrėk, kaip visiems sekėsi" },
-  home_my_results_tap: { en: "Tap for full breakdown", lt: "Bakstelėk pilnai išklotinei" },
   home_my_results_rank: { en: (rank: number, total: number) => `Ranked ${rank} of ${total}, tap for the breakdown`, lt: (rank: number, total: number) => `${rank} vieta iš ${total}, bakstelėk išklotinei` },
   results_tab_me:      { en: "My breakdown", lt: "Mano išklotinė" },
   results_tab_board:   { en: "Leaderboard", lt: "Lyderių lentelė" },
@@ -238,11 +241,59 @@ const S = {
   sys_cta_bet_sub_done:      { en: "Nice. Now relax and wait for the points.", lt: "Šaunu. Dabar atsipalaiduok ir lauk taškų." },
   sys_cta_top3:      { en: (arg: string) => `🏆 Leading the room right now: ${arg}`, lt: (arg: string) => `🏆 Šiuo metu pirmauja: ${arg}` },
   sys_cta_top3_eyebrow: { en: "Top 3 right now", lt: "Šiuo metu pirmauja" },
-  sys_cta_top3_first:   { en: "Leading", lt: "Pirmauja" },
   sys_cta_top3_empty:{ en: "🏆 No votes yet, be the first!", lt: "🏆 Dar nebalsuota, būk pirmas!" },
   sys_cta_results_breakdown: { en: "Your breakdown", lt: "Tavo išklotinė" },
   sys_cta_results_breakdown_disabled: { en: "You didn't cast a ballot", lt: "Nebalsavai šįvakar" },
   sys_cta_results_board:     { en: "Full list", lt: "Visa lentelė" },
+  // Selfie CTA — chat-broadcast-cards renders the SelfieCard; the
+  // sysKey itself is the fallback plain text when no card matches.
+  sys_cta_selfie:            { en: "📸 Selfie time, drop one in chat!", lt: "📸 Selfio metas, mesk vieną į pokalbį!" },
+  sys_cta_selfie_eyebrow:    { en: "Selfie time", lt: "Selfio metas" },
+  sys_cta_selfie_title:      { en: "Show the room your face.", lt: "Parodyk kambariui savo veidą." },
+  sys_cta_selfie_sub:        { en: "One tap, front camera, straight into chat.", lt: "Vienas bakstelėjimas, priekinė kamera, tiesiai į pokalbį." },
+  sys_cta_selfie_btn:        { en: "Take one", lt: "Daryti" },
+  sys_cta_selfie_sending:    { en: "Sending…", lt: "Siunčiama…" },
+  sys_cta_selfie_done_title: { en: "Looking great.", lt: "Atrodai puikiai." },
+  sys_cta_selfie_done_sub:   { en: "Posted to the room.", lt: "Įmesta į pokalbį." },
+  // Quick poll card. Reuses chat reactions for storage, so live
+  // tallies arrive on the existing chat:react broadcast.
+  poll_eyebrow:              { en: "Vibe check", lt: "Nuotaikos pulsas" },
+  poll_prompt:               { en: "Tap your pick. You can switch later.", lt: "Bakstelėk variantą. Galėsi persigalvoti." },
+  poll_voted:                { en: (n: number) => `Locked in. ${n} ${n === 1 ? "vote" : "votes"} so far.`, lt: (n: number) => `Užfiksuota. Šiuo metu balsų: ${n}.` },
+  poll_tap:                  { en: "Tap", lt: "Spausti" },
+  poll_undo:                 { en: "Undo my vote", lt: "Atšaukti balsą" },
+  // ── Push notifications (rendered server-side per subscriber's
+  //    `lang` column, so a LT viewer gets LT even when an EN sender
+  //    triggered the broadcast).
+  push_chat_photo:           { en: "Sent a photo", lt: "Atsiuntė nuotrauką" },
+  push_chat_gif:             { en: "Sent a GIF", lt: "Atsiuntė GIF" },
+  push_chat_new:             { en: "New message", lt: "Nauja žinutė" },
+  push_chat_mention_title:   { en: (name: string) => `${name} mentioned you`, lt: (name: string) => `${name} tave paminėjo` },
+  push_chat_mention_body:    { en: "Tap to open the chat", lt: "Bakstelėk, kad atvertum pokalbį" },
+  push_chat_reply_title:     { en: (name: string) => `${name} replied to you`, lt: (name: string) => `${name} tau atsakė` },
+  push_chat_reply_body:      { en: "Tap to see the reply", lt: "Bakstelėk, kad pamatytum atsakymą" },
+  push_now_playing_title:    { en: (flag: string, name: string) => `${flag}${name} is on stage`, lt: (flag: string, name: string) => `${flag}${name} dabar scenoje` },
+  push_now_playing_body_song: { en: (artist: string, song: string) => `${artist} · ${song}`, lt: (artist: string, song: string) => `${artist} · ${song}` },
+  push_now_playing_body_open: { en: "Tap to open the room", lt: "Bakstelėk, kad atvertum kambarį" },
+  push_voting_open_title:    { en: "Voting is open", lt: "Balsavimas pradėtas" },
+  push_voting_open_body:     { en: "Cast your TOP 10 before the show kicks off.", lt: "Atiduok savo TOP 10 prieš šou pradžią." },
+  push_voting_closed_title:  { en: "Voting just closed", lt: "Balsavimas baigtas" },
+  push_voting_closed_body:   { en: "Results coming in shortly.", lt: "Rezultatai jau netrukus." },
+  push_results_title:        { en: "Results are tallied", lt: "Rezultatai suskaičiuoti" },
+  push_results_body:         { en: "Open the leaderboard to see how you did.", lt: "Atverk lyderių lentelę ir pažiūrėk, kaip sekėsi." },
+
+  // Welcome / housekeeping widget at the bottom of every room home.
+  // The card itself is a single tap target; the markdown opens in a
+  // drawer rather than sitting open on the home scroll.
+  welcome_eyebrow:           { en: "From the organisers", lt: "Nuo organizatorių" },
+  welcome_card_title:        { en: "A word from the organisers", lt: "Žodis nuo organizatorių" },
+  welcome_card_sub:          { en: "House rules, schedule, the usual housekeeping. Tap to open.", lt: "Taisyklės, tvarkaraštis, smulkmenos. Bakstelėk." },
+  // Plain-text fallback for the chat CTA card (rendered when a viewer
+  // sees the chat row but no card matches, or for screen readers).
+  sys_cta_welcome:           { en: "👋 Hello folks, a few housekeeping notes", lt: "👋 Sveiki, keletas tvarkos taisyklių" },
+  // Shown inside the chat card when the admin hasn't authored anything
+  // for the viewer's language yet — quietly nudges the host.
+  welcome_empty_chat:        { en: "The host hasn't written any housekeeping notes yet.", lt: "Šeimininkas dar neparašė jokių taisyklių." },
   chat_edit:         { en: "Edit", lt: "Redaguoti" },
   chat_edited:       { en: "edited", lt: "redaguota" },
   chat_editing:      { en: "Editing your message", lt: "Redaguoji žinutę" },
@@ -334,6 +385,12 @@ const S = {
   push_help_blocked_1:     { en: "Open this site's permissions in your browser settings.", lt: "Atidaryk šios svetainės leidimus naršyklėje." },
   push_help_blocked_2:     { en: "Change Notifications from Blocked to Ask or Allow.", lt: "Pakeisk „Notifications“ iš „Blocked“ į „Ask“ arba „Allow“." },
   push_help_blocked_3:     { en: "Refresh this page and try again.", lt: "Atnaujink puslapį ir bandyk dar kartą." },
+
+  // Onboarding step inside the NameGate sheet.
+  notif_gate_title:        { en: "Stay in the loop", lt: "Niekur nepražiopsok" },
+  notif_gate_sub:          { en: "We'll only ping for replies, lines opening, and results landing.", lt: "Pinguosime tik kai kažkas tau atrašo, atsidaro balsavimas ar paskelbiami rezultatai." },
+  notif_gate_skip:         { en: "Maybe later", lt: "Galbūt vėliau" },
+  notif_gate_install_hint: { en: "Install the app first to receive notifications.", lt: "Įdiek aplikaciją, kad gautum pranešimus." },
 
   // ── Bonus bets, labels + descriptions. `{home}` / `{host}` get
   //    substituted with fmt(). ──────────────────────────────────────

@@ -19,6 +19,10 @@ const PatchSchema = z.object({
   code: z.string().length(6).optional(),
   /** NULL or 0 = unlimited answers per question. */
   triviaMaxAnswerers: z.number().int().min(0).max(1000).nullable().optional(),
+  /** Per-room override for the message-reactions threshold that
+   *  qualifies a chat message as a "highlight". NULL = use the
+   *  global default (5). */
+  highlightThreshold: z.number().int().min(1).max(50).nullable().optional(),
 });
 
 async function requireAdmin() {

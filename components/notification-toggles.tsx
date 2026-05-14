@@ -13,20 +13,22 @@ import {
   type PushPrefs,
   type PushState,
 } from "@/lib/push-client";
+import { TogglePill } from "@/components/ui/toggle-pill";
 import { useRoomLive } from "@/components/room-shell";
 import { NAME_KEY, SESSION_KEY } from "@/lib/use-identity";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 
-// Sensible defaults: notify on things that need your attention (a reply
-// or @mention, lines opening/closing, results landing) — not on ambient
-// activity (every chat message; "X is on stage" fires ~26× a night and
-// you can see the screen). Both off-by-default ones are one tap away in
-// the settings sheet.
+// Sensible defaults: notify on things the second-screen viewer needs to
+// know about while they're in the kitchen or next room. now-playing ON
+// is the whole reason this app exists (you want a ping each time the
+// next country takes the stage); replies + voting state + results
+// landing are all "your turn / hot moment" pings. chatAll stays OFF
+// because at 50 viewers it'd vibrate the phone every few seconds.
 const DEFAULT_PREFS: PushPrefs = {
   chatAll: false,
   chatReplies: true,
-  nowPlaying: false,
+  nowPlaying: true,
   votingState: true,
   resultsTallied: true,
 };
@@ -37,13 +39,13 @@ const DEFAULT_PREFS: PushPrefs = {
 //   "android"    → install via Chrome/Brave menu → Install app
 //   "desktop"    → install via address-bar icon
 //   "other"      → generic instructions
-function detectPlatform(): "ios-safari" | "android" | "desktop" | "other" {
+export function detectPlatform(): "ios-safari" | "android" | "desktop" | "other" {
   if (typeof navigator === "undefined") return "other";
   const ua = navigator.userAgent;
   const standalone =
     typeof window !== "undefined" &&
     window.matchMedia("(display-mode: standalone)").matches;
-  // Already running as PWA — nothing to install.
+  // Already running as PWA, nothing to install.
   if (standalone) return "other";
   if (/iPhone|iPad|iPod/.test(ua)) return "ios-safari";
   if (/Android/.test(ua)) return "android";
@@ -51,7 +53,7 @@ function detectPlatform(): "ios-safari" | "android" | "desktop" | "other" {
   return "other";
 }
 
-function isInstalledPwa(): boolean {
+export function isInstalledPwa(): boolean {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(display-mode: standalone)").matches;
 }
@@ -64,9 +66,16 @@ export function NotificationToggles() {
   const lang = useLang();
   const [state, setState] = useState<PushState | null>(null);
   const [pending, setPending] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
-  // Detect once on mount — same value for the lifetime of the panel.
+  // Detect once on mount, same value for the lifetime of the panel.
   const platform = useMemo(() => detectPlatform(), []);
+  const installedPwaNow = useMemo(() => isInstalledPwa(), []);
+  // iOS users who haven't installed the PWA can't get notifications,
+  // so the install steps are the headline content of this panel for
+  // them. Pre-expand the help instead of hiding it behind a "How?"
+  // tap so the action is one less interaction away.
+  const [helpOpen, setHelpOpen] = useState(
+    platform === "ios-safari" && !installedPwaNow,
+  );
 
   const refresh = useCallback(async () => {
     const session = localStorage.getItem(SESSION_KEY);
@@ -86,7 +95,7 @@ export function NotificationToggles() {
     const session = localStorage.getItem(SESSION_KEY) ?? "";
     const name = localStorage.getItem(NAME_KEY) ?? "";
     setPending(true);
-    const ok = await subscribe(roomCode, session, name, DEFAULT_PREFS, state.vapidKey);
+    const ok = await subscribe(roomCode, session, name, DEFAULT_PREFS, state.vapidKey, lang);
     setPending(false);
     if (!ok) {
       toast.error(t(lang, "push_denied"));
@@ -116,7 +125,7 @@ export function NotificationToggles() {
   // settings sheet doesn't lurch when this section materialises.
   if (state === null) {
     return (
-      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 h-[3.25rem] skeleton" />
+      <div className="rounded-2xl glass-surface h-[3.25rem] skeleton" />
     );
   }
 
@@ -171,9 +180,19 @@ export function NotificationToggles() {
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between rounded-2xl px-4 py-3
                       bg-flamingo/10 ring-1 ring-flamingo/30">
-        <span className="flex items-center gap-2 text-sm">
+        <span className="flex items-center gap-2 text-sm flex-wrap">
           <Bell className="h-4 w-4 text-flamingo" />
           {t(lang, "push_on")}
+          {/* On iOS, web push only works inside the installed PWA.
+              Surfacing "iOS PWA" as a chip confirms the viewer is in
+              the right context — if they're seeing the chip + the
+              green toggle row, the OS-level plumbing is genuinely
+              hooked up. */}
+          {platform === "ios-safari" && installedPwaNow && (
+            <span className="text-[10px] uppercase tracking-[0.18em] font-display rounded-full bg-success/20 ring-1 ring-success/45 text-success px-2 h-5 inline-flex items-center">
+              iOS PWA
+            </span>
+          )}
         </span>
         <button
           type="button"
@@ -318,24 +337,13 @@ function PrefRow({
       type="button"
       onClick={() => onChange(!value)}
       className="flex items-center gap-3 rounded-2xl px-4 py-3
-                 bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07] transition text-left"
+                 glass-surface hover:bg-white/[0.07] transition text-left"
     >
       <span className="flex-1 min-w-0">
         <span className="block text-sm text-white/90">{label}</span>
         {sub && <span className="block text-xs text-white/45 leading-snug mt-0.5">{sub}</span>}
       </span>
-      <span
-        className={`relative h-6 w-11 rounded-full transition shrink-0 ${
-          value ? "bg-success/70" : "bg-white/10"
-        }`}
-        aria-hidden
-      >
-        <span
-          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition transform ${
-            value ? "translate-x-5" : "translate-x-0"
-          }`}
-        />
-      </span>
+      <TogglePill on={value} />
     </button>
   );
 }
@@ -367,7 +375,7 @@ export function useNotificationCta(): {
     if (state?.kind !== "off" || !state.vapidKey) return;
     const session = localStorage.getItem(SESSION_KEY) ?? "";
     const name = localStorage.getItem(NAME_KEY) ?? "";
-    const ok = await subscribe(code, session, name, DEFAULT_PREFS, state.vapidKey);
+    const ok = await subscribe(code, session, name, DEFAULT_PREFS, state.vapidKey, lang);
     if (!ok) {
       toast.error(t(lang, "push_denied"));
       return;

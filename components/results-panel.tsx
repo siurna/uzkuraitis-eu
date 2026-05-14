@@ -2,42 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import { useEventListener } from "@/lib/realtime";
 import { useRoomLive } from "@/components/room-shell";
+import { useLeaderboard } from "@/components/leaderboard-provider";
 import { ensureSessionId } from "@/lib/use-identity";
 import { ScoreBreakdown } from "@/components/score-breakdown";
 import { Leaderboard } from "@/components/leaderboard";
 import { HeartFlag } from "@/components/flag";
 import { BetsComparison } from "@/components/bets-comparison";
 import { countries, countryName, getCountry } from "@/lib/countries";
-import type {
-  BetBreakdown,
-  Bets,
-  OfficialFacts,
-  OfficialPlacements,
-} from "@/lib/scoring";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
-
-type Row = {
-  sessionId: string;
-  name: string;
-  topTen: number;
-  home: number;
-  bets: BetBreakdown;
-  betPicks: Bets;
-  highlights: number;
-  trivia: number;
-  total: number;
-};
-
-type Payload = {
-  hasResults: boolean;
-  homeCountryCode: string;
-  placements: OfficialPlacements;
-  facts: OfficialFacts;
-  leaderboard: Row[];
-};
 
 type BallotPick = {
   points: number;
@@ -73,9 +49,16 @@ function BallotComparison({
   }
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="text-[11px] uppercase tracking-[0.2em] text-white/45 font-display px-1">
-        {t(lang, "results_pick_vs_actual_h")}
-      </h3>
+      {/* Single column header strip — "You said / It was" lives once
+          at the top of the table instead of repeating in every row.
+          Aligned to the same grid the rows use so the columns sit
+          true. */}
+      <div className="px-3 grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1fr)_auto] gap-x-3 text-[10px] uppercase tracking-[0.18em] text-white/40 font-display">
+        <span />
+        <span>{t(lang, "results_you_said")}</span>
+        <span>{t(lang, "results_it_was")}</span>
+        <span />
+      </div>
       <ol className="flex flex-col gap-1.5">
         {ballot.map((pick) => (
           <BallotComparisonRow
@@ -104,48 +87,34 @@ function BallotComparisonRow({
   const youGotIt = !!youCountry && !!actual && youCountry.code === actual.code;
   return (
     <li
-      className={`flex items-center gap-3 rounded-2xl px-3 py-2.5
-                  ${youGotIt ? "bg-flamingo/10 ring-1 ring-flamingo/25" : "bg-white/[0.04] ring-1 ring-white/8"}`}
+      className={`grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-x-3 rounded-2xl px-3 py-2.5
+                  ${youGotIt ? "bg-flamingo/10 ring-1 ring-flamingo/25" : "glass-surface"}`}
     >
-      <span className="shrink-0 w-7 text-flamingo font-display text-base tabular-nums">
+      <span className="text-flamingo font-display text-base tabular-nums">
         {pick.points}
       </span>
-      <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-3 gap-y-0.5">
-        {/* "You said" */}
-        <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-display leading-none">
-            {t(lang, "results_you_said")}
-          </p>
-          <div className="flex items-center gap-1.5 mt-1 min-w-0">
-            {youCountry ? (
-              <>
-                <HeartFlag code={youCountry.code} size="sm" />
-                <span className="text-sm truncate">{countryName(youCountry.code, lang)}</span>
-              </>
-            ) : (
-              <span className="text-sm text-white/30 italic">—</span>
-            )}
-          </div>
-        </div>
-        {/* "It was" */}
-        <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-display leading-none">
-            {t(lang, "results_it_was")}
-          </p>
-          <div className="flex items-center gap-1.5 mt-1 min-w-0">
-            {actual ? (
-              <>
-                <HeartFlag code={actual.code} size="sm" />
-                <span className="text-sm truncate">{countryName(actual.code, lang)}</span>
-              </>
-            ) : (
-              <span className="text-sm text-white/30 italic">—</span>
-            )}
-          </div>
-        </div>
-      </div>
+      <span className="flex items-center gap-1.5 min-w-0">
+        {youCountry ? (
+          <>
+            <HeartFlag code={youCountry.code} size="sm" />
+            <span className="text-sm truncate">{countryName(youCountry.code, lang)}</span>
+          </>
+        ) : (
+          <span className="text-sm text-white/30 italic">—</span>
+        )}
+      </span>
+      <span className="flex items-center gap-1.5 min-w-0">
+        {actual ? (
+          <>
+            <HeartFlag code={actual.code} size="sm" />
+            <span className="text-sm truncate">{countryName(actual.code, lang)}</span>
+          </>
+        ) : (
+          <span className="text-sm text-white/30 italic">—</span>
+        )}
+      </span>
       <span
-        className={`shrink-0 font-display tabular-nums text-sm pl-1 ${
+        className={`font-display tabular-nums text-sm pl-1 ${
           pick.earned > 0 ? "text-flamingo" : "text-white/30"
         }`}
       >
@@ -162,25 +131,39 @@ function BallotComparisonRow({
 export function ResultsPanel() {
   const { code, homeCountryCode } = useRoomLive();
   const lang = useLang();
-  const [payload, setPayload] = useState<Payload | null>(null);
+  // The aggregated leaderboard payload is hoisted onto the room-level
+  // <LeaderboardProvider>, so MyResults (home banner) + this panel
+  // share a single in-flight fetch + broadcast subscription. The
+  // ballot still lives on the per-session profile route below.
+  const { payload } = useLeaderboard();
   const [ballot, setBallot] = useState<BallotPick[] | null>(null);
-  const [tab, setTab] = useState<"me" | "board">("me");
-
-  const load = useCallback(async () => {
+  // Persist the "me / board" choice per-room so flipping back to
+  // Results lands on whichever side the viewer was on last.
+  const [tab, _setTab] = useState<"me" | "board">("me");
+  const setTab = useCallback(
+    (next: "me" | "board") => {
+      _setTab(next);
+      try {
+        localStorage.setItem(`uzk_results_subtab_${code}`, next);
+      } catch {
+        /* ignore */
+      }
+    },
+    [code],
+  );
+  useEffect(() => {
     try {
-      const res = await fetch(`/api/rooms/${code}/leaderboard`, { cache: "no-store" });
-      if (!res.ok) return;
-      const data = (await res.json()) as Payload;
-      if (data.hasResults) setPayload(data);
+      const saved = localStorage.getItem(`uzk_results_subtab_${code}`);
+      if (saved === "me" || saved === "board") _setTab(saved);
     } catch {
-      /* network blip */
+      /* ignore */
     }
   }, [code]);
 
-  // Per-pick breakdown ("you said / it was"). Lives on the profile route
-  // so the same scoring helper is the single source of truth. Refetched
-  // whenever the aggregated leaderboard refetches — they share the
-  // leaderboard:updated event.
+  // Per-pick breakdown ("you said / it was"). Lives on the profile
+  // route so the same scoring helper is the single source of truth.
+  // Refetched whenever the aggregated leaderboard refetches — same
+  // broadcast event.
   const loadBallot = useCallback(async () => {
     const session = ensureSessionId();
     if (!session) return;
@@ -198,9 +181,8 @@ export function ResultsPanel() {
   }, [code]);
 
   useEffect(() => {
-    load();
     loadBallot();
-  }, [load, loadBallot]);
+  }, [loadBallot]);
 
   // Lets the chat broadcast "Results are in" card jump straight to the
   // board sub-tab without exposing this component's state.
@@ -214,26 +196,42 @@ export function ResultsPanel() {
   }, []);
 
   useEventListener(({ event }) => {
-    if (event.type === "leaderboard:updated") {
-      load();
-      loadBallot();
-    }
+    if (event.type === "leaderboard:updated") loadBallot();
   });
 
   if (!payload || payload.leaderboard.length === 0) {
+    // Same beating-heart loader as the room-gate rehydration so the
+    // brand pulse carries through to every "we're fetching" moment.
     return (
-      <main className="flex-1 grid place-items-center text-white/45 px-8 text-center">
-        <p className="text-sm">{t(lang, "loading")}</p>
+      <main className="flex-1 grid place-items-center px-8 text-center">
+        <div className="flex flex-col items-center gap-4 text-white/55">
+          <div className="heartbeat-loop">
+            {/* Plain `<img>` instead of `next/image`: iOS Safari
+                paints the `drop-shadow` filter against the wrapper
+                span's bounding box until the WebP fully decodes,
+                rendering a transparent square halo around the heart
+                on the first frame. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/70-heart.webp"
+              alt=""
+              width={56}
+              height={56}
+              className="h-14 w-14 object-contain drop-shadow-[0_0_24px_rgba(255,46,222,0.45)]"
+            />
+          </div>
+          <p className="text-xs uppercase tracking-[0.3em] font-display">
+            {t(lang, "loading")}
+          </p>
+        </div>
       </main>
     );
   }
 
   const rows = payload.leaderboard;
   const session = ensureSessionId();
-  const idx = rows.findIndex((r) => r.sessionId === session);
-  const me = idx >= 0 ? rows[idx] : null;
-  const rank = idx >= 0 ? idx + 1 : 0;
-  const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : null;
+  const me = rows.find((r) => r.sessionId === session) ?? null;
+  const myRank = me ? rows.findIndex((r) => r.sessionId === session) + 1 : 0;
   const effTab = me ? tab : "board";
 
   return (
@@ -258,8 +256,24 @@ export function ResultsPanel() {
                         transition={{ type: "spring", stiffness: 380, damping: 32 }}
                       />
                     )}
-                    <span className={`relative transition-colors ${active ? "text-dark-blue" : "text-white/65"}`}>
+                    <span className={`relative inline-flex items-center gap-1.5 transition-colors ${active ? "text-dark-blue" : "text-white/65"}`}>
                       {t(lang, id === "me" ? "results_tab_me" : "results_tab_board")}
+                      {/* Rank badge on the Leaderboard tab so the
+                          viewer can read their "10 / 14" at a glance
+                          without scrolling into the list. Tinted to
+                          stay legible whether the pill is the white
+                          active state or the muted resting one. */}
+                      {id === "board" && me && (
+                        <span
+                          className={`inline-flex items-center gap-0.5 rounded-full px-2 h-5 text-[11px] tabular-nums font-display
+                                       ${active
+                                         ? "bg-dark-blue text-white"
+                                         : "bg-white/10 text-white/75 ring-1 ring-white/12"}`}
+                        >
+                          <span>{myRank}</span>
+                          <span className={active ? "text-white/60" : "text-white/45"}>/{rows.length}</span>
+                        </span>
+                      )}
                     </span>
                   </button>
                 );
@@ -268,61 +282,52 @@ export function ResultsPanel() {
           </div>
         )}
 
-        {effTab === "me" && me ? (
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-3 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3">
-              <span className="shrink-0 grid place-items-center h-11 w-11 rounded-xl bg-white/[0.07] ring-1 ring-white/12 text-xl font-display text-white">
-                {medal ?? `#${rank}`}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="font-display text-white truncate leading-tight">{me.name}</p>
-                <p className="text-xs text-white/55 leading-tight">
-                  {t(lang, "home_my_results_rank", rank, rows.length)}
-                </p>
-              </div>
-              <span className="text-right shrink-0">
-                <span className="block font-display text-2xl text-flamingo tabular-nums leading-none">
-                  {me.total}
-                </span>
-                <span className="block text-[10px] uppercase tracking-wider text-white/40 mt-0.5">
-                  {t(lang, "pts_short")}
-                </span>
-              </span>
-            </div>
-
-            {/* "You said / it was" — per-pick comparison for the TOP10
-                ballot. Reads as a scorecard: each row shows the pick at
-                that rank, what the country actually finished, and the
-                earned points. */}
-            {ballot && <BallotComparison ballot={ballot} lang={lang} />}
-
-            {/* Same shape applied to the BONUS bets. Reuses the picks +
-                facts/placements that ride along on the leaderboard
-                response. Self-hides when the voter didn't place any
-                bets, so the rest of the breakdown still reads. */}
-            <BetsComparison
-              picks={me.betPicks}
-              earned={me.bets}
-              facts={payload.facts}
-              placements={payload.placements}
-              homeCountryCode={homeCountryCode}
-              lang={lang}
-              totalFinalists={countries.length}
-            />
-
-            <ScoreBreakdown
-              topTen={me.topTen}
-              home={me.home}
-              bets={me.bets}
-              highlights={me.highlights}
-              trivia={me.trivia}
-              total={me.total}
-              homeName={countryName(homeCountryCode, lang)}
-            />
-          </div>
-        ) : (
-          <Leaderboard code={code} />
-        )}
+        {/* Crossfade + slide between the two sub-tabs so the eye
+            doesn't snap from "me" to "board" — same choreography we
+            use for vote/results swaps in the live show. mode="wait"
+            keeps the layout from briefly stacking both panels. */}
+        <AnimatePresence mode="wait" initial={false}>
+          {effTab === "me" && me ? (
+            <motion.div
+              key="me"
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col gap-4"
+            >
+              {ballot && <BallotComparison ballot={ballot} lang={lang} />}
+              <BetsComparison
+                picks={me.betPicks}
+                earned={me.bets}
+                facts={payload.facts}
+                placements={payload.placements}
+                homeCountryCode={homeCountryCode}
+                lang={lang}
+                totalFinalists={countries.length}
+              />
+              <ScoreBreakdown
+                topTen={me.topTen}
+                home={me.home}
+                bets={me.bets}
+                highlights={me.highlights}
+                trivia={me.trivia}
+                total={me.total}
+                homeName={countryName(homeCountryCode, lang)}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="board"
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 12 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <Leaderboard code={code} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </main>
   );

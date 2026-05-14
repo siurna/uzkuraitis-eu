@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Share2, Check, LogOut, ChevronRight, Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { useUpdateMyPresence } from "@/lib/realtime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { TogglePill } from "@/components/ui/toggle-pill";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { SelectedAvatarCard } from "@/components/selected-avatar-card";
 import { NotificationToggles } from "@/components/notification-toggles";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
@@ -24,10 +25,9 @@ const AVATAR_KEY = "uzk_avatar";
 const LAST_ROOM_KEY = "uzk_last_room";
 
 // Settings drawer: edit name / avatar / language, share the room
-// link, leave the room. The avatar section collapses to a single
-// summary card; tapping opens a separate avatar-picker bottom-sheet
-// on top — keeps the settings drawer scannable instead of dumping
-// the whole 42-tile grid inline.
+// link, leave the room. Autosaves everything — toggles persist on
+// flip, the name persists on blur (empty rolls back to the last good
+// value). No footer, no Save button.
 export function SettingsModal({
   open,
   onClose,
@@ -40,6 +40,7 @@ export function SettingsModal({
   const updatePresence = useUpdateMyPresence();
   const router = useRouter();
   const [name, setName] = useState("");
+  const lastGoodName = useRef("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [lang, setLang] = useState<Language>("lt");
   const [copied, setCopied] = useState(false);
@@ -51,7 +52,9 @@ export function SettingsModal({
 
   useEffect(() => {
     if (!open) return;
-    setName(localStorage.getItem(NAME_KEY) ?? "");
+    const initial = localStorage.getItem(NAME_KEY) ?? "";
+    setName(initial);
+    lastGoodName.current = initial;
     setAvatar(localStorage.getItem(AVATAR_KEY) ?? null);
     setLang(readLang());
     setTranslate(readTranslate());
@@ -59,10 +62,6 @@ export function SettingsModal({
     setCopied(false);
   }, [open]);
 
-  // Allow other surfaces (the chat broadcast "turn on notifications"
-  // card, mainly) to jump straight to the notifications sub-sheet
-  // instead of making people drill through Settings. Listens for a
-  // window event so the call site doesn't need a hook reference.
   useEffect(() => {
     const onOpenNotifs = () => {
       if (open) setNotifSheetOpen(true);
@@ -70,6 +69,26 @@ export function SettingsModal({
     window.addEventListener("uzk:open-notifications", onOpenNotifs);
     return () => window.removeEventListener("uzk:open-notifications", onOpenNotifs);
   }, [open]);
+
+  const commitName = () => {
+    const clean = name.trim().slice(0, 40);
+    if (!clean) {
+      // Empty isn't allowed — roll back to the last good value so we
+      // never persist a nameless identity that would show up as
+      // "anonymous" in chat.
+      setName(lastGoodName.current);
+      return;
+    }
+    if (clean === lastGoodName.current) return;
+    lastGoodName.current = clean;
+    localStorage.setItem(NAME_KEY, clean);
+    updatePresence({ name: clean });
+  };
+
+  const setLanguage = (next: Language) => {
+    setLang(next);
+    writeLang(next);
+  };
 
   const toggleTranslate = () => {
     const next = !translate;
@@ -83,37 +102,22 @@ export function SettingsModal({
     writeBeginner(next);
   };
 
-  const save = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const clean = name.trim().slice(0, 40);
-    if (!clean || !avatar) return;
-    localStorage.setItem(NAME_KEY, clean);
-    localStorage.setItem(AVATAR_KEY, avatar);
-    writeLang(lang);
-    window.dispatchEvent(new Event("uzk:avatar-change"));
-    updatePresence({ name: clean, avatar });
-    toast.success(t(lang, "save"));
-    onClose();
-  };
-
   const share = async () => {
     if (!shareUrl) return;
-    // Native share sheet first (iOS/Android/Edge), fallback to clipboard.
     if (typeof navigator !== "undefined" && "share" in navigator) {
       try {
         await navigator.share({ title: t(lang, "share_link"), url: shareUrl });
         return;
       } catch {
-        /* user cancelled; fall through to clipboard */
+        /* user cancelled */
       }
     }
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
-      toast.success(t(lang, "link_copied"));
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      toast.error(t(lang, "couldnt_copy"));
+      /* clipboard refused — user can long-press the address bar */
     }
   };
 
@@ -126,44 +130,19 @@ export function SettingsModal({
 
   return (
     <>
-      <BottomSheet
-        open={open}
-        onClose={onClose}
-        title={t(lang, "settings")}
-        footer={
-          <>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={share}
-              className="text-white/75 gap-1.5"
-            >
-              {copied ? <Check className="h-4 w-4 text-success" /> : <Share2 className="h-4 w-4" />}
-              {copied ? t(lang, "link_copied") : t(lang, "share_link")}
-            </Button>
-            <div className="flex-1" />
-            <Button
-              type="submit"
-              form="settings-form"
-              disabled={!name.trim() || !avatar}
-              className="font-display rounded-2xl
-                         bg-white text-dark-blue hover:bg-dark-blue-50
-                         disabled:opacity-40"
-            >
-              {t(lang, "save")}
-            </Button>
-          </>
-        }
-      >
-        <form
-          id="settings-form"
-          onSubmit={save}
-          className="flex flex-col gap-5"
-        >
+      <BottomSheet open={open} onClose={onClose} title={t(lang, "settings")}>
+        <div className="flex flex-col gap-5">
           <Section label={t(lang, "your_name")}>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value.slice(0, 40))}
+              onBlur={commitName}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
               className="heartbeat-focus h-14 text-center text-2xl font-bold rounded-xl
                          border border-white/15 bg-black/30 placeholder:text-white/30 placeholder:font-normal"
               maxLength={40}
@@ -178,7 +157,7 @@ export function SettingsModal({
                   <button
                     key={code}
                     type="button"
-                    onClick={() => setLang(code)}
+                    onClick={() => setLanguage(code)}
                     className="relative h-11 rounded-xl font-display text-base"
                   >
                     {active && (
@@ -197,69 +176,56 @@ export function SettingsModal({
             </div>
           </Section>
 
-          {lang === "en" && (
-            // Only meaningful to the English speakers in the room — the
-            // toggle drops a translated bubble under any Lithuanian
-            // message coming in.
-            <Section label={t(lang, "settings_translate_h")}>
-              <button
-                type="button"
-                onClick={toggleTranslate}
-                aria-pressed={translate}
-                className="w-full flex items-center gap-3 rounded-2xl px-4 py-3
-                           bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07] transition text-left"
+          <AnimatePresence initial={false}>
+            {lang === "en" && (
+              <motion.div
+                key="translate-section"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden"
               >
-                <span className="flex-1 min-w-0">
-                  <span className="block text-sm text-white/90 leading-snug">
-                    {t(lang, "settings_translate_sub")}
-                  </span>
-                </span>
-                <span
-                  className={`relative h-6 w-11 rounded-full transition shrink-0 ${
-                    translate ? "bg-success/70" : "bg-white/10"
-                  }`}
-                  aria-hidden
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition transform ${
-                      translate ? "translate-x-5" : "translate-x-0"
-                    }`}
+                <Section label={t(lang, "settings_translate_h")}>
+                  <ToggleRow
+                    on={translate}
+                    onChange={toggleTranslate}
+                    label={t(lang, "settings_translate_sub")}
                   />
-                </span>
-              </button>
-            </Section>
-          )}
+                </Section>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {/* Beginner mode: available in both languages because the
-              gloss is written in the user's UI lang, not English.
-              Drops a turquoise tip-bubble under any message that
-              carries a Eurovision-specific reference. */}
+          {/* Beginner mode: when ON, a turquoise gloss-bubble slides
+              in underneath the toggle as a live preview of what the
+              feature will drop into chat. Reads as "this is the thing
+              you just enabled" instead of a silent flag flip. */}
           <Section label={t(lang, "settings_beginner_h")}>
-            <button
-              type="button"
-              onClick={toggleBeginner}
-              aria-pressed={beginner}
-              className="w-full flex items-center gap-3 rounded-2xl px-4 py-3
-                         bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07] transition text-left"
-            >
-              <span className="flex-1 min-w-0">
-                <span className="block text-sm text-white/90 leading-snug">
-                  {t(lang, "settings_beginner_sub")}
-                </span>
-              </span>
-              <span
-                className={`relative h-6 w-11 rounded-full transition shrink-0 ${
-                  beginner ? "bg-success/70" : "bg-white/10"
-                }`}
-                aria-hidden
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition transform ${
-                    beginner ? "translate-x-5" : "translate-x-0"
-                  }`}
-                />
-              </span>
-            </button>
+            <ToggleRow
+              on={beginner}
+              onChange={toggleBeginner}
+              label={t(lang, "settings_beginner_sub")}
+            />
+            <AnimatePresence initial={false}>
+              {beginner && (
+                <motion.div
+                  key="beginner-preview"
+                  initial={{ opacity: 0, height: 0, y: -6 }}
+                  animate={{ opacity: 1, height: "auto", y: 0 }}
+                  exit={{ opacity: 0, height: 0, y: -6 }}
+                  transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-2 rounded-2xl bg-turquoise/12 ring-1 ring-turquoise/35 px-3 py-2.5 flex items-start gap-2.5">
+                    <FluentEmoji glyph="💡" size={18} className="mt-0.5 shrink-0" />
+                    <p className="text-[13px] text-turquoise leading-snug">
+                      {t(lang, "settings_beginner_sub")}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Section>
 
           <Section label={t(lang, "pick_avatar")}>
@@ -273,7 +239,7 @@ export function SettingsModal({
                 <span className="relative h-12 w-12 rounded-xl overflow-hidden ring-1 ring-white/15 shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={optimizedSrc(selectedAvatar.photo, 128)}
+                    src={optimizedSrc(selectedAvatar.photo, 256)}
                     alt=""
                     className="absolute inset-0 h-full w-full object-cover"
                     style={{
@@ -305,7 +271,29 @@ export function SettingsModal({
             </button>
           </Section>
 
+          {/* Menu rail: Share link, Notifications, Leave room — three
+              tap-out items that used to live in the footer or be
+              implicit. Share lives here now so the drawer has no
+              fixed-footer at all. */}
           <Section label="">
+            <button
+              type="button"
+              onClick={share}
+              disabled={!shareUrl}
+              className="flex items-center gap-3 rounded-2xl px-4 py-3
+                         bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition text-left
+                         disabled:opacity-50"
+            >
+              {copied ? (
+                <Check className="h-4 w-4 text-success shrink-0" />
+              ) : (
+                <Share2 className="h-4 w-4 text-dark-blue-200 shrink-0" />
+              )}
+              <span className="flex-1">
+                {copied ? t(lang, "link_copied") : t(lang, "share_link")}
+              </span>
+              <ChevronRight className="h-4 w-4 text-dark-blue-300 shrink-0" />
+            </button>
             <button
               type="button"
               onClick={() => setNotifSheetOpen(true)}
@@ -327,22 +315,14 @@ export function SettingsModal({
               <span className="flex-1">{t(lang, "leave_room")}</span>
             </button>
           </Section>
-        </form>
+        </div>
       </BottomSheet>
 
-      {/* Separate sheet for the avatar grid — opens on top of the
-          settings drawer, no inline grid blowing up the layout. */}
       <BottomSheet
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         title={t(lang, "pick_avatar")}
         footer={
-          // The picked-artist card lives in the (fixed) footer so it
-          // genuinely stays glued above the Apply button. Tapping
-          // Apply commits the avatar immediately (writes localStorage
-          // + broadcasts the change) — earlier this was deferred to
-          // the outer "Save" in Settings, which made the picker feel
-          // non-committal.
           <div className="w-full flex flex-col gap-3">
             <SelectedAvatarCard avatarId={avatar} />
             <div className="flex items-center">
@@ -373,8 +353,6 @@ export function SettingsModal({
         </div>
       </BottomSheet>
 
-      {/* Notifications — its own roomy sheet so the toggles each get a
-          line of explanation instead of being crammed into settings. */}
       <BottomSheet
         open={notifSheetOpen}
         onClose={() => setNotifSheetOpen(false)}
@@ -396,8 +374,6 @@ export function SettingsModal({
         <NotificationToggles />
       </BottomSheet>
 
-      {/* Leave-room confirmation — a deliberate second step so a stray
-          tap doesn't yank you out of an in-progress show. */}
       <BottomSheet
         open={leaveSheetOpen}
         onClose={() => setLeaveSheetOpen(false)}
@@ -423,6 +399,31 @@ export function SettingsModal({
         <p className="text-sm text-white/60 leading-relaxed">{t(lang, "leave_confirm_body")}</p>
       </BottomSheet>
     </>
+  );
+}
+
+function ToggleRow({
+  on,
+  onChange,
+  label,
+}: {
+  on: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      aria-pressed={on}
+      className="w-full flex items-center gap-3 rounded-2xl px-4 py-3
+                 glass-surface hover:bg-white/[0.07] transition text-left"
+    >
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm text-white/90 leading-snug">{label}</span>
+      </span>
+      <TogglePill on={on} />
+    </button>
   );
 }
 

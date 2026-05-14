@@ -9,7 +9,9 @@ import {
 } from "@/lib/rooms";
 import { broadcastToRoom } from "@/lib/realtime-server";
 import { pushToRoom } from "@/lib/push";
-import { getCountry } from "@/lib/countries";
+import { getCountry, countryName } from "@/lib/countries";
+import { t } from "@/lib/i18n";
+import { checkAndIncrement } from "@/lib/rate-limit";
 import { participantPhoto } from "@/lib/participants";
 import {
   postSystemMessage,
@@ -78,6 +80,18 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
   if (!room) {
     return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   }
+  // Each successful PATCH triggers up to a handful of broadcasts ×
+  // every connected client, plus DB writes for system messages and
+  // push fan-outs. A leaked admin link could be rage-clicked into a
+  // quota event; cap to 60 patches/min per room (one per second is
+  // still far more than a real host needs).
+  const limited = await checkAndIncrement(`manage:${room.id}`, 60, 60_000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "Slow down — too many room updates." },
+      { status: 429 },
+    );
+  }
   const parsed = PatchSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success || Object.keys(parsed.data).length === 0) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
@@ -115,8 +129,13 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
   // and now-playing:change when the host moves the active country (the
   // event carries the new code so clients can swarm immediately without
   // a refetch race).
+  // Always announce the room-prop change so listeners refresh
+  // votingEnabled/nowPlayingCode/showStatus etc. The duplicate
+  // unconditional `leaderboard:updated` that used to live here was
+  // dragging every viewer into a leaderboard recompute on every
+  // PATCH (rename, voting toggle, now-playing pick) — now scoped to
+  // the tally-flip block at the bottom of this handler.
   await broadcastToRoom(newCode, { type: "room:updated" });
-  await broadcastToRoom(newCode, { type: "leaderboard:updated" });
   if (nowPlayingChanged) {
     await broadcastToRoom(newCode, {
       type: "now-playing:change",
@@ -129,15 +148,20 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
       pushToRoom(
         room.id,
         (prefs) => !!prefs.nowPlaying,
-        {
-          title: `${c?.flag ? `${c.flag} ` : ""}${c?.name ?? nextNowPlaying.toUpperCase()} is on stage`,
+        (lang) => ({
+          title: t(
+            lang,
+            "push_now_playing_title",
+            c?.flag ? `${c.flag} ` : "",
+            countryName(nextNowPlaying, lang) ?? nextNowPlaying.toUpperCase(),
+          ),
           body: c?.artist
-            ? `${c.artist}${c.song ? ` — ${c.song}` : ""}`
-            : "Tap to open the room",
+            ? t(lang, "push_now_playing_body_song", c.artist, c.song ?? "")
+            : t(lang, "push_now_playing_body_open"),
           url: `/r/${newCode}`,
           tag: `now-playing:${newCode}`,
           image: participantPhoto(nextNowPlaying) ?? undefined,
-        },
+        }),
       ).catch(() => {});
       // Full-width "now on stage" banner in the room chat. Awaited so the
       // insert + broadcast actually complete before the lambda is frozen.
@@ -145,31 +169,28 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     }
   }
   if (parsed.data.votingEnabled !== undefined) {
+    const open = parsed.data.votingEnabled;
     pushToRoom(
       room.id,
       (prefs) => !!prefs.votingState,
-      {
-        title: parsed.data.votingEnabled
-          ? "Voting is open"
-          : "Voting just closed",
-        body: parsed.data.votingEnabled
-          ? "Cast your TOP10 before the show kicks off."
-          : "Results coming in shortly.",
+      (lang) => ({
+        title: t(lang, open ? "push_voting_open_title" : "push_voting_closed_title"),
+        body: t(lang, open ? "push_voting_open_body" : "push_voting_closed_body"),
         url: `/r/${newCode}/vote`,
         tag: `voting:${newCode}`,
-      },
+      }),
     ).catch(() => {});
   }
   if (parsed.data.tallyEnabled === true) {
     pushToRoom(
       room.id,
       (prefs) => !!prefs.resultsTallied,
-      {
-        title: "Results are tallied",
-        body: "Open the leaderboard to see how you did.",
+      (lang) => ({
+        title: t(lang, "push_results_title"),
+        body: t(lang, "push_results_body"),
         url: `/r/${newCode}`,
         tag: `results:${newCode}`,
-      },
+      }),
     ).catch(() => {});
   }
 
@@ -200,6 +221,7 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
       id: room.id,
       homeCountryCode: room.homeCountryCode,
       tallyEnabled: true,
+      highlightThreshold: room.highlightThreshold,
     });
     await broadcastToRoom(newCode, { type: "leaderboard:updated" });
   }

@@ -3,11 +3,12 @@ import type { MetadataRoute } from "next";
 // PWA manifest. Generated at build time by Next so /manifest.webmanifest
 // always reflects the current brand tokens.
 //
-// Icons live in two places: the Next metadata-file convention picks up
-// `app/icon.png` (favicon source) + `app/apple-icon.png` (iOS Add-to-
-// Home tile) automatically. The manifest below adds the 192/512 +
-// maskable variants that Chrome/Android use for the install prompt and
-// the adaptive launcher icon. See public/icons/README.md.
+// Icon assets live in Supabase Storage (the bucket below) so the PNG
+// binaries don't bloat the repo. The favicon / apple-touch-icon are
+// wired the same way in `app/layout.tsx` → `metadata.icons`.
+const ICON_BUCKET =
+  "https://mbgkujipbdfsdvjobtrf.supabase.co/storage/v1/object/public/icons";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Eurovision",
@@ -20,13 +21,13 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#10142a",
     icons: [
       {
-        src: "/icons/icon-192.png",
+        src: `${ICON_BUCKET}/icon-192.png`,
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-512.png",
+        src: `${ICON_BUCKET}/icon-512.png`,
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
@@ -35,7 +36,7 @@ export default function manifest(): MetadataRoute.Manifest {
       // shape varies per device). The source PNG must have its logo
       // centred + padded inward.
       {
-        src: "/icons/icon-maskable.png",
+        src: `${ICON_BUCKET}/icon-maskable.png`,
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

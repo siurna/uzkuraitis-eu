@@ -68,7 +68,7 @@ function Tile({
         {avatar.photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={optimizedSrc(avatar.photo, 128)}
+            src={optimizedSrc(avatar.photo, 256)}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
             style={{

@@ -7,13 +7,16 @@ const nextConfig = {
   // postgres-js needs to live outside the bundled Next runtime so its
   // TCP socket internals aren't browser-shimmed during build.
   serverExternalPackages: ["postgres"],
-  // Let the image optimizer fetch avatar photos mirrored to the Vercel
-  // Blob store by `pnpm avatars:upload` — otherwise `/_next/image?url=
-  // https://…blob.vercel-storage.com/…` is rejected. Single `*` for the
-  // store subdomain (Vercel's own recommendation). `localPatterns` kept
-  // wide-open so /participants/* etc. still optimise.
+  // Allow-list the hosts the Next image optimizer is allowed to fetch
+  // from when callers pass `/_next/image?url=https://…`. Past-act
+  // avatars + chat uploads live in Supabase Storage (the `avatars` and
+  // `chat` public buckets); the Vercel Blob entries are kept for any
+  // older URLs lingering in production data. `localPatterns` stays
+  // wide-open so /participants/* and the rest of public/ still
+  // optimise.
   images: {
     remotePatterns: [
+      { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
       { protocol: "https", hostname: "*.public.blob.vercel-storage.com", pathname: "/**" },
       { protocol: "https", hostname: "**.public.blob.vercel-storage.com", pathname: "/**" },
     ],

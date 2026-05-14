@@ -31,6 +31,38 @@ export type PushPayload = {
   image?: string;
 };
 
+/** A push payload as a function of the subscriber's UI language.
+ *  Lets the sender express "render the title / body in their lang,
+ *  not mine" without baking the resolved strings into the
+ *  broadcast. The caller supplies a builder; pushToRoom invokes it
+ *  per subscriber with that subscriber's saved `lang` (falls back
+ *  to LT, the app default). */
+export type PushPayloadFor = (lang: "en" | "lt") => PushPayload;
+
+// Per-request memo for the room's subscription roster — the same
+// chat POST commonly fans out three push waves (chatAll / mentions /
+// replies) and they were each running an identical SELECT. With
+// this cache the second and third call hit memory. Cleared between
+// requests because the lambda warm-instance object stays in scope
+// only while the route handler is awaiting.
+const roomSubsCache = new Map<
+  string,
+  { rows: (typeof pushSubscriptions.$inferSelect)[]; until: number }
+>();
+const ROOM_SUBS_TTL_MS = 5_000;
+
+async function readRoomSubs(roomId: string) {
+  const hit = roomSubsCache.get(roomId);
+  const now = Date.now();
+  if (hit && hit.until > now) return hit.rows;
+  const rows = await db
+    .select()
+    .from(pushSubscriptions)
+    .where(eq(pushSubscriptions.roomId, roomId));
+  roomSubsCache.set(roomId, { rows, until: now + ROOM_SUBS_TTL_MS });
+  return rows;
+}
+
 // Fan out a payload to every subscription in a room whose `prefs`
 // pass the given filter. Filter is a thunk so callers can read fields
 // of the subscription (e.g. reply-to: msg.replyTo === session) without
@@ -39,7 +71,7 @@ export type PushPayload = {
 export async function pushToRoom(
   roomId: string,
   filter: (prefs: PushPrefs, sub: typeof pushSubscriptions.$inferSelect) => boolean,
-  payload: PushPayload,
+  payload: PushPayload | PushPayloadFor,
 ): Promise<void> {
   try {
     ensureConfigured();
@@ -50,17 +82,21 @@ export async function pushToRoom(
     return;
   }
 
-  const subs = await db
-    .select()
-    .from(pushSubscriptions)
-    .where(eq(pushSubscriptions.roomId, roomId));
+  const subs = await readRoomSubs(roomId);
 
   const eligible = subs.filter((s) => filter(s.prefs as PushPrefs, s));
   if (eligible.length === 0) return;
 
-  const json = JSON.stringify(payload);
+  const isFn = typeof payload === "function";
   await Promise.all(
     eligible.map(async (s) => {
+      // Render the payload in this subscriber's saved UI language.
+      // LT is the app default, so a null `lang` column falls back
+      // to it. Sender-side caching of the resolved string is fine
+      // because every notification is a distinct send anyway.
+      const lang = (s.lang === "en" ? "en" : "lt") as "en" | "lt";
+      const body = isFn ? (payload as PushPayloadFor)(lang) : (payload as PushPayload);
+      const json = JSON.stringify(body);
       try {
         await webpush.sendNotification(
           {

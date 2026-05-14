@@ -93,12 +93,17 @@ export function BottomSheet({
             // the home indicator sits over its own background, not a
             // gap), centred at max-w-md on tablets/desktops. Rounded
             // only at the top.
+            // `uzk-sheet-ios-radius` (globals.css) bumps the top
+            // corners to 40px when display-mode is browser — matches
+            // iOS Safari's native sheet feel — and stays at the
+            // Tailwind default (24px / rounded-3xl) in PWA / desktop.
             className="fixed bottom-0 inset-x-0 z-[60] mx-auto w-full max-w-md
-                       glass-card rounded-t-3xl border-x-0 border-b-0
+                       glass-card rounded-t-3xl uzk-sheet-ios-radius
+                       border-x-0 border-b-0
                        max-h-[78dvh] flex flex-col"
           >
             {(title || sub || dismissible) && (
-              <div className="px-5 pt-4 pb-3 flex items-start gap-3 shrink-0">
+              <div className="px-5 pt-5 pb-2 flex items-center gap-3 shrink-0">
                 <div className="flex-1 min-w-0">
                   {title && (
                     <h2 className="font-display text-3xl sm:text-[2rem] leading-tight gradient-text text-balance">
@@ -106,7 +111,7 @@ export function BottomSheet({
                     </h2>
                   )}
                   {sub && (
-                    <p className="text-sm text-white/55 leading-snug text-pretty">
+                    <p className="text-sm text-white/55 leading-snug text-pretty mt-0.5">
                       {sub}
                     </p>
                   )}
@@ -116,7 +121,7 @@ export function BottomSheet({
                     type="button"
                     onClick={onClose}
                     aria-label={t(lang, "close")}
-                    className="text-white/50 hover:text-white p-1 -m-1 transition"
+                    className="text-white/50 hover:text-white p-1 -m-1 transition shrink-0 self-center"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -126,12 +131,16 @@ export function BottomSheet({
 
             <div
               className={cn(
-                // pt-3 keeps focus rings on the first form field from
-                // getting clipped at the scroll viewport's top edge;
-                // fade-scroll-y softens the top/bottom scroll edges.
-                // Bottom padding includes the iOS safe-area so content
-                // doesn't tuck under the home indicator.
-                "flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pt-3 flex flex-col gap-4 fade-scroll-y",
+                // The sheet hugs its content: when everything fits
+                // within max-h, no scrollbar appears + the sheet
+                // shrinks to the natural height of the children.
+                // Overflow only kicks in once the content exceeds
+                // the sheet's max-h (78dvh, set on the parent).
+                // pt-3 keeps focus rings on the first form field
+                // from getting clipped at the scroll viewport's top
+                // edge; fade-scroll-y softens the edges when the
+                // content does spill.
+                "min-h-0 overflow-y-auto overscroll-contain px-5 pt-3 flex flex-col gap-4 fade-scroll-y",
                 "pb-[max(env(safe-area-inset-bottom),1.25rem)]",
                 contentClassName,
               )}

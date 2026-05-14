@@ -82,9 +82,22 @@ export async function GET(_req: Request, { params }: RouteCtx) {
   if (!room) {
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
+  // Project the three columns the renderer actually consumes —
+  // dropping `updatedAt` saves bytes both on the wire and in the
+  // edge cache. Same SWR pattern as /scores: live updates land via
+  // the broadcast bus, the cache header just protects cold starts.
   const rows = await db
-    .select()
+    .select({
+      countryCode: reactions.countryCode,
+      emoji: reactions.emoji,
+      count: reactions.count,
+    })
     .from(reactions)
     .where(sql`${reactions.roomId} = ${room.id}`);
-  return NextResponse.json({ reactions: rows });
+  const res = NextResponse.json({ reactions: rows });
+  res.headers.set(
+    "Cache-Control",
+    "public, s-maxage=2, stale-while-revalidate=10",
+  );
+  return res;
 }

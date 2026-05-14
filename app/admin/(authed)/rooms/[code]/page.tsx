@@ -19,11 +19,14 @@ import { AdminRoomManageLink } from "@/components/admin-room-manage-link";
 import { AdminRoomCommentatorToggle } from "@/components/admin-room-commentator-toggle";
 import { AdminRoomTallyToggle } from "@/components/admin-room-tally-toggle";
 import { AdminRoomTriviaThreshold } from "@/components/admin-room-trivia-threshold";
+import { AdminRoomHighlightThreshold } from "@/components/admin-room-highlight-threshold";
+import { AdminSeed } from "@/components/admin-seed";
 import { AdminRoomTabs } from "@/components/admin-room-tabs";
 import {
   AdminParticipantMessages,
   type AdminMessageRow,
 } from "@/components/admin-participant-messages";
+import { AdminRemoveParticipant } from "@/components/admin-remove-participant";
 import { Flag } from "@/components/flag";
 import { timeAgo } from "@/lib/utils";
 
@@ -411,6 +414,19 @@ export default async function AdminRoomDetailPage({
                           </p>
                           <AdminParticipantMessages code={room.code} messages={v.recent} />
                         </div>
+                        {/* Nuclear option: remove the participant from
+                            this room entirely + start a cooldown so the
+                            same session can't immediately re-engage. */}
+                        <div className="px-3 pb-3 pt-1 flex items-center justify-between gap-3 border-t border-white/5">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-white/35 font-display">
+                            Suspend
+                          </p>
+                          <AdminRemoveParticipant
+                            code={room.code}
+                            sessionId={v.sessionId}
+                            name={v.name}
+                          />
+                        </div>
                       </details>
                     </li>
                   ))}
@@ -420,26 +436,20 @@ export default async function AdminRoomDetailPage({
           </section>
         }
         settings={
-          // Three groups: Identity (what the room IS), Behaviour (what it
-          // DOES), and Operations (host link / wipe). One glass-card per
-          // group, inner rows separated by a thin divider — instead of
-          // five identical cards stacked.
+          // Three sections, every row carrying the same tile shape
+          // (icon tile + title + sub + body) so the page reads as one
+          // visual family. Identity now owns the share-link tiles
+          // (host link + join link); Operations is just the dev-seed
+          // panel + the wipe-everything actions.
           <div className="flex flex-col gap-6">
-            <section className="glass-card rounded-xl p-5 flex flex-col gap-5">
+            <section className="glass-card rounded-xl p-5 flex flex-col gap-3">
               <header>
-                <h2 className="font-display text-xl leading-tight">Identity</h2>
-                <p className="text-xs text-white/45 mt-0.5">What this room is called and how guests join it.</p>
+                <h2 className="font-display text-xl leading-tight">Identity & invites</h2>
+                <p className="text-xs text-white/45 mt-0.5">What the room is called, the join code, and the links you hand out.</p>
               </header>
-              <div className="flex flex-col gap-5 divide-y divide-white/5 [&>*]:pt-5 [&>*:first-child]:pt-0">
-                <div>
-                  <p className="text-sm font-display text-white/85 mb-2">Room name</p>
-                  <AdminRoomRename code={room.code} initialName={room.name} />
-                </div>
-                <div>
-                  <p className="text-sm font-display text-white/85 mb-2">Join code</p>
-                  <AdminRoomCode code={room.code} />
-                </div>
-              </div>
+              <AdminRoomRename code={room.code} initialName={room.name} />
+              <AdminRoomCode code={room.code} />
+              <AdminRoomManageLink code={room.code} adminToken={room.adminToken} />
             </section>
 
             <section className="glass-card rounded-xl p-5 flex flex-col gap-3">
@@ -447,9 +457,6 @@ export default async function AdminRoomDetailPage({
                 <h2 className="font-display text-xl leading-tight">Behaviour</h2>
                 <p className="text-xs text-white/45 mt-0.5">Toggles that change what the room does during the show.</p>
               </header>
-              {/* Each toggle already shows its own label + sub inside the
-                  tile, so we drop the per-row title (it was the same
-                  string twice). */}
               <AdminRoomTallyToggle code={room.code} initialEnabled={room.tallyEnabled} />
               <AdminRoomCommentatorToggle
                 code={room.code}
@@ -459,14 +466,18 @@ export default async function AdminRoomDetailPage({
                 code={room.code}
                 initialMax={room.triviaMaxAnswerers}
               />
+              <AdminRoomHighlightThreshold
+                code={room.code}
+                initialThreshold={room.highlightThreshold ?? 5}
+              />
             </section>
 
-            <section className="flex flex-col gap-4">
+            <section className="glass-card rounded-xl p-5 flex flex-col gap-3">
               <header>
                 <h2 className="font-display text-xl leading-tight">Operations</h2>
-                <p className="text-xs text-white/45 mt-0.5">The host magic link and the wipe-everything escape hatch.</p>
+                <p className="text-xs text-white/45 mt-0.5">Throwaway seed data for testing + the wipe-everything escape hatch.</p>
               </header>
-              <AdminRoomManageLink code={room.code} adminToken={room.adminToken} />
+              <AdminSeed rooms={[{ code: room.code, name: room.name }]} embeddedRoom={room.code} />
               <AdminRoomDangerZone code={room.code} />
             </section>
           </div>

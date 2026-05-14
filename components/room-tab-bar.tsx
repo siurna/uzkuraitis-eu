@@ -72,7 +72,7 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
 
   return (
     <nav
-      className="fixed bottom-0 inset-x-0 z-40 px-3
+      className="uzk-edge-bar fixed bottom-0 left-0 z-40 px-3
                  pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2
                  bg-gradient-to-t from-dark-blue-900 via-dark-blue-900/92 to-transparent"
     >

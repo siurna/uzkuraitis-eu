@@ -19,6 +19,8 @@ import { useParticles } from "@/components/particle-layer";
 import { TranslationBubble } from "@/components/translation-bubble";
 import { BeginnerBubble } from "@/components/beginner-bubble";
 import { ChatTriviaCard } from "@/components/chat-trivia-inline";
+import { ChatPollCard } from "@/components/chat-poll-card";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { useTranslateEnabled } from "@/lib/translate-client";
 import { useBeginnerEnabled } from "@/lib/beginner-client";
 import { useSwipeToReply } from "@/lib/use-swipe-to-reply";
@@ -124,7 +126,7 @@ function AddTopTenSheet({
                 type="button"
                 onClick={() => place(i)}
                 className={`w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition transform-gpu active:scale-[0.99]
-                            ${isHere ? "bg-flamingo/15 ring-1 ring-flamingo/35" : "bg-white/[0.04] ring-1 ring-white/8 active:bg-white/[0.08]"}`}
+                            ${isHere ? "bg-flamingo/15 ring-1 ring-flamingo/35" : "glass-surface active:bg-white/[0.08]"}`}
               >
                 <span className="h-8 w-8 shrink-0 rounded-lg grid place-items-center font-display text-sm tabular-nums bg-white/[0.07] ring-1 ring-white/12 text-white/80">
                   {s.points}
@@ -178,7 +180,8 @@ export type MessageKind =
   | "system"
   | "now_playing"
   | "results"
-  | "trivia";
+  | "trivia"
+  | "poll";
 
 export type Message = {
   id: string;
@@ -336,10 +339,41 @@ export function ChatRow({
   const isNowPlaying = m.kind === "now_playing";
   const isResults = m.kind === "results";
   const isTrivia = m.kind === "trivia";
+  const isPoll = m.kind === "poll";
   const isMedia = (m.kind === "gif" || m.kind === "image") && m.gifUrl;
+  // Emoji-only text messages get the iMessage / Telegram "jumbo
+  // emoji" treatment: bigger glyphs, no bubble. Detection allows any
+  // mix of emoji glyphs, ZWJ sequences, variation selectors and
+  // whitespace; we cap at 8 visible glyphs so a wall of 50 hearts
+  // doesn't tile the chat in 5-line giants.
+  const jumboCount = (() => {
+    if (m.kind !== "text" || !m.body) return 0;
+    const trimmed = m.body.trim();
+    if (!trimmed) return 0;
+    if (!/^[\s\p{Extended_Pictographic}‍️]+$/u.test(trimmed)) return 0;
+    // Count visible glyphs via Intl.Segmenter when available, else
+    // fall back to a code-point split (over-counts ZWJ sequences but
+    // still capped at 8 — close enough).
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const Seg = (Intl as any).Segmenter;
+      if (Seg) {
+        const seg = new Seg(undefined, { granularity: "grapheme" });
+        return Array.from(seg.segment(trimmed.replace(/\s+/g, ""))).length;
+      }
+    } catch {
+      /* fall through */
+    }
+    return Array.from(trimmed.replace(/\s+/g, "")).length;
+  })();
+  const isJumbo = jumboCount > 0 && jumboCount <= 8;
+  const jumboSize =
+    jumboCount <= 1 ? "text-6xl" : jumboCount <= 3 ? "text-5xl" : "text-3xl";
   // A message that's pulled enough reactions glows — it's a "highlight".
   const reactionTotal = Object.values(m.reactions).reduce((n, r) => n + r.count, 0);
-  const isHighlight = !isSystem && !isNowPlaying && !isResults && reactionTotal >= 5;
+  // Polls already render the reaction count as a tally, so don't add
+  // the highlight glow on top — it'd compete with the bar fill.
+  const isHighlight = !isSystem && !isNowPlaying && !isResults && !isPoll && reactionTotal >= 5;
   const isEdited = (m.meta as { edited?: boolean } | null)?.edited === true;
   const canEdit =
     mine && m.kind === "text" &&
@@ -440,6 +474,29 @@ export function ChatRow({
     }
   }, [m.createdAt]);
 
+  if (isPoll) {
+    const pollMeta = m.meta as {
+      poll?: boolean;
+      question?: { en?: string; lt?: string };
+      choices?: { emoji: string; en: string; lt: string }[];
+    } | null;
+    return (
+      <motion.li
+        initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        className="my-1 px-1"
+      >
+        <ChatPollCard
+          messageId={m.id}
+          meta={pollMeta}
+          reactions={m.reactions}
+          lang={lang}
+        />
+      </motion.li>
+    );
+  }
+
   if (isTrivia) {
     const triviaMeta = m.meta as {
       countryCode?: string;
@@ -462,7 +519,7 @@ export function ChatRow({
         : null;
     return (
       <motion.li
-        initial={{ opacity: 0, scale: 0.97 }}
+        initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         className="my-1 px-1"
@@ -497,7 +554,7 @@ export function ChatRow({
       window.localStorage.getItem(`uzk_voted_${roomCode}`) === "1";
     return (
       <motion.li
-        initial={{ opacity: 0, scale: 0.97 }}
+        initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
         className="my-1 px-1"
@@ -529,7 +586,7 @@ export function ChatRow({
                 {podium.map((p, i) => (
                   <li key={i} className="relative">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-base leading-none shrink-0">{medals[i]}</span>
+                      <FluentEmoji glyph={medals[i]} size={18} className="shrink-0" />
                       {/* Bigger name as the user asked: text-base
                           (was text-sm) + drop-shadow for legibility on
                           the gradient bar that sits behind it. */}
@@ -610,7 +667,7 @@ export function ChatRow({
     const isActive = !!cc && cc === nowPlayingCode;
     return (
       <motion.li
-        initial={{ opacity: 0, scale: 0.97 }}
+        initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
         className="my-1"
@@ -747,9 +804,11 @@ export function ChatRow({
             const avatarInner =
               m.meta && typeof m.meta.commentatorPhoto === "string" && m.meta.commentatorPhoto ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={m.meta.commentatorPhoto} alt="" className="h-full w-full object-cover" />
+                <img src={optimizedSrc(m.meta.commentatorPhoto, 96)} alt="" className="h-full w-full object-cover" />
               ) : isCommentator ? (
-                <div className="h-full w-full grid place-items-center text-sm leading-none">🎙️</div>
+                <div className="h-full w-full grid place-items-center">
+                  <FluentEmoji glyph="🎙️" size={20} />
+                </div>
               ) : avatar?.photo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -884,15 +943,17 @@ export function ChatRow({
               // horizontal for swipe-to-reply. transition-colors only —
               // the swipe writes its own inline transform/transition.
               className={`relative text-left rounded-2xl text-sm leading-snug transition-colors touch-pan-y cursor-pointer overflow-hidden will-change-transform
-                          ${isMedia ? "p-0" : "px-3.5 py-2"}
+                          ${isMedia ? "p-0" : isJumbo ? "px-1 py-1" : "px-3.5 py-2"}
                           ${
                             isCard
                               ? "bg-flamingo/15 ring-1 ring-flamingo/40 text-white px-3.5 py-2"
-                              : mine
-                                ? "bg-white text-dark-blue"
-                                : "bg-white/[0.06] ring-1 ring-white/10 text-white/90"
+                              : isJumbo
+                                ? "bg-transparent text-white"
+                                : mine
+                                  ? "bg-white text-dark-blue"
+                                  : "bg-white/[0.06] ring-1 ring-white/10 text-white/90"
                           } ${m.pending ? "opacity-75" : ""} ${
-                            isHighlight
+                            isHighlight && !isJumbo
                               ? "ring-2 ring-flamingo/45 shadow-[0_4px_28px_-2px_oklch(70%_0.27_336_/_0.45)]"
                               : ""
                           }`}
@@ -909,6 +970,12 @@ export function ChatRow({
                     // `touch-manipulation` blocks iOS Safari's native
                     // double-tap-to-zoom on the image so the bubble's
                     // own click + double-tap-to-react handlers run.
+                    // `aspect-ratio: auto 4 / 3` falls back to 4/3 only
+                    // before the natural ratio is known — once the
+                    // image decodes the browser swaps to the real one.
+                    // (Without `auto`, the ratio would override the
+                    // intrinsic dimensions and squish every GIF.)
+                    style={{ aspectRatio: "auto 4 / 3" }}
                     className="block max-h-60 w-auto rounded-2xl touch-manipulation"
                     draggable={false}
                   />
@@ -920,7 +987,11 @@ export function ChatRow({
                 </span>
               ) : (
                 <>
-                  <span className="whitespace-pre-wrap break-words">
+                  <span
+                    className={`whitespace-pre-wrap break-words ${
+                      isJumbo ? `${jumboSize} leading-none tracking-wide` : ""
+                    }`}
+                  >
                     {renderBody(m.body ?? "", participantNames)}
                   </span>
                   {isEdited && (
@@ -973,7 +1044,7 @@ export function ChatRow({
                                               : "ring-1 ring-white/20"
                                         }`}
                           >
-                            <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">{emoji}</span>
+                            <FluentEmoji glyph={emoji} size={26} className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
                             {picked && (
                               <span
                                 className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-flamingo ring-2 ring-black/80"
@@ -1065,7 +1136,7 @@ export function ChatRow({
               {Object.entries(m.reactions).map(([emoji, info]) => (
                 <li
                   key={emoji}
-                  className="flex items-center gap-3 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3"
+                  className="flex items-center gap-3 rounded-2xl glass-surface px-4 py-3"
                 >
                   {/* Emoji + its count stack — count sits directly under
                       the glyph so the "how many" reads at a glance. */}

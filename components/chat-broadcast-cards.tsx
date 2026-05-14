@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Bell, Dices, Medal, ListChecks, ChevronRight } from "lucide-react";
+import { Bell, Dices, ListChecks, ChevronRight, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { HeartFlag } from "@/components/flag";
+import { WelcomeMarkdown } from "@/components/welcome-banner";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { countryName, getCountry } from "@/lib/countries";
 import { isSupported as pushIsSupported } from "@/lib/push-client";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
+import { useIdentity } from "@/lib/use-identity";
 import { fmt, t, tDyn, type MessageKey } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
 import { HOST_COUNTRY } from "@/lib/scoring";
@@ -56,6 +60,10 @@ export function ChatBroadcastCard({
       return <VoteOpenCard lang={lang} />;
     case "sys_cta_bet":
       return <BonusBetCard lang={lang} />;
+    case "sys_cta_selfie":
+      return <SelfieCard lang={lang} />;
+    case "sys_cta_welcome":
+      return <WelcomeChatCard lang={lang} />;
     case "sys_cta_top3":
       return <Top3PodiumCard codes={meta?.codes ?? null} fallback={meta?.sysArg ?? null} lang={lang} />;
     case "sys_cta_top3_empty":
@@ -316,12 +324,19 @@ function BonusBetCard({ lang }: { lang: Language }) {
             className="flex w-max"
             style={{ animation: "uzk-marquee 22s linear infinite" }}
           >
-            {["🏆", "🎯", "🎲", "🎤", "🥄", "🎙️", "🎺"].concat(["🏆", "🎯", "🎲", "🎤", "🥄", "🎙️", "🎺"]).map((c, i) => (
+            {/* Doubled so the looping CSS marquee never shows a gap.
+                Listed twice rather than spread because emojis like
+                🎙️ are multi-codepoint and JS spread breaks the
+                variation-selector. */}
+            {[
+              "🏆", "🎤", "🎯", "🥄", "🎺", "🎙️", "🎲",
+              "🏆", "🎤", "🎯", "🥄", "🎺", "🎙️", "🎲",
+            ].map((c, i) => (
               <span
                 key={`a${i}`}
-                className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-base shadow-md"
+                className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"
               >
-                {c}
+                <FluentEmoji glyph={c} size={22} />
               </span>
             ))}
           </span>
@@ -329,12 +344,15 @@ function BonusBetCard({ lang }: { lang: Language }) {
             className="flex w-max"
             style={{ animation: "uzk-marquee 28s linear infinite reverse" }}
           >
-            {["💎", "🎼", "🍿", "📺", "🔮", "🌟", "✨"].concat(["💎", "🎼", "🍿", "📺", "🔮", "🌟", "✨"]).map((c, i) => (
+            {[
+              "💎", "🌟", "🎼", "🍿", "✨", "📺", "🔮",
+              "💎", "🌟", "🎼", "🍿", "✨", "📺", "🔮",
+            ].map((c, i) => (
               <span
                 key={`b${i}`}
-                className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-base shadow-md"
+                className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"
               >
-                {c}
+                <FluentEmoji glyph={c} size={22} />
               </span>
             ))}
           </span>
@@ -388,7 +406,7 @@ function Top3PodiumCard({
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      className="rounded-3xl ring-1 ring-yellow/45 shadow-[0_18px_44px_-18px_oklch(72%_0.18_85_/_0.5)] overflow-hidden"
+      className="rounded-3xl ring-2 ring-white/10 shadow-[0_18px_44px_-22px_rgba(0,0,0,0.55)] overflow-hidden"
     >
       <div className="relative overflow-hidden p-5 flex flex-col gap-4 bg-gradient-to-br from-yellow/30 via-orange/20 to-purple/55">
         {/* Spotlight cone behind the #1 flag. */}
@@ -400,25 +418,22 @@ function Top3PodiumCard({
           }}
           aria-hidden
         />
-        <header className="relative flex items-center justify-between">
-          <p className="text-[10px] uppercase tracking-[0.3em] font-display text-white/85 flex items-center gap-1.5">
-            <Medal className="h-3 w-3 text-yellow" fill="currentColor" />
+        <header className="relative flex items-center">
+          <p className="text-[10px] uppercase tracking-[0.3em] font-display text-white/85">
             {t(lang, "sys_cta_top3_eyebrow")}
           </p>
-          <span className="text-2xl leading-none">🏆</span>
         </header>
 
-        {/* #1 — hero row. Large heart-flag + country name + gold pill. */}
+        {/* #1 — hero row. Large heart-flag + gold medal leading the
+            country name; the secondary "Leading" eyebrow is gone (the
+            podium ordering carries that signal on its own). */}
         {first && (
           <div className="relative flex items-center gap-4">
             <span className="shrink-0">
               <HeartFlag code={first} size="lg" />
             </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-yellow font-display flex items-center gap-1">
-                <span className="text-base leading-none">🥇</span>
-                {t(lang, "sys_cta_top3_first")}
-              </p>
+            <div className="min-w-0 flex-1 flex items-center gap-2">
+              <FluentEmoji glyph="🥇" size={28} className="shrink-0" ariaLabel="first place" />
               <p className="font-display text-2xl text-white leading-tight truncate drop-shadow">
                 {countryName(first, lang) ?? first.toUpperCase()}
               </p>
@@ -446,6 +461,72 @@ function Top3PodiumCard({
   );
 }
 
+// "Hello folks" — the host fires this and the chat thread shows the
+// housekeeping markdown the admin wrote in /admin/welcome, rendered
+// in each viewer's own language. Fetches /api/welcome on mount and
+// listens for `uzk:welcome-refresh` so admin saves push through to
+// already-rendered cards without a reload.
+type WelcomeData = { welcome_md_en: string; welcome_md_lt: string };
+
+function WelcomeChatCard({ lang }: { lang: Language }) {
+  const [data, setData] = useState<WelcomeData | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      fetch("/api/welcome", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: WelcomeData | null) => {
+          if (alive && d) setData(d);
+        })
+        .catch(() => {});
+    };
+    load();
+    window.addEventListener("uzk:welcome-refresh", load);
+    return () => {
+      alive = false;
+      window.removeEventListener("uzk:welcome-refresh", load);
+    };
+  }, []);
+
+  const md = (lang === "lt" ? data?.welcome_md_lt : data?.welcome_md_en) ?? "";
+  // Pinned-note styling — a slip of cream-paper "stuck to the chat"
+  // with a tilted tape strip across the top corner. No icon, no
+  // eyebrow heading. This card is the host's opening hello — it
+  // should read as a hand-written intro, not a system banner.
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8, rotate: -2 }}
+      animate={{ opacity: 1, y: 0, rotate: -0.6 }}
+      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+      className="relative mx-auto max-w-[19rem]"
+    >
+      <span
+        className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 h-5 w-24 rotate-[-3deg]
+                   bg-[oklch(95%_0.08_95_/_0.7)] ring-1 ring-[oklch(85%_0.12_95_/_0.45)]
+                   shadow-[0_2px_4px_-2px_rgba(0,0,0,0.3)]"
+        aria-hidden
+      />
+      <div
+        className="relative rounded-sm p-5 bg-[#f5efe2]
+                   shadow-[0_18px_44px_-18px_rgba(0,0,0,0.55),0_2px_6px_-2px_rgba(0,0,0,0.4)]
+                   text-[#3a1f12] [&_strong]:text-[#3a1f12] [&_em]:text-[#3a1f12]
+                   [&_a]:text-[#7a3210] [&_a]:decoration-[#7a3210]/60"
+      >
+        {md.trim() ? (
+          <div className="text-[15px] leading-relaxed">
+            <WelcomeMarkdown source={md} />
+          </div>
+        ) : (
+          <p className="text-sm text-[#6e4b35] italic">
+            {t(lang, "welcome_empty_chat")}
+          </p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 function PodiumChip({
   code,
   rank,
@@ -458,11 +539,168 @@ function PodiumChip({
   const medal = rank === 2 ? "🥈" : "🥉";
   return (
     <div className="flex items-center gap-2 rounded-xl bg-white/[0.08] ring-1 ring-white/15 px-3 py-2 min-w-0">
-      <span className="text-base leading-none shrink-0">{medal}</span>
+      <FluentEmoji glyph={medal} size={18} className="shrink-0" ariaLabel={`rank ${rank}`} />
       <HeartFlag code={code} size="sm" />
       <span className="text-xs font-display text-white truncate flex-1">
         {countryName(code, lang) ?? code.toUpperCase()}
       </span>
     </div>
+  );
+}
+
+// "Selfie time" — opens the device camera directly via a hidden
+// <input type="file" capture="user"> so the OS jumps straight to the
+// front-facing camera (a regular file picker is the fallback when
+// `capture` isn't honoured). The card itself drives the existing
+// chat upload + send flow so we don't have to weave a callback all
+// the way back through chat-panel.
+function SelfieCard({ lang }: { lang: Language }) {
+  const { code } = useRoomLive();
+  const { sessionId: getSession, name, avatarId } = useIdentity();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  // Revoke object URLs we hold so we don't leak when the user picks
+  // a new shot or the card unmounts.
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const onPick = async (file: File) => {
+    if (!file.type.startsWith("image/") || !code) return;
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error(t(lang, "chat_image_too_big"));
+      return;
+    }
+    // Show the picked shot inline IMMEDIATELY — the upload below is
+    // async, but the polaroid window swaps to the local preview so
+    // the host gets instant feedback that their tap landed.
+    const localUrl = URL.createObjectURL(file);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(localUrl);
+    setDone(false);
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const up = await fetch(`/api/rooms/${code}/chat/upload`, { method: "POST", body: form });
+      if (!up.ok) {
+        const { error } = (await up.json().catch(() => ({}))) as { error?: string };
+        throw new Error(error ?? t(lang, "chat_image_failed"));
+      }
+      const { url } = (await up.json()) as { url: string };
+      await fetch(`/api/rooms/${code}/chat`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          session: getSession(),
+          name: (name ?? "").trim() || "anonymous",
+          avatarId,
+          kind: "image",
+          gifUrl: url,
+        }),
+      });
+      setDone(true);
+    } catch (err) {
+      toast.error((err as Error).message);
+      setPreviewUrl(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.94, rotate: -3 }}
+      animate={{ opacity: 1, scale: 1, rotate: -1.5 }}
+      whileTap={{ scale: 0.99 }}
+      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+      className="relative mx-auto max-w-[19rem]"
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        capture="user"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) void onPick(f);
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        className="relative block w-full text-left p-3 pb-1 rounded-sm
+                   bg-[#f5efe2]
+                   shadow-[0_18px_44px_-18px_rgba(0,0,0,0.55),0_2px_6px_-2px_rgba(0,0,0,0.4)]
+                   active:scale-[0.99] transition transform-gpu disabled:opacity-70"
+      >
+        <span
+          className="pointer-events-none absolute -top-2 left-6 h-5 w-16 rotate-[-6deg]
+                     bg-[oklch(95%_0.08_95_/_0.7)] ring-1 ring-[oklch(85%_0.12_95_/_0.45)]
+                     shadow-[0_2px_4px_-2px_rgba(0,0,0,0.3)]"
+          aria-hidden
+        />
+        <span className="relative block aspect-square rounded-sm overflow-hidden
+                          bg-gradient-to-br from-[#1a0f2b] via-[#2a1664] to-[#4a1f7a]">
+          {previewUrl ? (
+            // Once a shot is picked the polaroid window IS that shot,
+            // immediately. The upload + chat-post happen in parallel.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={previewUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <>
+              <span
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(80% 60% at 50% 35%, oklch(58% 0.22 336 / 0.4) 0%, transparent 60%), radial-gradient(60% 70% at 90% 90%, oklch(70% 0.18 220 / 0.35) 0%, transparent 60%)",
+                }}
+                aria-hidden
+              />
+              <span className="relative h-full w-full grid place-items-center">
+                <span className="grid h-20 w-20 place-items-center rounded-full
+                                  bg-white/15 ring-1 ring-white/30 backdrop-blur-sm
+                                  text-white shadow-[0_8px_24px_-8px_rgba(0,0,0,0.4)]">
+                  <FluentEmoji glyph="📸" size={48} />
+                </span>
+              </span>
+            </>
+          )}
+          {busy && previewUrl && (
+            <span className="absolute inset-0 grid place-items-center bg-black/30">
+              <Loader2 className="h-8 w-8 text-white animate-spin" />
+            </span>
+          )}
+        </span>
+        <span className="block px-1 pt-3 pb-2 text-center">
+          <span
+            className="block font-display text-[10px] uppercase tracking-[0.32em] text-[#8a614a]"
+          >
+            {t(lang, "sys_cta_selfie_eyebrow")}
+          </span>
+          <span
+            className="block font-display text-lg text-[#3a1f12] leading-tight mt-0.5 text-balance"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {busy
+              ? t(lang, "sys_cta_selfie_sending")
+              : done
+                ? t(lang, "sys_cta_selfie_done_title")
+                : t(lang, "sys_cta_selfie_title")}
+          </span>
+          <span className="block text-[11px] text-[#6e4b35] leading-snug mt-1 text-balance">
+            {done ? t(lang, "sys_cta_selfie_done_sub") : t(lang, "sys_cta_selfie_sub")}
+          </span>
+        </span>
+      </button>
+    </motion.div>
   );
 }

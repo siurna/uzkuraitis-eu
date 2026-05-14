@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -236,6 +237,19 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     [runFetch],
   );
 
+  // Reaction-storm refetch: every chat:react used to fire a full
+  // 50-message GET. During a climax that's hundreds per minute
+  // per viewer. Throttle to one refetch per second; the trailing
+  // edge picks up any toggles that arrived during the cooldown.
+  const reactTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleReactRefetch = useCallback(() => {
+    if (reactTimer.current) return;
+    reactTimer.current = setTimeout(() => {
+      reactTimer.current = null;
+      void runFetch();
+    }, 1000);
+  }, [runFetch]);
+
   // Mount: paint the last-seen messages from sessionStorage instantly so
   // switching to the Chat tab isn't a blank flash, then refresh in the
   // background.
@@ -247,6 +261,13 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         if (Array.isArray(arr) && arr.length) {
           setMessages(arr);
           setLoading(false);
+          // Seed `lastCount` to the cache size so the very next
+          // runFetch — which arrives with the full window from the
+          // server — doesn't read as "the list just grew by 50"
+          // and trigger a spurious smooth-scroll-to-bottom right
+          // when the tab paints. Without this stamp the chat
+          // randomly jumps a few pixels on first paint.
+          lastCount.current = arr.length;
         }
       }
     } catch {
@@ -255,6 +276,10 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     fetchMessages(true);
     return () => {
       if (fetchTimer.current) clearTimeout(fetchTimer.current);
+      // The reaction-throttle timer needs to be torn down too —
+      // otherwise navigating away mid-storm leaves a pending
+      // refetch that runs setState on an unmounted component.
+      if (reactTimer.current) clearTimeout(reactTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
@@ -355,7 +380,13 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   }, [newestIso, atBottom, active, updatePresence]);
 
   // Tab-bar unread badge clear — only while the chat tab is actually
-  // showing (the panel stays mounted on other tabs).
+  // showing (the panel stays mounted on other tabs). Deps are
+  // intentionally `[code, active]` and NOT `messages.length`: under
+  // hundreds of messages/min during the climax, this effect would
+  // fire a localStorage write + window event for every new row.
+  // Once-on-tab-activation is the correct behaviour — the
+  // `chat:new` event listener below already sets `unread = 0` while
+  // active, so badging stays accurate.
   useEffect(() => {
     if (!active) return;
     try {
@@ -364,7 +395,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     } catch {
       /* private mode */
     }
-  }, [code, active, messages.length]);
+  }, [code, active]);
 
   useEventListener(({ event }) => {
     const ev = event as {
@@ -391,14 +422,23 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           //    in-place so the bubble doesn't double-render during the
           //    window between broadcast arrival and POST-response.
           if (m.sessionId === mySession) {
+            // For images/gifs the optimistic row holds a `blob:`
+            // URL while the broadcast carries the hosted URL —
+            // matching on `gifUrl ===` always fails, so the
+            // optimistic row gets cleaned up by a later tick and
+            // the user sees a brief double-image flash. Fall back
+            // to a temporal match (same kind, posted within 5s)
+            // for media kinds; text still matches on the body.
+            const arrived = Date.parse(m.createdAt);
             const tmpIdx = prev.findIndex(
               (x) =>
                 x.pending &&
                 x.id.startsWith("tmp-") &&
                 x.sessionId === mySession &&
                 x.kind === m.kind &&
-                ((m.kind === "text" && x.body === m.body) ||
-                  (m.kind !== "text" && x.gifUrl === m.gifUrl)),
+                (m.kind === "text"
+                  ? x.body === m.body
+                  : Math.abs(arrived - Date.parse(x.createdAt)) < 5_000),
             );
             if (tmpIdx >= 0) {
               const next = prev.slice();
@@ -441,7 +481,13 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       fetchMessages();
       return;
     }
-    if (ev.type === "chat:react") fetchMessages();
+    // chat:react used to refetch the entire 50-msg window for every
+    // toggle. With N viewers × M reactions/min during a song's
+    // climax that's a thundering-herd at the API. We throttle to
+    // one refetch per second; broadcasts that land during the
+    // cooldown still register as "we need another refresh once the
+    // window opens" via the trailing flag.
+    if (ev.type === "chat:react") scheduleReactRefetch();
   });
 
   // First render: jump to the bottom (no animation). After that:
@@ -523,6 +569,21 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     return () => window.removeEventListener("uzk:chat-media-loaded", stick);
   }, []);
 
+  // iOS keyboard fix: when the visualViewport shrinks (keyboard
+  // animates open) the panel's height drops to match — but the list
+  // inside keeps its old scrollTop, so the newest message slides
+  // *up* out of view by exactly the keyboard's first paint height.
+  // The user is "naturally at the bottom" of the chat and focusing
+  // the composer makes the thread jump up a few px. Pin scrollTop
+  // back to scrollHeight whenever the viewport changes AND the
+  // user was parked at the bottom.
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    if (!atBottomRef.current) return;
+    el.scrollTop = el.scrollHeight;
+  }, [viewport]);
+
   // Swipe / tap to reply: anchor the replied-to message in the middle
   // so the list doesn't jump somewhere random. Run once now, and again
   // after the keyboard / reply-chip layout settles — without the second
@@ -540,7 +601,14 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       cancelAnimationFrame(raf);
       window.clearTimeout(settle);
     };
-  }, [replyTo, composerFocused, viewport]);
+    // PERF: deps were [replyTo, composerFocused, viewport] which
+    // fired the smooth-scroll-into-view on every keyboard tick + on
+    // every focus flip — the list kept "fighting back to centre" as
+    // the iOS keyboard animated open. The intent is "scroll once
+    // when a reply target is selected", so the only dep we need is
+    // the reply target's id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replyTo?.id]);
 
   // ----- composer / typing -----
   const onComposerChange = (v: string) => {
@@ -584,10 +652,15 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         body: JSON.stringify({ session: mySession, name: senderName, avatarId, body: text, replyTo: reply, mentions }),
       });
       if (!res.ok) {
+        // Pull the optimistic message back and restore the composer
+        // text + reply target so the user can retry. The 429 case
+        // keeps its toast — it's actionable info the user can't
+        // infer from the composer state. Generic send failures stay
+        // silent: the text reappearing in the composer IS the signal.
         setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
         setBody(text);
         setReplyTo(replyTo);
-        toast.error(t(lang, res.status === 429 ? "chat_slow_down" : "chat_send_failed"));
+        if (res.status === 429) toast.error(t(lang, "chat_slow_down"));
         return;
       }
       const data = (await res.json()) as { id?: string };
@@ -605,9 +678,10 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         });
       }
     } catch {
+      // Network blip — pull the optimistic row back and restore the
+      // composer; the text reappearing is the signal.
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
       setBody(text);
-      toast.error(t(lang, "chat_send_failed"));
     }
   };
 
@@ -673,8 +747,12 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       preload.onerror = finishSwap;
       preload.src = url;
     } catch (err) {
+      // Upload bounced — the optimistic image vanishes (signal
+      // enough). Surface a toast only for the size-cap message
+      // since that's actionable.
+      const msg = (err as Error).message;
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-      toast.error((err as Error).message);
+      if (msg === t(lang, "chat_image_too_big")) toast.error(msg);
       URL.revokeObjectURL(localUrl);
     } finally {
       setUploading(false);
@@ -779,8 +857,10 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       body: JSON.stringify({ session, body: text }),
     });
     if (!res.ok) {
+      // Roll back to whatever the server has — the optimistic edit
+      // didn't land. No toast: the message snapping back is the
+      // signal.
       fetchMessages();
-      toast.error(t(lang, "chat_edit_failed"));
     }
   };
 
@@ -794,8 +874,8 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       { method: "DELETE" },
     );
     if (!res.ok) {
+      // Server refused — re-pull and re-render so the message reappears.
       fetchMessages();
-      toast.error(t(lang, "chat_delete_failed"));
     }
   };
 
@@ -804,7 +884,6 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     const text = m.body ?? "";
     if (!text) return;
     navigator.clipboard.writeText(text).catch(() => {});
-    toast.success(t(lang, "chat_copied"));
   };
 
   const byId = useMemo(() => {
@@ -942,7 +1021,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                     onClick={loadEarlier}
                     disabled={loadingMore}
                     className="flex items-center gap-1.5 text-xs text-white/55 hover:text-white/85
-                               rounded-full px-3 py-1.5 bg-white/[0.04] ring-1 ring-white/8 transition
+                               rounded-full px-3 py-1.5 glass-surface transition
                                disabled:opacity-50"
                   >
                     <ChevronUp className="h-3.5 w-3.5" />
@@ -960,7 +1039,11 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                   prev.kind === "text" &&
                   m.kind === "text";
                 return (
-                  <div key={m.id} className="contents">
+                  // Fragment instead of `<div className="contents">`:
+                  // a div between <ul> and its <li> children is
+                  // invalid HTML and breaks the accessibility tree
+                  // (display:contents helps painting but not parsing).
+                  <Fragment key={m.id}>
                     {newDay && (
                       <li className="flex justify-center my-1">
                         <span className="text-[11px] text-white/40 px-3 py-1 rounded-full bg-white/[0.04]">
@@ -994,7 +1077,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                       nowPlayingCode={nowPlayingCode}
                       roomCode={code}
                     />
-                  </div>
+                  </Fragment>
                 );
               })}
             </ul>

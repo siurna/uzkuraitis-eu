@@ -65,7 +65,7 @@ export function AdminRoomTabs({
         ))}
       </TabsList>
 
-      <div className="mt-6">
+      <div className="mt-3">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={active}

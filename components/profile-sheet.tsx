@@ -11,13 +11,30 @@ import {
 import { MessageCircle, Heart, Flame, Sparkles, Crown, Lightbulb, Lock } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Flag, HeartFlag } from "@/components/flag";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { useRoomLive } from "@/components/room-shell";
+import { useEventListener } from "@/lib/realtime";
 import { useIdentity } from "@/lib/use-identity";
 import { countryName, getCountry } from "@/lib/countries";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
+
+// Module-level cache for /profile responses. Tapping the same avatar
+// twice during a show used to fire two synchronous GETs against a
+// heavy join query; with 50 viewers averaging a handful of profile
+// peeks each, those add up. We hold the response for 30s and bust on
+// `leaderboard:updated` (the only event that materially changes the
+// per-pick breakdown).
+type CacheEntry = { data: unknown; until: number };
+const profileCache = new Map<string, CacheEntry>();
+const PROFILE_CACHE_TTL_MS = 30_000;
+const cacheKey = (code: string, target: string, viewer: string) =>
+  `${code}|${target}|${viewer}`;
+export function bustProfileCache(): void {
+  profileCache.clear();
+}
 
 // "Tap an avatar, see who they are" — the participant profile drawer.
 //
@@ -123,6 +140,14 @@ function ProfileSheet({
       setShellOnly(false);
       return;
     }
+    const key = cacheKey(code, sessionId, mySession);
+    const cached = profileCache.get(key);
+    if (cached && cached.until > Date.now()) {
+      setData(cached.data as ProfileData);
+      setShellOnly(false);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setShellOnly(false);
@@ -133,8 +158,12 @@ function ProfileSheet({
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancelled) return;
-        if (!d) setShellOnly(true);
-        else setData(d as ProfileData);
+        if (!d) {
+          setShellOnly(true);
+        } else {
+          setData(d as ProfileData);
+          profileCache.set(key, { data: d, until: Date.now() + PROFILE_CACHE_TTL_MS });
+        }
       })
       .catch(() => {
         if (!cancelled) setShellOnly(true);
@@ -146,6 +175,15 @@ function ProfileSheet({
       cancelled = true;
     };
   }, [sessionId, code, mySession]);
+
+  // Bust the profile cache when authoritative scoring inputs change.
+  // `leaderboard:updated` covers admin edits of placements/facts (per-
+  // pick breakdown rows shift). Reaction storms (`chat:react`) don't
+  // affect the cached payload meaningfully enough to be worth re-
+  // fetching during a single 30s window.
+  useEventListener(({ event }) => {
+    if (event.type === "leaderboard:updated") bustProfileCache();
+  });
 
   // "Shell" view: API returned 404 (no chat messages, no vote) but we
   // still know who they are from the bubble that opened this drawer.
@@ -193,7 +231,7 @@ function ProfileSheet({
               artist's metadata stacked: artist name → song → country +
               year. No display name (it's already in the sheet title). */}
           {avatar ? (
-            <div className="flex items-center gap-4 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 p-3">
+            <div className="flex items-center gap-4 rounded-2xl glass-surface p-3">
               <span className="h-20 w-20 shrink-0 rounded-2xl overflow-hidden ring-1 ring-white/15 bg-white/[0.06]">
                 {avatar.photo ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -269,7 +307,8 @@ function ProfileSheet({
                   {t(lang, "profile_top_moment")}
                 </p>
                 <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange/15 ring-1 ring-orange/35 px-2 h-6 text-xs text-orange tabular-nums font-display">
-                  ❤️ {view.topHighlight.reactionCount}
+                  <FluentEmoji glyph="❤️" size={12} />
+                  {view.topHighlight.reactionCount}
                 </span>
               </div>
               {/* Body / GIF / image preview. The original treatment
@@ -286,7 +325,10 @@ function ProfileSheet({
               ) : view.topHighlight.body ? (
                 <p className="text-sm text-white/90 leading-snug">{view.topHighlight.body}</p>
               ) : view.topHighlight.kind === "bingo_strike" ? (
-                <p className="text-sm text-white/85">🎯 Bingo!</p>
+                <p className="text-sm text-white/85 inline-flex items-center gap-1.5">
+                  <FluentEmoji glyph="🎯" size={16} />
+                  Bingo!
+                </p>
               ) : null}
             </div>
           )}
@@ -325,7 +367,7 @@ function StatTile({
     // to filled makes the row of tiles feel like one stat strip.
     <div
       className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-4
-                  ${muted ? "bg-white/[0.025] ring-1 ring-white/8 text-white/55" : "bg-white/[0.04] ring-1 ring-white/8 text-white/90"}`}
+                  ${muted ? "bg-white/[0.025] ring-1 ring-white/8 text-white/55" : "glass-surface text-white/90"}`}
     >
       <Icon className="h-6 w-6" fill="currentColor" strokeWidth={1.5} />
       <span className="font-display text-2xl tabular-nums leading-none">
@@ -394,7 +436,7 @@ function BallotRow({
   return (
     <li
       className={`flex items-center gap-3 rounded-2xl px-3 py-2
-                  ${pick.earned > 0 ? "bg-flamingo/10 ring-1 ring-flamingo/25" : "bg-white/[0.04] ring-1 ring-white/8"}`}
+                  ${pick.earned > 0 ? "bg-flamingo/10 ring-1 ring-flamingo/25" : "glass-surface"}`}
     >
       <span
         className={`shrink-0 h-9 w-9 grid place-items-center rounded-lg font-display text-base tabular-nums

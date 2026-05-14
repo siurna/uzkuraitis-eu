@@ -1,71 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { Trophy } from "lucide-react";
-import { useEventListener } from "@/lib/realtime";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
+import { useLeaderboard } from "@/components/leaderboard-provider";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { ensureSessionId } from "@/lib/use-identity";
-import {
-  totalBetPoints,
-  type BetBreakdown,
-  type Bets,
-  type OfficialFacts,
-  type OfficialPlacements,
-} from "@/lib/scoring";
-import { BetsComparison } from "@/components/bets-comparison";
-import { countries } from "@/lib/countries";
+import { totalBetPoints } from "@/lib/scoring";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
-
-type Row = {
-  sessionId: string;
-  name: string;
-  topTen: number;
-  home: number;
-  bets: BetBreakdown;
-  betPicks: Bets;
-  highlights: number;
-  trivia: number;
-  total: number;
-};
-
-type Payload = {
-  hasResults: boolean;
-  homeCountryCode: string;
-  placements: OfficialPlacements;
-  facts: OfficialFacts;
-  leaderboard: Row[];
-};
 
 // Home banner: once results are tallied, shows YOUR card — a big rank
 // + total in a vertical layout, with a row of breakdown chips below
 // (TOP10 / Home / Bets / Highlights). Tap = jump to the Results tab
 // for the full breakdown + leaderboard. Hidden if results aren't in yet.
+//
+// The per-bet "you said / it was" comparison used to render inside
+// this banner too — it's gone from here so the home card stays
+// scannable; the chips below the total carry the breakdown signal,
+// the full comparison lives one tap away in the Results tab.
 export function MyResults() {
-  const { code, tallyEnabled, homeCountryCode } = useRoomLive();
+  const { tallyEnabled } = useRoomLive();
   const { setTab } = useRoomTab();
   const lang = useLang();
-  const [payload, setPayload] = useState<Payload | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/rooms/${code}/leaderboard`, { cache: "no-store" });
-      if (!res.ok) return;
-      const data = (await res.json()) as Payload;
-      if (data.hasResults) setPayload(data);
-    } catch {
-      /* network blip */
-    }
-  }, [code]);
-
-  useEffect(() => {
-    if (tallyEnabled) load();
-  }, [tallyEnabled, load]);
-
-  useEventListener(({ event }) => {
-    if (event.type === "leaderboard:updated") load();
-  });
+  const { payload } = useLeaderboard();
 
   if (!tallyEnabled || !payload || payload.leaderboard.length === 0) return null;
   const rows = payload.leaderboard;
@@ -106,8 +63,7 @@ export function MyResults() {
           {/* Eyebrow + name */}
           <header className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.3em] text-white/80 font-display leading-tight flex items-center gap-1.5">
-                <Trophy className="h-3 w-3" fill="currentColor" />
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white/80 font-display leading-tight">
                 {t(lang, me ? "home_my_results" : "home_results_in")}
               </p>
               {me ? (
@@ -122,7 +78,11 @@ export function MyResults() {
             </div>
             {me && (
               <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/18 ring-1 ring-white/30 px-3 h-7 text-sm text-white font-display tabular-nums">
-                <span>{medal ?? `#${rank}`}</span>
+                {medal ? (
+                  <FluentEmoji glyph={medal} size={16} ariaLabel={`rank ${rank}`} />
+                ) : (
+                  <span>#{rank}</span>
+                )}
                 <span className="text-white/70 text-xs">
                   / {rows.length}
                 </span>
@@ -159,18 +119,6 @@ export function MyResults() {
                 )}
               </ul>
 
-              {/* Per-bet "you said / it was" rows so the bets total
-                  isn't a black box. Self-hides when the voter didn't
-                  place any bets. */}
-              <BetsComparison
-                picks={me.betPicks}
-                earned={me.bets}
-                facts={payload.facts}
-                placements={payload.placements}
-                homeCountryCode={homeCountryCode}
-                lang={lang}
-                totalFinalists={countries.length}
-              />
             </>
           ) : null}
         </div>
