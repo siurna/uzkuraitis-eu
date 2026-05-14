@@ -18,15 +18,16 @@ import { NAME_KEY, SESSION_KEY } from "@/lib/use-identity";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 
-// Sensible defaults: notify on things that need your attention (a reply
-// or @mention, lines opening/closing, results landing) — not on ambient
-// activity (every chat message; "X is on stage" fires ~26× a night and
-// you can see the screen). Both off-by-default ones are one tap away in
-// the settings sheet.
+// Sensible defaults: notify on things the second-screen viewer needs to
+// know about while they're in the kitchen or next room. now-playing ON
+// is the whole reason this app exists (you want a ping each time the
+// next country takes the stage); replies + voting state + results
+// landing are all "your turn / hot moment" pings. chatAll stays OFF
+// because at 50 viewers it'd vibrate the phone every few seconds.
 const DEFAULT_PREFS: PushPrefs = {
   chatAll: false,
   chatReplies: true,
-  nowPlaying: false,
+  nowPlaying: true,
   votingState: true,
   resultsTallied: true,
 };
@@ -64,9 +65,16 @@ export function NotificationToggles() {
   const lang = useLang();
   const [state, setState] = useState<PushState | null>(null);
   const [pending, setPending] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
-  // Detect once on mount — same value for the lifetime of the panel.
+  // Detect once on mount, same value for the lifetime of the panel.
   const platform = useMemo(() => detectPlatform(), []);
+  const installedPwaNow = useMemo(() => isInstalledPwa(), []);
+  // iOS users who haven't installed the PWA can't get notifications,
+  // so the install steps are the headline content of this panel for
+  // them. Pre-expand the help instead of hiding it behind a "How?"
+  // tap so the action is one less interaction away.
+  const [helpOpen, setHelpOpen] = useState(
+    platform === "ios-safari" && !installedPwaNow,
+  );
 
   const refresh = useCallback(async () => {
     const session = localStorage.getItem(SESSION_KEY);
@@ -171,9 +179,19 @@ export function NotificationToggles() {
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between rounded-2xl px-4 py-3
                       bg-flamingo/10 ring-1 ring-flamingo/30">
-        <span className="flex items-center gap-2 text-sm">
+        <span className="flex items-center gap-2 text-sm flex-wrap">
           <Bell className="h-4 w-4 text-flamingo" />
           {t(lang, "push_on")}
+          {/* On iOS, web push only works inside the installed PWA.
+              Surfacing "iOS PWA" as a chip confirms the viewer is in
+              the right context — if they're seeing the chip + the
+              green toggle row, the OS-level plumbing is genuinely
+              hooked up. */}
+          {platform === "ios-safari" && installedPwaNow && (
+            <span className="text-[10px] uppercase tracking-[0.18em] font-display rounded-full bg-success/20 ring-1 ring-success/45 text-success px-2 h-5 inline-flex items-center">
+              iOS PWA
+            </span>
+          )}
         </span>
         <button
           type="button"
