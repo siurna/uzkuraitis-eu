@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "motion/react";
-import { Mic, Music } from "lucide-react";
+import { Mic, Music, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { countries, getCountry, countryName } from "@/lib/countries";
@@ -97,8 +97,31 @@ export function Standings() {
           style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.06), transparent)" }}
           aria-hidden
         />
-        <h2 className="relative text-[11px] uppercase tracking-[0.22em] text-white/55 font-display px-1">
-          {t(lang, "fan_top5")}
+        {/* Award-style title: gold-gradient text flanked by sparkle
+            glyphs. Same "the moment matters" energy as a movie-award
+            laurel without us shipping a vector laurel SVG. The
+            gradient runs top → bottom (light → deep gold) so the row
+            below it still reads. */}
+        <h2 className="relative flex items-center justify-center gap-3 px-1 select-none">
+          <Sparkles
+            className="h-4 w-4 shrink-0 text-[#f4c869]"
+            fill="currentColor"
+            aria-hidden
+          />
+          <span
+            className="font-display text-lg uppercase tracking-[0.22em] leading-none bg-clip-text text-transparent drop-shadow-[0_1px_0_rgba(0,0,0,0.35)]"
+            style={{
+              backgroundImage:
+                "linear-gradient(180deg, #fff3c2 0%, #f4c869 45%, #c98a2f 100%)",
+            }}
+          >
+            {t(lang, "fan_top5")}
+          </span>
+          <Sparkles
+            className="h-4 w-4 shrink-0 text-[#f4c869]"
+            fill="currentColor"
+            aria-hidden
+          />
         </h2>
       {loading ? (
         <ul className="flex flex-col gap-2">

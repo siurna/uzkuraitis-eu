@@ -397,7 +397,13 @@ export function NotificationsCta() {
   // ring of bell glyphs bleeding off the right, copy on the left, an
   // "enable" CTA. Same shape language as the Vote / Bingo / Bonus
   // banners. No dismiss — it self-hides the moment push is enabled.
+  //
+  // The outer container (max-width / centre / px) lives here so that
+  // when `shouldShow` flips false, the component returns plain null
+  // and the parent home stack's `gap-3` collapses cleanly without a
+  // phantom wrapper.
   return (
+    <div className="container mx-auto max-w-3xl px-4">
     <motion.div
       initial={{ opacity: 0, y: 12, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -437,5 +443,6 @@ export function NotificationsCta() {
         </span>
       </div>
     </motion.div>
+    </div>
   );
 }

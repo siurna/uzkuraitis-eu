@@ -31,20 +31,56 @@ type Phase =
   // fact) but buttons are inert and no choice is highlighted.
   | { kind: "closed"; correctIndex: TriviaPick };
 
+type TriviaSnapshot = {
+  correctIndex: number;
+  en: { question: string; choices: string[] };
+  lt: { question: string; choices: string[] };
+};
+
 export function ChatTriviaCard({
   countryCode,
+  snapshot,
   roomCode,
   lang,
   isOnStage,
 }: {
   countryCode: string;
+  /** Server-embedded question payload; preferred over the file deck so
+   *  admin edits to lib/trivia.ts (or DB) don't rewrite an in-flight card. */
+  snapshot: TriviaSnapshot | null;
   roomCode: string;
   lang: Language;
   isOnStage: boolean;
 }) {
   const { sessionId: getSession } = useIdentity();
   const session = getSession();
-  const card = getTrivia(countryCode);
+  // Prefer the snapshot baked into the chat message; fall back to the
+  // file-default deck for legacy messages that pre-date the snapshot.
+  const fallback = getTrivia(countryCode);
+  const card = snapshot
+    ? {
+        country: countryCode,
+        correctIndex: snapshot.correctIndex as TriviaPick,
+        en: {
+          question: snapshot.en.question,
+          choices: [
+            snapshot.en.choices[0] ?? "",
+            snapshot.en.choices[1] ?? "",
+            snapshot.en.choices[2] ?? "",
+            snapshot.en.choices[3] ?? "",
+          ] as [string, string, string, string],
+        },
+        lt: {
+          question: snapshot.lt.question,
+          choices: [
+            snapshot.lt.choices[0] ?? "",
+            snapshot.lt.choices[1] ?? "",
+            snapshot.lt.choices[2] ?? "",
+            snapshot.lt.choices[3] ?? "",
+          ] as [string, string, string, string],
+        },
+      }
+    : fallback;
 
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
 

@@ -10,6 +10,7 @@ import {
 import { broadcastToRoom } from "@/lib/realtime-server";
 import { getCountry } from "@/lib/countries";
 import { computeRoomLeaderboard } from "@/lib/leaderboard";
+import { getTriviaMerged } from "@/lib/trivia-store";
 import type { ChatMessagePayload, JsonObject } from "@/lib/realtime";
 
 // A system chat message, identified by its i18n key (+ optional arg).
@@ -82,16 +83,19 @@ export async function postSystemMessage(
 }
 
 // Inline trivia card posted as a chat message when the on-stage
-// country has a trivia entry. The card payload is just the country
-// code; the client renders the question from lib/trivia.ts in the
-// viewer's language. Quiet on purpose — trivia firing shouldn't bump
-// the chat-unread badge; the card is its own attention signal.
+// country has a trivia entry. We snapshot the full question payload
+// into `meta` so the card survives admin deck edits in flight: the
+// client always renders the question that was live when the card was
+// posted. Quiet on purpose — trivia firing shouldn't bump the
+// chat-unread badge; the card is its own attention signal.
 export async function postTriviaMessage(
   roomCode: string,
   roomId: string,
   countryCode: string,
 ): Promise<void> {
   try {
+    const card = await getTriviaMerged(countryCode);
+    if (!card) return;
     const [row] = await db
       .insert(chatMessages)
       .values({
@@ -100,7 +104,12 @@ export async function postTriviaMessage(
         name: "system",
         kind: "trivia",
         body: null,
-        meta: { countryCode },
+        meta: {
+          countryCode,
+          correctIndex: card.correctIndex,
+          en: { question: card.en.question, choices: [...card.en.choices] },
+          lt: { question: card.lt.question, choices: [...card.lt.choices] },
+        },
       })
       .returning();
     await broadcastToRoom(roomCode, {

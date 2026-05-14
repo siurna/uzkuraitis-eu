@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { startRegistration } from "@simplewebauthn/browser";
 import { toast } from "sonner";
+import { KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Credential = {
@@ -63,10 +64,19 @@ export function AdminPasskeysPanel({
   };
 
   return (
-    <section className="glass-card rounded-xl p-5">
-      <header className="flex items-center justify-between mb-4">
-        <h2 className="font-display text-xl">Passkeys</h2>
-        <Button size="sm" onClick={enroll} disabled={pending}>
+    <section className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-4">
+      <header className="flex items-start gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+          <KeyRound className="h-5 w-5" />
+        </span>
+        <div className="flex-1 min-w-0">
+          <h2 className="font-display text-xl leading-tight">Passkeys</h2>
+          <p className="text-sm text-white/45 leading-snug mt-0.5">
+            Devices allowed to sign in to the backstage. Lose one? Add a fresh
+            one here, then revoke the old.
+          </p>
+        </div>
+        <Button size="sm" onClick={enroll} disabled={pending} className="shrink-0">
           Add device
         </Button>
       </header>

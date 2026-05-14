@@ -441,8 +441,25 @@ export function ChatRow({
   }, [m.createdAt]);
 
   if (isTrivia) {
-    const cc = (m.meta as { countryCode?: string } | null)?.countryCode;
+    const triviaMeta = m.meta as {
+      countryCode?: string;
+      correctIndex?: number;
+      en?: { question: string; choices: string[] };
+      lt?: { question: string; choices: string[] };
+    } | null;
+    const cc = triviaMeta?.countryCode;
     if (!cc) return null;
+    // If the server snapshotted the question into meta (current shape),
+    // pass it down so the card survives admin deck edits in flight.
+    // Older messages without a snapshot fall back to the file deck.
+    const snapshot =
+      triviaMeta.correctIndex != null && triviaMeta.en && triviaMeta.lt
+        ? {
+            correctIndex: triviaMeta.correctIndex,
+            en: triviaMeta.en,
+            lt: triviaMeta.lt,
+          }
+        : null;
     return (
       <motion.li
         initial={{ opacity: 0, scale: 0.97 }}
@@ -452,6 +469,7 @@ export function ChatRow({
       >
         <ChatTriviaCard
           countryCode={cc}
+          snapshot={snapshot}
           roomCode={roomCode}
           lang={lang}
           // When admin advances past this country, freeze the card —

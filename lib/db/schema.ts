@@ -435,6 +435,23 @@ export const triviaAnswers = pgTable(
   (t) => [primaryKey({ columns: [t.roomId, t.sessionId, t.countryCode] })],
 );
 
+// Editable trivia deck (one row per finalist country). lib/trivia.ts
+// ships a default deck for fresh installs and any country the admin
+// hasn't overridden yet; this table carries the live overrides. The
+// admin UI replaces the whole deck wholesale, so reads always merge:
+// DB row if present, file row otherwise.
+export const triviaQuestions = pgTable("trivia_questions", {
+  countryCode: varchar("country_code", { length: 2 }).primaryKey(),
+  correctIndex: integer("correct_index").notNull(),
+  enQuestion: text("en_question").notNull(),
+  enChoices: text("en_choices").array().notNull(),
+  ltQuestion: text("lt_question").notNull(),
+  ltChoices: text("lt_choices").array().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 // Postgres-backed rate-limit buckets. Replaces the in-memory floodCheck
 // that was only as durable as one warm serverless instance.
 // `bucket` is a free-form string the caller composes — convention is

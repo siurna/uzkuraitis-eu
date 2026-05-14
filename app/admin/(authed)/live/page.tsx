@@ -1,5 +1,4 @@
 import { desc } from "drizzle-orm";
-import { Radio } from "lucide-react";
 import { db } from "@/lib/db";
 import { rooms } from "@/lib/db/schema";
 import { AdminLivePanel } from "@/components/admin-live-panel";
@@ -48,20 +47,25 @@ export default async function AdminLivePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <AdminPageTitle icon={Radio}>Live</AdminPageTitle>
-      <div className="grid gap-8 lg:grid-cols-2 items-start">
-        <AdminLivePanel initialStatus={status} initialNowPlaying={nowPlaying} />
-        {/* Right column: one room dropdown drives broadcasts +
-            voting/results toggles below. Lets the host pick a room
-            once and run every live action against it. */}
-        <AdminLiveRoomColumn
-          rooms={rows.map((r) => ({
-            code: r.code,
-            name: r.name,
-            votingEnabled: r.votingEnabled,
-            tallyEnabled: r.tallyEnabled,
-          }))}
-        />
+      <AdminPageTitle>Live</AdminPageTitle>
+      {/* Two-column cockpit on desktop: each column lives in its own
+          glass card so the busy mass of controls reads as two grouped
+          surfaces instead of a single wall. On mobile they stack
+          full-width — the cards collapse to bare sections. */}
+      <div className="grid gap-6 lg:grid-cols-2 items-start">
+        <section className="glass-card rounded-2xl p-5">
+          <AdminLivePanel initialStatus={status} initialNowPlaying={nowPlaying} />
+        </section>
+        <section className="glass-card rounded-2xl p-5">
+          <AdminLiveRoomColumn
+            rooms={rows.map((r) => ({
+              code: r.code,
+              name: r.name,
+              votingEnabled: r.votingEnabled,
+              tallyEnabled: r.tallyEnabled,
+            }))}
+          />
+        </section>
       </div>
     </div>
   );

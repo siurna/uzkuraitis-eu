@@ -4,7 +4,8 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { triviaAnswers } from "@/lib/db/schema";
 import { findRoomByCode, touchRoom } from "@/lib/rooms";
-import { getTrivia, TRIVIA_POINTS } from "@/lib/trivia";
+import { TRIVIA_POINTS } from "@/lib/trivia";
+import { getTriviaMerged } from "@/lib/trivia-store";
 import { guardSession } from "@/lib/server-session";
 
 // POST /api/rooms/<code>/trivia
@@ -36,7 +37,7 @@ export async function POST(req: Request, { params }: RouteCtx) {
 
   const guard = await guardSession(sessionId);
   if (guard) return guard;
-  const card = getTrivia(countryCode);
+  const card = await getTriviaMerged(countryCode);
   if (!card) {
     return NextResponse.json({ error: "No trivia for that country" }, { status: 404 });
   }

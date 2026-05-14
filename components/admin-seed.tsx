@@ -129,7 +129,6 @@ export function AdminSeed({ rooms }: { rooms: { code: string; name: string }[] }
           desc="A few reaction-heavy chat messages, tagged with whoever's on stage"
           busy={busy === "highlights"}
           onClick={() => run("highlights", { count: 3, needsRoom: true })}
-          className="sm:col-span-2"
         />
       </div>
     </section>
@@ -142,17 +141,15 @@ function SeedCard({
   desc,
   busy,
   onClick,
-  className = "",
 }: {
   icon: React.ReactNode;
   title: React.ReactNode;
   desc: React.ReactNode;
   busy: boolean;
   onClick: () => void;
-  className?: string;
 }) {
   return (
-    <div className={`flex items-start gap-3 rounded-xl bg-white/[0.03] ring-1 ring-white/8 p-3.5 ${className}`}>
+    <div className="flex items-start gap-3 rounded-xl bg-white/[0.03] ring-1 ring-white/8 p-3.5">
       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.06] ring-1 ring-white/10 text-white/60">
         {icon}
       </span>
