@@ -4,6 +4,13 @@ import "./globals.css";
 import { AppToaster } from "@/components/app-toaster";
 import { PageTransition } from "@/components/page-transition";
 
+// Icon bucket on Supabase Storage — the PNGs aren't checked in so the
+// repo stays light. Browsers (and the install-prompt sheet) fetch
+// these directly. If the bucket is down the browser falls back to the
+// default favicon; an acceptable one-night-show trade.
+const ICON_BUCKET =
+  "https://mbgkujipbdfsdvjobtrf.supabase.co/storage/v1/object/public/icons";
+
 export const metadata: Metadata = {
   title: {
     default: "Eurovision",
@@ -23,10 +30,18 @@ export const metadata: Metadata = {
       "Live voting and reactions for the 70th Eurovision Song Contest.",
     type: "website",
   },
-  // Favicon + apple-touch-icon are auto-bound by Next's metadata file
-  // convention from `app/icon.png` + `app/apple-icon.png`. Manifest
-  // icons (192/512/maskable) live under `public/icons/` and are
-  // referenced from `app/manifest.ts`.
+  // Favicon + apple-touch-icon. We point straight at the Supabase
+  // bucket instead of the Next metadata-file convention so the
+  // binary PNGs don't live in git. Manifest icons (192/512/maskable)
+  // are wired the same way in `app/manifest.ts`.
+  icons: {
+    icon: [
+      { url: `${ICON_BUCKET}/favicon.png`, sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: `${ICON_BUCKET}/apple-icon.png`, sizes: "180x180", type: "image/png" },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
