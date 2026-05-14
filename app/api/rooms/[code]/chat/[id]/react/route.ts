@@ -49,32 +49,40 @@ export async function POST(req: Request, { params }: RouteCtx) {
     );
   }
 
-  // PERF: msg-in-room check + existing-reaction lookup merged into a
-  // single roundtrip. The LEFT JOIN returns msg_ok (whether the
-  // message exists in this room) AND reaction_exists (whether this
-  // session already toggled this emoji on it) in one query — was
-  // two sequential selects. Final mutation (insert OR delete) is
-  // the only follow-up query.
-  type CheckRow = { msg_ok: boolean; reaction_exists: boolean };
-  const [check] = await db.execute<CheckRow>(sql`
-    SELECT
-      EXISTS(
-        SELECT 1 FROM ${chatMessages}
-        WHERE id = ${id}::uuid AND room_id = ${room.id}
-      ) AS msg_ok,
-      EXISTS(
-        SELECT 1 FROM ${chatReactions}
-        WHERE message_id = ${id}::uuid
-          AND session_id = ${session}
-          AND emoji = ${emoji}
-      ) AS reaction_exists
+  // Room-bound message existence check. Cheap, single index hit.
+  const [msgOk] = await db.execute<{ ok: boolean }>(sql`
+    SELECT EXISTS(
+      SELECT 1 FROM ${chatMessages}
+      WHERE id = ${id}::uuid AND room_id = ${room.id}
+    ) AS ok
   `);
-  if (!check?.msg_ok) {
+  if (!msgOk?.ok) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // Race-safe toggle: try to INSERT with ON CONFLICT DO NOTHING
+  // first. If the row landed, this tap ADDED the reaction. If the
+  // row was already there, ON CONFLICT silently no-ops and we fall
+  // through to DELETE — which removes it. Two parallel requests
+  // from the same (session, emoji) race cleanly: one INSERT wins,
+  // the other no-ops to "already there" and DELETEs — net result
+  // matches a single tap.
+  const inserted = await db
+    .insert(chatReactions)
+    .values({ messageId: id, sessionId: session, name, emoji })
+    .onConflictDoNothing({
+      target: [
+        chatReactions.messageId,
+        chatReactions.sessionId,
+        chatReactions.emoji,
+      ],
+    })
+    .returning({ id: chatReactions.messageId });
+
   let added: boolean;
-  if (check.reaction_exists) {
+  if (inserted.length > 0) {
+    added = true;
+  } else {
     await db
       .delete(chatReactions)
       .where(
@@ -85,14 +93,6 @@ export async function POST(req: Request, { params }: RouteCtx) {
         ),
       );
     added = false;
-  } else {
-    await db.insert(chatReactions).values({
-      messageId: id,
-      sessionId: session,
-      name,
-      emoji,
-    });
-    added = true;
   }
 
   await broadcastToRoom(code, { type: "chat:react", id });

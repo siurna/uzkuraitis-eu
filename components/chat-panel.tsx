@@ -41,6 +41,11 @@ import { haptic } from "@/lib/haptics";
 
 // How many messages we keep in the DOM. The API already windows to the
 // last ~50 per fetch; this is the cap once "load earlier" pages kick in.
+// Base render cap for the natural-growth case (long-running room
+// that never paginates). When the user explicitly hits "Load
+// earlier" we expand this cap by the loaded batch size so that
+// the next `runFetch` doesn't silently truncate the history the
+// user just summoned. Tracked via the `loadedHistory` ref below.
 const RENDER_CAP = 120;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const TYPING_OFF_MS = 3000;
@@ -139,6 +144,11 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   // Messages just prepended by "load earlier" — they must NOT count
   // toward the "N new messages" badge (they're history, not arrivals).
   const prependedRef = useRef(0);
+  // How many rows the user has explicitly loaded via "earlier" so
+  // far. `runFetch`'s render-cap slice grows by this many extra
+  // rows; otherwise the next live event would yank the paginated
+  // history out from under the reader.
+  const loadedHistoryRef = useRef(0);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Build an optimistic Message from the current identity + reply state.
@@ -190,23 +200,29 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   }, [updatePresence]);
 
   // Warm the profile cache for recently active chat authors so taps
-  // on an avatar bubble feel instant — the prefetchProfile helper
-  // dedupes by (room, target, viewer) so repeat invocations don't
-  // re-hit the API, and we stagger by 80ms so a freshly mounted
-  // panel doesn't thunder-herd the profile endpoint with 10 parallel
-  // GETs. Scoped to the 10 most-recent unique authors (excluding our
-  // own session) because that's where the user is most likely to tap.
-  useEffect(() => {
-    if (!code || !mySession || messages.length === 0) return;
-    const seen = new Set<string>();
-    const recentAuthors: string[] = [];
-    for (let i = messages.length - 1; i >= 0 && recentAuthors.length < 10; i--) {
+  // on an avatar bubble feel instant. Computed as a memoised key —
+  // the underlying `messages` array changes on every reaction storm
+  // tick, but the SET of recent author sessionIds only changes when
+  // a new participant chimes in. Without the memo this effect would
+  // schedule (and immediately tear down) 10 setTimeouts per chat
+  // event; at climax that's hundreds of timer churns/min.
+  const recentAuthorsKey = useMemo(() => {
+    if (!mySession || messages.length === 0) return "";
+    const seen: string[] = [];
+    const haveSeen = new Set<string>();
+    for (let i = messages.length - 1; i >= 0 && seen.length < 10; i--) {
       const sid = messages[i].sessionId;
       if (!sid || sid === mySession || sid === "system" || sid === "commentator") continue;
-      if (seen.has(sid)) continue;
-      seen.add(sid);
-      recentAuthors.push(sid);
+      if (haveSeen.has(sid)) continue;
+      haveSeen.add(sid);
+      seen.push(sid);
     }
+    return seen.join("|");
+  }, [messages, mySession]);
+
+  useEffect(() => {
+    if (!code || !mySession || !recentAuthorsKey) return;
+    const recentAuthors = recentAuthorsKey.split("|");
     let cancelled = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
     recentAuthors.forEach((sid, idx) => {
@@ -220,7 +236,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       cancelled = true;
       for (const t of timers) clearTimeout(t);
     };
-  }, [code, mySession, messages]);
+  }, [code, mySession, recentAuthorsKey]);
 
   // ----- fetch -----
   const fetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -244,7 +260,8 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
               new Date(fresh[0]?.createdAt ?? 0).getTime(),
         );
         const stillPending = prev.filter((m) => m.pending && !freshIds.has(m.id));
-        return [...olderKept, ...fresh, ...stillPending].slice(-RENDER_CAP);
+        const cap = RENDER_CAP + loadedHistoryRef.current;
+        return [...olderKept, ...fresh, ...stillPending].slice(-cap);
       });
     } finally {
       setLoading(false);
@@ -322,6 +339,9 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     } catch {
       /* private mode / corrupt */
     }
+    // Reset pagination growth on room change so a freshly opened
+    // room doesn't inherit the previous room's expanded cap.
+    loadedHistoryRef.current = 0;
     fetchMessages(true);
     return () => {
       if (fetchTimer.current) clearTimeout(fetchTimer.current);
@@ -333,17 +353,27 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
-  // Keep the cache warm for the next tab switch.
+  // Keep the cache warm for the next tab switch. Debounced 500ms so
+  // a reaction storm doesn't fire stringify+setItem on every tick;
+  // the most-recent payload always wins when the timer fires.
+  const cacheTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (messages.length === 0) return;
-    try {
-      sessionStorage.setItem(
-        `uzk_chat_cache_${code}`,
-        JSON.stringify(messages.filter((m) => !m.pending).slice(-50)),
-      );
-    } catch {
-      /* ignore */
-    }
+    if (cacheTimer.current) clearTimeout(cacheTimer.current);
+    cacheTimer.current = setTimeout(() => {
+      cacheTimer.current = null;
+      try {
+        sessionStorage.setItem(
+          `uzk_chat_cache_${code}`,
+          JSON.stringify(messages.filter((m) => !m.pending).slice(-50)),
+        );
+      } catch {
+        /* ignore */
+      }
+    }, 500);
+    return () => {
+      if (cacheTimer.current) clearTimeout(cacheTimer.current);
+    };
   }, [messages, code]);
 
   // Mirror the visual viewport — the panel is sized to *exactly* this
@@ -386,6 +416,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         const have = new Set(prev.map((m) => m.id));
         const add = data.messages.filter((m) => !have.has(m.id));
         prependedRef.current += add.length;
+        loadedHistoryRef.current += add.length;
         return [...add, ...prev];
       });
       requestAnimationFrame(() => {
@@ -473,21 +504,26 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           if (m.sessionId === mySession) {
             // For images/gifs the optimistic row holds a `blob:`
             // URL while the broadcast carries the hosted URL —
-            // matching on `gifUrl ===` always fails, so the
-            // optimistic row gets cleaned up by a later tick and
-            // the user sees a brief double-image flash. Fall back
-            // to a temporal match (same kind, posted within 5s)
-            // for media kinds; text still matches on the body.
+            // matching on `gifUrl ===` always fails, so we use a
+            // temporal match (same kind, posted within ~1.5s) for
+            // media kinds. The earlier 5s window was loose enough
+            // that a second image POSTed in quick succession could
+            // collide with the finalised first one. Text matches on
+            // the trimmed body AND temporal window so two identical
+            // texts in a row don't mis-pair. `pending=true` is the
+            // hard gate; the temporal window is the tiebreaker.
             const arrived = Date.parse(m.createdAt);
+            const TEMPORAL_MATCH_MS = 1_500;
+            const sameBody = (a: string | null, b: string | null) =>
+              (a ?? "").trim() === (b ?? "").trim();
             const tmpIdx = prev.findIndex(
               (x) =>
                 x.pending &&
                 x.id.startsWith("tmp-") &&
                 x.sessionId === mySession &&
                 x.kind === m.kind &&
-                (m.kind === "text"
-                  ? x.body === m.body
-                  : Math.abs(arrived - Date.parse(x.createdAt)) < 5_000),
+                Math.abs(arrived - Date.parse(x.createdAt)) < TEMPORAL_MATCH_MS &&
+                (m.kind !== "text" || sameBody(x.body, m.body)),
             );
             if (tmpIdx >= 0) {
               const next = prev.slice();
@@ -520,7 +556,10 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
             createdAt: m.createdAt,
             reactions: {},
           };
-          return [...prev, appended].slice(-RENDER_CAP);
+          // Same cap-growth rule as runFetch: the chat:new tail
+          // append shouldn't yank the user's paginated history.
+          const cap = RENDER_CAP + loadedHistoryRef.current;
+          return [...prev, appended].slice(-cap);
         });
         return;
       }
@@ -537,6 +576,23 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     // cooldown still register as "we need another refresh once the
     // window opens" via the trailing flag.
     if (ev.type === "chat:react") scheduleReactRefetch();
+    // chat:edit carries the full updated payload so we can patch
+    // the row in place — no follow-up GET, no waiting for the
+    // reaction throttle to flush.
+    if (ev.type === "chat:edit" && ev.message) {
+      const m = ev.message;
+      setMessages((prev) =>
+        prev.map((x) =>
+          x.id === m.id
+            ? {
+                ...x,
+                body: m.body,
+                meta: (m.meta ?? null) as Record<string, unknown> | null,
+              }
+            : x,
+        ),
+      );
+    }
   });
 
   // First render: jump to the bottom (no animation). After that:
@@ -738,11 +794,25 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     const reply = replyTo?.id ?? null;
     setReplyTo(null);
     requestAnimationFrame(() => scrollToBottom(false));
-    await fetch(`/api/rooms/${code}/chat`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ session: mySession, name: senderName, avatarId, kind: "gif", gifUrl, replyTo: reply }),
-    });
+    // GIFs were previously fire-and-forget: a 429 / network blip
+    // silently swallowed the send. Wire the failure case to a
+    // toast so the user knows to retry. No optimistic row here —
+    // the broadcast echo carries the rendered GIF in well under a
+    // second, and an optimistic preview from the third-party GIF
+    // URL would just double-render until the echo replaces it.
+    try {
+      const res = await fetch(`/api/rooms/${code}/chat`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ session: mySession, name: senderName, avatarId, kind: "gif", gifUrl, replyTo: reply }),
+      });
+      if (!res.ok) {
+        const { error } = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(error ?? "Couldn't send the GIF.");
+      }
+    } catch {
+      toast.error("Couldn't send the GIF (network).");
+    }
   };
 
   const sendImage = async (file: File) => {

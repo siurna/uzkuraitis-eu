@@ -6,6 +6,8 @@ import { chatMessages } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
 import { broadcastToRoom } from "@/lib/realtime-server";
 import { guardSession } from "@/lib/server-session";
+import { checkAndIncrement } from "@/lib/rate-limit";
+import { toChatPayload } from "@/lib/chat-system";
 
 // Per-message ops. The voter can:
 //   - PATCH their own message within EDIT_WINDOW_MS to fix typos.
@@ -33,6 +35,21 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
 
   const guard = await guardSession(session);
   if (guard) return guard;
+
+  // 20 edits per session per 10s — generous enough for a quick
+  // back-to-back typo fix, tight enough to catch a scripted client
+  // hammering UPDATEs against the 2000-char `body` column.
+  const limited = await checkAndIncrement(
+    `chatedit:${room.id}:${session}`,
+    20,
+    10_000,
+  );
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "Slow down — too many edits." },
+      { status: 429 },
+    );
+  }
 
   const [msg] = await db
     .select()
@@ -64,12 +81,21 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     editedAt: new Date().toISOString(),
   };
 
-  await db
+  const [updated] = await db
     .update(chatMessages)
     .set({ body, meta })
-    .where(eq(chatMessages.id, id));
+    .where(eq(chatMessages.id, id))
+    .returning();
 
-  await broadcastToRoom(code, { type: "chat:react", id });
+  // Dedicated `chat:edit` event with the full payload so listeners
+  // can patch the row in place. The earlier `chat:react` ride-along
+  // routed edits through the reaction refetch throttle and could
+  // sit on a stale body for up to 600ms.
+  await broadcastToRoom(code, {
+    type: "chat:edit",
+    id,
+    message: toChatPayload(updated),
+  });
   return NextResponse.json({ ok: true });
 }
 

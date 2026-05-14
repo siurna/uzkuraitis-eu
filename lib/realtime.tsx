@@ -101,6 +101,16 @@ export type ChatNewEvent = {
 };
 export type ChatReactEvent = { type: "chat:react"; id: string };
 export type ChatDeleteEvent = { type: "chat:delete"; id: string };
+// Edit echo carries the new body + meta directly so listeners can
+// patch the existing row in place. Previously edits piggybacked on
+// `chat:react` which routed through the 600ms throttled refetch —
+// fine for reactions, sluggish for edits. The full message payload
+// avoids a follow-up GET.
+export type ChatEditEvent = {
+  type: "chat:edit";
+  id: string;
+  message: ChatMessagePayload;
+};
 
 export type RoomEvent =
   | ScoresUpdatedEvent
@@ -109,7 +119,8 @@ export type RoomEvent =
   | NowPlayingChangeEvent
   | ChatNewEvent
   | ChatReactEvent
-  | ChatDeleteEvent;
+  | ChatDeleteEvent
+  | ChatEditEvent;
 
 // -----------------------------------------------------------------------
 // React layer.
