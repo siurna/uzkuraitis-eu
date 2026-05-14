@@ -481,7 +481,7 @@ export function ChatRow({
     } | null;
     return (
       <motion.li
-        initial={{ opacity: 0, scale: 0.97 }}
+        initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         className="my-1 px-1"
@@ -518,7 +518,7 @@ export function ChatRow({
         : null;
     return (
       <motion.li
-        initial={{ opacity: 0, scale: 0.97 }}
+        initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         className="my-1 px-1"
@@ -553,7 +553,7 @@ export function ChatRow({
       window.localStorage.getItem(`uzk_voted_${roomCode}`) === "1";
     return (
       <motion.li
-        initial={{ opacity: 0, scale: 0.97 }}
+        initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
         className="my-1 px-1"
@@ -666,7 +666,7 @@ export function ChatRow({
     const isActive = !!cc && cc === nowPlayingCode;
     return (
       <motion.li
-        initial={{ opacity: 0, scale: 0.97 }}
+        initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
         className="my-1"
@@ -803,7 +803,7 @@ export function ChatRow({
             const avatarInner =
               m.meta && typeof m.meta.commentatorPhoto === "string" && m.meta.commentatorPhoto ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={m.meta.commentatorPhoto} alt="" className="h-full w-full object-cover" />
+                <img src={optimizedSrc(m.meta.commentatorPhoto, 96)} alt="" className="h-full w-full object-cover" />
               ) : isCommentator ? (
                 <div className="h-full w-full grid place-items-center text-sm leading-none">🎙️</div>
               ) : avatar?.photo ? (

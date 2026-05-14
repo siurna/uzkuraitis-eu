@@ -412,6 +412,10 @@ export const pushSubscriptions = pgTable(
     p256dh: text("p256dh").notNull(),
     auth: text("auth").notNull(),
     prefs: jsonb("prefs").$type<PushPrefs>().notNull().default({}),
+    /** Subscriber's preferred language at subscribe time. Persisted
+     *  so push bodies can be rendered in their language (not the
+     *  sender's). NULL falls back to LT (the app default). */
+    lang: varchar("lang", { length: 2 }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -445,9 +449,14 @@ export const triviaAnswers = pgTable(
       .defaultNow(),
   },
   // Primary key (room_id, session_id, country_code) doubles as the
-  // room-only lookup index via leftmost-prefix matching, so no
-  // separate single-column index here.
-  (t) => [primaryKey({ columns: [t.roomId, t.sessionId, t.countryCode] })],
+  // room-only lookup index via leftmost-prefix matching. The trivia
+  // answer cap also does `COUNT(*) WHERE room_id=? AND country_code=?`
+  // which the PK can't serve (session_id is in the middle of the
+  // PK), so a covering (room_id, country_code) index sits alongside.
+  (t) => [
+    primaryKey({ columns: [t.roomId, t.sessionId, t.countryCode] }),
+    index("trivia_room_country_idx").on(t.roomId, t.countryCode),
+  ],
 );
 
 // Editable trivia deck (one row per finalist country). lib/trivia.ts

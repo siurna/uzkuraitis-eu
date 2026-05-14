@@ -124,17 +124,26 @@ function Bubble({
   const avatar = person.avatarId ? getAvatar(person.avatarId) : null;
   const photo = avatar?.photo ?? null;
   // Each bubble drifts on its own clock so the cluster looks alive
-  // rather than marching in step.
+  // rather than marching in step. The bob runs on the GPU-friendly
+  // CSS keyframe `whos-bob` (globals.css) instead of a motion-react
+  // infinite tween — for a 50-person room that's 50 fewer JS-driven
+  // animations on every frame. On a mid-range Android (~3 GB RAM,
+  // weak GPU) it's the difference between butter and jank.
   const dur = 3 + (index % 5) * 0.45;
   const delay = (index % 7) * 0.22;
   const rot = index % 2 ? 3 : -3;
   const canOpen = person.sessionId != null;
 
   return (
-    <motion.div
-      className="relative"
-      animate={{ y: [0, -4, 0, 3, 0], rotate: [0, rot, 0, -rot, 0] }}
-      transition={{ duration: dur, repeat: Infinity, ease: "easeInOut", delay }}
+    <div
+      className="relative motion-safe:[animation:whos-bob_var(--bob-dur)_ease-in-out_infinite] motion-safe:[animation-delay:var(--bob-delay)]"
+      style={
+        {
+          "--bob-dur": `${dur}s`,
+          "--bob-delay": `${delay}s`,
+          "--bob-rot": `${rot}deg`,
+        } as React.CSSProperties
+      }
     >
       <button
         type="button"
@@ -188,6 +197,6 @@ function Bubble({
           {person.emoji}
         </motion.span>
       ) : null}
-    </motion.div>
+    </div>
   );
 }

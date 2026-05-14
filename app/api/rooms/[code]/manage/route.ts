@@ -9,7 +9,8 @@ import {
 } from "@/lib/rooms";
 import { broadcastToRoom } from "@/lib/realtime-server";
 import { pushToRoom } from "@/lib/push";
-import { getCountry } from "@/lib/countries";
+import { getCountry, countryName } from "@/lib/countries";
+import { t } from "@/lib/i18n";
 import { participantPhoto } from "@/lib/participants";
 import {
   postSystemMessage,
@@ -129,15 +130,20 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
       pushToRoom(
         room.id,
         (prefs) => !!prefs.nowPlaying,
-        {
-          title: `${c?.flag ? `${c.flag} ` : ""}${c?.name ?? nextNowPlaying.toUpperCase()} is on stage`,
+        (lang) => ({
+          title: t(
+            lang,
+            "push_now_playing_title",
+            c?.flag ? `${c.flag} ` : "",
+            countryName(nextNowPlaying, lang) ?? nextNowPlaying.toUpperCase(),
+          ),
           body: c?.artist
-            ? `${c.artist}${c.song ? ` · ${c.song}` : ""}`
-            : "Tap to open the room",
+            ? t(lang, "push_now_playing_body_song", c.artist, c.song ?? "")
+            : t(lang, "push_now_playing_body_open"),
           url: `/r/${newCode}`,
           tag: `now-playing:${newCode}`,
           image: participantPhoto(nextNowPlaying) ?? undefined,
-        },
+        }),
       ).catch(() => {});
       // Full-width "now on stage" banner in the room chat. Awaited so the
       // insert + broadcast actually complete before the lambda is frozen.
@@ -145,31 +151,28 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     }
   }
   if (parsed.data.votingEnabled !== undefined) {
+    const open = parsed.data.votingEnabled;
     pushToRoom(
       room.id,
       (prefs) => !!prefs.votingState,
-      {
-        title: parsed.data.votingEnabled
-          ? "Voting is open"
-          : "Voting just closed",
-        body: parsed.data.votingEnabled
-          ? "Cast your TOP10 before the show kicks off."
-          : "Results coming in shortly.",
+      (lang) => ({
+        title: t(lang, open ? "push_voting_open_title" : "push_voting_closed_title"),
+        body: t(lang, open ? "push_voting_open_body" : "push_voting_closed_body"),
         url: `/r/${newCode}/vote`,
         tag: `voting:${newCode}`,
-      },
+      }),
     ).catch(() => {});
   }
   if (parsed.data.tallyEnabled === true) {
     pushToRoom(
       room.id,
       (prefs) => !!prefs.resultsTallied,
-      {
-        title: "Results are tallied",
-        body: "Open the leaderboard to see how you did.",
+      (lang) => ({
+        title: t(lang, "push_results_title"),
+        body: t(lang, "push_results_body"),
         url: `/r/${newCode}`,
         tag: `results:${newCode}`,
-      },
+      }),
     ).catch(() => {});
   }
 

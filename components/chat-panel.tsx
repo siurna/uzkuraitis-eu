@@ -260,6 +260,13 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         if (Array.isArray(arr) && arr.length) {
           setMessages(arr);
           setLoading(false);
+          // Seed `lastCount` to the cache size so the very next
+          // runFetch — which arrives with the full window from the
+          // server — doesn't read as "the list just grew by 50"
+          // and trigger a spurious smooth-scroll-to-bottom right
+          // when the tab paints. Without this stamp the chat
+          // randomly jumps a few pixels on first paint.
+          lastCount.current = arr.length;
         }
       }
     } catch {
@@ -404,14 +411,23 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           //    in-place so the bubble doesn't double-render during the
           //    window between broadcast arrival and POST-response.
           if (m.sessionId === mySession) {
+            // For images/gifs the optimistic row holds a `blob:`
+            // URL while the broadcast carries the hosted URL —
+            // matching on `gifUrl ===` always fails, so the
+            // optimistic row gets cleaned up by a later tick and
+            // the user sees a brief double-image flash. Fall back
+            // to a temporal match (same kind, posted within 5s)
+            // for media kinds; text still matches on the body.
+            const arrived = Date.parse(m.createdAt);
             const tmpIdx = prev.findIndex(
               (x) =>
                 x.pending &&
                 x.id.startsWith("tmp-") &&
                 x.sessionId === mySession &&
                 x.kind === m.kind &&
-                ((m.kind === "text" && x.body === m.body) ||
-                  (m.kind !== "text" && x.gifUrl === m.gifUrl)),
+                (m.kind === "text"
+                  ? x.body === m.body
+                  : Math.abs(arrived - Date.parse(x.createdAt)) < 5_000),
             );
             if (tmpIdx >= 0) {
               const next = prev.slice();
@@ -541,6 +557,21 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     window.addEventListener("uzk:chat-media-loaded", stick);
     return () => window.removeEventListener("uzk:chat-media-loaded", stick);
   }, []);
+
+  // iOS keyboard fix: when the visualViewport shrinks (keyboard
+  // animates open) the panel's height drops to match — but the list
+  // inside keeps its old scrollTop, so the newest message slides
+  // *up* out of view by exactly the keyboard's first paint height.
+  // The user is "naturally at the bottom" of the chat and focusing
+  // the composer makes the thread jump up a few px. Pin scrollTop
+  // back to scrollHeight whenever the viewport changes AND the
+  // user was parked at the bottom.
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    if (!atBottomRef.current) return;
+    el.scrollTop = el.scrollHeight;
+  }, [viewport]);
 
   // Swipe / tap to reply: anchor the replied-to message in the middle
   // so the list doesn't jump somewhere random. Run once now, and again

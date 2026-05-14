@@ -9,6 +9,7 @@ import { pushToRoom } from "@/lib/push";
 import { guardSession } from "@/lib/server-session";
 import { checkAndIncrement } from "@/lib/rate-limit";
 import { toChatPayload } from "@/lib/chat-system";
+import { t } from "@/lib/i18n";
 
 // Per-room chat. GET returns a window of messages with their reactions
 // folded in; POST inserts a new message and fans-out chat:new +
@@ -92,7 +93,7 @@ export async function GET(req: Request, { params }: RouteCtx) {
     e[r.emoji] = slot;
   }
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     messages: msgs
       .slice()
       .reverse()
@@ -110,6 +111,17 @@ export async function GET(req: Request, { params }: RouteCtx) {
         reactions: byMsg.get(m.id) ?? {},
       })),
   });
+  // Short edge cache for the cold-start chat fetch on tab open. The
+  // chat:new broadcast fans out the moment anything lands, so live
+  // freshness is never gated on this header — but the very first
+  // GET after a viewer opens the room can hit the edge instead of
+  // origin. `s-maxage=2` is short enough that a tab-switch a few
+  // seconds in still feels live; SWR keeps it warm for 10s.
+  res.headers.set(
+    "Cache-Control",
+    "public, s-maxage=2, stale-while-revalidate=10",
+  );
+  return res;
 }
 
 function foldEmpty(): Record<
@@ -203,33 +215,25 @@ export async function POST(req: Request, { params }: RouteCtx) {
     message: toChatPayload(row),
   });
 
-  // Push: chatAll subscribers OR (chatReplies && replyTo author === them).
+  // Push: chatAll subscribers. The mention + reply fan-outs below
+  // handle their own narrower targeting. The body is built per
+  // subscriber language; the title stays the sender's name (proper
+  // noun, no translation needed).
   pushToRoom(
     room.id,
-    (prefs, sub) => {
-      // Don't notify the sender.
-      if (sub.sessionId === data.session) return false;
-      if (prefs.chatAll) return true;
-      if (prefs.chatReplies && data.replyTo) {
-        // chatReplies opt-in: we need to check whether the reply target
-        // belongs to this subscriber. Skip the lookup here — server
-        // does it once below for the union case.
-        return false;
-      }
-      return false;
-    },
-    {
+    (prefs, sub) => sub.sessionId !== data.session && !!prefs.chatAll,
+    (lang) => ({
       title: data.name,
       body: data.body
         ? data.body.slice(0, 120)
         : data.kind === "image"
-          ? "Sent a photo"
+          ? t(lang, "push_chat_photo")
           : data.kind === "gif"
-            ? "Sent a GIF"
-            : "New message",
+            ? t(lang, "push_chat_gif")
+            : t(lang, "push_chat_new"),
       url: `/r/${code}/chat`,
       tag: `chat:${code}`,
-    },
+    }),
   ).catch(() => {});
 
   // @-mentions — notify the named people (matched on the name they
@@ -245,12 +249,12 @@ export async function POST(req: Request, { params }: RouteCtx) {
         if (!wanted.has(sub.voterName.toLowerCase())) return false;
         return !!prefs.chatReplies; // mentions piggyback on the replies opt-in
       },
-      {
-        title: `${data.name} mentioned you`,
-        body: data.body?.slice(0, 120) ?? "Tap to open the chat",
+      (lang) => ({
+        title: t(lang, "push_chat_mention_title", data.name),
+        body: data.body?.slice(0, 120) ?? t(lang, "push_chat_mention_body"),
         url: `/r/${code}/chat`,
         tag: `chat-mention:${code}`,
-      },
+      }),
     ).catch(() => {});
   }
 
@@ -264,12 +268,12 @@ export async function POST(req: Request, { params }: RouteCtx) {
       // otherwise reply+text = two notifications.
       (prefs, sub) =>
         !!prefs.chatReplies && !prefs.chatAll && sub.sessionId === replyTargetSession,
-      {
-        title: `${data.name} replied to you`,
-        body: data.body?.slice(0, 120) ?? "Tap to see the reply",
+      (lang) => ({
+        title: t(lang, "push_chat_reply_title", data.name),
+        body: data.body?.slice(0, 120) ?? t(lang, "push_chat_reply_body"),
         url: `/r/${code}/chat`,
         tag: `chat-reply:${data.replyTo}`,
-      },
+      }),
     ).catch(() => {});
   }
 

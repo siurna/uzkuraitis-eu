@@ -5,7 +5,8 @@ import { rooms } from "@/lib/db/schema";
 import { isAdminAuthed } from "@/lib/admin/session";
 import { broadcastToRoom } from "@/lib/realtime-server";
 import { pushToRoom } from "@/lib/push";
-import { getCountry } from "@/lib/countries";
+import { getCountry, countryName } from "@/lib/countries";
+import { t } from "@/lib/i18n";
 import { invalidateRoomCache } from "@/lib/rooms";
 import { participantPhoto } from "@/lib/participants";
 import {
@@ -135,15 +136,20 @@ export async function POST(req: Request) {
           await pushToRoom(
             id,
             (prefs) => !!prefs.nowPlaying,
-            {
-              title: `${c?.flag ? `${c.flag} ` : ""}${c?.name ?? next.toUpperCase()} is on stage`,
+            (lang) => ({
+              title: t(
+                lang,
+                "push_now_playing_title",
+                c?.flag ? `${c.flag} ` : "",
+                countryName(next, lang) ?? next.toUpperCase(),
+              ),
               body: c?.artist
-                ? `${c.artist}${c.song ? ` · ${c.song}` : ""}`
-                : "Tap to open the room",
+                ? t(lang, "push_now_playing_body_song", c.artist, c.song ?? "")
+                : t(lang, "push_now_playing_body_open"),
               url: `/r/${code}`,
               tag: `now-playing:${code}`,
               image: participantPhoto(next) ?? undefined,
-            },
+            }),
           ).catch(() => {});
         }
       }

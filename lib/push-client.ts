@@ -65,6 +65,7 @@ export async function subscribe(
   name: string,
   prefs: PushPrefs,
   vapidKey: string,
+  lang?: "en" | "lt",
 ): Promise<boolean> {
   if (!isSupported()) return false;
   const perm = await Notification.requestPermission();
@@ -93,6 +94,7 @@ export async function subscribe(
       name,
       subscription: json,
       prefs,
+      lang,
     }),
   });
   return res.ok;

@@ -272,6 +272,19 @@
   }
 }
 
+/* WhosHere bobble. Each bubble in the honeycomb gets its own
+   duration / delay / rotation amplitude via CSS custom properties
+   (--bob-dur / --bob-delay / --bob-rot), so the cluster looks alive
+   without each bubble owning a motion-react infinite tween. Runs
+   on the compositor thread = ~0 JS cost; multiplies cleanly across
+   50+ viewers on a mid-range Android. */
+@keyframes whos-bob {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  25%      { transform: translateY(-4px) rotate(var(--bob-rot, 0deg)); }
+  50%      { transform: translateY(0) rotate(0); }
+  75%      { transform: translateY(3px) rotate(calc(var(--bob-rot, 0deg) * -1)); }
+}
+
 /* Sporadic "hi 👋" wave for the welcome home widget. Mostly idle so
    it doesn't pull focus, then a quick two-beat tilt every ~7 seconds.
    Origin sits at the wrist (70/70%) so the hand pivots correctly. */

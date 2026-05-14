@@ -77,6 +77,7 @@ export function RoomShell({
   code,
   name,
   votingEnabled,
+  tallyEnabled = false,
   homeCountryCode,
   nowPlayingCode = null,
   showStatus = "not_started",
@@ -86,6 +87,10 @@ export function RoomShell({
   code: string;
   name: string;
   votingEnabled: boolean;
+  /** Seeded from the server so the home `MyResults` banner +
+   *  ResultsPanel can render in their final state on first paint
+   *  without paying for a boot `/api/rooms/[code]` round-trip. */
+  tallyEnabled?: boolean;
   homeCountryCode: string;
   // Seeded from the server so the now-playing hero (Home) and the header
   // strip render in their final state on first paint — no content shift.
@@ -112,7 +117,7 @@ export function RoomShell({
             code,
             name,
             votingEnabled,
-            tallyEnabled: false,
+            tallyEnabled,
             homeCountryCode,
             nowPlayingCode,
             showStatus: (showStatus ?? "not_started") as ShowStatus,
@@ -326,11 +331,13 @@ function RoomLiveProvider({
     }
   }, [initial.code, initial.homeCountryCode]);
 
-  // Pull the initial nowPlayingCode after mount so the header reflects
-  // server state without waiting for a broadcast.
-  useEffect(() => {
-    refetch();
-  }, [refetch]);
+  // PERF: the boot `/api/rooms/[code]` refetch is gone — the server
+  // page passes every field (code, name, votingEnabled, tallyEnabled,
+  // homeCountryCode, nowPlayingCode, showStatus, runningOrderPos)
+  // into <RoomShell> as props, so the very first paint already has
+  // the right state. The `room:updated` broadcast handler below
+  // still refetches on remote changes, so admin toggles continue to
+  // propagate live.
 
   useEventListener(({ event }) => {
     if (event.type === "room:updated") {

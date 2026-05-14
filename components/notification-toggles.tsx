@@ -86,7 +86,7 @@ export function NotificationToggles() {
     const session = localStorage.getItem(SESSION_KEY) ?? "";
     const name = localStorage.getItem(NAME_KEY) ?? "";
     setPending(true);
-    const ok = await subscribe(roomCode, session, name, DEFAULT_PREFS, state.vapidKey);
+    const ok = await subscribe(roomCode, session, name, DEFAULT_PREFS, state.vapidKey, lang);
     setPending(false);
     if (!ok) {
       toast.error(t(lang, "push_denied"));
@@ -367,7 +367,7 @@ export function useNotificationCta(): {
     if (state?.kind !== "off" || !state.vapidKey) return;
     const session = localStorage.getItem(SESSION_KEY) ?? "";
     const name = localStorage.getItem(NAME_KEY) ?? "";
-    const ok = await subscribe(code, session, name, DEFAULT_PREFS, state.vapidKey);
+    const ok = await subscribe(code, session, name, DEFAULT_PREFS, state.vapidKey, lang);
     if (!ok) {
       toast.error(t(lang, "push_denied"));
       return;

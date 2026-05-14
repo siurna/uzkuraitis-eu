@@ -262,6 +262,26 @@ const S = {
   poll_eyebrow:              { en: "Vibe check", lt: "Nuotaikos pulsas" },
   poll_prompt:               { en: "Tap your pick. You can switch later.", lt: "Bakstelėk variantą. Galėsi persigalvoti." },
   poll_voted:                { en: (n: number) => `Locked in. ${n} ${n === 1 ? "vote" : "votes"} so far.`, lt: (n: number) => `Užfiksuota. Šiuo metu balsų: ${n}.` },
+  // ── Push notifications (rendered server-side per subscriber's
+  //    `lang` column, so a LT viewer gets LT even when an EN sender
+  //    triggered the broadcast).
+  push_chat_photo:           { en: "Sent a photo", lt: "Atsiuntė nuotrauką" },
+  push_chat_gif:             { en: "Sent a GIF", lt: "Atsiuntė GIF" },
+  push_chat_new:             { en: "New message", lt: "Nauja žinutė" },
+  push_chat_mention_title:   { en: (name: string) => `${name} mentioned you`, lt: (name: string) => `${name} tave paminėjo` },
+  push_chat_mention_body:    { en: "Tap to open the chat", lt: "Bakstelėk, kad atvertum pokalbį" },
+  push_chat_reply_title:     { en: (name: string) => `${name} replied to you`, lt: (name: string) => `${name} tau atsakė` },
+  push_chat_reply_body:      { en: "Tap to see the reply", lt: "Bakstelėk, kad pamatytum atsakymą" },
+  push_now_playing_title:    { en: (flag: string, name: string) => `${flag}${name} is on stage`, lt: (flag: string, name: string) => `${flag}${name} dabar scenoje` },
+  push_now_playing_body_song: { en: (artist: string, song: string) => `${artist} · ${song}`, lt: (artist: string, song: string) => `${artist} · ${song}` },
+  push_now_playing_body_open: { en: "Tap to open the room", lt: "Bakstelėk, kad atvertum kambarį" },
+  push_voting_open_title:    { en: "Voting is open", lt: "Balsavimas pradėtas" },
+  push_voting_open_body:     { en: "Cast your TOP 10 before the show kicks off.", lt: "Atiduok savo TOP 10 prieš šou pradžią." },
+  push_voting_closed_title:  { en: "Voting just closed", lt: "Balsavimas baigtas" },
+  push_voting_closed_body:   { en: "Results coming in shortly.", lt: "Rezultatai jau netrukus." },
+  push_results_title:        { en: "Results are tallied", lt: "Rezultatai suskaičiuoti" },
+  push_results_body:         { en: "Open the leaderboard to see how you did.", lt: "Atverk lyderių lentelę ir pažiūrėk, kaip sekėsi." },
+
   // Welcome / housekeeping widget at the bottom of every room home.
   // The card itself is a single tap target; the markdown opens in a
   // drawer rather than sitting open on the home scroll.
