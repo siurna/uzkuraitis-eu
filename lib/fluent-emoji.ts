@@ -24,7 +24,22 @@ const CDN_BASE =
 // The repo doesn't ship the plain path for skin-tone-enabled emojis at
 // all — requesting it 403s. Entries opt into the skin-tone layout by
 // setting `skin: true`. Everything else uses the plain path.
-type FluentEntry = { folder: string; slug: string; skin?: boolean };
+//
+// `url` is an escape hatch: when set, `fluentEmojiUrl` returns it
+// verbatim and skips the folder+slug builder. Used for glyphs that
+// Microsoft DOESN'T ship in Fluent 3D (country flags by policy) but
+// we still want to render as a brand-aligned 3D image. Today: the
+// Lithuanian flag, hand-rendered to match Fluent's style + parked
+// on our Supabase bucket. NEVER use this to add other country flags
+// to bingo — see CLAUDE.md's bingo-emoji rule. The LT override only
+// exists for non-bingo surfaces (presence bar idle eyebrow, home
+// bet-chips marquee, settings preview, etc).
+type FluentEntry = {
+  folder?: string;
+  slug?: string;
+  skin?: boolean;
+  url?: string;
+};
 
 const FLUENT_EMOJI: Record<string, FluentEntry> = {
   // Drunk-poll choices.
@@ -172,6 +187,15 @@ const FLUENT_EMOJI: Record<string, FluentEntry> = {
   "🟢":  { folder: "Green circle", slug: "green_circle" },
   "🏁":  { folder: "Chequered flag", slug: "chequered_flag" },
   "🗳️":  { folder: "Ballot box with ballot", slug: "ballot_box_with_ballot" },
+
+  // Lithuanian flag — the one country flag we render in 3D. MS
+  // Fluent doesn't ship country flags, so this PNG is hand-rendered
+  // in the Fluent style and parked on our Supabase bucket. Used on
+  // surfaces where LT IS the brand (presence bar idle eyebrow, home
+  // bet-chips marquee, etc) — NOT on bingo. See CLAUDE.md.
+  "🇱🇹":  {
+    url: "https://mbgkujipbdfsdvjobtrf.supabase.co/storage/v1/object/public/icons/lt-flag-fluent.png",
+  },
 };
 
 // Country-flag emojis are encoded as a pair of regional-indicator
@@ -222,6 +246,8 @@ export function twemojiFlagUrl(glyph: string): string | null {
 export function fluentEmojiUrl(glyph: string): string | null {
   const entry = FLUENT_EMOJI[glyph];
   if (!entry) return null;
+  if (entry.url) return entry.url;
+  if (!entry.folder || !entry.slug) return null;
   const folder = encodeURIComponent(entry.folder);
   return entry.skin
     ? `${CDN_BASE}/${folder}/Default/3D/${entry.slug}_3d_default.png`
