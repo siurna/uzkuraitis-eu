@@ -20,7 +20,7 @@ const client = createClient({
 });
 
 // Presence: who's online + tiny ephemeral state (which row they're
-// hovering). Durable data lives in Neon — Liveblocks only carries
+// hovering). Durable data lives in Postgres — Liveblocks only carries
 // presence + one-shot broadcasts.
 export type Presence = {
   name: string | null;

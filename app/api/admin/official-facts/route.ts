@@ -31,8 +31,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  // Upsert non-null entries, delete null ones. (neon-http has no
-  // transactions; sequential is fine here.)
+  // Upsert non-null entries, delete null ones.
   for (const [key, value] of Object.entries(parsed.data.facts)) {
     if (value === null || value === "") {
       await db.delete(officialFacts).where(sql`${officialFacts.key} = ${key}`);

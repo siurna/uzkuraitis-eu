@@ -18,7 +18,7 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the deep dive.
 
 2. **Hearts beat; everything else doesn't.** `@keyframes heartbeat` in `globals.css` is the single source of truth. Use `.heartbeat`, `.heartbeat-loop`, or `.heartbeat-focus`. Don't invent a new pulse.
 
-3. **Dual store, one-way flow.** Writes go to Neon. Server broadcasts a hint event over Liveblocks. Clients refetch the relevant slice. Don't put durable data in Liveblocks Storage and don't broadcast full payloads.
+3. **Dual store, one-way flow.** Writes go to Supabase Postgres. Server broadcasts a hint event over Liveblocks. Clients refetch the relevant slice. Don't put durable data in Liveblocks Storage and don't broadcast full payloads.
 
 4. **Broadcast events are `<feature>:<verb>`.** Documented in `lib/liveblocks.ts`. New event? Extend the union, add a note in the doc block.
 
@@ -39,7 +39,7 @@ pnpm dev         # local dev server
 pnpm typecheck   # tsc --noEmit
 pnpm build       # production build (Vercel runs this)
 pnpm db:generate # drizzle-kit generate (new migrations)
-pnpm db:migrate  # apply migrations (we usually do this manually via @neondatabase/serverless HTTP from a script)
+pnpm db:migrate  # apply migrations against DATABASE_URL (or `node scripts/migrate.ts`)
 ```
 
 ## Where things live

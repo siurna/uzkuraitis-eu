@@ -1,6 +1,6 @@
 # Architecture
 
-A Eurovision 2026 second-screen party app. Multi-room voting + bonus-bet scoring + chat + bingo + now-playing, real-time via Liveblocks, durable via Neon.
+A Eurovision 2026 second-screen party app. Multi-room voting + bonus-bet scoring + chat + bingo + now-playing, real-time via Liveblocks, durable via Supabase Postgres.
 
 Mobile-first. Lithuanian by default; English available. The visual identity is the official ESC 2026 heart-mark; every list row, country chip, and loading state echoes that shape.
 
@@ -12,7 +12,7 @@ Mobile-first. Lithuanian by default; English available. The visual identity is t
 |---|---|
 | Framework | Next 16 (App Router, typed routes, RSC where possible) |
 | Style | Tailwind v4 (CSS-first `@theme`, no `tailwind.config.js`) |
-| DB | Neon (serverless Postgres) via Drizzle ORM |
+| DB | Supabase Postgres (via pgbouncer transaction pooler) via Drizzle ORM |
 | Real-time | Liveblocks (presence + broadcast events) |
 | Animation | `motion/react` (framer-motion successor) |
 | Drag/drop | `@dnd-kit` |
@@ -25,7 +25,7 @@ No state library (React state + context is enough). No Redux/Zustand.
 
 ---
 
-## Data model (Neon)
+## Data model (Supabase Postgres)
 
 ```
 rooms                  one row per voting room
@@ -57,7 +57,7 @@ chat_reactions         (planned) hold-to-react on a message
 push_subscriptions     (planned) Web Push endpoint + prefs jsonb
 ```
 
-Every long-lived thing is in Neon. Liveblocks carries presence + ephemeral broadcasts only.
+Every long-lived thing is in Supabase Postgres. Liveblocks carries presence + ephemeral broadcasts only.
 
 ---
 
@@ -65,9 +65,9 @@ Every long-lived thing is in Neon. Liveblocks carries presence + ephemeral broad
 
 Two stores, one direction:
 
-1. **Server writes to Neon** (durable).
+1. **Server writes to Supabase Postgres** (durable).
 2. **Server broadcasts a hint event over Liveblocks** (`scores:updated`, `chat:new`, …).
-3. **Clients listen for the hint, refetch the relevant slice of Neon.**
+3. **Clients listen for the hint, refetch the relevant slice of Postgres.**
 
 This is why we don't put chat messages in Liveblocks Storage despite the temptation: persistence + history + moderation belong in the DB. Broadcasts just say "something changed, look again."
 
@@ -250,7 +250,7 @@ When adding a new surface, hold it against:
 3. Bingo — 5×5 trope card seeded per-voter, click to strike, broadcast strike reactions. No DB.
 4. PWA + Web Push — manifest + service worker + VAPID + `push_subscriptions` table. Notification prefs (chat all / chat replies / now-playing / voting state / results tallied).
 5. Chat — `chat_messages` + `chat_reactions` tables. Replies, hold-to-react, GIFs via Klipy.
-6. Klipy GIF picker — proxy + cache via `/api/gif/search`, cached in Neon for 24h.
+6. Klipy GIF picker — proxy + cache via `/api/gif/search`, cached in Postgres for 24h.
 7. Country deep-dive sheet — tap any heart-flag → opens artist photo + lyrics + video.
 8. End-of-show reveal animation — per-bet "your guess vs. truth" reveal sequence.
 9. Social share card — `/api/og/[voterId]` PNG via Next image generation.

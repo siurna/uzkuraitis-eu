@@ -45,8 +45,8 @@ export async function PUT(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  // (neon-http has no transactions; sequential upserts/deletes are fine
-  // for an admin save — a partial write just means re-save.)
+  // Sequential upserts/deletes are fine for an admin save: a partial
+  // write just means re-save.
   for (const [key, value] of Object.entries(parsed.data.facts)) {
     if (value === null || value === "") {
       await db

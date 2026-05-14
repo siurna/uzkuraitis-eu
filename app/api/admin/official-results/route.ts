@@ -63,8 +63,8 @@ export async function PUT(request: Request) {
     );
   }
 
-  // Wipe and reinsert. (neon-http has no transactions; a brief
-  // "no results" window between the two is acceptable for an admin save.)
+  // Wipe and reinsert. The brief "no results" window between the two
+  // statements is acceptable for an admin save.
   await db.delete(officialResults);
   if (parsed.data.results.length > 0) {
     await db.insert(officialResults).values(parsed.data.results);

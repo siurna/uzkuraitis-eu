@@ -2,13 +2,10 @@ import postgres from "postgres";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
 
-// Postgres client over postgres-js. Works against any standard Postgres
-// (Supabase via the pgbouncer-transaction pooler today, Neon TCP, plain
-// self-hosted). We dropped @neondatabase/serverless when we migrated off
-// Neon — that driver only spoke Neon's HTTP shim. The pgbouncer pool
-// in front of Supabase requires `prepare: false` (transaction-mode
+// Postgres client over postgres-js. Talks to Supabase through the
+// pgbouncer transaction-mode pooler (port 6543). Transaction-mode
 // pooling can't keep server-side prepared statements alive across
-// connections), so we disable them globally.
+// connections, so `prepare: false` is non-negotiable.
 //
 // Lazy init: process.env.DATABASE_URL isn't readable during the
 // `next build` page-data collection pass on Vercel. Throwing at module
