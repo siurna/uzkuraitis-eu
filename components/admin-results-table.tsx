@@ -31,7 +31,32 @@ type FactInput =
   | { kind: "boolean"; key: string; label: string }
   | { kind: "number"; key: string; label: string; min?: number; max?: number };
 
+// Every voter-side bet needs a row here, otherwise the leaderboard can't
+// score it. Audited against `lib/scoring.ts` → scoreBets + scoreHomePrediction:
+//
+//   wooden_spoon_country     → bet_wooden_spoon
+//   home_country_placement   → bet_home_country_prediction (LT placement)
+//   lt_12_to                 → bet_lt_12_to
+//   highestBig5              → derived from the placement editor (top 10)
+//   jury_winner              → bet_jury_winner
+//   televote_winner          → bet_televote_winner
+//   nul_televote             → bet_nul_televote
+//   hostTop3                 → derived from the placement editor (top 3)
+//   winner_solo              → bet_winner_solo
+//   lt_total_points          → bet_lt_total_points
 const FACTS: FactInput[] = [
+  {
+    kind: "country",
+    key: "wooden_spoon_country",
+    label: "Wooden spoon (last place)",
+  },
+  {
+    kind: "number",
+    key: "home_country_placement",
+    label: "Lithuania final placement",
+    min: 1,
+    max: 30,
+  },
   { kind: "country", key: "jury_winner", label: "Jury winner" },
   { kind: "country", key: "televote_winner", label: "Televote winner" },
   {
@@ -175,12 +200,13 @@ export function AdminResultsTable({
 
   return (
     <section className="glass-card rounded-xl p-5 flex flex-col gap-3">
-      <header className="flex items-center justify-between gap-3">
-        <h2 className="font-display text-xl">Results</h2>
+      {/* Page title already says "Results"; this card just shows a
+          filled/total counter so the admin can eyeball completeness. */}
+      <div className="flex justify-end">
         <span className="text-xs text-white/45 tabular-nums">
           {filledCount} / {total}
         </span>
-      </header>
+      </div>
 
       <ol className="flex flex-col">
         {rows.map((row, i) => (
@@ -268,9 +294,6 @@ function FactRow({
 }) {
   return (
     <li className="flex items-center gap-3 py-2 border-t border-white/8">
-      <span className="shrink-0 w-8 text-center text-[11px] uppercase tracking-wider text-white/40 font-display">
-        ·
-      </span>
       <p className="flex-1 min-w-0 text-sm text-white/85">{fact.label}</p>
       <FactControl fact={fact} value={value} onChange={onChange} />
     </li>

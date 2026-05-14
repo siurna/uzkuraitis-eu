@@ -252,17 +252,23 @@
    (the bottom-sheet uses `fixed` and we want that to win). Callers
    that need a positioning context should add `relative` themselves. */
 .glass-card {
+  /* Lower-alpha tint so the backdrop blur is the dominant visual,
+     not the gradient overlay sitting on top of it. The previous
+     0.6 / 0.46 alphas were dark enough that the blur read as "flat
+     dark surface" — bump-up readable inside well-lit chat rows but
+     nothing felt blurred. 0.30 / 0.18 keeps text contrast through
+     the inset shadow + ring and lets the blur do its job. */
   background:
     linear-gradient(
       180deg,
-      oklch(25% 0.04 264 / 0.6) 0%,
-      oklch(18% 0.05 264 / 0.46) 100%
+      oklch(25% 0.04 264 / 0.30) 0%,
+      oklch(18% 0.05 264 / 0.18) 100%
     );
   border: 1px solid oklch(95% 0.005 250 / 0.10);
   /* iOS Safari + WebKit need the prefixed property; without it the
      menu reads as a flat tinted panel with no blur. */
-  -webkit-backdrop-filter: blur(20px) saturate(120%);
-  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  backdrop-filter: blur(28px) saturate(140%);
   box-shadow: var(--shadow-soft);
 }
 

@@ -17,6 +17,11 @@ const nextConfig = {
       { protocol: "https", hostname: "**.public.blob.vercel-storage.com", pathname: "/**" },
     ],
     localPatterns: [{ pathname: "/**" }],
+    // Next 16 rejects widths that aren't in the configured size lists
+    // (no more silent round-up — `w=320` returns 400 unless it's listed
+    // here). Profile sheet uses 320; the rest of the app sticks to the
+    // built-in defaults.
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 320, 384],
     qualities: [50, 70, 72, 75, 90, 100],
   },
   // Next 15 defaults the dynamic-segment client router-cache TTL to 0s,

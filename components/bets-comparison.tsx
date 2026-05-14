@@ -41,7 +41,13 @@ export function BetsComparison({
   const placementToCountry = new Map<number, string>();
   for (const [c, p] of Object.entries(placements)) placementToCountry.set(p, c);
 
-  const last = placementToCountry.get(totalFinalists) ?? null;
+  // Mirror scoring.ts: prefer the explicit `wooden_spoon_country` fact
+  // (the placement editor only covers the top 10, so without it we
+  // can't surface 11+ finishers).
+  const last =
+    facts.wooden_spoon_country ??
+    placementToCountry.get(totalFinalists) ??
+    null;
   const bestBig5 =
     BIG_5
       .map((c) => ({ c, p: placements[c] ?? Infinity }))
