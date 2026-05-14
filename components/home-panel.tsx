@@ -6,25 +6,12 @@ import { NotificationsCta } from "@/components/notification-toggles";
 import { HomeBanners } from "@/components/home-banners";
 import { WhosHere } from "@/components/whos-here";
 import { Highlights } from "@/components/highlights";
+import { WelcomeBanner } from "@/components/welcome-banner";
 
-// Home tab content. Reordered so the punchier "where am I right now"
-// signal (Vakarėlio TOP 5) sits high in the scroll, with the quieter
-// social stack underneath. Order is meaningful:
-//
-//   1. HomeBanners       — Now-playing / Vote hero (top slot), then
-//                          MyResults (self-hides), then the Bingo /
-//                          You-vs-room / Bonus banners.
-//   2. Standings         — Vakarėlio TOP 5 widget (dark surface).
-//                          Self-hides when voting + tally are both off.
-//   3. Highlights        — the night's chat highlights.
-//   4. NotificationsCta  — self-hides once push is granted.
-//   5. WhosHere          — the honeycomb of avatars (here-now).
-//   6. SharePicks        — your TOP 10 share card.
-//
-// Every child renders its own max-w-3xl container so when one returns
-// null (notifications granted, no voter, voting closed) the outer
-// gap collapses cleanly — no phantom wrapper divs adding mystery
-// blank rows between the visible widgets.
+// Home tab content. Welcome / housekeeping is the LAST widget in the
+// scroll so it reads as a closing note, not something the eye fights
+// for attention with the live show. The "where am I right now" signal
+// (now-playing / Standings) sits at the top.
 export function HomePanel() {
   return (
     <div className="flex flex-col gap-4 pt-3 pb-2">
@@ -36,6 +23,7 @@ export function HomePanel() {
       <NotificationsCta />
       <WhosHere />
       <SharePicks />
+      <WelcomeBanner />
     </div>
   );
 }

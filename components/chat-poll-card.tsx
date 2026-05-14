@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { BarChart3, Loader2, Crown } from "lucide-react";
+import { Loader2, Crown } from "lucide-react";
 import { useIdentity } from "@/lib/use-identity";
 import { useRoomLive } from "@/components/room-shell";
 import { FluentEmoji } from "@/components/fluent-emoji";
@@ -75,19 +75,30 @@ export function ChatPollCard({
       const session = getSession();
       const senderName = (name ?? "").trim() || "anonymous";
       setSubmitting(emoji);
+      // When switching votes we run the unset + set calls in parallel
+      // instead of sequentially — halves the perceived "I tapped, the
+      // bar isn't moving" latency. The two reactions are on the same
+      // chat_reactions PK so the server is fine with both arriving
+      // at once. The broadcast that follows reconciles the order.
       try {
+        const calls: Promise<unknown>[] = [];
         if (myEmoji && myEmoji !== emoji) {
-          await fetch(`/api/rooms/${code}/chat/${messageId}/react`, {
+          calls.push(
+            fetch(`/api/rooms/${code}/chat/${messageId}/react`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ session, name: senderName, emoji: myEmoji }),
+            }),
+          );
+        }
+        calls.push(
+          fetch(`/api/rooms/${code}/chat/${messageId}/react`, {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ session, name: senderName, emoji: myEmoji }),
-          });
-        }
-        await fetch(`/api/rooms/${code}/chat/${messageId}/react`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ session, name: senderName, emoji }),
-        });
+            body: JSON.stringify({ session, name: senderName, emoji }),
+          }),
+        );
+        await Promise.all(calls);
       } catch {
         /* live tally rebroadcast will reconcile next refetch */
       } finally {
@@ -121,18 +132,13 @@ export function ChatPollCard({
           }}
         />
 
-        <header className="relative flex items-center gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/25 text-white">
-            <BarChart3 className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-white/75 font-display leading-tight">
-              {t(lang, "poll_eyebrow")}
-            </p>
-            <p className="font-display text-base sm:text-lg text-white leading-snug mt-0.5 text-balance">
-              {question}
-            </p>
-          </div>
+        <header className="relative flex flex-col gap-1">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-white/75 font-display leading-tight">
+            {t(lang, "poll_eyebrow")}
+          </p>
+          <p className="font-display text-base sm:text-lg text-white leading-snug text-balance">
+            {question}
+          </p>
         </header>
 
         <ul className="relative flex flex-col gap-2">

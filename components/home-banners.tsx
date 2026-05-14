@@ -12,7 +12,6 @@ import { buildBingoCard, FREE_SQUARE, tropeEmoji, tropeText } from "@/lib/bingo-
 import { HeartFlag } from "@/components/flag";
 import { FluentEmoji } from "@/components/fluent-emoji";
 import { MyResults } from "@/components/my-results";
-import { WelcomeBanner } from "@/components/welcome-banner";
 import { t, type Language } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 
@@ -465,12 +464,6 @@ export function HomeBanners() {
           </motion.div>
         )}
 
-        {/* Welcome / housekeeping — the closing widget on every home.
-            Self-hides when the admin hasn't authored anything for the
-            current language. */}
-        <motion.div key="welcome-banner" {...BANNER_MOTION}>
-          <WelcomeBanner />
-        </motion.div>
       </AnimatePresence>
     </div>
   );

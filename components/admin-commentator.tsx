@@ -1,26 +1,64 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ImagePlus, X } from "lucide-react";
+import { ImagePlus, X, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FluentEmoji } from "@/components/fluent-emoji";
+import { AdminPageTitle } from "@/components/admin-page-title";
 import { countries } from "@/lib/countries";
 
 const NAME_KEY = "__name__";
 const PHOTO_KEY = "__photo__";
+const AUTOSAVE_DELAY = 600;
 
-// Admin › Settings: edit the live-commentator bot — its name + photo and
+// Admin › Banter: edit the live-commentator bot — its name + photo and
 // one line per country. When the host puts a country on stage, the bot
-// drops that country's line into chat. A country with no line is skipped;
-// clearing the name switches the whole thing off.
+// drops that country's line into chat. Autosaves on idle so the host
+// never has to think about a Save button.
 export function AdminCommentator({ initial }: { initial: Record<string, string> }) {
   const [lines, setLines] = useState<Record<string, string>>(initial);
-  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<"idle" | "dirty" | "saving" | "saved">("idle");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const set = (k: string, v: string) => setLines((p) => ({ ...p, [k]: v }));
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const linesRef = useRef(lines);
+  linesRef.current = lines;
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const set = (k: string, v: string) => {
+    setLines((p) => ({ ...p, [k]: v }));
+    setStatus("dirty");
+  };
+
+  const flush = async () => {
+    setStatus("saving");
+    try {
+      const res = await fetch("/api/admin/commentator", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ lines: linesRef.current }),
+      });
+      if (!res.ok) throw new Error("save failed");
+      setStatus("saved");
+      if (savedTimer.current) clearTimeout(savedTimer.current);
+      savedTimer.current = setTimeout(() => setStatus("idle"), 1400);
+    } catch {
+      setStatus("dirty");
+      toast.error("Save failed (network).");
+    }
+  };
+
+  useEffect(() => {
+    if (status !== "dirty") return;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => { void flush(); }, AUTOSAVE_DELAY);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lines, status]);
 
   const uploadPhoto = async (file: File) => {
     setUploading(true);
@@ -31,7 +69,6 @@ export function AdminCommentator({ initial }: { initial: Record<string, string> 
       const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
       if (res.ok && data.url) {
         set(PHOTO_KEY, data.url);
-        toast.success("Photo uploaded — Save to apply.");
       } else {
         toast.error(data.error ?? "Upload failed.");
       }
@@ -42,89 +79,63 @@ export function AdminCommentator({ initial }: { initial: Record<string, string> 
     }
   };
 
-  const save = async () => {
-    setSaving(true);
-    try {
-      const res = await fetch("/api/admin/commentator", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ lines }),
-      });
-      if (res.ok) toast.success("Commentary saved.");
-      else toast.error("Save failed.");
-    } catch {
-      toast.error("Save failed (network).");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <div className="flex flex-col gap-6">
-      {/* Identity — the MC's face. One card so the photo upload, name
-          field and Save action sit together as a single focus. */}
-      <section className="glass-card rounded-xl p-5 flex flex-col gap-4">
-        <header className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-xl leading-tight">Identity</h2>
-          <Button type="button" onClick={save} disabled={saving} className="h-9 shrink-0">
-            {saving ? "Saving…" : "Save"}
-          </Button>
-        </header>
-        <div className="flex flex-wrap items-end gap-4">
-          <span className="relative grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/40">
+      <AdminPageTitle
+        subtitle="One line per finalist. Drops into chat when the country takes the stage."
+        trailing={<SaveStatus status={status} />}
+      >
+        Banter
+      </AdminPageTitle>
+      <section className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-5">
+        <div className="flex flex-col items-start gap-4">
+          <span className="relative grid h-32 w-32 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white/[0.06] ring-1 ring-white/12 text-white/40">
             {lines[PHOTO_KEY] ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={lines[PHOTO_KEY]} alt="" className="h-full w-full object-cover" />
             ) : (
-              <FluentEmoji glyph="🎙️" size={28} />
+              <FluentEmoji glyph="🎙️" size={56} />
             )}
             {lines[PHOTO_KEY] && (
               <button
                 type="button"
                 onClick={() => set(PHOTO_KEY, "")}
                 aria-label="Remove photo"
-                className="absolute top-0.5 right-0.5 h-5 w-5 grid place-items-center rounded-full bg-black/70 text-white/80 hover:text-white"
+                className="absolute top-1.5 right-1.5 h-6 w-6 grid place-items-center rounded-full bg-black/70 text-white/80 hover:text-white"
               >
-                <X className="h-3 w-3" />
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </span>
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs uppercase tracking-wider text-white/45 font-display">Photo</span>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (f) void uploadPhoto(f);
-              }}
-            />
-            <Button type="button" variant="secondary" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
-              <ImagePlus className="h-4 w-4 mr-1.5" />
-              {uploading ? "Uploading…" : lines[PHOTO_KEY] ? "Replace photo" : "Upload photo"}
-            </Button>
-          </div>
-          <label className="flex flex-col gap-1.5 flex-1 min-w-[12rem]">
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) void uploadPhoto(f);
+            }}
+          />
+          <Button type="button" variant="secondary" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+            <ImagePlus className="h-4 w-4 mr-1.5" />
+            {uploading ? "Uploading…" : lines[PHOTO_KEY] ? "Replace photo" : "Upload photo"}
+          </Button>
+
+          <label className="flex flex-col gap-1.5 w-full">
             <span className="text-xs uppercase tracking-wider text-white/45 font-display">Name</span>
             <Input
               value={lines[NAME_KEY] ?? ""}
               onChange={(e) => set(NAME_KEY, e.target.value)}
-              placeholder="🎙️ Eurodude"
-              className="h-9"
+              className="h-10"
             />
           </label>
         </div>
       </section>
 
-      {/* Lines — one line per finalist. The card is just the list;
-          no header, no markup help, no toolbar. The textareas still
-          accept the inline `**bold**` / `*italic*` / `__underline__`
-          markup that chat renders, but the editor stays minimal so
-          the eye lands on the country list. */}
-      <section className="glass-card rounded-xl p-5 flex flex-col gap-3">
+      <section className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-3">
         {countries.map((c) => (
           <label key={c.code} className="flex items-start gap-2.5">
             <span className="w-6 shrink-0 pt-2 text-center text-[11px] text-white/40 tabular-nums">{c.order}</span>
@@ -135,7 +146,6 @@ export function AdminCommentator({ initial }: { initial: Record<string, string> 
               value={lines[c.code] ?? ""}
               onChange={(e) => set(c.code, e.target.value)}
               rows={2}
-              placeholder="…what gets dropped when this country hits the stage"
               className="flex-1 min-w-0 rounded-lg bg-black/30 border border-white/15 px-3 py-2
                          text-sm leading-snug text-white resize-y min-h-[2.5rem]
                          focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 transition"
@@ -145,4 +155,32 @@ export function AdminCommentator({ initial }: { initial: Record<string, string> 
       </section>
     </div>
   );
+}
+
+function SaveStatus({ status }: { status: "idle" | "dirty" | "saving" | "saved" }) {
+  if (status === "saving") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-white/55">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        Saving…
+      </span>
+    );
+  }
+  if (status === "saved") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-success">
+        <Check className="h-3.5 w-3.5" />
+        Saved
+      </span>
+    );
+  }
+  if (status === "dirty") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-white/45">
+        <span className="h-1.5 w-1.5 rounded-full bg-flamingo" />
+        Unsaved
+      </span>
+    );
+  }
+  return <span className="text-xs text-white/35">Autosaves</span>;
 }

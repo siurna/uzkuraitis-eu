@@ -62,12 +62,18 @@ export async function GET(req: Request, { params }: RouteCtx) {
   };
 
   type ReactionsRow = { reactions_given: number; reactions_received: number };
+  type BallotJoinRow = { points: number; country_code: string };
+
+  const canMaybeSeeBallot = room.tallyEnabled || isSelf;
 
   const [
     voterRow,
     authoredRows,
     reactionsRow,
     triviaStatsRow,
+    ballotRows,
+    overrideRows,
+    globalRows,
   ] = await Promise.all([
     db
       .select()
@@ -90,11 +96,6 @@ export async function GET(req: Request, { params }: RouteCtx) {
         AND m.session_id = ${sessionId}
       GROUP BY m.id
     `),
-    // PERF: reactions given + received used to be two separate
-    // chat_reactions × chat_messages joins. They share the same
-    // (room_id) scope and only differ on which side of the join the
-    // session_id filter sits, so a single scan with FILTER aggregates
-    // returns both counts in one round-trip.
     db.execute<ReactionsRow>(sql`
       SELECT
         COUNT(*) FILTER (WHERE r.session_id = ${sessionId})::int AS reactions_given,
@@ -115,6 +116,27 @@ export async function GET(req: Request, { params }: RouteCtx) {
         eq(triviaAnswers.sessionId, sessionId),
       ))
       .then((rows) => rows[0]),
+    // PERF: the ballot fan-out (ballot rows + room-override results +
+    // global official results) used to fire AFTER the main Promise.all
+    // resolved — a second RTT round adding ~300ms on warm instances.
+    // Folded into the same batch by joining voters→votes inline so we
+    // don't need the resolved voter id first. Skipped (resolved to [])
+    // when the viewer isn't authorised to see the ballot, so we don't
+    // waste cycles on profiles whose ballot the API would have hidden.
+    canMaybeSeeBallot
+      ? db.execute<BallotJoinRow>(sql`
+          SELECT v2.points, v2.country_code
+          FROM ${votes} v2
+          INNER JOIN ${voters} vr ON vr.id = v2.voter_id
+          WHERE vr.room_id = ${room.id} AND vr.session_id = ${sessionId}
+        `)
+      : Promise.resolve([] as BallotJoinRow[]),
+    canMaybeSeeBallot
+      ? db.select().from(roomResults).where(eq(roomResults.roomId, room.id))
+      : Promise.resolve([] as { roomId: string; countryCode: string; placement: number }[]),
+    canMaybeSeeBallot
+      ? db.select().from(officialResults)
+      : Promise.resolve([] as { countryCode: string; placement: number }[]),
   ]);
 
   // Derive the four chat-roll-up shapes the old query plan computed
@@ -185,25 +207,22 @@ export async function GET(req: Request, { params }: RouteCtx) {
     betsPlaced = slots.filter((v) => v !== null && v !== undefined).length;
   }
 
-  // Ballot + per-pick breakdown — only when authorised. The ballot
-  // rows and the placement tables fan out in parallel too.
+  // Per-pick ballot breakdown — only when authorised AND a voter row
+  // exists. The data was fetched in the main Promise.all above so this
+  // is a pure in-memory transform now (no extra RTT).
   let ballot: TopTenPickBreakdown[] | null = null;
-  if (voterRow && canSeeBallot) {
-    const [ballotRows, overrideRows, globalRows] = await Promise.all([
-      db
-        .select({ points: votes.points, countryCode: votes.countryCode })
-        .from(votes)
-        .where(eq(votes.voterId, voterRow.id)),
-      db.select().from(roomResults).where(eq(roomResults.roomId, room.id)),
-      db.select().from(officialResults),
-    ]);
+  if (voterRow && canSeeBallot && ballotRows.length > 0) {
     const ballotObj: Ballot = {};
-    for (const r of ballotRows) ballotObj[String(r.points)] = r.countryCode;
+    for (const r of ballotRows) ballotObj[String(r.points)] = r.country_code;
     const placements: Record<string, number> =
       overrideRows.length > 0
         ? Object.fromEntries(overrideRows.map((r) => [r.countryCode, r.placement]))
         : Object.fromEntries(globalRows.map((r) => [r.countryCode, r.placement]));
     ballot = scoreTopTenBreakdown(ballotObj, placements);
+  } else if (voterRow && canSeeBallot) {
+    // Empty ballot but authorised — still render the scorecard with no
+    // earned points so the comparison table is consistent.
+    ballot = scoreTopTenBreakdown({}, {});
   }
 
   return NextResponse.json({

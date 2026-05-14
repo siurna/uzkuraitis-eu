@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Bell, Dices, Medal, ListChecks, ChevronRight, Camera, Loader2, Sparkles } from "lucide-react";
+import { Bell, Dices, ListChecks, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { HeartFlag } from "@/components/flag";
 import { WelcomeMarkdown } from "@/components/welcome-banner";
@@ -406,7 +406,7 @@ function Top3PodiumCard({
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      className="rounded-3xl ring-1 ring-yellow/45 shadow-[0_18px_44px_-18px_oklch(72%_0.18_85_/_0.5)] overflow-hidden"
+      className="rounded-3xl ring-2 ring-white/10 shadow-[0_18px_44px_-22px_rgba(0,0,0,0.55)] overflow-hidden"
     >
       <div className="relative overflow-hidden p-5 flex flex-col gap-4 bg-gradient-to-br from-yellow/30 via-orange/20 to-purple/55">
         {/* Spotlight cone behind the #1 flag. */}
@@ -419,8 +419,7 @@ function Top3PodiumCard({
           aria-hidden
         />
         <header className="relative flex items-center">
-          <p className="text-[10px] uppercase tracking-[0.3em] font-display text-white/85 flex items-center gap-1.5">
-            <Medal className="h-3 w-3 text-yellow" fill="currentColor" />
+          <p className="text-[10px] uppercase tracking-[0.3em] font-display text-white/85">
             {t(lang, "sys_cta_top3_eyebrow")}
           </p>
         </header>
@@ -491,32 +490,35 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
   }, []);
 
   const md = (lang === "lt" ? data?.welcome_md_lt : data?.welcome_md_en) ?? "";
-  // No fallback copy when empty — the admin hasn't authored anything
-  // yet, so render a quiet placeholder rather than a blank card so
-  // the host immediately notices the empty state.
+  // Pinned-note styling — a slip of cream-paper "stuck to the chat"
+  // with a tilted tape strip across the top corner. No icon, no
+  // eyebrow heading. This card is the host's opening hello — it
+  // should read as a hand-written intro, not a system banner.
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      className="rounded-3xl ring-1 ring-flamingo/45 shadow-[0_18px_44px_-18px_oklch(58%_0.24_336_/_0.5)] overflow-hidden"
+      initial={{ opacity: 0, y: 8, rotate: -2 }}
+      animate={{ opacity: 1, y: 0, rotate: -0.6 }}
+      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+      className="relative mx-auto max-w-[19rem]"
     >
+      <span
+        className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 h-5 w-24 rotate-[-3deg]
+                   bg-[oklch(95%_0.08_95_/_0.7)] ring-1 ring-[oklch(85%_0.12_95_/_0.45)]
+                   shadow-[0_2px_4px_-2px_rgba(0,0,0,0.3)]"
+        aria-hidden
+      />
       <div
-        className="relative overflow-hidden p-5 flex flex-col gap-3"
-        style={{ background: "linear-gradient(160deg, #1b2360 0%, #2e1b6e 55%, #5a2295 100%)" }}
+        className="relative rounded-sm p-5 bg-[#f5efe2]
+                   shadow-[0_18px_44px_-18px_rgba(0,0,0,0.55),0_2px_6px_-2px_rgba(0,0,0,0.4)]
+                   text-[#3a1f12] [&_strong]:text-[#3a1f12] [&_em]:text-[#3a1f12]
+                   [&_a]:text-[#7a3210] [&_a]:decoration-[#7a3210]/60"
       >
-        <header className="flex items-center gap-2">
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-flamingo/20 ring-1 ring-flamingo/45 text-flamingo">
-            <Sparkles className="h-4 w-4" fill="currentColor" />
-          </span>
-          <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/85">
-            {t(lang, "welcome_eyebrow")}
-          </p>
-        </header>
         {md.trim() ? (
-          <WelcomeMarkdown source={md} />
+          <div className="text-[15px] leading-relaxed">
+            <WelcomeMarkdown source={md} />
+          </div>
         ) : (
-          <p className="text-sm text-white/70 italic">
+          <p className="text-sm text-[#6e4b35] italic">
             {t(lang, "welcome_empty_chat")}
           </p>
         )}
@@ -557,15 +559,30 @@ function SelfieCard({ lang }: { lang: Language }) {
   const { sessionId: getSession, name, avatarId } = useIdentity();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  // Revoke object URLs we hold so we don't leak when the user picks
+  // a new shot or the card unmounts.
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const onPick = async (file: File) => {
     if (!file.type.startsWith("image/") || !code) return;
-    // Kept in sync with MAX_IMAGE_BYTES in chat-panel.tsx and the
-    // server's 8 MB upload cap in /api/rooms/[code]/chat/upload.
     if (file.size > 8 * 1024 * 1024) {
       toast.error(t(lang, "chat_image_too_big"));
       return;
     }
+    // Show the picked shot inline IMMEDIATELY — the upload below is
+    // async, but the polaroid window swaps to the local preview so
+    // the host gets instant feedback that their tap landed.
+    const localUrl = URL.createObjectURL(file);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(localUrl);
+    setDone(false);
     setBusy(true);
     try {
       const form = new FormData();
@@ -587,23 +604,19 @@ function SelfieCard({ lang }: { lang: Language }) {
           gifUrl: url,
         }),
       });
+      setDone(true);
     } catch (err) {
       toast.error((err as Error).message);
+      setPreviewUrl(null);
     } finally {
       setBusy(false);
     }
   };
 
-  // Polaroid styling — cream cardstock frame with a thicker bottom
-  // ledge, the "photo" sits inside as a glassy preview window, and
-  // the whole card tilts ~2° at rest. A tiny tape strip in the
-  // corner pins the polaroid look down. The hidden input + onPick
-  // flow is unchanged.
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.94, rotate: -3 }}
       animate={{ opacity: 1, scale: 1, rotate: -1.5 }}
-      whileHover={{ rotate: 0, scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
       className="relative mx-auto max-w-[19rem]"
@@ -620,9 +633,6 @@ function SelfieCard({ lang }: { lang: Language }) {
           if (f) void onPick(f);
         }}
       />
-      {/* The polaroid card itself — cream with a satisfying bottom
-          ledge that holds the caption. Shadow is offset down + right
-          so it reads as a physical print, not a flat card. */}
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
@@ -632,54 +642,44 @@ function SelfieCard({ lang }: { lang: Language }) {
                    shadow-[0_18px_44px_-18px_rgba(0,0,0,0.55),0_2px_6px_-2px_rgba(0,0,0,0.4)]
                    active:scale-[0.99] transition transform-gpu disabled:opacity-70"
       >
-        {/* Tape strip pinning the top-left corner. Slightly
-            translucent yellow so it reads like masking tape. */}
         <span
           className="pointer-events-none absolute -top-2 left-6 h-5 w-16 rotate-[-6deg]
                      bg-[oklch(95%_0.08_95_/_0.7)] ring-1 ring-[oklch(85%_0.12_95_/_0.45)]
                      shadow-[0_2px_4px_-2px_rgba(0,0,0,0.3)]"
           aria-hidden
         />
-        {/* The "photo window" — a dark glassy panel where a developed
-            photo would sit. Houses the camera icon as the call-to-
-            action. Aspect square so the polaroid feels right. */}
         <span className="relative block aspect-square rounded-sm overflow-hidden
                           bg-gradient-to-br from-[#1a0f2b] via-[#2a1664] to-[#4a1f7a]">
-          {/* Soft brand vignette in the corners so it reads as a
-              moody developed picture, not a blank box. */}
-          <span
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(80% 60% at 50% 35%, oklch(58% 0.22 336 / 0.4) 0%, transparent 60%), radial-gradient(60% 70% at 90% 90%, oklch(70% 0.18 220 / 0.35) 0%, transparent 60%)",
-            }}
-            aria-hidden
-          />
-          {/* Big camera glyph centred — the "click to capture" hint. */}
-          <span className="relative h-full w-full grid place-items-center">
-            <span className="grid h-20 w-20 place-items-center rounded-full
-                              bg-white/15 ring-1 ring-white/30 backdrop-blur-sm
-                              text-white shadow-[0_8px_24px_-8px_rgba(0,0,0,0.4)]">
-              {busy ? (
-                <Loader2 className="h-10 w-10 animate-spin" />
-              ) : (
-                <Camera className="h-10 w-10" fill="currentColor" />
-              )}
+          {previewUrl ? (
+            // Once a shot is picked the polaroid window IS that shot,
+            // immediately. The upload + chat-post happen in parallel.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={previewUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <>
+              <span
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(80% 60% at 50% 35%, oklch(58% 0.22 336 / 0.4) 0%, transparent 60%), radial-gradient(60% 70% at 90% 90%, oklch(70% 0.18 220 / 0.35) 0%, transparent 60%)",
+                }}
+                aria-hidden
+              />
+              <span className="relative h-full w-full grid place-items-center">
+                <span className="grid h-20 w-20 place-items-center rounded-full
+                                  bg-white/15 ring-1 ring-white/30 backdrop-blur-sm
+                                  text-white shadow-[0_8px_24px_-8px_rgba(0,0,0,0.4)]">
+                  <FluentEmoji glyph="📸" size={48} />
+                </span>
+              </span>
+            </>
+          )}
+          {busy && previewUrl && (
+            <span className="absolute inset-0 grid place-items-center bg-black/30">
+              <Loader2 className="h-8 w-8 text-white animate-spin" />
             </span>
-          </span>
-          {/* Tiny "REC" / film-frame dot in the upper-right of the
-              picture window to dial up the analog camera feel. */}
-          <span
-            className="absolute top-3 right-3 flex items-center gap-1.5 text-[9px]
-                       uppercase tracking-[0.2em] font-display text-white/85"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-flamingo animate-pulse" />
-            REC
-          </span>
+          )}
         </span>
-        {/* Polaroid caption — handwritten-feel italic on the cream
-            ledge. Two lines: eyebrow + title; the sub goes underneath
-            in a smaller weight. */}
         <span className="block px-1 pt-3 pb-2 text-center">
           <span
             className="block font-display text-[10px] uppercase tracking-[0.32em] text-[#8a614a]"
@@ -687,13 +687,17 @@ function SelfieCard({ lang }: { lang: Language }) {
             {t(lang, "sys_cta_selfie_eyebrow")}
           </span>
           <span
-            className="block font-display text-lg text-[#3a1f12] leading-tight mt-0.5"
+            className="block font-display text-lg text-[#3a1f12] leading-tight mt-0.5 text-balance"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            {busy ? t(lang, "sys_cta_selfie_sending") : t(lang, "sys_cta_selfie_title")}
+            {busy
+              ? t(lang, "sys_cta_selfie_sending")
+              : done
+                ? t(lang, "sys_cta_selfie_done_title")
+                : t(lang, "sys_cta_selfie_title")}
           </span>
-          <span className="block text-[11px] text-[#6e4b35] leading-snug mt-1">
-            {t(lang, "sys_cta_selfie_sub")}
+          <span className="block text-[11px] text-[#6e4b35] leading-snug mt-1 text-balance">
+            {done ? t(lang, "sys_cta_selfie_done_sub") : t(lang, "sys_cta_selfie_sub")}
           </span>
         </span>
       </button>

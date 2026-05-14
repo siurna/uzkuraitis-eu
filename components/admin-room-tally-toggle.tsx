@@ -46,10 +46,7 @@ export function AdminRoomTallyToggle({
                  bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07] transition text-left
                  disabled:opacity-60"
     >
-      <span
-        className={`shrink-0 grid place-items-center h-10 w-10 rounded-xl transition
-                    ${enabled ? "bg-gold/20 ring-1 ring-gold/45 text-gold" : "bg-white/[0.06] ring-1 ring-white/12 text-white/55"}`}
-      >
+      <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/65">
         <Trophy className="h-5 w-5" />
       </span>
       <span className="flex-1 min-w-0">
@@ -62,7 +59,7 @@ export function AdminRoomTallyToggle({
       </span>
       <span
         className={`relative h-6 w-11 rounded-full transition shrink-0 ${
-          enabled ? "bg-gold/70" : "bg-white/10"
+          enabled ? "bg-white/50" : "bg-white/10"
         }`}
         aria-hidden
       >

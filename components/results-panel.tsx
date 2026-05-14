@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { motion } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import { useEventListener } from "@/lib/realtime";
 import { useRoomLive } from "@/components/room-shell";
 import { useLeaderboard } from "@/components/leaderboard-provider";
@@ -277,47 +278,52 @@ export function ResultsPanel() {
           </div>
         )}
 
-        {effTab === "me" && me ? (
-          <div className="flex flex-col gap-4">
-            {/* The rank/total card used to live here; that signal now
-                rides on the leaderboard row's "10/14" badge (the
-                viewer's row is highlighted in flamingo over there).
-                The breakdown sections below carry the rest of the
-                "where did your points come from" story. */}
-
-            {/* "You said / it was" — per-pick comparison for the TOP10
-                ballot. Reads as a scorecard: each row shows the pick at
-                that rank, what the country actually finished, and the
-                earned points. */}
-            {ballot && <BallotComparison ballot={ballot} lang={lang} />}
-
-            {/* Same shape applied to the BONUS bets. Reuses the picks +
-                facts/placements that ride along on the leaderboard
-                response. Self-hides when the voter didn't place any
-                bets, so the rest of the breakdown still reads. */}
-            <BetsComparison
-              picks={me.betPicks}
-              earned={me.bets}
-              facts={payload.facts}
-              placements={payload.placements}
-              homeCountryCode={homeCountryCode}
-              lang={lang}
-              totalFinalists={countries.length}
-            />
-
-            <ScoreBreakdown
-              topTen={me.topTen}
-              home={me.home}
-              bets={me.bets}
-              highlights={me.highlights}
-              trivia={me.trivia}
-              total={me.total}
-              homeName={countryName(homeCountryCode, lang)}
-            />
-          </div>
-        ) : (
-          <Leaderboard code={code} />
-        )}
+        {/* Crossfade + slide between the two sub-tabs so the eye
+            doesn't snap from "me" to "board" — same choreography we
+            use for vote/results swaps in the live show. mode="wait"
+            keeps the layout from briefly stacking both panels. */}
+        <AnimatePresence mode="wait" initial={false}>
+          {effTab === "me" && me ? (
+            <motion.div
+              key="me"
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col gap-4"
+            >
+              {ballot && <BallotComparison ballot={ballot} lang={lang} />}
+              <BetsComparison
+                picks={me.betPicks}
+                earned={me.bets}
+                facts={payload.facts}
+                placements={payload.placements}
+                homeCountryCode={homeCountryCode}
+                lang={lang}
+                totalFinalists={countries.length}
+              />
+              <ScoreBreakdown
+                topTen={me.topTen}
+                home={me.home}
+                bets={me.bets}
+                highlights={me.highlights}
+                trivia={me.trivia}
+                total={me.total}
+                homeName={countryName(homeCountryCode, lang)}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="board"
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 12 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <Leaderboard code={code} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </main>
   );

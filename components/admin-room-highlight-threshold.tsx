@@ -40,7 +40,7 @@ export function AdminRoomHighlightThreshold({
 
   return (
     <div className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 bg-white/[0.04] ring-1 ring-white/8 text-left">
-      <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-flamingo/15 ring-1 ring-flamingo/35 text-flamingo">
+      <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/65">
         <Flame className="h-5 w-5" fill="currentColor" />
       </span>
       <div className="flex-1 min-w-0">

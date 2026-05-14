@@ -253,6 +253,8 @@ const S = {
   sys_cta_selfie_sub:        { en: "One tap, front camera, straight into chat.", lt: "Vienas bakstelėjimas, priekinė kamera, tiesiai į pokalbį." },
   sys_cta_selfie_btn:        { en: "Take one", lt: "Daryti" },
   sys_cta_selfie_sending:    { en: "Sending…", lt: "Siunčiama…" },
+  sys_cta_selfie_done_title: { en: "Looking great.", lt: "Atrodai puikiai." },
+  sys_cta_selfie_done_sub:   { en: "Posted to the room.", lt: "Įmesta į pokalbį." },
   // Quick poll card. Reuses chat reactions for storage, so live
   // tallies arrive on the existing chat:react broadcast.
   poll_eyebrow:              { en: "Vibe check", lt: "Nuotaikos pulsas" },

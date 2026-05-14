@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Radio } from "lucide-react";
 import { AdminRoomPicker } from "@/components/admin-room-picker";
 import { AdminLiveControls } from "@/components/admin-live-controls";
 
@@ -40,17 +41,24 @@ export function AdminLiveRoomColumn({ rooms }: { rooms: RoomLite[] }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-xs uppercase tracking-[0.18em] text-white/40 font-display">
-          Room
+      <header className="flex items-start gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+          <Radio className="h-5 w-5" />
         </span>
-        <AdminRoomPicker
-          rooms={rooms}
-          value={room}
-          onChange={choose}
-          className="min-w-[12rem]"
-        />
-      </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="font-display text-xl leading-tight">Room</h2>
+          <p className="text-sm text-white/45 leading-snug mt-0.5">
+            Pick which room these controls aim at.
+          </p>
+        </div>
+      </header>
+
+      <AdminRoomPicker
+        rooms={rooms}
+        value={room}
+        onChange={choose}
+        className="w-full"
+      />
 
       <AdminLiveControls
         rooms={rooms}

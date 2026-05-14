@@ -44,7 +44,7 @@ export function WelcomeBanner() {
   if (!md || !md.trim()) return null;
 
   return (
-    <>
+    <div className="container mx-auto max-w-3xl px-4">
       <motion.button
         type="button"
         onClick={() => setOpen(true)}
@@ -92,11 +92,10 @@ export function WelcomeBanner() {
         open={open}
         onClose={() => setOpen(false)}
         title={t(lang, "welcome_card_title")}
-        sub={t(lang, "welcome_eyebrow")}
       >
         <WelcomeMarkdown source={md} />
       </BottomSheet>
-    </>
+    </div>
   );
 }
 

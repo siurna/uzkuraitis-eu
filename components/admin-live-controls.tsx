@@ -168,8 +168,27 @@ export function AdminLiveControls({
 
   return (
     <>
-      {/* Page-level CTA — the only thing visible at rest. Everything
-          else lives in the drawer. */}
+      {/* Voting + results switches live on the page itself now — they
+          carry the most weight (lines open / scoreboard reveal) and
+          should be one tap away, not behind a drawer. Only the
+          broadcasts (selfie / poll / hype shots) hide in the drawer. */}
+      <div className="flex flex-col gap-2">
+        <DrawerSwitch
+          icon={<Vote className="h-4 w-4" />}
+          label="Voting open"
+          on={voting}
+          disabled={pending || noRoom}
+          onChange={flipVoting}
+        />
+        <DrawerSwitch
+          icon={<Trophy className="h-4 w-4" />}
+          label="Reveal results"
+          on={tally}
+          disabled={pending || noRoom}
+          onChange={flipTally}
+        />
+      </div>
+
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -182,9 +201,9 @@ export function AdminLiveControls({
             <Megaphone className="h-5 w-5" />
           </span>
           <span className="flex-1 min-w-0">
-            <span className="block font-display text-base text-white">Room controls</span>
+            <span className="block font-display text-base text-white">Broadcasts</span>
             <span className="block text-xs text-white/55 leading-snug">
-              {noRoom ? "Pick a room first." : "Voting, results, broadcasts."}
+              {noRoom ? "Pick a room first." : "Hype shots, polls, prompts."}
             </span>
           </span>
           <ChevronRight className="h-5 w-5 text-white/45 shrink-0" />
@@ -194,31 +213,9 @@ export function AdminLiveControls({
       <BottomSheet
         open={open}
         onClose={() => setOpen(false)}
-        title="Room controls"
+        title="Broadcasts"
         sub={room || "No room selected"}
       >
-        {/* Two compact switches up top: voting + results. No big
-            icon tiles, no per-row subtitles — the labels carry it. */}
-        <div className="flex flex-col gap-2">
-          <DrawerSwitch
-            icon={<Vote className="h-4 w-4" />}
-            label="Voting open"
-            on={voting}
-            disabled={pending}
-            onChange={flipVoting}
-          />
-          <DrawerSwitch
-            icon={<Trophy className="h-4 w-4" />}
-            label="Reveal results"
-            on={tally}
-            disabled={pending}
-            onChange={flipTally}
-          />
-        </div>
-
-        <p className="mt-4 mb-1 text-[10px] uppercase tracking-[0.24em] font-display text-white/45 px-1">
-          Broadcasts
-        </p>
         <ul className="flex flex-col gap-1">
           {SHOTS.map(({ kind, title, desc }) => {
             const last = lastFired[kind];

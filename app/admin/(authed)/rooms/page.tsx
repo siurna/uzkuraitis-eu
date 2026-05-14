@@ -31,16 +31,12 @@ export default async function AdminRoomsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex items-end justify-between gap-4">
-        <div>
-          <AdminPageTitle>Rooms</AdminPageTitle>
-          <p className="text-sm text-white/50 mt-2">
-            {list.length} {list.length === 1 ? "room" : "rooms"} on this
-            installation.
-          </p>
-        </div>
-        <AdminCreateRoom />
-      </header>
+      <AdminPageTitle
+        subtitle={`${list.length} ${list.length === 1 ? "room" : "rooms"} on this installation.`}
+        trailing={<AdminCreateRoom />}
+      >
+        Rooms
+      </AdminPageTitle>
 
       <div className="flex flex-col gap-2">
         {list.length === 0 ? (
