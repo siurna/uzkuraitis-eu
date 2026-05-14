@@ -19,6 +19,7 @@ import { useParticles } from "@/components/particle-layer";
 import { TranslationBubble } from "@/components/translation-bubble";
 import { BeginnerBubble } from "@/components/beginner-bubble";
 import { ChatTriviaCard } from "@/components/chat-trivia-inline";
+import { ChatPollCard } from "@/components/chat-poll-card";
 import { useTranslateEnabled } from "@/lib/translate-client";
 import { useBeginnerEnabled } from "@/lib/beginner-client";
 import { useSwipeToReply } from "@/lib/use-swipe-to-reply";
@@ -178,7 +179,8 @@ export type MessageKind =
   | "system"
   | "now_playing"
   | "results"
-  | "trivia";
+  | "trivia"
+  | "poll";
 
 export type Message = {
   id: string;
@@ -336,10 +338,41 @@ export function ChatRow({
   const isNowPlaying = m.kind === "now_playing";
   const isResults = m.kind === "results";
   const isTrivia = m.kind === "trivia";
+  const isPoll = m.kind === "poll";
   const isMedia = (m.kind === "gif" || m.kind === "image") && m.gifUrl;
+  // Emoji-only text messages get the iMessage / Telegram "jumbo
+  // emoji" treatment: bigger glyphs, no bubble. Detection allows any
+  // mix of emoji glyphs, ZWJ sequences, variation selectors and
+  // whitespace; we cap at 8 visible glyphs so a wall of 50 hearts
+  // doesn't tile the chat in 5-line giants.
+  const jumboCount = (() => {
+    if (m.kind !== "text" || !m.body) return 0;
+    const trimmed = m.body.trim();
+    if (!trimmed) return 0;
+    if (!/^[\s\p{Extended_Pictographic}‍️]+$/u.test(trimmed)) return 0;
+    // Count visible glyphs via Intl.Segmenter when available, else
+    // fall back to a code-point split (over-counts ZWJ sequences but
+    // still capped at 8 — close enough).
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const Seg = (Intl as any).Segmenter;
+      if (Seg) {
+        const seg = new Seg(undefined, { granularity: "grapheme" });
+        return Array.from(seg.segment(trimmed.replace(/\s+/g, ""))).length;
+      }
+    } catch {
+      /* fall through */
+    }
+    return Array.from(trimmed.replace(/\s+/g, "")).length;
+  })();
+  const isJumbo = jumboCount > 0 && jumboCount <= 8;
+  const jumboSize =
+    jumboCount <= 1 ? "text-6xl" : jumboCount <= 3 ? "text-5xl" : "text-3xl";
   // A message that's pulled enough reactions glows — it's a "highlight".
   const reactionTotal = Object.values(m.reactions).reduce((n, r) => n + r.count, 0);
-  const isHighlight = !isSystem && !isNowPlaying && !isResults && reactionTotal >= 5;
+  // Polls already render the reaction count as a tally, so don't add
+  // the highlight glow on top — it'd compete with the bar fill.
+  const isHighlight = !isSystem && !isNowPlaying && !isResults && !isPoll && reactionTotal >= 5;
   const isEdited = (m.meta as { edited?: boolean } | null)?.edited === true;
   const canEdit =
     mine && m.kind === "text" &&
@@ -439,6 +472,29 @@ export function ChatRow({
       return "";
     }
   }, [m.createdAt]);
+
+  if (isPoll) {
+    const pollMeta = m.meta as {
+      poll?: boolean;
+      question?: { en?: string; lt?: string };
+      choices?: { emoji: string; en: string; lt: string }[];
+    } | null;
+    return (
+      <motion.li
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        className="my-1 px-1"
+      >
+        <ChatPollCard
+          messageId={m.id}
+          meta={pollMeta}
+          reactions={m.reactions}
+          lang={lang}
+        />
+      </motion.li>
+    );
+  }
 
   if (isTrivia) {
     const triviaMeta = m.meta as {
@@ -884,15 +940,17 @@ export function ChatRow({
               // horizontal for swipe-to-reply. transition-colors only —
               // the swipe writes its own inline transform/transition.
               className={`relative text-left rounded-2xl text-sm leading-snug transition-colors touch-pan-y cursor-pointer overflow-hidden will-change-transform
-                          ${isMedia ? "p-0" : "px-3.5 py-2"}
+                          ${isMedia ? "p-0" : isJumbo ? "px-1 py-1" : "px-3.5 py-2"}
                           ${
                             isCard
                               ? "bg-flamingo/15 ring-1 ring-flamingo/40 text-white px-3.5 py-2"
-                              : mine
-                                ? "bg-white text-dark-blue"
-                                : "bg-white/[0.06] ring-1 ring-white/10 text-white/90"
+                              : isJumbo
+                                ? "bg-transparent text-white"
+                                : mine
+                                  ? "bg-white text-dark-blue"
+                                  : "bg-white/[0.06] ring-1 ring-white/10 text-white/90"
                           } ${m.pending ? "opacity-75" : ""} ${
-                            isHighlight
+                            isHighlight && !isJumbo
                               ? "ring-2 ring-flamingo/45 shadow-[0_4px_28px_-2px_oklch(70%_0.27_336_/_0.45)]"
                               : ""
                           }`}
@@ -920,7 +978,11 @@ export function ChatRow({
                 </span>
               ) : (
                 <>
-                  <span className="whitespace-pre-wrap break-words">
+                  <span
+                    className={`whitespace-pre-wrap break-words ${
+                      isJumbo ? `${jumboSize} leading-none tracking-wide` : ""
+                    }`}
+                  >
                     {renderBody(m.body ?? "", participantNames)}
                   </span>
                   {isEdited && (

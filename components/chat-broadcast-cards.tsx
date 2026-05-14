@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Bell, Dices, Medal, ListChecks, ChevronRight } from "lucide-react";
+import { Bell, Dices, Medal, ListChecks, ChevronRight, Camera, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { HeartFlag } from "@/components/flag";
 import { countryName, getCountry } from "@/lib/countries";
 import { isSupported as pushIsSupported } from "@/lib/push-client";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
+import { useIdentity } from "@/lib/use-identity";
 import { fmt, t, tDyn, type MessageKey } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
 import { HOST_COUNTRY } from "@/lib/scoring";
@@ -56,6 +58,8 @@ export function ChatBroadcastCard({
       return <VoteOpenCard lang={lang} />;
     case "sys_cta_bet":
       return <BonusBetCard lang={lang} />;
+    case "sys_cta_selfie":
+      return <SelfieCard lang={lang} />;
     case "sys_cta_top3":
       return <Top3PodiumCard codes={meta?.codes ?? null} fallback={meta?.sysArg ?? null} lang={lang} />;
     case "sys_cta_top3_empty":
@@ -464,5 +468,107 @@ function PodiumChip({
         {countryName(code, lang) ?? code.toUpperCase()}
       </span>
     </div>
+  );
+}
+
+// "Selfie time" — opens the device camera directly via a hidden
+// <input type="file" capture="user"> so the OS jumps straight to the
+// front-facing camera (a regular file picker is the fallback when
+// `capture` isn't honoured). The card itself drives the existing
+// chat upload + send flow so we don't have to weave a callback all
+// the way back through chat-panel.
+function SelfieCard({ lang }: { lang: Language }) {
+  const { code } = useRoomLive();
+  const { sessionId: getSession, name, avatarId } = useIdentity();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  const onPick = async (file: File) => {
+    if (!file.type.startsWith("image/") || !code) return;
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error(t(lang, "chat_image_too_big"));
+      return;
+    }
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const up = await fetch(`/api/rooms/${code}/chat/upload`, { method: "POST", body: form });
+      if (!up.ok) {
+        const { error } = (await up.json().catch(() => ({}))) as { error?: string };
+        throw new Error(error ?? t(lang, "chat_image_failed"));
+      }
+      const { url } = (await up.json()) as { url: string };
+      await fetch(`/api/rooms/${code}/chat`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          session: getSession(),
+          name: (name ?? "").trim() || "anonymous",
+          avatarId,
+          kind: "image",
+          gifUrl: url,
+        }),
+      });
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+      className="rounded-3xl ring-1 ring-flamingo/55 shadow-[0_18px_44px_-18px_oklch(58%_0.24_336_/_0.55)] overflow-hidden"
+    >
+      <div
+        className="relative overflow-hidden p-5 flex items-center gap-4"
+        style={{ background: "linear-gradient(135deg, #ff3ede 0%, #c91475 55%, #5a22a9 100%)" }}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          capture="user"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) void onPick(f);
+          }}
+        />
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/30 text-white">
+          <Camera className="h-6 w-6" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-white/85 font-display leading-tight">
+            {t(lang, "sys_cta_selfie_eyebrow")}
+          </p>
+          <p className="font-display text-base text-white leading-snug mt-0.5 text-balance">
+            {t(lang, "sys_cta_selfie_title")}
+          </p>
+          <p className="text-xs text-white/80 leading-snug mt-0.5">
+            {t(lang, "sys_cta_selfie_sub")}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-white text-dark-blue font-display
+                     text-sm h-10 px-4 active:scale-[0.97] transition transform-gpu disabled:opacity-60"
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Camera className="h-4 w-4" />
+          )}
+          {busy ? t(lang, "sys_cta_selfie_sending") : t(lang, "sys_cta_selfie_btn")}
+        </button>
+      </div>
+    </motion.div>
   );
 }

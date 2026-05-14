@@ -6,14 +6,31 @@ import { voters, votes } from "@/lib/db/schema";
 import { isAdminAuthed } from "@/lib/admin/session";
 import { findRoomByCode } from "@/lib/rooms";
 import { countries } from "@/lib/countries";
-import { postSystemMessage, postResultsMessage } from "@/lib/chat-system";
+import { postSystemMessage, postResultsMessage, postPollMessage } from "@/lib/chat-system";
 
 // One-tap announcements the host fires from /admin/live → a chat message
 // in the target room. Admin session-gated.
 const Body = z.object({
   room: z.string().length(6),
-  kind: z.enum(["notifications", "vote", "bet", "top3", "final"]),
+  kind: z.enum(["notifications", "vote", "bet", "top3", "final", "selfie", "drunk_poll"]),
 });
+
+// Canned "vibe check" poll fired from admin broadcasts. Keyed by kind
+// so the option list lives next to the question copy; new polls slot
+// in without a new code path. The card itself reads en/lt from meta
+// and the choice strip from `choices`, so adding "How loud is your
+// party?" tomorrow is a one-line addition here + a new admin button.
+const POLLS = {
+  drunk_poll: {
+    question: { en: "How drunk are you right now?", lt: "Kiek esi įkaušęs(-usi) prie šios eilutės?" },
+    choices: [
+      { emoji: "🥛", en: "Sober", lt: "Blaivus" },
+      { emoji: "🍺", en: "Buzzed", lt: "Linksmas" },
+      { emoji: "🍷", en: "Tipsy", lt: "Įkaušęs" },
+      { emoji: "🥃", en: "Sloshed", lt: "Pakerėtas" },
+    ],
+  },
+} as const;
 
 export async function POST(req: Request) {
   if (!(await isAdminAuthed())) {
@@ -33,6 +50,11 @@ export async function POST(req: Request) {
     await postSystemMessage(room.code, room.id, { key: "sys_cta_vote" });
   } else if (kind === "bet") {
     await postSystemMessage(room.code, room.id, { key: "sys_cta_bet" });
+  } else if (kind === "selfie") {
+    await postSystemMessage(room.code, room.id, { key: "sys_cta_selfie" });
+  } else if (kind === "drunk_poll") {
+    const poll = POLLS.drunk_poll;
+    await postPollMessage(room.code, room.id, poll.question, [...poll.choices]);
   } else if (kind === "final") {
     // The scored leaderboard podium (falls back to a plain "results are
     // in" line if nothing's scoreable yet).

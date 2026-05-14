@@ -278,7 +278,15 @@ export type ChatMessageKind =
   // has a trivia entry in lib/trivia.ts). Renders inline in the
   // thread; player taps an option to lock their answer. Replaces the
   // floating popup the old TriviaCard component used.
-  | "trivia";
+  | "trivia"
+  // "poll": a one-tap "vibe check" the host fires from the admin
+  // broadcast panel. Meta carries the question + 4 emoji choices;
+  // votes ride on top of the existing chat_reactions table (one
+  // reaction = one vote, the client enforces single-choice by
+  // toggling any prior choice off before adding the new one), so
+  // the chat:react broadcast already keeps every viewer's tally in
+  // sync without a new event type.
+  | "poll";
 
 export const chatMessages = pgTable(
   "chat_messages",
@@ -447,6 +455,20 @@ export const triviaQuestions = pgTable("trivia_questions", {
   enChoices: text("en_choices").array().notNull(),
   ltQuestion: text("lt_question").notNull(),
   ltChoices: text("lt_choices").array().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// Tiny global key/value store for editable site content. Today it
+// carries `welcome_md_en` / `welcome_md_lt` (the housekeeping markdown
+// rendered as the closing widget on the room home), but the shape is
+// intentionally generic — future surfaces can add a new key without a
+// migration. Kept separate from `official_facts` so any-fact-exists
+// heuristics in scoring don't pick up unrelated content.
+export const siteContent = pgTable("site_content", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

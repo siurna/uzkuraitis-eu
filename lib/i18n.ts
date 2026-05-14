@@ -243,6 +243,21 @@ const S = {
   sys_cta_results_breakdown: { en: "Your breakdown", lt: "Tavo išklotinė" },
   sys_cta_results_breakdown_disabled: { en: "You didn't cast a ballot", lt: "Nebalsavai šįvakar" },
   sys_cta_results_board:     { en: "Full list", lt: "Visa lentelė" },
+  // Selfie CTA — chat-broadcast-cards renders the SelfieCard; the
+  // sysKey itself is the fallback plain text when no card matches.
+  sys_cta_selfie:            { en: "📸 Selfie time, drop one in chat!", lt: "📸 Selfio metas, mesk vieną į pokalbį!" },
+  sys_cta_selfie_eyebrow:    { en: "Selfie time", lt: "Selfio metas" },
+  sys_cta_selfie_title:      { en: "Show the room your face.", lt: "Parodyk kambariui savo veidą." },
+  sys_cta_selfie_sub:        { en: "One tap, front camera, straight into chat.", lt: "Vienas bakstelėjimas, priekinė kamera, tiesiai į pokalbį." },
+  sys_cta_selfie_btn:        { en: "Take one", lt: "Daryti" },
+  sys_cta_selfie_sending:    { en: "Sending…", lt: "Siunčiama…" },
+  // Quick poll card. Reuses chat reactions for storage, so live
+  // tallies arrive on the existing chat:react broadcast.
+  poll_eyebrow:              { en: "Vibe check", lt: "Nuotaikos pulsas" },
+  poll_prompt:               { en: "Tap your pick. You can switch later.", lt: "Bakstelėk variantą. Galėsi persigalvoti." },
+  poll_voted:                { en: (n: number) => `Locked in. ${n} ${n === 1 ? "vote" : "votes"} so far.`, lt: (n: number) => `Užfiksuota. Šiuo metu balsų: ${n}.` },
+  // Welcome / housekeeping widget at the bottom of every room home.
+  welcome_eyebrow:           { en: "Hello folks", lt: "Sveiki sveiki" },
   chat_edit:         { en: "Edit", lt: "Redaguoti" },
   chat_edited:       { en: "edited", lt: "redaguota" },
   chat_editing:      { en: "Editing your message", lt: "Redaguoji žinutę" },
