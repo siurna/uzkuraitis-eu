@@ -105,30 +105,54 @@ export async function computeRoomLeaderboard(room: {
     return { ...base, hasResults: false, leaderboard: [] };
   }
 
-  const voterRows = await db
-    .select({
-      id: voters.id,
-      sessionId: voters.sessionId,
-      name: voters.name,
-      homeCountryPrediction: voters.homeCountryPrediction,
-      betWoodenSpoon: voters.betWoodenSpoon,
-      betLt12To: voters.betLt12To,
-      betHighestBig5: voters.betHighestBig5,
-      betJuryWinner: voters.betJuryWinner,
-      betTelevoteWinner: voters.betTelevoteWinner,
-      betNulTelevote: voters.betNulTelevote,
-      betHostTop3: voters.betHostTop3,
-      betWinnerSolo: voters.betWinnerSolo,
-      betLtTotalPoints: voters.betLtTotalPoints,
-    })
-    .from(voters)
-    .where(eq(voters.roomId, room.id));
-
-  const ballotRows = await db
-    .select({ voterId: votes.voterId, points: votes.points, countryCode: votes.countryCode })
-    .from(votes)
-    .innerJoin(voters, eq(voters.id, votes.voterId))
-    .where(eq(voters.roomId, room.id));
+  // PERF: every per-room rollup fans out together. The earlier shape
+  // was voterRows → ballotRows → highlightRows → triviaRows
+  // sequentially, a 4-roundtrip waterfall; none of them depend on one
+  // another (same room id, no shared state) so the latency is now
+  // capped by the slowest single query instead of the sum.
+  const [voterRows, ballotRows, highlightRows, triviaRows] = await Promise.all([
+    db
+      .select({
+        id: voters.id,
+        sessionId: voters.sessionId,
+        name: voters.name,
+        homeCountryPrediction: voters.homeCountryPrediction,
+        betWoodenSpoon: voters.betWoodenSpoon,
+        betLt12To: voters.betLt12To,
+        betHighestBig5: voters.betHighestBig5,
+        betJuryWinner: voters.betJuryWinner,
+        betTelevoteWinner: voters.betTelevoteWinner,
+        betNulTelevote: voters.betNulTelevote,
+        betHostTop3: voters.betHostTop3,
+        betWinnerSolo: voters.betWinnerSolo,
+        betLtTotalPoints: voters.betLtTotalPoints,
+      })
+      .from(voters)
+      .where(eq(voters.roomId, room.id)),
+    db
+      .select({ voterId: votes.voterId, points: votes.points, countryCode: votes.countryCode })
+      .from(votes)
+      .innerJoin(voters, eq(voters.id, votes.voterId))
+      .where(eq(voters.roomId, room.id)),
+    db
+      .select({
+        sessionId: chatMessages.sessionId,
+        reactionCount: sql<number>`count(${chatReactions.messageId})`,
+      })
+      .from(chatMessages)
+      .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
+      .where(eq(chatMessages.roomId, room.id))
+      .groupBy(chatMessages.id, chatMessages.sessionId)
+      .having(sql`count(${chatReactions.messageId}) >= ${HIGHLIGHT_THRESHOLD}`),
+    db
+      .select({
+        sessionId: triviaAnswers.sessionId,
+        hits: sql<number>`COUNT(*) FILTER (WHERE ${triviaAnswers.correct})::int`,
+      })
+      .from(triviaAnswers)
+      .where(eq(triviaAnswers.roomId, room.id))
+      .groupBy(triviaAnswers.sessionId),
+  ]);
 
   const ballotByVoter = new Map<string, Ballot>();
   for (const r of ballotRows) {
@@ -136,18 +160,6 @@ export async function computeRoomLeaderboard(room: {
     ballotByVoter.get(r.voterId)![String(r.points)] = r.countryCode;
   }
 
-  // One row per highlighted message (≥ threshold reactions) → tally how
-  // many each session authored → bonus points (capped).
-  const highlightRows = await db
-    .select({
-      sessionId: chatMessages.sessionId,
-      reactionCount: sql<number>`count(${chatReactions.messageId})`,
-    })
-    .from(chatMessages)
-    .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
-    .where(eq(chatMessages.roomId, room.id))
-    .groupBy(chatMessages.id, chatMessages.sessionId)
-    .having(sql`count(${chatReactions.messageId}) >= ${HIGHLIGHT_THRESHOLD}`);
   const highlightCountBySession = new Map<string, number>();
   for (const r of highlightRows) {
     highlightCountBySession.set(r.sessionId, (highlightCountBySession.get(r.sessionId) ?? 0) + 1);
@@ -155,15 +167,6 @@ export async function computeRoomLeaderboard(room: {
   const highlightPoints = (sessionId: string) =>
     Math.min((highlightCountBySession.get(sessionId) ?? 0) * HIGHLIGHT_POINTS_PER, HIGHLIGHT_POINTS_MAX);
 
-  // Trivia: count of correct answers per session, × TRIVIA_POINTS.
-  const triviaRows = await db
-    .select({
-      sessionId: triviaAnswers.sessionId,
-      hits: sql<number>`COUNT(*) FILTER (WHERE ${triviaAnswers.correct})::int`,
-    })
-    .from(triviaAnswers)
-    .where(eq(triviaAnswers.roomId, room.id))
-    .groupBy(triviaAnswers.sessionId);
   const triviaPointsBySession = new Map<string, number>();
   for (const r of triviaRows) {
     triviaPointsBySession.set(r.sessionId, (r.hits ?? 0) * TRIVIA_POINTS);

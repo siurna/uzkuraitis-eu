@@ -4,40 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { useEventListener } from "@/lib/realtime";
 import { useRoomLive } from "@/components/room-shell";
+import { useLeaderboard } from "@/components/leaderboard-provider";
 import { ensureSessionId } from "@/lib/use-identity";
 import { ScoreBreakdown } from "@/components/score-breakdown";
 import { Leaderboard } from "@/components/leaderboard";
 import { HeartFlag } from "@/components/flag";
 import { BetsComparison } from "@/components/bets-comparison";
 import { countries, countryName, getCountry } from "@/lib/countries";
-import type {
-  BetBreakdown,
-  Bets,
-  OfficialFacts,
-  OfficialPlacements,
-} from "@/lib/scoring";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
-
-type Row = {
-  sessionId: string;
-  name: string;
-  topTen: number;
-  home: number;
-  bets: BetBreakdown;
-  betPicks: Bets;
-  highlights: number;
-  trivia: number;
-  total: number;
-};
-
-type Payload = {
-  hasResults: boolean;
-  homeCountryCode: string;
-  placements: OfficialPlacements;
-  facts: OfficialFacts;
-  leaderboard: Row[];
-};
 
 type BallotPick = {
   points: number;
@@ -162,25 +137,18 @@ function BallotComparisonRow({
 export function ResultsPanel() {
   const { code, homeCountryCode } = useRoomLive();
   const lang = useLang();
-  const [payload, setPayload] = useState<Payload | null>(null);
+  // The aggregated leaderboard payload is hoisted onto the room-level
+  // <LeaderboardProvider>, so MyResults (home banner) + this panel
+  // share a single in-flight fetch + broadcast subscription. The
+  // ballot still lives on the per-session profile route below.
+  const { payload } = useLeaderboard();
   const [ballot, setBallot] = useState<BallotPick[] | null>(null);
   const [tab, setTab] = useState<"me" | "board">("me");
 
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/rooms/${code}/leaderboard`, { cache: "no-store" });
-      if (!res.ok) return;
-      const data = (await res.json()) as Payload;
-      if (data.hasResults) setPayload(data);
-    } catch {
-      /* network blip */
-    }
-  }, [code]);
-
-  // Per-pick breakdown ("you said / it was"). Lives on the profile route
-  // so the same scoring helper is the single source of truth. Refetched
-  // whenever the aggregated leaderboard refetches — they share the
-  // leaderboard:updated event.
+  // Per-pick breakdown ("you said / it was"). Lives on the profile
+  // route so the same scoring helper is the single source of truth.
+  // Refetched whenever the aggregated leaderboard refetches — same
+  // broadcast event.
   const loadBallot = useCallback(async () => {
     const session = ensureSessionId();
     if (!session) return;
@@ -198,9 +166,8 @@ export function ResultsPanel() {
   }, [code]);
 
   useEffect(() => {
-    load();
     loadBallot();
-  }, [load, loadBallot]);
+  }, [loadBallot]);
 
   // Lets the chat broadcast "Results are in" card jump straight to the
   // board sub-tab without exposing this component's state.
@@ -214,10 +181,7 @@ export function ResultsPanel() {
   }, []);
 
   useEventListener(({ event }) => {
-    if (event.type === "leaderboard:updated") {
-      load();
-      loadBallot();
-    }
+    if (event.type === "leaderboard:updated") loadBallot();
   });
 
   if (!payload || payload.leaderboard.length === 0) {

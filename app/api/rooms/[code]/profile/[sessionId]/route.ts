@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   voters,
@@ -42,19 +42,31 @@ export async function GET(req: Request, { params }: RouteCtx) {
   const isSelf = viewer.length > 0 && viewer === sessionId;
   const canSeeBallot = room.tallyEnabled || isSelf;
 
-  // Fan out every per-session query in parallel. None of these depend
-  // on each other — the room id is already in hand and the queries
-  // share no intermediate state.
+  // PERF: every per-session query fans out in parallel. The previous
+  // shape had 4 separate aggregations against chat_messages with the
+  // same `(room_id, session_id)` filter — `messages`, `bingoStrikes`,
+  // `latestMsg`, plus the message-id roll-up used by both
+  // `highlightRows` and `topRow`. Those collapse into a single window
+  // query that returns everything keyed on chat_messages.id; the
+  // route then derives counts/highlight ids/top row in JS. Reduces
+  // serverless DB round-trips from 9 to 5 on warm instances.
+  type AuthoredRow = {
+    id: string;
+    body: string | null;
+    gif_url: string | null;
+    kind: string;
+    created_at: string;
+    name: string;
+    avatar_id: string | null;
+    reaction_count: number;
+  };
+
   const [
     voterRow,
-    latestMsg,
-    messagesRow,
+    authoredRows,
     reactionsGivenRow,
     reactionsReceivedRow,
-    highlightRows,
-    bingoStrikesRow,
     triviaStatsRow,
-    topRow,
   ] = await Promise.all([
     db
       .select()
@@ -62,22 +74,21 @@ export async function GET(req: Request, { params }: RouteCtx) {
       .where(and(eq(voters.roomId, room.id), eq(voters.sessionId, sessionId)))
       .limit(1)
       .then((rows) => rows[0]),
-    db
-      .select({
-        name: chatMessages.name,
-        avatarId: chatMessages.avatarId,
-        createdAt: chatMessages.createdAt,
-      })
-      .from(chatMessages)
-      .where(and(eq(chatMessages.roomId, room.id), eq(chatMessages.sessionId, sessionId)))
-      .orderBy(desc(chatMessages.createdAt))
-      .limit(1)
-      .then((rows) => rows[0]),
-    db
-      .select({ messages: sql<number>`COUNT(*)::int` })
-      .from(chatMessages)
-      .where(and(eq(chatMessages.roomId, room.id), eq(chatMessages.sessionId, sessionId)))
-      .then((rows) => rows[0]),
+    db.execute<AuthoredRow>(sql`
+      SELECT m.id,
+             m.body,
+             m.gif_url,
+             m.kind,
+             m.created_at,
+             m.name,
+             m.avatar_id,
+             COUNT(r.message_id)::int AS reaction_count
+      FROM ${chatMessages} m
+      LEFT JOIN ${chatReactions} r ON r.message_id = m.id
+      WHERE m.room_id = ${room.id}
+        AND m.session_id = ${sessionId}
+      GROUP BY m.id
+    `),
     db
       .select({ reactionsGiven: sql<number>`COUNT(*)::int` })
       .from(chatReactions)
@@ -98,25 +109,6 @@ export async function GET(req: Request, { params }: RouteCtx) {
       .then((rows) => rows[0]),
     db
       .select({
-        id: chatMessages.id,
-        reactionCount: sql<number>`COUNT(${chatReactions.messageId})::int`,
-      })
-      .from(chatMessages)
-      .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
-      .where(and(eq(chatMessages.roomId, room.id), eq(chatMessages.sessionId, sessionId)))
-      .groupBy(chatMessages.id)
-      .having(sql`COUNT(${chatReactions.messageId}) >= ${HIGHLIGHT_THRESHOLD}`),
-    db
-      .select({ bingoStrikes: sql<number>`COUNT(*)::int` })
-      .from(chatMessages)
-      .where(and(
-        eq(chatMessages.roomId, room.id),
-        eq(chatMessages.sessionId, sessionId),
-        eq(chatMessages.kind, "bingo_strike"),
-      ))
-      .then((rows) => rows[0]),
-    db
-      .select({
         total: sql<number>`COUNT(*)::int`,
         correct: sql<number>`COUNT(*) FILTER (WHERE ${triviaAnswers.correct})::int`,
       })
@@ -126,22 +118,49 @@ export async function GET(req: Request, { params }: RouteCtx) {
         eq(triviaAnswers.sessionId, sessionId),
       ))
       .then((rows) => rows[0]),
-    db
-      .select({
-        id: chatMessages.id,
-        body: chatMessages.body,
-        gifUrl: chatMessages.gifUrl,
-        kind: chatMessages.kind,
-        reactionCount: sql<number>`COUNT(${chatReactions.messageId})::int`,
-      })
-      .from(chatMessages)
-      .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
-      .where(and(eq(chatMessages.roomId, room.id), eq(chatMessages.sessionId, sessionId)))
-      .groupBy(chatMessages.id)
-      .orderBy(sql`COUNT(${chatReactions.messageId}) DESC, ${chatMessages.createdAt} ASC`)
-      .limit(1)
-      .then((rows) => rows[0]),
   ]);
+
+  // Derive the four chat-roll-up shapes the old query plan computed
+  // separately from the single authored-rows scan.
+  const messagesRow = { messages: authoredRows.length };
+  const bingoStrikesRow = {
+    bingoStrikes: authoredRows.filter((r) => r.kind === "bingo_strike").length,
+  };
+  const highlightRows = authoredRows.filter(
+    (r) => (r.reaction_count ?? 0) >= HIGHLIGHT_THRESHOLD,
+  );
+  const latestMsg = (() => {
+    if (authoredRows.length === 0) return undefined;
+    let best = authoredRows[0];
+    for (const r of authoredRows) {
+      if (new Date(r.created_at) > new Date(best.created_at)) best = r;
+    }
+    return {
+      name: best.name,
+      avatarId: best.avatar_id,
+      createdAt: new Date(best.created_at),
+    };
+  })();
+  const topRow = (() => {
+    if (authoredRows.length === 0) return undefined;
+    let best = authoredRows[0];
+    for (const r of authoredRows) {
+      if (
+        (r.reaction_count ?? 0) > (best.reaction_count ?? 0) ||
+        ((r.reaction_count ?? 0) === (best.reaction_count ?? 0) &&
+          new Date(r.created_at) < new Date(best.created_at))
+      ) {
+        best = r;
+      }
+    }
+    return {
+      id: best.id,
+      body: best.body,
+      gifUrl: best.gif_url,
+      kind: best.kind,
+      reactionCount: best.reaction_count ?? 0,
+    };
+  })();
 
   if (!voterRow && !latestMsg) {
     return NextResponse.json({ error: "Unknown participant" }, { status: 404 });

@@ -85,6 +85,12 @@ const S = {
   // ── RoomGate (entrance code screen) ──────────────────────────────
   enter_room:        { en: "Enter room", lt: "Įeiti" },
   checking:          { en: "Checking…", lt: "Tikrinama…" },
+  // Turnstile status pill copy — explains the disabled join button so
+  // it doesn't read as "broken form".
+  ts_checking:       { en: "Verifying you're human…", lt: "Patvirtinama, kad žmogus…" },
+  ts_ok:             { en: "All clear, you can enter", lt: "Viskas tvarkoj, gali eiti" },
+  ts_error:          { en: "Couldn't verify you. Tap to retry.", lt: "Nepavyko patvirtinti. Bakstelėk dar kartą." },
+  ts_waiting_to_submit: { en: "One sec, finishing the check…", lt: "Akimirką, baigiam patikrinti…" },
   bad_code:          { en: "No room with that code.", lt: "Nėra kambario tokiu kodu." },
   bad_format:        { en: "Codes are 6 characters (A–Z, 2–9).", lt: "Kodas, 6 simboliai (A–Z, 2–9)." },
   reconnecting:      { en: "Reconnecting…", lt: "Jungiamasi…" },

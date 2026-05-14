@@ -1,71 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Trophy } from "lucide-react";
-import { useEventListener } from "@/lib/realtime";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
+import { useLeaderboard } from "@/components/leaderboard-provider";
 import { ensureSessionId } from "@/lib/use-identity";
-import {
-  totalBetPoints,
-  type BetBreakdown,
-  type Bets,
-  type OfficialFacts,
-  type OfficialPlacements,
-} from "@/lib/scoring";
+import { totalBetPoints } from "@/lib/scoring";
 import { BetsComparison } from "@/components/bets-comparison";
 import { countries } from "@/lib/countries";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
-
-type Row = {
-  sessionId: string;
-  name: string;
-  topTen: number;
-  home: number;
-  bets: BetBreakdown;
-  betPicks: Bets;
-  highlights: number;
-  trivia: number;
-  total: number;
-};
-
-type Payload = {
-  hasResults: boolean;
-  homeCountryCode: string;
-  placements: OfficialPlacements;
-  facts: OfficialFacts;
-  leaderboard: Row[];
-};
 
 // Home banner: once results are tallied, shows YOUR card — a big rank
 // + total in a vertical layout, with a row of breakdown chips below
 // (TOP10 / Home / Bets / Highlights). Tap = jump to the Results tab
 // for the full breakdown + leaderboard. Hidden if results aren't in yet.
 export function MyResults() {
-  const { code, tallyEnabled, homeCountryCode } = useRoomLive();
+  const { tallyEnabled, homeCountryCode } = useRoomLive();
   const { setTab } = useRoomTab();
   const lang = useLang();
-  const [payload, setPayload] = useState<Payload | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/rooms/${code}/leaderboard`, { cache: "no-store" });
-      if (!res.ok) return;
-      const data = (await res.json()) as Payload;
-      if (data.hasResults) setPayload(data);
-    } catch {
-      /* network blip */
-    }
-  }, [code]);
-
-  useEffect(() => {
-    if (tallyEnabled) load();
-  }, [tallyEnabled, load]);
-
-  useEventListener(({ event }) => {
-    if (event.type === "leaderboard:updated") load();
-  });
+  const { payload } = useLeaderboard();
 
   if (!tallyEnabled || !payload || payload.leaderboard.length === 0) return null;
   const rows = payload.leaderboard;
