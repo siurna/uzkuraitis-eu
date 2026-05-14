@@ -28,7 +28,7 @@ const AVATAR_KEY = "uzk_avatar";
 const ONBOARD_PREFS = {
   chatAll: false,
   chatReplies: true,
-  nowPlaying: false,
+  nowPlaying: true,
   votingState: true,
   resultsTallied: true,
 } as const;
