@@ -14,7 +14,17 @@
 const CDN_BASE =
   "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets";
 
-type FluentEntry = { folder: string; slug: string };
+// Microsoft Fluent ships TWO file-layout patterns:
+//
+//  - Plain emoji (face, object, food, animal): /<Folder>/3D/<slug>_3d.png
+//  - Body-part / person emoji (hand, dancer, climber, etc): these have
+//    skin-tone variants, so the default file lives at
+//    /<Folder>/Default/3D/<slug>_3d_default.png
+//
+// The repo doesn't ship the plain path for skin-tone-enabled emojis at
+// all — requesting it 403s. Entries opt into the skin-tone layout by
+// setting `skin: true`. Everything else uses the plain path.
+type FluentEntry = { folder: string; slug: string; skin?: boolean };
 
 const FLUENT_EMOJI: Record<string, FluentEntry> = {
   // Drunk-poll choices.
@@ -30,7 +40,7 @@ const FLUENT_EMOJI: Record<string, FluentEntry> = {
     slug: "face_with_tears_of_joy",
   },
   "🤯": { folder: "Exploding head", slug: "exploding_head" },
-  "🙌": { folder: "Raising hands", slug: "raising_hands" },
+  "🙌": { folder: "Raising hands", slug: "raising_hands", skin: true },
   "😱": {
     folder: "Face screaming in fear",
     slug: "face_screaming_in_fear",
@@ -58,8 +68,9 @@ const FLUENT_EMOJI: Record<string, FluentEntry> = {
   "📺": { folder: "Television", slug: "television" },
   "🔮": { folder: "Crystal ball", slug: "crystal_ball" },
 
-  // Welcome banner / housekeeping.
-  "👋": { folder: "Waving hand", slug: "waving_hand" },
+  // Welcome banner / housekeeping. Skin-tone variants live under
+  // /Default/ — the plain /3D/ path 403s.
+  "👋": { folder: "Waving hand", slug: "waving_hand", skin: true },
 
   // Selfie polaroid prompt.
   "📸": { folder: "Camera with flash", slug: "camera_with_flash" },
@@ -69,16 +80,19 @@ const FLUENT_EMOJI: Record<string, FluentEntry> = {
   "⭐": { folder: "Star", slug: "star" },
   "🎉": { folder: "Party popper", slug: "party_popper" },
   "🔥": { folder: "Fire", slug: "fire" },
-  "👏": { folder: "Clapping hands", slug: "clapping_hands" },
+  "👏": { folder: "Clapping hands", slug: "clapping_hands", skin: true },
   "😭": { folder: "Loudly crying face", slug: "loudly_crying_face" },
+
+  // You-vs-the-room widget artwork (empty-state placeholder).
+  "📊": { folder: "Bar chart", slug: "bar_chart" },
 
   // Bingo trope leading-emojis. ~70 glyphs across the deck.
   // Country-flag tropes (🇮🇱 🇬🇧 🇮🇹 …) deliberately stay native:
   // Microsoft's flag set is 2D and would clash with the 3D style.
   "⏸️":  { folder: "Pause button", slug: "pause_button" },
-  "☝️":  { folder: "Index pointing up", slug: "index_pointing_up" },
+  "☝️":  { folder: "Index pointing up", slug: "index_pointing_up", skin: true },
   "⚡":   { folder: "High voltage", slug: "high_voltage" },
-  "✋":   { folder: "Raised hand", slug: "raised_hand" },
+  "✋":   { folder: "Raised hand", slug: "raised_hand", skin: true },
   "🌍":  { folder: "Globe showing europe-africa", slug: "globe_showing_europe-africa" },
   "🌑":  { folder: "New moon", slug: "new_moon" },
   "🌙":  { folder: "Crescent moon", slug: "crescent_moon" },
@@ -99,13 +113,13 @@ const FLUENT_EMOJI: Record<string, FluentEntry> = {
   "🐾":  { folder: "Paw prints", slug: "paw_prints" },
   "👗":  { folder: "Dress", slug: "dress" },
   "👯":  { folder: "People with bunny ears", slug: "people_with_bunny_ears" },
-  "💃":  { folder: "Woman dancing", slug: "woman_dancing" },
-  "💇":  { folder: "Person getting haircut", slug: "person_getting_haircut" },
+  "💃":  { folder: "Woman dancing", slug: "woman_dancing", skin: true },
+  "💇":  { folder: "Person getting haircut", slug: "person_getting_haircut", skin: true },
   "💍":  { folder: "Ring", slug: "ring" },
   "💒":  { folder: "Wedding", slug: "wedding" },
   "💥":  { folder: "Collision", slug: "collision" },
   "💧":  { folder: "Droplet", slug: "droplet" },
-  "💪":  { folder: "Flexed biceps", slug: "flexed_biceps" },
+  "💪":  { folder: "Flexed biceps", slug: "flexed_biceps", skin: true },
   "💻":  { folder: "Laptop", slug: "laptop" },
   "📞":  { folder: "Telephone receiver", slug: "telephone_receiver" },
   "📦":  { folder: "Package", slug: "package" },
@@ -116,20 +130,20 @@ const FLUENT_EMOJI: Record<string, FluentEntry> = {
   "🗣️":  { folder: "Speaking head", slug: "speaking_head" },
   "😬":  { folder: "Grimacing face", slug: "grimacing_face" },
   "🚁":  { folder: "Helicopter", slug: "helicopter" },
-  "🚶":  { folder: "Person walking", slug: "person_walking" },
+  "🚶":  { folder: "Person walking", slug: "person_walking", skin: true },
   "🛏️":  { folder: "Bed", slug: "bed" },
   "🛸":  { folder: "Flying saucer", slug: "flying_saucer" },
   "🛼":  { folder: "Roller skate", slug: "roller_skate" },
   "🟦":  { folder: "Blue square", slug: "blue_square" },
-  "🤝":  { folder: "Handshake", slug: "handshake" },
-  "🤸":  { folder: "Person cartwheeling", slug: "person_cartwheeling" },
+  "🤝":  { folder: "Handshake", slug: "handshake", skin: true },
+  "🤸":  { folder: "Person cartwheeling", slug: "person_cartwheeling", skin: true },
   "🥱":  { folder: "Yawning face", slug: "yawning_face" },
   "🥶":  { folder: "Cold face", slug: "cold_face" },
   "🦋":  { folder: "Butterfly", slug: "butterfly" },
-  "🦵":  { folder: "Leg", slug: "leg" },
+  "🦵":  { folder: "Leg", slug: "leg", skin: true },
   "🧊":  { folder: "Ice", slug: "ice" },
-  "🧎":  { folder: "Person kneeling", slug: "person_kneeling" },
-  "🧗":  { folder: "Person climbing", slug: "person_climbing" },
+  "🧎":  { folder: "Person kneeling", slug: "person_kneeling", skin: true },
+  "🧗":  { folder: "Person climbing", slug: "person_climbing", skin: true },
   "🩰":  { folder: "Ballet shoes", slug: "ballet_shoes" },
   "🪂":  { folder: "Parachute", slug: "parachute" },
   "🪜":  { folder: "Ladder", slug: "ladder" },
@@ -175,7 +189,10 @@ export function flagIsoFromGlyph(glyph: string): string | null {
 export function fluentEmojiUrl(glyph: string): string | null {
   const entry = FLUENT_EMOJI[glyph];
   if (!entry) return null;
-  return `${CDN_BASE}/${encodeURIComponent(entry.folder)}/3D/${entry.slug}_3d.png`;
+  const folder = encodeURIComponent(entry.folder);
+  return entry.skin
+    ? `${CDN_BASE}/${folder}/Default/3D/${entry.slug}_3d_default.png`
+    : `${CDN_BASE}/${folder}/3D/${entry.slug}_3d.png`;
 }
 
 export function hasFluentEmoji(glyph: string): boolean {

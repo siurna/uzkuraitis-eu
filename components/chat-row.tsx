@@ -14,7 +14,8 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { ChatBroadcastCard } from "@/components/chat-broadcast-cards";
 import { useRoomTab } from "@/components/room-shell";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
-import { useProfile } from "@/components/profile-sheet";
+import { useProfile, prefetchProfile } from "@/components/profile-sheet";
+import { ensureSessionId } from "@/lib/use-identity";
 import { useParticles } from "@/components/particle-layer";
 import { TranslationBubble } from "@/components/translation-bubble";
 import { BeginnerBubble } from "@/components/beginner-bubble";
@@ -831,6 +832,11 @@ export function ChatRow({
                     e.stopPropagation();
                     profile.open(m.sessionId, { name: m.name, avatarId: m.avatarId ?? null });
                   }}
+                  // Prefetch the profile the moment the finger lands so
+                  // the response races the drawer's 280ms slide-up.
+                  onPointerDown={() =>
+                    prefetchProfile(roomCode, m.sessionId, ensureSessionId())
+                  }
                   aria-label={m.name}
                   className={`${cls} hover:ring-white/30 active:scale-[0.95] transition transform-gpu`}
                 >

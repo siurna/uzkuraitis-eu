@@ -11,6 +11,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useDragDropBallot } from "@/lib/use-drag-drop-ballot";
+import { bumpVibe } from "@/lib/use-vibe-tracker";
 import { ListOrdered, Sparkles, Share2, ScrollText, GripVertical, Loader2 } from "lucide-react";
 import { countries, getCountry, countryName } from "@/lib/countries";
 import { Flag, HeartOutline } from "@/components/flag";
@@ -279,8 +280,13 @@ export function VoteForm({
       }
       setHasCast(true);
       // First cast → the confirmation drawer (no toast on top). Later
-      // auto-saves are silent.
-      if (!isUpdate) setShowCongrats(true);
+      // auto-saves are silent. First cast also bumps the avatar
+      // mood ring; subsequent updates don't (the meaningful action
+      // is "I locked in", not the auto-save churn).
+      if (!isUpdate) {
+        setShowCongrats(true);
+        bumpVibe("voteCast");
+      }
     } catch (err) {
       toast.error((err as Error).message);
     } finally {

@@ -433,7 +433,7 @@ function Top3PodiumCard({
               <HeartFlag code={first} size="lg" />
             </span>
             <div className="min-w-0 flex-1 flex items-center gap-2">
-              <FluentEmoji glyph="🥇" size={28} className="shrink-0" ariaLabel="first place" />
+              <FluentEmoji glyph="🥇" size={44} className="shrink-0" ariaLabel="first place" />
               <p className="font-display text-2xl text-white leading-tight truncate drop-shadow">
                 {countryName(first, lang) ?? first.toUpperCase()}
               </p>
@@ -516,10 +516,10 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
       initial={{ opacity: 0, y: 8, rotate: -1.5 }}
       animate={{ opacity: 1, y: 0, rotate: -0.5 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-      className="relative mx-auto max-w-[22rem]"
+      className="relative w-full mx-auto max-w-md sm:max-w-lg"
     >
       <div
-        className="relative rounded-2xl overflow-hidden
+        className="relative rounded-2xl overflow-hidden w-full
                    bg-gradient-to-br from-[#2a1408] via-[#3a1d05] to-[#1a0d02]
                    ring-1 ring-yellow/35
                    shadow-[0_18px_44px_-18px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]"
@@ -588,7 +588,7 @@ function PodiumChip({
   const medal = rank === 2 ? "🥈" : "🥉";
   return (
     <div className="flex items-center gap-2 rounded-xl bg-white/[0.08] ring-1 ring-white/15 px-3 py-2 min-w-0">
-      <FluentEmoji glyph={medal} size={18} className="shrink-0" ariaLabel={`rank ${rank}`} />
+      <FluentEmoji glyph={medal} size={28} className="shrink-0" ariaLabel={`rank ${rank}`} />
       <HeartFlag code={code} size="sm" />
       <span className="text-xs font-display text-white truncate flex-1">
         {countryName(code, lang) ?? code.toUpperCase()}
@@ -692,7 +692,7 @@ function SelfieCard({ lang }: { lang: Language }) {
                    active:scale-[0.99] transition transform-gpu disabled:opacity-70"
       >
         <span
-          className="pointer-events-none absolute -top-2 left-6 h-5 w-16 rotate-[-6deg]
+          className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 h-5 w-20 rotate-[-3deg]
                      bg-[oklch(95%_0.08_95_/_0.7)] ring-1 ring-[oklch(85%_0.12_95_/_0.45)]
                      shadow-[0_2px_4px_-2px_rgba(0,0,0,0.3)]"
           aria-hidden

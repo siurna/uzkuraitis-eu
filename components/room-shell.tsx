@@ -21,6 +21,16 @@ import { ProfileProvider } from "@/components/profile-sheet";
 import { VotingAnnouncement } from "@/components/voting-announcement";
 import { NowPlayingTakeover } from "@/components/now-playing-takeover";
 import { LeaderboardProvider } from "@/components/leaderboard-provider";
+import { useVibeTracker } from "@/lib/use-vibe-tracker";
+
+// Tiny no-op render — just wires the vibe tracker hook into the
+// React tree so it's inside RoomProvider's presence context. Kept
+// separate so the hook can stay in a lib/ file with no JSX of its
+// own.
+function VibeTracker({ code }: { code: string }) {
+  useVibeTracker({ code });
+  return null;
+}
 
 const LAST_ROOM_KEY = "uzk_last_room";
 
@@ -128,6 +138,7 @@ export function RoomShell({
             <CountryDeepDiveProvider>
               <ProfileProvider>
                 <LeaderboardProvider>
+                  <VibeTracker code={code} />
                   <NowPlayingTakeover />
                   <VotingAnnouncement />
                   {/* TriviaCard (the floating popup) was removed —

@@ -6,7 +6,8 @@ import { useOthers, useSelf } from "@/lib/realtime";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { ensureSessionId } from "@/lib/use-identity";
-import { useProfile } from "@/components/profile-sheet";
+import { useProfile, prefetchProfile } from "@/components/profile-sheet";
+import { useRoomLive } from "@/components/room-shell";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 
@@ -30,7 +31,36 @@ type Person = {
    *  May be null for older clients that haven't upgraded; in that case
    *  the bubble is non-tappable. */
   sessionId: string | null;
+  /** Engagement score from `useVibeTracker` — drives the bubble's
+   *  mood-ring tint (cool/idle → warm/active → hot/legendary). */
+  vibe: number;
 };
+
+// Map a vibe score to an HSL ring colour. The progression goes:
+//   0   → cool blue-grey (idle / just joined)
+//   ~3  → teal (warming up)
+//   ~8  → cyan (engaged)
+//   ~15 → flamingo (active)
+//   ~25 → orange (hot)
+//   40+ → gold (legendary)
+// Smooth interpolation rather than discrete stops so the avatar
+// gradually shifts as the night goes — no visible "jump" between
+// tiers.
+function vibeToRing(score: number): string {
+  if (score <= 0) return "oklch(80% 0.02 250 / 0.18)"; // cool grey
+  const t = Math.min(1, score / 40);
+  // Hue sweeps 200 (teal) → 336 (flamingo) → 95 (gold) over t=0..1.
+  // Use a two-segment lerp so the warm zone is wider than the
+  // gold finale.
+  const hue =
+    t < 0.5
+      ? 200 + (336 - 200) * (t / 0.5)
+      : 336 + (95 + 360 - 336) * ((t - 0.5) / 0.5);
+  const h = hue % 360;
+  const chroma = 0.18 + 0.12 * t; // saturation rises with engagement
+  const alpha = 0.6 + 0.35 * t;
+  return `oklch(72% ${chroma.toFixed(3)} ${h.toFixed(1)} / ${alpha.toFixed(2)})`;
+}
 
 // Cheap deterministic hue from a name → the no-photo bubble fill, so a
 // given person always gets the same colour.
@@ -45,6 +75,8 @@ export function WhosHere() {
   const self = useSelf();
   const others = useOthers();
   const { open: openProfile } = useProfile();
+  const { code: roomCode } = useRoomLive();
+  const mySession = ensureSessionId();
 
   const people = useMemo<Person[]>(() => {
     const list: Person[] = [];
@@ -57,6 +89,7 @@ export function WhosHere() {
         typing: !!self.presence.typing,
         isSelf: true,
         sessionId: self.presence.sessionId ?? ensureSessionId(),
+        vibe: self.presence.vibe ?? 0,
       });
     }
     for (const o of others) {
@@ -69,6 +102,7 @@ export function WhosHere() {
         typing: !!o.presence.typing,
         isSelf: false,
         sessionId: o.presence.sessionId ?? null,
+        vibe: o.presence.vibe ?? 0,
       });
     }
     return list;
@@ -103,6 +137,14 @@ export function WhosHere() {
                   p.sessionId &&
                   openProfile(p.sessionId, { name: p.name, avatarId: p.avatarId })
                 }
+                // Fire the profile fetch the instant the finger
+                // touches down so the data races the drawer-open
+                // animation; by the time the sheet finishes sliding
+                // up, the response is cached and the stats render
+                // with no skeleton flicker.
+                onPrefetch={() => {
+                  if (p.sessionId) prefetchProfile(roomCode, p.sessionId, mySession);
+                }}
               />
             </li>
           ))}
@@ -116,10 +158,12 @@ function Bubble({
   person,
   index,
   onOpen,
+  onPrefetch,
 }: {
   person: Person;
   index: number;
   onOpen: () => void;
+  onPrefetch?: () => void;
 }) {
   const avatar = person.avatarId ? getAvatar(person.avatarId) : null;
   const photo = avatar?.photo ?? null;
@@ -148,12 +192,23 @@ function Bubble({
       <button
         type="button"
         onClick={onOpen}
+        onPointerDown={onPrefetch}
         disabled={!canOpen}
         aria-label={person.name}
+        // Self stays in the flamingo brand ring (always visually
+        // identifiable). Everyone else gets a mood ring tinted by
+        // their `vibe` score — cool grey at rest, warming toward
+        // gold as they rack up messages / reactions / strikes
+        // through the night. CSS variable on the inline style so
+        // the ring colour updates without re-render gymnastics.
         className={`relative h-11 w-11 rounded-full overflow-hidden ring-2 bg-dark-blue-800 transition transform-gpu
                     active:scale-[0.92] disabled:cursor-default
-                    ${person.isSelf ? "ring-flamingo" : "ring-white/15"}
-                    ${canOpen ? "hover:ring-white/35" : ""}`}
+                    ${person.isSelf ? "ring-flamingo" : ""}`}
+        style={
+          person.isSelf
+            ? undefined
+            : ({ "--ring-color": vibeToRing(person.vibe), "--tw-ring-color": "var(--ring-color)" } as React.CSSProperties)
+        }
       >
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element

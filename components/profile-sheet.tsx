@@ -36,6 +36,37 @@ export function bustProfileCache(): void {
   profileCache.clear();
 }
 
+// Fire-and-forget prefetch. Call sites (avatar bubbles in whos-here,
+// chat-row name+avatar header) bind it to `pointerdown` so the fetch
+// races the drawer-open animation: by the time the BottomSheet has
+// finished its 280ms slide-up, the response is already in the cache
+// and the stats render with no skeleton flicker. De-duplicates via
+// an in-flight Set so a long-press → release → re-press chain
+// doesn't double-fire.
+const inflight = new Set<string>();
+export function prefetchProfile(
+  code: string,
+  sessionId: string,
+  viewerSession: string,
+): void {
+  if (typeof window === "undefined") return;
+  const key = cacheKey(code, sessionId, viewerSession);
+  const cached = profileCache.get(key);
+  if (cached && cached.until > Date.now()) return;
+  if (inflight.has(key)) return;
+  inflight.add(key);
+  fetch(
+    `/api/rooms/${code}/profile/${encodeURIComponent(sessionId)}?as=${encodeURIComponent(viewerSession)}`,
+    { cache: "no-store" },
+  )
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => {
+      if (d) profileCache.set(key, { data: d, until: Date.now() + PROFILE_CACHE_TTL_MS });
+    })
+    .catch(() => {})
+    .finally(() => inflight.delete(key));
+}
+
 // "Tap an avatar, see who they are" — the participant profile drawer.
 //
 // Exposes the same provider-pattern as <CountryDeepDiveProvider>: any

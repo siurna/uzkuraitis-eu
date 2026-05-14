@@ -710,8 +710,8 @@ function VsRoomCard({
             <HeartFlag code={country.code} size="lg" />
           </span>
         ) : (
-          <span className="text-5xl opacity-30 -rotate-6 select-none shrink-0 mr-2" aria-hidden>
-            📊
+          <span className="opacity-30 -rotate-6 select-none shrink-0 mr-2" aria-hidden>
+            <FluentEmoji glyph="📊" size={48} />
           </span>
         )}
       </div>

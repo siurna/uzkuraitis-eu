@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { fluentEmojiUrl, flagIsoFromGlyph } from "@/lib/fluent-emoji";
-import { Flag } from "@/components/flag";
+import { HeartFlag } from "@/components/flag";
 
 // Inline 3D emoji renderer. If the glyph is in our curated Fluent
 // manifest the component renders the Microsoft Fluent 3D PNG;
@@ -28,17 +28,19 @@ export function FluentEmoji({
 }) {
   const [failed, setFailed] = useState(false);
 
-  // Microsoft Fluent doesn't ship country flags. If the glyph is a
-  // regional-indicator pair (🇱🇹 etc), render via the project's own
-  // <Flag/> so the chip reads as a flag rather than the OS-native
-  // flat emoji that clashes with the 3D set everywhere else. (Hooks
-  // stay above the conditional so render order is stable.)
+  // Microsoft Fluent doesn't ship country flags, and the project's
+  // flat-SVG `<Flag/>` looked out of place next to the rest of the
+  // 3D emoji set (rectangle + flat colours vs glossy 3D blobs). The
+  // brand's signature country chip is `<HeartFlag/>` — heart-shaped,
+  // already used everywhere a country renders. Reusing it here makes
+  // flag glyphs read as intentional brand callouts instead of OS
+  // emoji fallbacks. (Hook above the conditional so order is stable.)
   const flagIso = flagIsoFromGlyph(glyph);
   if (flagIso) {
     return (
-      <Flag
+      <HeartFlag
         code={flagIso}
-        size={size <= 16 ? "sm" : size <= 24 ? "md" : size <= 36 ? "lg" : "xl"}
+        size={size <= 16 ? "sm" : size <= 24 ? "md" : "lg"}
         className={className}
       />
     );

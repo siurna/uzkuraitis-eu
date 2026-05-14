@@ -30,6 +30,7 @@ import {
 } from "@/lib/realtime";
 import { useRoomLive } from "@/components/room-shell";
 import { useIdentity } from "@/lib/use-identity";
+import { bumpVibe } from "@/lib/use-vibe-tracker";
 import { GifPicker } from "@/components/gif-picker";
 import { ChatRow, type Message, type MessageKind } from "@/components/chat-row";
 import { Lightbox } from "@/components/chat-lightbox";
@@ -799,6 +800,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
 
   const react = async (msgId: string, emoji: string) => {
     setMenuFor(null);
+    let added = false;
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id !== msgId) return m;
@@ -818,10 +820,14 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
             names: [...slot.names, senderName],
             mine: true,
           };
+          added = true;
         }
         return { ...m, reactions: r };
       }),
     );
+    // Adding a reaction is engagement; removing one isn't (it's an
+    // un-do, often a mistap). Only the add path bumps the mood ring.
+    if (added) bumpVibe("reactionSent");
     fetch(`/api/rooms/${code}/chat/${msgId}/react`, {
       method: "POST",
       headers: { "content-type": "application/json" },

@@ -43,6 +43,13 @@ export type Presence = {
    *  features like the profile drawer go presence → DB without
    *  hand-matching by display name. */
   sessionId?: string | null;
+  /** Engagement score for the avatar mood ring in WhosHere — each
+   *  client bumps its own via `useVibeTracker` on observed local
+   *  actions (message sent, reaction sent, bingo strike, vote cast,
+   *  bet saved, trivia answered) and pushes it into presence so the
+   *  rest of the room can colour their bubble. Persisted in
+   *  localStorage per-room so it survives reload during the show. */
+  vibe?: number;
 };
 
 export type UserInfo = {

@@ -7,6 +7,7 @@ import { HeartFlag } from "@/components/flag";
 import { getCountry, countryName } from "@/lib/countries";
 import { getTrivia, type TriviaPick } from "@/lib/trivia";
 import { useIdentity } from "@/lib/use-identity";
+import { bumpVibe } from "@/lib/use-vibe-tracker";
 import { t } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
 
@@ -135,6 +136,7 @@ export function ChatTriviaCard({
         correct: choice === card.correctIndex,
         correctIndex: card.correctIndex,
       });
+      bumpVibe("triviaAnswered");
       try {
         await fetch(`/api/rooms/${roomCode}/trivia`, {
           method: "POST",
