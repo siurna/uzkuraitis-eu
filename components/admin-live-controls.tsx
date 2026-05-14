@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { motion } from "motion/react";
 import { Loader2, Megaphone, Vote, Trophy, ChevronRight, Check } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { TogglePill } from "@/components/ui/toggle-pill";
 import { AdminRoomTriviaThreshold } from "@/components/admin-room-trivia-threshold";
 import { AdminRoomHighlightThreshold } from "@/components/admin-room-highlight-threshold";
 import { timeAgo } from "@/lib/utils";
@@ -309,7 +310,7 @@ function DrawerSwitch({
       disabled={disabled}
       aria-pressed={on}
       className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5
-                 bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07] transition text-left
+                 glass-surface hover:bg-white/[0.07] transition text-left
                  disabled:opacity-60"
     >
       <span
@@ -319,18 +320,7 @@ function DrawerSwitch({
         {on ? <Check className="h-4 w-4" /> : icon}
       </span>
       <span className="flex-1 font-display text-sm text-white">{label}</span>
-      <span
-        className={`relative h-6 w-11 rounded-full transition shrink-0 ${
-          on ? "bg-success/70" : "bg-white/10"
-        }`}
-        aria-hidden
-      >
-        <span
-          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition transform ${
-            on ? "translate-x-5" : "translate-x-0"
-          }`}
-        />
-      </span>
+      <TogglePill on={on} />
     </button>
   );
 }

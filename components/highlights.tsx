@@ -189,7 +189,7 @@ export function Highlights() {
             return (
               <li
                 key={h.id}
-                className="flex flex-col gap-2 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 p-3"
+                className="flex flex-col gap-2 rounded-2xl glass-surface p-3"
               >
                 {/* Header row: avatar + name + country chip + heart count.
                     Reads as a chat-card header so the drawer feels like

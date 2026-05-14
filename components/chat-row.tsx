@@ -126,7 +126,7 @@ function AddTopTenSheet({
                 type="button"
                 onClick={() => place(i)}
                 className={`w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition transform-gpu active:scale-[0.99]
-                            ${isHere ? "bg-flamingo/15 ring-1 ring-flamingo/35" : "bg-white/[0.04] ring-1 ring-white/8 active:bg-white/[0.08]"}`}
+                            ${isHere ? "bg-flamingo/15 ring-1 ring-flamingo/35" : "glass-surface active:bg-white/[0.08]"}`}
               >
                 <span className="h-8 w-8 shrink-0 rounded-lg grid place-items-center font-display text-sm tabular-nums bg-white/[0.07] ring-1 ring-white/12 text-white/80">
                   {s.points}
@@ -1136,7 +1136,7 @@ export function ChatRow({
               {Object.entries(m.reactions).map(([emoji, info]) => (
                 <li
                   key={emoji}
-                  className="flex items-center gap-3 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3"
+                  className="flex items-center gap-3 rounded-2xl glass-surface px-4 py-3"
                 >
                   {/* Emoji + its count stack — count sits directly under
                       the glyph so the "how many" reads at a glance. */}

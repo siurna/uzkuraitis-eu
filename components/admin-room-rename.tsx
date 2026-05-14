@@ -45,7 +45,7 @@ export function AdminRoomRename({
   return (
     <form
       onSubmit={submit}
-      className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3 flex flex-col gap-3"
+      className="rounded-2xl glass-surface px-4 py-3 flex flex-col gap-3"
     >
       <div className="flex items-center gap-3">
         <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/65">

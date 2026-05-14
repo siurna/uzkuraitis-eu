@@ -378,6 +378,24 @@
    No `position` here — that fights Tailwind's positioning utilities
    (the bottom-sheet uses `fixed` and we want that to win). Callers
    that need a positioning context should add `relative` themselves. */
+/* Tile / row surface used everywhere a list-row or toggle sits over
+   the page bg. Bare `bg-white/[0.04] ring-1 ring-white/8` was repeated
+   in ~25 places across the admin + voter UI; pulling it into a class
+   keeps the surface treatment consistent and lets us tweak the
+   alpha once without hunting through components. Note this is NOT
+   `.glass-card` — that one is a heavier blurred chrome for sheets +
+   header bars. `.glass-surface` is the lighter, non-blurred sibling
+   for inline rows. */
+.glass-surface {
+  background-color: oklch(100% 0 0 / 0.04);
+  /* Outset 1px to match Tailwind's `ring-1 ring-white/8`, which is
+     what every caller used inline before this shortcut existed. An
+     `inset` shadow renders inside the border-box and trims a pixel
+     off the corner radius; outset sits on top, matching the ring
+     visual exactly. */
+  box-shadow: 0 0 0 1px oklch(100% 0 0 / 0.08);
+}
+
 .glass-card {
   /* Lower-alpha tint so the backdrop blur is the dominant visual,
      not the gradient overlay sitting on top of it. The previous

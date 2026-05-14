@@ -200,7 +200,7 @@ function RowFrame({
 }) {
   const className =
     "w-full text-left rounded-2xl px-4 py-3.5 flex items-center gap-3 " +
-    "bg-white/[0.04] ring-1 ring-white/8 transition";
+    "glass-surface transition";
   if (asButton) {
     return (
       <motion.button

@@ -280,7 +280,7 @@ export function BingoCard() {
                                 ${
                                   isStruck
                                     ? "bg-flamingo/10 ring-1 ring-flamingo/25"
-                                    : "bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07]"
+                                    : "glass-surface hover:bg-white/[0.07]"
                                 }`}
                   >
                     <span

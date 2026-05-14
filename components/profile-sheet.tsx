@@ -231,7 +231,7 @@ function ProfileSheet({
               artist's metadata stacked: artist name → song → country +
               year. No display name (it's already in the sheet title). */}
           {avatar ? (
-            <div className="flex items-center gap-4 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 p-3">
+            <div className="flex items-center gap-4 rounded-2xl glass-surface p-3">
               <span className="h-20 w-20 shrink-0 rounded-2xl overflow-hidden ring-1 ring-white/15 bg-white/[0.06]">
                 {avatar.photo ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -367,7 +367,7 @@ function StatTile({
     // to filled makes the row of tiles feel like one stat strip.
     <div
       className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-4
-                  ${muted ? "bg-white/[0.025] ring-1 ring-white/8 text-white/55" : "bg-white/[0.04] ring-1 ring-white/8 text-white/90"}`}
+                  ${muted ? "bg-white/[0.025] ring-1 ring-white/8 text-white/55" : "glass-surface text-white/90"}`}
     >
       <Icon className="h-6 w-6" fill="currentColor" strokeWidth={1.5} />
       <span className="font-display text-2xl tabular-nums leading-none">
@@ -436,7 +436,7 @@ function BallotRow({
   return (
     <li
       className={`flex items-center gap-3 rounded-2xl px-3 py-2
-                  ${pick.earned > 0 ? "bg-flamingo/10 ring-1 ring-flamingo/25" : "bg-white/[0.04] ring-1 ring-white/8"}`}
+                  ${pick.earned > 0 ? "bg-flamingo/10 ring-1 ring-flamingo/25" : "glass-surface"}`}
     >
       <span
         className={`shrink-0 h-9 w-9 grid place-items-center rounded-lg font-display text-base tabular-nums

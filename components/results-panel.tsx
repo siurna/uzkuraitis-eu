@@ -88,7 +88,7 @@ function BallotComparisonRow({
   return (
     <li
       className={`grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-x-3 rounded-2xl px-3 py-2.5
-                  ${youGotIt ? "bg-flamingo/10 ring-1 ring-flamingo/25" : "bg-white/[0.04] ring-1 ring-white/8"}`}
+                  ${youGotIt ? "bg-flamingo/10 ring-1 ring-flamingo/25" : "glass-surface"}`}
     >
       <span className="text-flamingo font-display text-base tabular-nums">
         {pick.points}

@@ -65,7 +65,7 @@ export function AdminRoomManageLink({
       {/* Host magic link. Tile shape mirrors the rename + code rows
           and the behaviour toggles — the URL preview lives in the
           body, the copy action sits on the right. */}
-      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3 flex flex-col gap-3">
+      <div className="rounded-2xl glass-surface px-4 py-3 flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/65">
             <LinkIcon className="h-5 w-5" />
@@ -101,7 +101,7 @@ export function AdminRoomManageLink({
 
       {/* Voter join link. Same shape; the regen button is the only
           extra control. */}
-      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3 flex flex-col gap-3">
+      <div className="rounded-2xl glass-surface px-4 py-3 flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/65">
             <QrCode className="h-5 w-5" />

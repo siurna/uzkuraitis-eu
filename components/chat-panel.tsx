@@ -1021,7 +1021,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                     onClick={loadEarlier}
                     disabled={loadingMore}
                     className="flex items-center gap-1.5 text-xs text-white/55 hover:text-white/85
-                               rounded-full px-3 py-1.5 bg-white/[0.04] ring-1 ring-white/8 transition
+                               rounded-full px-3 py-1.5 glass-surface transition
                                disabled:opacity-50"
                   >
                     <ChevronUp className="h-3.5 w-3.5" />

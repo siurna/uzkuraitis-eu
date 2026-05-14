@@ -13,6 +13,7 @@ import {
   type PushPrefs,
   type PushState,
 } from "@/lib/push-client";
+import { TogglePill } from "@/components/ui/toggle-pill";
 import { useRoomLive } from "@/components/room-shell";
 import { NAME_KEY, SESSION_KEY } from "@/lib/use-identity";
 import { t } from "@/lib/i18n";
@@ -124,7 +125,7 @@ export function NotificationToggles() {
   // settings sheet doesn't lurch when this section materialises.
   if (state === null) {
     return (
-      <div className="rounded-2xl bg-white/[0.04] ring-1 ring-white/8 h-[3.25rem] skeleton" />
+      <div className="rounded-2xl glass-surface h-[3.25rem] skeleton" />
     );
   }
 
@@ -336,24 +337,13 @@ function PrefRow({
       type="button"
       onClick={() => onChange(!value)}
       className="flex items-center gap-3 rounded-2xl px-4 py-3
-                 bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07] transition text-left"
+                 glass-surface hover:bg-white/[0.07] transition text-left"
     >
       <span className="flex-1 min-w-0">
         <span className="block text-sm text-white/90">{label}</span>
         {sub && <span className="block text-xs text-white/45 leading-snug mt-0.5">{sub}</span>}
       </span>
-      <span
-        className={`relative h-6 w-11 rounded-full transition shrink-0 ${
-          value ? "bg-success/70" : "bg-white/10"
-        }`}
-        aria-hidden
-      >
-        <span
-          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition transform ${
-            value ? "translate-x-5" : "translate-x-0"
-          }`}
-        />
-      </span>
+      <TogglePill on={value} />
     </button>
   );
 }

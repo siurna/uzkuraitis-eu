@@ -75,7 +75,7 @@ export function AdminRoomPicker({
                   className={`w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition
                               ${isActive
                                 ? "bg-flamingo/15 ring-1 ring-flamingo/35"
-                                : "bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.08]"}`}
+                                : "glass-surface hover:bg-white/[0.08]"}`}
                 >
                   <span
                     className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl

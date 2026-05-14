@@ -8,6 +8,7 @@ import { useUpdateMyPresence } from "@/lib/realtime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { TogglePill } from "@/components/ui/toggle-pill";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { SelectedAvatarCard } from "@/components/selected-avatar-card";
 import { NotificationToggles } from "@/components/notification-toggles";
@@ -416,23 +417,12 @@ function ToggleRow({
       onClick={onChange}
       aria-pressed={on}
       className="w-full flex items-center gap-3 rounded-2xl px-4 py-3
-                 bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07] transition text-left"
+                 glass-surface hover:bg-white/[0.07] transition text-left"
     >
       <span className="flex-1 min-w-0">
         <span className="block text-sm text-white/90 leading-snug">{label}</span>
       </span>
-      <span
-        className={`relative h-6 w-11 rounded-full transition shrink-0 ${
-          on ? "bg-success/70" : "bg-white/10"
-        }`}
-        aria-hidden
-      >
-        <span
-          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition transform ${
-            on ? "translate-x-5" : "translate-x-0"
-          }`}
-        />
-      </span>
+      <TogglePill on={on} />
     </button>
   );
 }

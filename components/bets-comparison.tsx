@@ -202,7 +202,7 @@ function BetRow({ row, lang }: { row: Row; lang: Language }) {
   return (
     <li
       className={`flex flex-col gap-1.5 rounded-2xl px-3 py-2.5
-                  ${won ? "bg-flamingo/10 ring-1 ring-flamingo/25" : "bg-white/[0.04] ring-1 ring-white/8"}`}
+                  ${won ? "bg-flamingo/10 ring-1 ring-flamingo/25" : "glass-surface"}`}
     >
       {/* Bet label sits above the values + earned chip on the
           right; below, the two value columns align to the same grid
