@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { motion } from "motion/react";
-import { Loader2, Megaphone, Vote, Trophy, ChevronRight, Check } from "lucide-react";
+import { Loader2, Megaphone, Vote, Trophy, ChevronRight } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { TogglePill } from "@/components/ui/toggle-pill";
 import { AdminRoomTriviaThreshold } from "@/components/admin-room-trivia-threshold";
@@ -219,24 +219,26 @@ export function AdminLiveControls({
         )}
       </div>
 
+      {/* Sized to match the DrawerSwitch + threshold rows above:
+          h-8 icon tile, px-3 py-2.5 padding, font-display text-sm
+          label. Rainbow border keeps it visually distinct as the
+          "the show happens here" CTA without dwarfing the other
+          row controls. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         disabled={noRoom}
-        className="rainbow-border rounded-2xl w-full block disabled:opacity-40"
+        className="rainbow-border rounded-xl w-full block disabled:opacity-40"
       >
-        <span className="block w-full rounded-[14px] bg-gradient-to-br from-dark-blue-800 to-dark-blue-900
-                         px-5 py-4 flex items-center gap-3 text-left">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
-            <Megaphone className="h-5 w-5" />
+        <span className="block w-full rounded-[10px] bg-gradient-to-br from-dark-blue-800 to-dark-blue-900
+                         px-3 py-2.5 flex items-center gap-3 text-left">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo">
+            <Megaphone className="h-4 w-4" />
           </span>
-          <span className="flex-1 min-w-0">
-            <span className="block font-display text-base text-white">Broadcasts</span>
-            <span className="block text-xs text-white/55 leading-snug">
-              {noRoom ? "Pick a room first." : "Hype shots, polls, prompts."}
-            </span>
+          <span className="flex-1 font-display text-sm text-white">
+            {noRoom ? "Broadcasts — pick a room first" : "Broadcasts"}
           </span>
-          <ChevronRight className="h-5 w-5 text-white/45 shrink-0" />
+          <ChevronRight className="h-4 w-4 text-white/55 shrink-0" />
         </span>
       </button>
 
@@ -313,11 +315,15 @@ function DrawerSwitch({
                  glass-surface hover:bg-white/[0.07] transition text-left
                  disabled:opacity-60"
     >
+      {/* Icon stays itself in both states; only the tile's tint
+          flips. Replacing the icon with a Check on "on" read as
+          two different controls — colour-only is the cleaner
+          status signal. */}
       <span
         className={`shrink-0 grid place-items-center h-8 w-8 rounded-lg transition
                     ${on ? "bg-success/20 ring-1 ring-success/40 text-success" : "bg-white/[0.06] ring-1 ring-white/12 text-white/55"}`}
       >
-        {on ? <Check className="h-4 w-4" /> : icon}
+        {icon}
       </span>
       <span className="flex-1 font-display text-sm text-white">{label}</span>
       <TogglePill on={on} />

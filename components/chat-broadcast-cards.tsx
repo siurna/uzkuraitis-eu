@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { Bell, Dices, ListChecks, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { HeartFlag } from "@/components/flag";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { WelcomeMarkdown } from "@/components/welcome-banner";
 import { FluentEmoji } from "@/components/fluent-emoji";
 import { countryName, getCountry } from "@/lib/countries";
@@ -408,7 +409,7 @@ function Top3PodiumCard({
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
       className="rounded-3xl ring-2 ring-white/10 shadow-[0_18px_44px_-22px_rgba(0,0,0,0.55)] overflow-hidden"
     >
-      <div className="relative overflow-hidden p-5 flex flex-col gap-4 bg-gradient-to-br from-yellow/30 via-orange/20 to-purple/55">
+      <div className="relative overflow-hidden px-5 py-7 flex flex-col gap-4 bg-gradient-to-br from-yellow/30 via-orange/20 to-purple/55">
         {/* Spotlight cone behind the #1 flag. */}
         <span
           className="pointer-events-none absolute inset-x-0 top-0 h-full"
@@ -468,8 +469,29 @@ function Top3PodiumCard({
 // already-rendered cards without a reload.
 type WelcomeData = { welcome_md_en: string; welcome_md_lt: string };
 
+// Split a welcome markdown source at a `---[Button Text]---` line.
+// Everything before the marker reads inline on the ticket card;
+// everything after gets parked in a BottomSheet that opens when the
+// host's "Button Text" button is tapped. The marker line itself is
+// dropped from both halves. Returns `{ before, after, label }` with
+// before always populated; after/label are null when the source has
+// no split marker (the whole message renders inline).
+const WELCOME_SPLIT_RE = /^---\s*\[(.+?)\]\s*---\s*$/m;
+function splitWelcome(source: string): { before: string; after: string | null; label: string | null } {
+  const match = WELCOME_SPLIT_RE.exec(source);
+  if (!match) return { before: source, after: null, label: null };
+  const idx = match.index;
+  const after = source.slice(idx + match[0].length).trim();
+  return {
+    before: source.slice(0, idx).trim(),
+    after: after.length > 0 ? after : null,
+    label: match[1].trim() || "More",
+  };
+}
+
 function WelcomeChatCard({ lang }: { lang: Language }) {
   const [data, setData] = useState<WelcomeData | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -556,14 +578,37 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
 
           {/* Body half — the host's message. Same WelcomeMarkdown the
               home banner uses; colours inverted to read on the dark
-              ticket surface. */}
+              ticket surface. The split marker `---[Label]---` parks
+              everything below it behind a button that opens a
+              BottomSheet — so the ticket stays the size of a real
+              concert stub even when the host writes a small essay. */}
           <div
             className="px-4 py-3.5 text-[14px] leading-relaxed text-white/90
                        [&_strong]:text-white [&_em]:text-white
                        [&_a]:text-yellow [&_a]:decoration-yellow/60 [&_a]:underline-offset-2"
           >
             {md.trim() ? (
-              <WelcomeMarkdown source={md} />
+              (() => {
+                const split = splitWelcome(md);
+                return (
+                  <>
+                    <WelcomeMarkdown source={split.before} />
+                    {split.after && split.label && (
+                      <button
+                        type="button"
+                        onClick={() => setMoreOpen(true)}
+                        className="mt-2 inline-flex items-center gap-1 rounded-full
+                                   bg-yellow/15 ring-1 ring-yellow/40 text-yellow
+                                   px-3 h-7 text-xs font-display tracking-wide
+                                   active:scale-[0.97] transition"
+                      >
+                        {split.label}
+                        <ChevronRight className="h-3 w-3" />
+                      </button>
+                    )}
+                  </>
+                );
+              })()
             ) : (
               <p className="text-[13px] text-white/45 italic">
                 {t(lang, "welcome_empty_chat")}
@@ -572,6 +617,22 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
           </div>
         </div>
       </div>
+      {/* "More" drawer — only opens when the host's markdown had a
+          `---[Label]---` marker. Full content fits comfortably
+          here, ticket stub stays compact. */}
+      {(() => {
+        const split = splitWelcome(md);
+        if (!split.after) return null;
+        return (
+          <BottomSheet
+            open={moreOpen}
+            onClose={() => setMoreOpen(false)}
+            title={split.label ?? ""}
+          >
+            <WelcomeMarkdown source={split.after} />
+          </BottomSheet>
+        );
+      })()}
     </motion.div>
   );
 }
@@ -686,7 +747,7 @@ function SelfieCard({ lang }: { lang: Language }) {
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={busy}
-        className="relative block w-full text-left p-3 pb-1 rounded-sm
+        className="relative block w-full text-left p-4 pb-3 rounded-sm
                    bg-[#f5efe2]
                    shadow-[0_18px_44px_-18px_rgba(0,0,0,0.55),0_2px_6px_-2px_rgba(0,0,0,0.4)]
                    active:scale-[0.99] transition transform-gpu disabled:opacity-70"
@@ -720,7 +781,7 @@ function SelfieCard({ lang }: { lang: Language }) {
                                   text-white shadow-[0_8px_24px_-8px_rgba(0,0,0,0.4)]">
                   {/* Fluent 3D camera's optical mass sits low —
                       nudge up so the chip reads as centred. */}
-                  <FluentEmoji glyph="📸" size={48} className="-translate-y-[3px]" />
+                  <FluentEmoji glyph="📸" size={48} className="-translate-y-[6px]" />
                 </span>
               </span>
             </>

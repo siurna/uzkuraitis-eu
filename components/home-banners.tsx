@@ -182,8 +182,13 @@ const GRAND_FINAL_ACTS = 26;
 
 // Side-bet artwork: a marching strip of bet-flavour emoji "chips" — one
 // per bonus bet (winner, wooden spoon, jury/televote, host top-3, LT's
-// 12 points, nul-points, the LT total points line).
+// 12 points, nul-points, the LT total points line). The two marquees
+// below use the top sequence and a shuffled copy on the bottom so when
+// they cross paths in the middle of the banner no two columns ever
+// share the same chip — the eye reads "real motion" instead of a
+// regular pattern.
 const BET_CHIPS = ["🏆", "🥄", "🎤", "⭐", "🎯", "0️⃣", "🇱🇹"];
+const BET_CHIPS_REV = ["🥄", "🎯", "🇱🇹", "🏆", "0️⃣", "🎤", "⭐"];
 
 // Jump to a sub-tab inside the Vote screen (it owns its own ballot/bets/
 // rules toggle). Small delay so the panel — lazily mounted on first
@@ -449,7 +454,7 @@ export function HomeBanners() {
                     className="absolute bottom-1 left-0 flex w-max"
                     style={{ animation: "uzk-marquee 28s linear infinite reverse" }}
                   >
-                    {[...BET_CHIPS, ...BET_CHIPS].map((c, i) => (
+                    {[...BET_CHIPS_REV, ...BET_CHIPS_REV].map((c, i) => (
                       <span
                         key={`bot-${i}`}
                         className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"

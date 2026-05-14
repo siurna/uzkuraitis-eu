@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
-import { Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Loader2, ShieldAlert } from "lucide-react";
 import { isValidRoomCode, normalizeRoomCode } from "@/lib/room-code";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
@@ -238,9 +238,13 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
                     resetKey={tsResetKey}
                   />
                   {/* Status chip — explains the disabled state so it
-                      doesn't read as "the form is broken". Three
-                      cases: load failure (retry chip), verifying
-                      (spinner), verified (green tick that fades). */}
+                      doesn't read as "the form is broken". Only two
+                      visible cases now: load failure (retry chip)
+                      and verifying (spinner). The "verified" success
+                      state used to render its own green tick chip
+                      that read as a redundant "all good" banner; the
+                      submit button enabling itself is signal enough,
+                      so verified renders nothing. */}
                   <AnimatePresence mode="wait">
                     {tsError ? (
                       <motion.button
@@ -270,20 +274,7 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
                         <Loader2 className="h-3.5 w-3.5 animate-spin text-flamingo" />
                         {t(lang, "ts_checking")}
                       </motion.div>
-                    ) : (
-                      <motion.div
-                        key="ts-ok"
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        className="self-stretch inline-flex items-center gap-2 rounded-xl
-                                   bg-turquoise/10 ring-1 ring-turquoise/30 text-turquoise/95
-                                   px-3 h-9 text-xs font-display"
-                      >
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        {t(lang, "ts_ok")}
-                      </motion.div>
-                    )}
+                    ) : null}
                   </AnimatePresence>
                 </>
               )}

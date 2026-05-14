@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { AvatarPicker } from "@/components/avatar-picker";
+import { AvatarMatrixBg } from "@/components/avatar-matrix-bg";
 import { SelectedAvatarCard } from "@/components/selected-avatar-card";
 import { FluentEmoji } from "@/components/fluent-emoji";
 import {
@@ -213,6 +214,19 @@ export function NameGate({
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
+              ) : step === 3 ? (
+                // "Maybe later" sits on the LEFT (where Back would be
+                // on step 2) — visually balances the "Turn on" CTA
+                // anchored on the right and reads as the secondary /
+                // dismissive action.
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={skipNotifications}
+                  className="text-white/65 shrink-0"
+                >
+                  {t(lang, "notif_gate_skip")}
+                </Button>
               ) : (
                 <span className="w-9 shrink-0" aria-hidden />
               )}
@@ -241,30 +255,22 @@ export function NameGate({
                   {t(lang, "join_party")}
                 </Button>
               ) : (
-                // Step 3: notification step. The primary CTA changes
-                // between "Turn on" and "Maybe later" depending on
-                // whether push can be requested here at all. iOS not-
-                // PWA users see install hints inline + Skip.
-                <div className="flex items-center gap-2">
+                // Step 3 right-slot: just the primary CTA. "Maybe
+                // later" sits on the left (above). iOS not-PWA users
+                // see install hints inline and ONLY get the left
+                // skip button — the right slot stays empty because
+                // "Turn on" can't actually grant permission outside
+                // an installed PWA.
+                platform !== "ios-safari" || isInstalledPwa() ? (
                   <Button
                     type="button"
-                    variant="ghost"
-                    onClick={skipNotifications}
-                    className="text-white/65"
+                    onClick={enableNotifications}
+                    className="font-display rounded-2xl
+                               bg-white text-dark-blue hover:bg-dark-blue-50"
                   >
-                    {t(lang, "notif_gate_skip")}
+                    {t(lang, "push_cta_enable")}
                   </Button>
-                  {platform !== "ios-safari" || isInstalledPwa() ? (
-                    <Button
-                      type="button"
-                      onClick={enableNotifications}
-                      className="font-display rounded-2xl
-                                 bg-white text-dark-blue hover:bg-dark-blue-50"
-                    >
-                      {t(lang, "push_cta_enable")}
-                    </Button>
-                  ) : null}
-                </div>
+                ) : null
               )}
             </div>
           </div>
@@ -338,21 +344,25 @@ export function NameGate({
           </motion.div>
         ) : (
           // Step 3: the friendly nudge to enable notifications. Big
-          // ringing Fluent bell, copy, and (on iOS-no-PWA) the
-          // install-as-app steps inline. Footer carries the CTA pair.
+          // ringing Fluent bell sits on top of a Netflix-intro-style
+          // matrix of avatar photos scrolling diagonally behind, with
+          // a vignette so the bell stays the focus. Drawer height
+          // bumped to min-h-[50dvh] so the matrix has room to read
+          // as ambient depth instead of a thin strip.
           <motion.div
             key="step-3"
             initial={{ opacity: 0, x: 8 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -8 }}
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col items-center gap-4 pt-2 pb-1"
+            className="relative flex flex-col items-center gap-4 pt-6 pb-3 min-h-[42dvh] -mx-5"
           >
-            <span className="ringing-bell">
+            <AvatarMatrixBg />
+            <span className="ringing-bell relative">
               <FluentEmoji glyph="🔔" size={96} ariaLabel="bell" />
             </span>
             {platform === "ios-safari" && !isInstalledPwa() && (
-              <div className="w-full rounded-2xl bg-flamingo/10 ring-1 ring-flamingo/25 px-4 py-3 flex flex-col gap-1.5">
+              <div className="relative w-full mx-5 rounded-2xl bg-flamingo/10 ring-1 ring-flamingo/25 px-4 py-3 flex flex-col gap-1.5" style={{ width: "calc(100% - 2.5rem)" }}>
                 <p className="font-display text-sm text-white">
                   {t(lang, "notif_gate_install_hint")}
                 </p>

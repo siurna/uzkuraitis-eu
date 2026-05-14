@@ -157,9 +157,12 @@ export function CodeInput({
             "focus:outline-none focus:bg-flamingo/15",
             // Filled cell stays slightly lit even when not focused.
             char && "bg-flamingo/8",
-            // Singing Sans has top-heavy metrics — a small pt nudge sits
-            // the cap-height visually centered in the cell.
-            "text-center font-display uppercase tabular-nums leading-none pt-1",
+            // Singing Sans has top-heavy metrics — a `pt-1.5` + a
+            // tiny `pb-0.5` nudges the cap-height visually centered
+            // in the cell, fixing the "letters sit too high" feel
+            // when the cells are tall enough that line-height-none
+            // can't compensate.
+            "text-center font-display uppercase tabular-nums leading-none pt-1.5 pb-0.5",
             "text-3xl sm:text-4xl text-white caret-flamingo",
             // Suppress text selection: tapping a cell shouldn't drag-
             // select neighbouring cells, and auto-select-on-focus is

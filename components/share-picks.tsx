@@ -46,11 +46,12 @@ export function SharePicks() {
   // Self-contained container so the home stack's gap-3 collapses cleanly
   // when this component returns null (no voter yet) — no phantom wrapper.
   return (
-    // Edge-to-edge full viewport width: Share Picks is the "trophy"
-    // moment, not another inline widget — letting it bleed across the
-    // full screen makes it read as a hero stripe rather than another
-    // 3xl-capped card.
-    <div className="w-full px-0">
+    // Matches the other home widgets' container (max-w-3xl px-4) so
+    // the widget stack reads as one consistent column instead of one
+    // edge-to-edge bleed-through breaking the rhythm. Vote-form mounts
+    // this same component too — that page already has its own
+    // max-w-3xl wrapper, so the double-wrap is harmless.
+    <div className="container mx-auto max-w-3xl px-4">
     <button
       type="button"
       onClick={share}

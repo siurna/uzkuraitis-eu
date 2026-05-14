@@ -67,14 +67,20 @@ export function WelcomeBanner() {
         <div className="relative flex items-center gap-4 p-5">
           {/* Fluent 3D waving hand, large + sporadically waving. Same
               wave choreography lives in `globals.css` — every ~7s
-              the hand tilts left/right twice then rests. */}
+              the hand tilts left/right twice then rests. The
+              animation moved off the outer chip and onto the inner
+              <FluentEmoji> wrapper below: the whole rectangle
+              waving was distracting; only the hand should move. */}
           <span
             className="shrink-0 grid place-items-center h-12 w-12 rounded-2xl
-                       bg-white/12 ring-1 ring-white/20
-                       motion-safe:[animation:waving-hand_7s_ease-in-out_infinite] origin-[70%_70%]"
+                       bg-white/12 ring-1 ring-white/20"
             aria-hidden
           >
-            <FluentEmoji glyph="👋" size={30} />
+            <span
+              className="motion-safe:[animation:waving-hand_7s_ease-in-out_infinite] origin-[70%_70%] inline-flex"
+            >
+              <FluentEmoji glyph="👋" size={30} />
+            </span>
           </span>
           <div className="min-w-0 flex-1">
             <p className="font-display text-lg text-white leading-tight text-balance">

@@ -233,7 +233,9 @@ export function AdminResultsTable({
               <button
                 type="button"
                 onClick={() => setPickerPlacement(row.placement)}
-                className="w-full flex items-center gap-3 py-1.5 text-left hover:bg-white/[0.03] rounded-lg px-1 -mx-1 transition"
+                className={`w-full flex items-center gap-3 text-left hover:bg-white/[0.03] rounded-lg px-1 -mx-1 transition ${
+                  i === 0 ? "pt-0 pb-1.5" : "py-1.5"
+                }`}
               >
                 <span
                   className={`shrink-0 w-8 text-center font-display text-lg tabular-nums ${

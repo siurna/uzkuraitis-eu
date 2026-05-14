@@ -541,19 +541,20 @@
    pulses with a soft outer glow that follows the same lub-dub rhythm
    as .heartbeat. Apply via class="heartbeat-focus". */
 @keyframes heartbeat-border {
-  /* Single calm pulse per cycle — the previous double-beat lub-dub
-     was reading as sporadic / nervous on the room-gate input. The
-     focus indicator should feel like a steady glow that breathes,
-     not a cardiac trace. */
-  0%, 100% { box-shadow: 0 0 0 0   oklch(61.3% 0.2412 13.09 / 0); }
-  50%      { box-shadow: 0 0 0 6px oklch(61.3% 0.2412 13.09 / 0.22); }
+  /* Single warm pulse per cycle, scaled UP from the earlier calm
+     version — the name input is where the user spends their first
+     few seconds, the glow should feel inviting (bigger radius,
+     stronger alpha) without crossing into nervous double-beat
+     territory. 1.8s cadence reads like a slow heartbeat at rest. */
+  0%, 100% { box-shadow: 0 0 0 0    oklch(61.3% 0.2412 13.09 / 0); }
+  50%      { box-shadow: 0 0 0 10px oklch(61.3% 0.2412 13.09 / 0.35); }
 }
 .heartbeat-focus { transition: border-color 0.18s ease; }
 .heartbeat-focus:focus,
 .heartbeat-focus:focus-visible {
   outline: none;
   border-color: var(--color-fuchsia);
-  animation: heartbeat-border 2.2s ease-in-out infinite;
+  animation: heartbeat-border 1.8s ease-in-out infinite;
 }
 
 /* Endless left-to-right marquee. The track holds two copies of its
@@ -612,4 +613,18 @@
 input, button, textarea, select {
   -webkit-appearance: none;
   appearance: none;
+}
+
+/* WebKit + Firefox each ship their own spinner UI for `type="number"`
+   that survives the `appearance: none` reset above. Kill both
+   explicitly so the admin number fields (trivia cap, highlight
+   threshold) render as plain text-input boxes — the up/down arrows
+   are useless on touch and visually noisy in the live cockpit. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
 }

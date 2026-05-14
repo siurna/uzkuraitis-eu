@@ -159,7 +159,7 @@ const FLUENT_EMOJI: Record<string, FluentEntry> = {
 
   // Bingo trope leads that the manifest was missing.
   "🪑":  { folder: "Chair", slug: "chair" },
-  "0️⃣":  { folder: "Keycap digit zero", slug: "keycap_digit_zero" },
+  "0️⃣":  { folder: "Keycap 0", slug: "keycap_0" },
 };
 
 // Country-flag emojis are encoded as a pair of regional-indicator

@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
 import { Share2, Check, LogOut, ChevronRight, Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useUpdateMyPresence } from "@/lib/realtime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { TogglePill } from "@/components/ui/toggle-pill";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { SelectedAvatarCard } from "@/components/selected-avatar-card";
 import { NotificationToggles } from "@/components/notification-toggles";
@@ -17,8 +15,6 @@ import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
 import { readLang, withLangTransition, writeLang } from "@/lib/i18n-client";
-import { readTranslate, writeTranslate } from "@/lib/translate-client";
-import { readBeginner, writeBeginner } from "@/lib/beginner-client";
 
 const NAME_KEY = "uzk_name";
 const AVATAR_KEY = "uzk_avatar";
@@ -47,8 +43,6 @@ export function SettingsModal({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [notifSheetOpen, setNotifSheetOpen] = useState(false);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
-  const [translate, setTranslate] = useState(false);
-  const [beginner, setBeginner] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -57,8 +51,6 @@ export function SettingsModal({
     lastGoodName.current = initial;
     setAvatar(localStorage.getItem(AVATAR_KEY) ?? null);
     setLang(readLang());
-    setTranslate(readTranslate());
-    setBeginner(readBeginner());
     setCopied(false);
   }, [open]);
 
@@ -90,18 +82,6 @@ export function SettingsModal({
       setLang(next);
       writeLang(next);
     });
-  };
-
-  const toggleTranslate = () => {
-    const next = !translate;
-    setTranslate(next);
-    writeTranslate(next);
-  };
-
-  const toggleBeginner = () => {
-    const next = !beginner;
-    setBeginner(next);
-    writeBeginner(next);
   };
 
   const share = async () => {
@@ -160,56 +140,27 @@ export function SettingsModal({
                     key={code}
                     type="button"
                     onClick={() => setLanguage(code)}
-                    className="relative h-11 rounded-xl font-display text-base"
+                    className={`relative h-11 rounded-xl font-display text-base transition-colors ${
+                      active ? "bg-white text-dark-blue" : "text-white/65"
+                    }`}
                   >
-                    {active && (
-                      <motion.span
-                        layoutId="lang-pill"
-                        className="absolute inset-0 rounded-xl bg-white"
-                        transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                      />
-                    )}
-                    <span className={`relative transition-colors ${active ? "text-dark-blue" : "text-white/65"}`}>
-                      {LANGUAGE_NAMES[code]}
-                    </span>
+                    {/* No layoutId slide animation: the pill should
+                        snap to the picked side, not glide. The View
+                        Transitions API already crossfades the strings
+                        on the rest of the page. */}
+                    <span>{LANGUAGE_NAMES[code]}</span>
                   </button>
                 );
               })}
             </div>
           </Section>
 
-          <AnimatePresence initial={false}>
-            {lang === "en" && (
-              <motion.div
-                key="translate-section"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                className="overflow-hidden"
-              >
-                <Section label={t(lang, "settings_translate_h")}>
-                  <ToggleRow
-                    on={translate}
-                    onChange={toggleTranslate}
-                    label={t(lang, "settings_translate_sub")}
-                  />
-                </Section>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Beginner mode: when ON, a turquoise gloss-bubble slides
-              in underneath the toggle as a live preview of what the
-              feature will drop into chat. Reads as "this is the thing
-              you just enabled" instead of a silent flag flip. */}
-          <Section label={t(lang, "settings_beginner_h")}>
-            <ToggleRow
-              on={beginner}
-              onChange={toggleBeginner}
-              label={t(lang, "settings_beginner_sub")}
-            />
-          </Section>
+          {/* Translation + Beginner-mode toggles used to live here but
+              read as neon noise — niche features that weren't pulling
+              their weight in the settings real estate. The features
+              themselves stay wired (the toggles can still be flipped
+              programmatically), they're just no longer surfaced in
+              the drawer. */}
 
           <Section label={t(lang, "pick_avatar")}>
             <button
@@ -240,8 +191,11 @@ export function SettingsModal({
                   <>
                     <p className="font-display truncate">{selectedAvatar.artist}</p>
                     <p className="text-xs text-white/55 truncate">
-                      {selectedAvatar.year} ·{" "}
                       <span className="italic">{selectedAvatar.song}</span>
+                      {" · "}
+                      {selectedAvatar.year}
+                      {" · "}
+                      {selectedAvatar.country.toUpperCase()}
                     </p>
                   </>
                 ) : (
@@ -385,30 +339,6 @@ export function SettingsModal({
   );
 }
 
-function ToggleRow({
-  on,
-  onChange,
-  label,
-}: {
-  on: boolean;
-  onChange: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onChange}
-      aria-pressed={on}
-      className="w-full flex items-center gap-3 rounded-2xl px-4 py-3
-                 glass-surface hover:bg-white/[0.07] transition text-left"
-    >
-      <span className="flex-1 min-w-0">
-        <span className="block text-sm text-white/90 leading-snug">{label}</span>
-      </span>
-      <TogglePill on={on} />
-    </button>
-  );
-}
 
 function Section({
   label,
