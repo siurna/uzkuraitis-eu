@@ -14,7 +14,7 @@ export async function GET(_req: Request, { params }: RouteCtx) {
   // critical path. Errors are swallowed so a transient touch-write
   // failure never breaks the room load.
   touchRoom(room.id).catch(() => {});
-  return NextResponse.json({
+  const res = NextResponse.json({
     id: room.id,
     code: room.code,
     name: room.name,
@@ -25,4 +25,12 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     showStatus: room.showStatus,
     runningOrderPos: room.runningOrderPos,
   });
+  // Match the in-process room cache TTL — the next read inside the
+  // 5-second window can land at the edge instead of origin. Live
+  // updates fan out via the room:updated broadcast.
+  res.headers.set(
+    "Cache-Control",
+    "public, s-maxage=5, stale-while-revalidate=30",
+  );
+  return res;
 }

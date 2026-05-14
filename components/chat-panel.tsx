@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -275,6 +276,10 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     fetchMessages(true);
     return () => {
       if (fetchTimer.current) clearTimeout(fetchTimer.current);
+      // The reaction-throttle timer needs to be torn down too —
+      // otherwise navigating away mid-storm leaves a pending
+      // refetch that runs setState on an unmounted component.
+      if (reactTimer.current) clearTimeout(reactTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
@@ -375,7 +380,13 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   }, [newestIso, atBottom, active, updatePresence]);
 
   // Tab-bar unread badge clear — only while the chat tab is actually
-  // showing (the panel stays mounted on other tabs).
+  // showing (the panel stays mounted on other tabs). Deps are
+  // intentionally `[code, active]` and NOT `messages.length`: under
+  // hundreds of messages/min during the climax, this effect would
+  // fire a localStorage write + window event for every new row.
+  // Once-on-tab-activation is the correct behaviour — the
+  // `chat:new` event listener below already sets `unread = 0` while
+  // active, so badging stays accurate.
   useEffect(() => {
     if (!active) return;
     try {
@@ -384,7 +395,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     } catch {
       /* private mode */
     }
-  }, [code, active, messages.length]);
+  }, [code, active]);
 
   useEventListener(({ event }) => {
     const ev = event as {
@@ -1017,7 +1028,11 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                   prev.kind === "text" &&
                   m.kind === "text";
                 return (
-                  <div key={m.id} className="contents">
+                  // Fragment instead of `<div className="contents">`:
+                  // a div between <ul> and its <li> children is
+                  // invalid HTML and breaks the accessibility tree
+                  // (display:contents helps painting but not parsing).
+                  <Fragment key={m.id}>
                     {newDay && (
                       <li className="flex justify-center my-1">
                         <span className="text-[11px] text-white/40 px-3 py-1 rounded-full bg-white/[0.04]">
@@ -1051,7 +1066,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                       nowPlayingCode={nowPlayingCode}
                       roomCode={code}
                     />
-                  </div>
+                  </Fragment>
                 );
               })}
             </ul>

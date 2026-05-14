@@ -344,6 +344,13 @@ export const chatReactions = pgTable(
   (t) => [
     primaryKey({ columns: [t.messageId, t.sessionId, t.emoji] }),
     index("chat_react_msg_idx").on(t.messageId),
+    // Per-session lookup: the profile route's "reactions given"
+    // count + the chat-edit moderation join filter on session_id
+    // alone. The PK is leftmost-prefix (message_id, session_id, …)
+    // so the planner can't use it for session-only filters; this
+    // covering index keeps those endpoints off a seq-scan as the
+    // table grows.
+    index("chat_react_session_idx").on(t.sessionId),
   ],
 );
 

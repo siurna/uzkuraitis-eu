@@ -324,7 +324,14 @@ function BonusBetCard({ lang }: { lang: Language }) {
             className="flex w-max"
             style={{ animation: "uzk-marquee 22s linear infinite" }}
           >
-            {["🏆", "🎤", "🎯", "🥄", "🎺", "🎙️", "🎲"].concat(["🏆", "🎤", "🎯", "🥄", "🎺", "🎙️", "🎲"]).map((c, i) => (
+            {/* Doubled so the looping CSS marquee never shows a gap.
+                Listed twice rather than spread because emojis like
+                🎙️ are multi-codepoint and JS spread breaks the
+                variation-selector. */}
+            {[
+              "🏆", "🎤", "🎯", "🥄", "🎺", "🎙️", "🎲",
+              "🏆", "🎤", "🎯", "🥄", "🎺", "🎙️", "🎲",
+            ].map((c, i) => (
               <span
                 key={`a${i}`}
                 className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"
@@ -337,7 +344,10 @@ function BonusBetCard({ lang }: { lang: Language }) {
             className="flex w-max"
             style={{ animation: "uzk-marquee 28s linear infinite reverse" }}
           >
-            {["💎", "🌟", "🎼", "🍿", "✨", "📺", "🔮"].concat(["💎", "🌟", "🎼", "🍿", "✨", "📺", "🔮"]).map((c, i) => (
+            {[
+              "💎", "🌟", "🎼", "🍿", "✨", "📺", "🔮",
+              "💎", "🌟", "🎼", "🍿", "✨", "📺", "🔮",
+            ].map((c, i) => (
               <span
                 key={`b${i}`}
                 className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"
@@ -550,6 +560,8 @@ function SelfieCard({ lang }: { lang: Language }) {
 
   const onPick = async (file: File) => {
     if (!file.type.startsWith("image/") || !code) return;
+    // Kept in sync with MAX_IMAGE_BYTES in chat-panel.tsx and the
+    // server's 8 MB upload cap in /api/rooms/[code]/chat/upload.
     if (file.size > 8 * 1024 * 1024) {
       toast.error(t(lang, "chat_image_too_big"));
       return;

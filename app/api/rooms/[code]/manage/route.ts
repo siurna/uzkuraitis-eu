@@ -11,6 +11,7 @@ import { broadcastToRoom } from "@/lib/realtime-server";
 import { pushToRoom } from "@/lib/push";
 import { getCountry, countryName } from "@/lib/countries";
 import { t } from "@/lib/i18n";
+import { checkAndIncrement } from "@/lib/rate-limit";
 import { participantPhoto } from "@/lib/participants";
 import {
   postSystemMessage,
@@ -79,6 +80,18 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
   if (!room) {
     return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   }
+  // Each successful PATCH triggers up to a handful of broadcasts ×
+  // every connected client, plus DB writes for system messages and
+  // push fan-outs. A leaked admin link could be rage-clicked into a
+  // quota event; cap to 60 patches/min per room (one per second is
+  // still far more than a real host needs).
+  const limited = await checkAndIncrement(`manage:${room.id}`, 60, 60_000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "Slow down — too many room updates." },
+      { status: 429 },
+    );
+  }
   const parsed = PatchSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success || Object.keys(parsed.data).length === 0) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
@@ -116,8 +129,13 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
   // and now-playing:change when the host moves the active country (the
   // event carries the new code so clients can swarm immediately without
   // a refetch race).
+  // Always announce the room-prop change so listeners refresh
+  // votingEnabled/nowPlayingCode/showStatus etc. The duplicate
+  // unconditional `leaderboard:updated` that used to live here was
+  // dragging every viewer into a leaderboard recompute on every
+  // PATCH (rename, voting toggle, now-playing pick) — now scoped to
+  // the tally-flip block at the bottom of this handler.
   await broadcastToRoom(newCode, { type: "room:updated" });
-  await broadcastToRoom(newCode, { type: "leaderboard:updated" });
   if (nowPlayingChanged) {
     await broadcastToRoom(newCode, {
       type: "now-playing:change",

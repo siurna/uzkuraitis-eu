@@ -52,9 +52,14 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     },
     scores,
   });
+  // Live freshness comes from the `scores:updated` broadcast — this
+  // cache header only protects cold-start tab opens. Bumping
+  // s-maxage to 5s keeps the edge warm for longer between
+  // first-fetches without ever serving the user a stale-feeling
+  // scoreboard (a real vote always fans the broadcast immediately).
   res.headers.set(
     "Cache-Control",
-    "public, s-maxage=2, stale-while-revalidate=10",
+    "public, s-maxage=5, stale-while-revalidate=30",
   );
   return res;
 }
