@@ -490,38 +490,87 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
   }, []);
 
   const md = (lang === "lt" ? data?.welcome_md_lt : data?.welcome_md_en) ?? "";
-  // Pinned-note styling — a slip of cream-paper "stuck to the chat"
-  // with a tilted tape strip across the top corner. No icon, no
-  // eyebrow heading. This card is the host's opening hello — it
-  // should read as a hand-written intro, not a system banner.
+  // Concert ticket stub. Two halves split by a vertical dashed
+  // perforation: the stub on the left carries the show identity
+  // (ADMIT ONE strip across the top, "ESC 2026" + Vienna 16 May
+  // sandwich on the body), the right half carries the host's
+  // markdown message. The card itself is masked with two notches
+  // (top + bottom) along the tear line so it reads as a real ticket
+  // edge, not a panel with a divider painted on. Brand-gold
+  // borders + dark navy interior keep it party-poster, not paper.
+  //
+  // The mask runs as two radial-gradients (transparent disc + opaque
+  // ring) at the top and bottom of the tear-line x coordinate. WebKit
+  // and the spec disagree on `mask-composite` keyword names, so we
+  // duplicate as `-webkit-mask-image` + `mask-image` with the
+  // matching composite values.
+  const TEAR_X = "5.5rem";
+  const ticketMask = {
+    maskImage: `radial-gradient(circle at ${TEAR_X} 0, transparent 7px, #000 7.5px), radial-gradient(circle at ${TEAR_X} 100%, transparent 7px, #000 7.5px)`,
+    maskComposite: "intersect",
+    WebkitMaskImage: `radial-gradient(circle at ${TEAR_X} 0, transparent 7px, #000 7.5px), radial-gradient(circle at ${TEAR_X} 100%, transparent 7px, #000 7.5px)`,
+    WebkitMaskComposite: "source-in",
+  } as const;
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8, rotate: -2 }}
-      animate={{ opacity: 1, y: 0, rotate: -0.6 }}
+      initial={{ opacity: 0, y: 8, rotate: -1.5 }}
+      animate={{ opacity: 1, y: 0, rotate: -0.5 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-      className="relative mx-auto max-w-[19rem]"
+      className="relative mx-auto max-w-[22rem]"
     >
-      <span
-        className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 h-5 w-24 rotate-[-3deg]
-                   bg-[oklch(95%_0.08_95_/_0.7)] ring-1 ring-[oklch(85%_0.12_95_/_0.45)]
-                   shadow-[0_2px_4px_-2px_rgba(0,0,0,0.3)]"
-        aria-hidden
-      />
       <div
-        className="relative rounded-sm p-5 bg-[#f5efe2]
-                   shadow-[0_18px_44px_-18px_rgba(0,0,0,0.55),0_2px_6px_-2px_rgba(0,0,0,0.4)]
-                   text-[#3a1f12] [&_strong]:text-[#3a1f12] [&_em]:text-[#3a1f12]
-                   [&_a]:text-[#7a3210] [&_a]:decoration-[#7a3210]/60"
+        className="relative rounded-2xl overflow-hidden
+                   bg-gradient-to-br from-[#2a1408] via-[#3a1d05] to-[#1a0d02]
+                   ring-1 ring-yellow/35
+                   shadow-[0_18px_44px_-18px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]"
+        style={ticketMask}
       >
-        {md.trim() ? (
-          <div className="text-[15px] leading-relaxed">
-            <WelcomeMarkdown source={md} />
+        {/* ADMIT ONE strip across the top — runs full width across
+            both halves of the stub. Tabular numerals on the right so
+            the ticket "serial" reads as real ephemera. */}
+        <div className="px-4 pt-2.5 pb-2 flex items-center justify-between border-b border-dashed border-yellow/25">
+          <span className="text-[9px] uppercase tracking-[0.32em] font-display text-yellow/85">
+            Admit one
+          </span>
+          <span className="text-[9px] uppercase tracking-[0.28em] font-display text-yellow/60 tabular-nums">
+            № 70
+          </span>
+        </div>
+
+        <div className="relative grid" style={{ gridTemplateColumns: `${TEAR_X} 1fr` }}>
+          {/* Stub half — left. Show identity sandwich: SHOW eyebrow,
+              event title, location + date underneath. */}
+          <div className="border-r border-dashed border-yellow/25 px-3 py-3.5 flex flex-col justify-center gap-1 text-center">
+            <span className="text-[9px] uppercase tracking-[0.22em] font-display text-yellow/55">
+              Show
+            </span>
+            <span className="font-display text-lg leading-tight text-yellow tracking-wide">
+              ESC 2026
+            </span>
+            <span className="text-[10px] text-yellow/55 leading-tight">
+              Vienna
+              <br />
+              16 May
+            </span>
           </div>
-        ) : (
-          <p className="text-sm text-[#6e4b35] italic">
-            {t(lang, "welcome_empty_chat")}
-          </p>
-        )}
+
+          {/* Body half — the host's message. Same WelcomeMarkdown the
+              home banner uses; colours inverted to read on the dark
+              ticket surface. */}
+          <div
+            className="px-4 py-3.5 text-[14px] leading-relaxed text-white/90
+                       [&_strong]:text-white [&_em]:text-white
+                       [&_a]:text-yellow [&_a]:decoration-yellow/60 [&_a]:underline-offset-2"
+          >
+            {md.trim() ? (
+              <WelcomeMarkdown source={md} />
+            ) : (
+              <p className="text-[13px] text-white/45 italic">
+                {t(lang, "welcome_empty_chat")}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </motion.div>
   );
