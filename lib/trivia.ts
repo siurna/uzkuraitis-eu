@@ -86,12 +86,6 @@ export const TRIVIA_DECK: readonly TriviaCard[] = [
     lt: { question: "Koks yra aukščiausias sausumos gyvūnas?", choices: ["Dramblys", "Žirafa", "Arklys", "Kupranugaris"] },
   },
   {
-    country: "ee",
-    correctIndex: 1,
-    en: { question: "What is frozen water called?", choices: ["Steam", "Ice", "Snow", "Rain"] },
-    lt: { question: "Kaip vadinamas užšalęs vanduo?", choices: ["Garas", "Ledas", "Sniegas", "Lietus"] },
-  },
-  {
     country: "fi",
     correctIndex: 3,
     en: { question: "What is the currency of the United States?", choices: ["Euro", "Pound", "Yen", "Dollar"] },
@@ -102,12 +96,6 @@ export const TRIVIA_DECK: readonly TriviaCard[] = [
     correctIndex: 1,
     en: { question: "How many eyes does a human have?", choices: ["1", "2", "3", "4"] },
     lt: { question: "Kiek akių turi žmogus?", choices: ["1", "2", "3", "4"] },
-  },
-  {
-    country: "ge",
-    correctIndex: 2,
-    en: { question: "How many months are in a year?", choices: ["10", "11", "12", "13"] },
-    lt: { question: "Kiek mėnesių yra metuose?", choices: ["10", "11", "12", "13"] },
   },
   {
     country: "de",
@@ -152,12 +140,6 @@ export const TRIVIA_DECK: readonly TriviaCard[] = [
     lt: { question: "Animacijoje „Tomas ir Džeris“ koks gyvūnas yra Džeris?", choices: ["Katė", "Šuo", "Pelė", "Triušis"] },
   },
   {
-    country: "me",
-    correctIndex: 0,
-    en: { question: "What number comes after 9?", choices: ["10", "11", "0", "19"] },
-    lt: { question: "Koks skaičius eina po 9?", choices: ["10", "11", "0", "19"] },
-  },
-  {
     country: "no",
     correctIndex: 3,
     en: { question: "Which country is pizza originally from?", choices: ["France", "Greece", "Spain", "Italy"] },
@@ -170,22 +152,10 @@ export const TRIVIA_DECK: readonly TriviaCard[] = [
     lt: { question: "Kiek ratų turi įprastas automobilis?", choices: ["2", "3", "4", "6"] },
   },
   {
-    country: "pt",
-    correctIndex: 1,
-    en: { question: "Which is the largest continent?", choices: ["Africa", "Asia", "Europe", "Australia"] },
-    lt: { question: "Kuris yra didžiausias žemynas?", choices: ["Afrika", "Azija", "Europa", "Australija"] },
-  },
-  {
     country: "ro",
     correctIndex: 3,
     en: { question: "Which is the smallest planet in our solar system?", choices: ["Earth", "Venus", "Mars", "Mercury"] },
     lt: { question: "Kuri yra mažiausia mūsų Saulės sistemos planeta?", choices: ["Žemė", "Venera", "Marsas", "Merkurijus"] },
-  },
-  {
-    country: "sm",
-    correctIndex: 2,
-    en: { question: "What color is snow?", choices: ["Black", "Grey", "White", "Blue"] },
-    lt: { question: "Kokios spalvos sniegas?", choices: ["Juodas", "Pilkas", "Baltas", "Mėlynas"] },
   },
 ];
 
