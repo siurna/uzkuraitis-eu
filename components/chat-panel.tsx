@@ -1169,6 +1169,19 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                   if (editing) setEditBody(v.slice(0, 2000));
                   else onComposerChange(v);
                 }}
+                // Belt-and-braces: iOS Safari only triggers an implicit
+                // form-submit on Enter when there's exactly one text
+                // input OR an explicit submit button. The hidden submit
+                // below handles that; this keydown handler covers
+                // bluetooth keyboards + the rare iOS Send key that
+                // dispatches keydown without an accompanying submit.
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (editing) submitEdit();
+                    else send();
+                  }
+                }}
                 onPaste={editing ? undefined : onPaste}
                 onFocus={() => {
                   setComposerFocused(true);
@@ -1183,6 +1196,11 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                 className="flex-1 min-w-0 bg-transparent px-1.5 py-2
                            text-base leading-snug text-white focus:outline-none"
               />
+              {/* Hidden submit button forces iOS Safari's implicit-submit
+                  rule (form needs a submit button OR exactly one text
+                  input — we have a hidden <input type="file"> sibling,
+                  which trips the count). */}
+              <button type="submit" hidden aria-hidden tabIndex={-1} />
               {!editing && (
                 <div className="flex items-center gap-1 shrink-0">
                   <input

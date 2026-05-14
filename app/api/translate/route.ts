@@ -134,7 +134,7 @@ export async function POST(req: Request) {
       session ? 240 : 60,
       60_000,
     );
-    if (!limited) {
+    if (limited.ok) {
       const client = getClient();
       if (client) {
         try {

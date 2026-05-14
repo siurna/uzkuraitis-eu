@@ -198,8 +198,12 @@ export function scoreBets(input: {
 }): BetBreakdown {
   const { bets, placements, facts, totalFinalists } = input;
   const placementByCountry = placements;
-  const countryByPlacement = placementToCountry(placements);
-  const last = countryByPlacement.get(totalFinalists);
+  // Wooden spoon comes from the explicit `wooden_spoon_country` fact —
+  // the placement editor only handles the top 10, and 26 finalists
+  // means "last place" lives well outside that range. Fall back to the
+  // top-10 lookup for legacy data that may still rely on it.
+  const last =
+    facts.wooden_spoon_country ?? placementToCountry(placements).get(totalFinalists);
 
   const big5Sorted = BIG_5
     .map((c) => ({ c, p: placementByCountry[c] ?? Infinity }))
@@ -213,7 +217,8 @@ export function scoreBets(input: {
     ? true
     : facts.winner_solo === "false" ? false : null;
 
-  // Wooden spoon: exact +5, off-by-1 +2, else 0.
+  // Wooden spoon: exact +5, off-by-1 +2 (only useful when last is in
+  // the placement table), else 0.
   let woodenSpoon = 0;
   if (bets.woodenSpoon && last) {
     const lastPlacement = totalFinalists;
@@ -340,10 +345,19 @@ export function scoreVoter(input: {
   total: number;
 } {
   const topTen = scoreTopTen(input.ballot, input.officialPlacements);
-  const home = scoreHomePrediction(
-    input.homePrediction,
-    input.officialPlacements[input.homeCountryCode] ?? null,
-  );
+  // Home placement: prefer the explicit `home_country_placement` fact
+  // (1..N), since the placement editor only captures the top 10 — the
+  // home country can easily finish 11+ and never appear there.
+  const homePlacementRaw = input.facts.home_country_placement;
+  const homePlacementFact =
+    homePlacementRaw != null && homePlacementRaw !== ""
+      ? Number(homePlacementRaw)
+      : null;
+  const officialHomePlacement =
+    homePlacementFact != null && Number.isFinite(homePlacementFact)
+      ? homePlacementFact
+      : input.officialPlacements[input.homeCountryCode] ?? null;
+  const home = scoreHomePrediction(input.homePrediction, officialHomePlacement);
   const bets = scoreBets({
     bets: input.bets,
     homeCountryCode: input.homeCountryCode,

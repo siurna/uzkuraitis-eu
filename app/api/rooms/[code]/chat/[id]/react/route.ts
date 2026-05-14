@@ -42,7 +42,7 @@ export async function POST(req: Request, { params }: RouteCtx) {
     60,
     60_000,
   );
-  if (limited) {
+  if (!limited.ok) {
     return NextResponse.json(
       { error: "Slow down — too many reactions." },
       { status: 429 },

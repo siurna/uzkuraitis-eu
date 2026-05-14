@@ -92,7 +92,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     30,
     60_000,
   );
-  if (limited) {
+  if (!limited.ok) {
     return NextResponse.json(
       { error: "Slow down — too many ballot updates." },
       { status: 429 },

@@ -73,14 +73,19 @@ function Banner({
         className="pointer-events-none absolute inset-0"
         style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.46) 0%, rgba(8,9,28,0.2) 38%, transparent 64%)" }}
       />
-      {/* The right ~34% is reserved for the artwork so copy never sits on
-          top of it (matches the wash that fades out at ~64%). */}
-      <div className={`relative flex flex-col justify-center gap-1 pl-5 pr-[34%] py-5 ${SIZE_MIN_H[size]}`}>
+      {/* The right ~38% is reserved for the artwork so copy never sits
+          on top of it (matches the wash that fades out at ~68%). The
+          extra ~4% over the previous pr-[34%] tightens the description
+          column so longer subs (the Bingo crossfade especially) wrap
+          to evenly-balanced lines instead of stretching into the
+          artwork's wash. `text-balance` on the sub gets us the even
+          last-line shape. */}
+      <div className={`relative flex flex-col justify-center gap-1 pl-5 pr-[38%] py-5 ${SIZE_MIN_H[size]}`}>
         <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/75 flex items-center gap-1.5">
           {eyebrow}
         </p>
         <p className="font-display text-xl text-white leading-tight drop-shadow-sm text-balance">{title}</p>
-        <p className="text-sm text-white/70 leading-snug">{sub}</p>
+        <p className="text-sm text-white/70 leading-snug text-balance">{sub}</p>
       </div>
     </>
   );
@@ -387,14 +392,14 @@ export function HomeBanners() {
           />
         </motion.div>
 
-        {/* You vs the room — deep-space radial. Copy stacks on top, the
-            flag + two-bar chart sit on the bottom row like the chat
-            broadcast cards (vs. on the right as a side artwork). */}
+        {/* You vs the room — deep-space radial. Copy on the left,
+            heart-flag on the right. The bars are gone — the
+            "ranks #X" line in the sub already carries the comparison.
+        */}
         <motion.div key="vs-banner" {...BANNER_MOTION}>
           <VsRoomCard
             lang={lang}
             country={vsCountry}
-            rank={vsRank}
             sub={vsSub}
             // No-op when lines are shut — there's nothing to do over on the Vote tab.
             onClick={votingEnabled ? () => setTab("vote") : undefined}
@@ -643,74 +648,47 @@ function VoteHeroCard({
   );
 }
 
-// You-vs-the-room widget. Copy stacks at the top; the bottom row holds
-// a large flag + the two-bar "you vs the room" chart, echoing the
-// composition of the chat broadcast cards (visualization beneath
-// content, not as a side-mounted artwork). When the player hasn't
-// voted yet (`country` is null) we render an empty/dim state with a
-// muted chart emoji where the flag would sit.
+// You-vs-the-room widget. Copy on the left, the heart-flag on the
+// right. The earlier iteration had a two-bar "you vs the room" chart
+// next to the flag — it read as filler chart-junk next to the copy
+// that already said "the room ranks it #X". The number lives in the
+// sub now, the flag carries the country identity.
 function VsRoomCard({
   lang,
   country,
-  rank,
   sub,
   onClick,
 }: {
   lang: Language;
   country: ReturnType<typeof getCountry> | null;
-  rank: number | null;
   sub: ReactNode;
   onClick?: () => void;
 }) {
   const body = (
     <div
-      className="relative overflow-hidden rounded-3xl px-5 pt-5 pb-5"
+      className="relative overflow-hidden rounded-3xl px-5 py-5"
       style={{
         background:
           "radial-gradient(150% 130% at 88% -8%, #2a17e6 0%, #0a0d52 28%, #060a3e 55%, #3e0f54 88%)",
       }}
     >
-      {/* Top: eyebrow + title + sub. No right-padding reserve — the
-          visualization now lives below, not beside. */}
-      <div className="flex flex-col gap-1">
-        <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/75">
-          {t(lang, "home_vs_room")}
-        </p>
-        <p className="font-display text-xl text-white leading-tight drop-shadow-sm text-balance">
-          {country ? countryName(country.code, lang) : t(lang, "home_vs_room_empty_title")}
-        </p>
-        <p className="text-sm text-white/70 leading-snug">{sub}</p>
-      </div>
-
-      {/* Bottom row: flag + bars. items-end keeps the bar heights
-          anchored to the same baseline as the flag's bottom edge. */}
-      <div className="mt-4 flex items-end justify-between gap-4">
+      <div className="flex items-center gap-4">
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
+          <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/75">
+            {t(lang, "home_vs_room")}
+          </p>
+          <p className="font-display text-xl text-white leading-tight drop-shadow-sm text-balance">
+            {country ? countryName(country.code, lang) : t(lang, "home_vs_room_empty_title")}
+          </p>
+          <p className="text-sm text-white/70 leading-snug text-balance">{sub}</p>
+        </div>
         {country ? (
-          <span className="shrink-0 -rotate-6 drop-shadow-lg scale-150 origin-bottom-left ml-3 mb-1">
+          <span className="shrink-0 -rotate-6 drop-shadow-lg scale-125 origin-center mr-1">
             <HeartFlag code={country.code} size="lg" />
           </span>
         ) : (
-          <span className="text-5xl opacity-30 -rotate-6 select-none" aria-hidden>
+          <span className="text-5xl opacity-30 -rotate-6 select-none shrink-0 mr-2" aria-hidden>
             📊
-          </span>
-        )}
-        {country && (
-          <span className="flex items-end gap-2 h-20 shrink-0" aria-hidden>
-            <span className="flex w-6 flex-col items-center gap-1">
-              <span className="w-full rounded-t bg-white" style={{ height: "5rem" }} />
-              <span className="font-display text-[9px] leading-none text-white/80">
-                {t(lang, "home_vs_room_you")}
-              </span>
-            </span>
-            <span className="flex w-6 flex-col items-center gap-1">
-              <span
-                className="w-full rounded-t bg-white/35"
-                style={{ height: `${Math.max(14, 100 - ((rank ?? 10) - 1) * 9)}%` }}
-              />
-              <span className="font-display text-[9px] leading-none text-white/80">
-                {t(lang, "home_vs_room_them")}
-              </span>
-            </span>
           </span>
         )}
       </div>
