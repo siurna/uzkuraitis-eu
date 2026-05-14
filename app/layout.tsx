@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
-import { Toaster } from "sonner";
+import { AppToaster } from "@/components/app-toaster";
 import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = {
@@ -48,18 +48,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           scroll whenever the URL bar is showing. dvh follows it. */}
       <body className="min-h-dvh antialiased">
         <PageTransition>{children}</PageTransition>
-        <Toaster
-          theme="dark"
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              background: "oklch(20% 0.07 264 / 0.9)",
-              border: "1px solid oklch(50% 0.2 336 / 0.4)",
-              color: "white",
-              fontFamily: "var(--font-sans)",
-            },
-          }}
-        />
+        <AppToaster />
       </body>
     </html>
   );
