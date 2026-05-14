@@ -142,7 +142,35 @@ const FLUENT_EMOJI: Record<string, FluentEntry> = {
   // Notification onboarding step.
   "🔔":  { folder: "Bell", slug: "bell" },
   "🔕":  { folder: "Bell with slash", slug: "bell_with_slash" },
+
+  // Bingo trope leads that the manifest was missing.
+  "🪑":  { folder: "Chair", slug: "chair" },
+  "0️⃣":  { folder: "Keycap digit zero", slug: "keycap_digit_zero" },
 };
+
+// Country-flag emojis are encoded as a pair of regional-indicator
+// code points (🇱🇹 = U+1F1F1 + U+1F1F9 → "LT"). Microsoft Fluent
+// deliberately doesn't ship country flags, so we extract the ISO
+// code here and let the `<FluentEmoji>` renderer hand off to the
+// project's own `<Flag>` component for these. Returns null when the
+// glyph isn't a flag pair.
+const REGIONAL_INDICATOR_BASE = 0x1f1e6; // 🇦
+const REGIONAL_INDICATOR_LAST = 0x1f1ff; // 🇿
+export function flagIsoFromGlyph(glyph: string): string | null {
+  const cps = Array.from(glyph).map((c) => c.codePointAt(0) ?? 0);
+  if (cps.length !== 2) return null;
+  if (
+    cps[0] < REGIONAL_INDICATOR_BASE ||
+    cps[0] > REGIONAL_INDICATOR_LAST ||
+    cps[1] < REGIONAL_INDICATOR_BASE ||
+    cps[1] > REGIONAL_INDICATOR_LAST
+  ) {
+    return null;
+  }
+  const a = String.fromCharCode(0x41 + (cps[0] - REGIONAL_INDICATOR_BASE));
+  const b = String.fromCharCode(0x41 + (cps[1] - REGIONAL_INDICATOR_BASE));
+  return (a + b).toLowerCase();
+}
 
 export function fluentEmojiUrl(glyph: string): string | null {
   const entry = FLUENT_EMOJI[glyph];

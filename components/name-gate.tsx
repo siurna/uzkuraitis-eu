@@ -104,10 +104,13 @@ export function NameGate({
     setStep(2);
   };
 
-  // After step 2 we commit the identity, then either drop straight
-  // into the room OR show step 3 (notifications) when push has any
-  // chance of being useful (supported, not already on, not blocked).
-  // Once the user picks Enable or Skip we close the sheet entirely.
+  // After step 2 we commit the identity AND optimistically jump to
+  // step 3 in the same render so the drawer doesn't briefly close
+  // (the moment between "name+avatar set → open computes false" and
+  // "step=3 → open computes true" was animating the sheet shut and
+  // straight back open). The async push-state check runs after; if
+  // push is already on or unreachable, pushOnboardComplete flips on
+  // and the sheet closes cleanly without ever rendering step 3.
   const finish = async () => {
     const cleanName = draftName.trim().slice(0, 40);
     if (!cleanName || !draftAvatar) return;
@@ -115,12 +118,12 @@ export function NameGate({
     localStorage.setItem(AVATAR_KEY, draftAvatar);
     writeLang(lang);
     window.dispatchEvent(new Event("uzk:avatar-change"));
+    // Batched: name + avatar + step all flip in one render, so `open`
+    // stays true through the transition.
     setName(cleanName);
     setAvatar(draftAvatar);
+    setStep(3);
 
-    // Decide whether to invite to enable push. iOS-not-PWA still gets
-    // the step (we'll show install instructions); fully unsupported
-    // browsers + already-on don't.
     if (!isSupported()) {
       setPushOnboardComplete(true);
       return;
@@ -130,12 +133,10 @@ export function NameGate({
       const state = await getState(roomCode, session);
       if (state.kind === "on" || state.kind === "blocked") {
         setPushOnboardComplete(true);
-        return;
       }
     } catch {
-      /* surface the gate anyway; user can skip */
+      /* leave step 3 visible; user can skip from there */
     }
-    setStep(3);
   };
 
   const enableNotifications = async () => {
