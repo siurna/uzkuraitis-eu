@@ -30,11 +30,11 @@ const SECRET = "uzk_mig_2026_DjeXyEcVbCwHc73KqQ8L4";
 const SOURCE =
   "postgresql://neondb_owner:npg_bPXRYzuQsU97@ep-noisy-cell-abz8i7cd-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
 
-// Direct (non-pooler) Supabase URL for DDL + bulk writes. The pooler
-// would force `prepare: false` semantics that don't allow some of the
-// CREATE statements in our migrations.
-const TARGET =
-  "postgresql://postgres:k80OX1OQ819tCviC@db.mbgkujipbdfsdvjobtrf.supabase.co:5432/postgres";
+// Target is whatever DATABASE_URL is set to in the Vercel env — the
+// Supabase pooler URL. The direct (non-pooler) host is IPv6-only and
+// unreachable from Vercel hobby outbound, so we have to go through the
+// pgbouncer transaction pooler. `prepare: false` below is required.
+const TARGET = process.env.DATABASE_URL ?? "";
 
 // Insert order — children after parents, so FKs don't blow up.
 const TABLES: { name: string; pk?: readonly string[] }[] = [
