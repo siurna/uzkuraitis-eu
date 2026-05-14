@@ -174,9 +174,6 @@ export function BetsComparison({
 
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="text-[11px] uppercase tracking-[0.2em] text-white/45 font-display px-1">
-        {t(lang, "results_bets_breakdown_h")}
-      </h3>
       {/* Shared You said / It was header at the table top — the
           per-row labels are gone so the grid columns read as a real
           two-column table instead of a stack of mini-cards. */}

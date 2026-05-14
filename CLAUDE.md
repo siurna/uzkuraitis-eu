@@ -71,6 +71,7 @@ schema change is needed:
 - **Does this need DB durability or is broadcast enough?** Chat/votes/bets = durable. Reactions/floating emoji = ephemeral.
 - **Mobile first.** Test on a 390×844 viewport before desktop. Vote CTA + bottom-sheet + emoji bar all stack at the bottom; don't break that stacking.
 - **i18n.** Every user-facing string goes through `t()`. If you're typing English into JSX, you're doing it wrong.
+- **Bingo tropes (`lib/bingo-tropes.ts`) ↔ Fluent emoji manifest.** When you add or change a trope emoji, also map it in `lib/fluent-emoji.ts` so the 3D PNG renders consistently across the bingo card, list view, and home banner. `FluentEmoji` falls back to the native glyph for unmapped entries, but a mid-show inconsistency (some cells in 3D, others as the system emoji) reads as a regression.
 
 ## Things to avoid
 

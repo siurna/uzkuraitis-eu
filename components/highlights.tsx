@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { Flame } from "lucide-react";
 import { useEventListener } from "@/lib/realtime";
 import { useRoomLive } from "@/components/room-shell";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { getAvatar } from "@/lib/avatars";
 import { getCountry, countryName } from "@/lib/countries";
 import { optimizedSrc } from "@/lib/img";
@@ -144,7 +145,8 @@ export function Highlights() {
               )}
             </div>
             <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/20 ring-1 ring-white/30 px-2.5 h-7 text-sm text-white tabular-nums font-display">
-              ❤️ {top.reactionCount}
+              <FluentEmoji glyph="❤️" size={14} />
+              {top.reactionCount}
             </span>
           </div>
           {/* The quote itself */}
@@ -219,7 +221,8 @@ export function Highlights() {
                     )}
                   </div>
                   <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange/15 ring-1 ring-orange/35 px-2 h-6 text-xs text-orange tabular-nums font-display">
-                    ❤️ {h.reactionCount}
+                    <FluentEmoji glyph="❤️" size={12} />
+                    {h.reactionCount}
                   </span>
                 </div>
 
@@ -234,7 +237,10 @@ export function Highlights() {
                     className="rounded-xl ring-1 ring-white/10 max-h-44 w-auto self-start"
                   />
                 ) : h.kind === "bingo_strike" ? (
-                  <p className="text-sm text-white/85">🎯 Bingo!</p>
+                  <p className="text-sm text-white/85 inline-flex items-center gap-1.5">
+                    <FluentEmoji glyph="🎯" size={16} />
+                    Bingo!
+                  </p>
                 ) : text ? (
                   <p className="text-[15px] text-white leading-snug text-balance pl-12">
                     {text}

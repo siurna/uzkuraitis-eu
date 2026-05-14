@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Plus, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useRoomLive } from "@/components/room-shell";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { useIdentity } from "@/lib/use-identity";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
@@ -292,7 +293,9 @@ export function BingoCard() {
                     >
                       <Check className="h-3.5 w-3.5" strokeWidth={3} />
                     </span>
-                    <span className="text-lg shrink-0 leading-none">{tropeEmoji(tropeIdx)}</span>
+                    <span className="shrink-0">
+                      <FluentEmoji glyph={tropeEmoji(tropeIdx)} size={22} />
+                    </span>
                     <span
                       className={`text-sm leading-snug ${
                         isStruck ? "text-white/45 line-through decoration-flamingo/60" : "text-white/85"
@@ -446,7 +449,9 @@ function Cell({
           className="h-[68%] w-[68%] object-contain heartbeat-loop"
         />
       ) : (
-        <span className={isStruck ? "opacity-40 grayscale" : ""}>{shown}</span>
+        <span className={isStruck ? "opacity-40 grayscale" : ""}>
+          <FluentEmoji glyph={shown} size={44} />
+        </span>
       )}
 
       {/* The single rainbow X over a struck square (centre square exempt). */}

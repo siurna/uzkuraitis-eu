@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { countries } from "@/lib/countries";
 
 const NAME_KEY = "__name__";
@@ -75,7 +76,7 @@ export function AdminCommentator({ initial }: { initial: Record<string, string> 
               // eslint-disable-next-line @next/next/no-img-element
               <img src={lines[PHOTO_KEY]} alt="" className="h-full w-full object-cover" />
             ) : (
-              <span className="text-2xl">🎙️</span>
+              <FluentEmoji glyph="🎙️" size={28} />
             )}
             {lines[PHOTO_KEY] && (
               <button

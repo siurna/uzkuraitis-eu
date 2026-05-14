@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Trophy } from "lucide-react";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { useLeaderboard } from "@/components/leaderboard-provider";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { ensureSessionId } from "@/lib/use-identity";
 import { totalBetPoints } from "@/lib/scoring";
 import { t } from "@/lib/i18n";
@@ -63,8 +63,7 @@ export function MyResults() {
           {/* Eyebrow + name */}
           <header className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.3em] text-white/80 font-display leading-tight flex items-center gap-1.5">
-                <Trophy className="h-3 w-3" fill="currentColor" />
+              <p className="text-[10px] uppercase tracking-[0.3em] text-white/80 font-display leading-tight">
                 {t(lang, me ? "home_my_results" : "home_results_in")}
               </p>
               {me ? (
@@ -79,7 +78,11 @@ export function MyResults() {
             </div>
             {me && (
               <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/18 ring-1 ring-white/30 px-3 h-7 text-sm text-white font-display tabular-nums">
-                <span>{medal ?? `#${rank}`}</span>
+                {medal ? (
+                  <FluentEmoji glyph={medal} size={16} ariaLabel={`rank ${rank}`} />
+                ) : (
+                  <span>#{rank}</span>
+                )}
                 <span className="text-white/70 text-xs">
                   / {rows.length}
                 </span>

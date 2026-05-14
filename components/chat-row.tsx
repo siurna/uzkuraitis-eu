@@ -586,7 +586,7 @@ export function ChatRow({
                 {podium.map((p, i) => (
                   <li key={i} className="relative">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-base leading-none shrink-0">{medals[i]}</span>
+                      <FluentEmoji glyph={medals[i]} size={18} className="shrink-0" />
                       {/* Bigger name as the user asked: text-base
                           (was text-sm) + drop-shadow for legibility on
                           the gradient bar that sits behind it. */}
@@ -806,7 +806,9 @@ export function ChatRow({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={optimizedSrc(m.meta.commentatorPhoto, 96)} alt="" className="h-full w-full object-cover" />
               ) : isCommentator ? (
-                <div className="h-full w-full grid place-items-center text-sm leading-none">🎙️</div>
+                <div className="h-full w-full grid place-items-center">
+                  <FluentEmoji glyph="🎙️" size={20} />
+                </div>
               ) : avatar?.photo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img

@@ -11,6 +11,7 @@ import {
 import { MessageCircle, Heart, Flame, Sparkles, Crown, Lightbulb, Lock } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Flag, HeartFlag } from "@/components/flag";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { useRoomLive } from "@/components/room-shell";
@@ -269,7 +270,8 @@ function ProfileSheet({
                   {t(lang, "profile_top_moment")}
                 </p>
                 <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange/15 ring-1 ring-orange/35 px-2 h-6 text-xs text-orange tabular-nums font-display">
-                  ❤️ {view.topHighlight.reactionCount}
+                  <FluentEmoji glyph="❤️" size={12} />
+                  {view.topHighlight.reactionCount}
                 </span>
               </div>
               {/* Body / GIF / image preview. The original treatment
@@ -286,7 +288,10 @@ function ProfileSheet({
               ) : view.topHighlight.body ? (
                 <p className="text-sm text-white/90 leading-snug">{view.topHighlight.body}</p>
               ) : view.topHighlight.kind === "bingo_strike" ? (
-                <p className="text-sm text-white/85">🎯 Bingo!</p>
+                <p className="text-sm text-white/85 inline-flex items-center gap-1.5">
+                  <FluentEmoji glyph="🎯" size={16} />
+                  Bingo!
+                </p>
               ) : null}
             </div>
           )}

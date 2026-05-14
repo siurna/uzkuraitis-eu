@@ -49,9 +49,6 @@ function BallotComparison({
   }
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="text-[11px] uppercase tracking-[0.2em] text-white/45 font-display px-1">
-        {t(lang, "results_pick_vs_actual_h")}
-      </h3>
       {/* Single column header strip — "You said / It was" lives once
           at the top of the table instead of repeating in every row.
           Aligned to the same grid the rows use so the columns sit

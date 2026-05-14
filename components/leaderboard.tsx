@@ -7,6 +7,7 @@ import { getCountry, countryName } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 import { ScoreBreakdown } from "@/components/score-breakdown";
 import { useLeaderboard } from "@/components/leaderboard-provider";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { ensureSessionId } from "@/lib/use-identity";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
@@ -111,7 +112,11 @@ export function Leaderboard({ code }: { code: string }) {
                         <> + {row.home} {home?.name ?? "home"}</>
                       )}
                       {row.betsTotal > 0 && <> + {row.betsTotal} {t(lang, "bonuses_label")}</>}
-                      {row.highlights > 0 && <> + {row.highlights} ✨</>}
+                      {row.highlights > 0 && (
+                        <> + {row.highlights}{" "}
+                          <FluentEmoji glyph="✨" size={11} className="align-[-0.05em]" />
+                        </>
+                      )}
                     </p>
                   </div>
                   <div className="text-right">

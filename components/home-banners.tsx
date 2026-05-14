@@ -10,6 +10,7 @@ import { participantPhoto } from "@/lib/participants";
 import { optimizedSrc } from "@/lib/img";
 import { buildBingoCard, FREE_SQUARE, tropeEmoji, tropeText } from "@/lib/bingo-tropes";
 import { HeartFlag } from "@/components/flag";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { MyResults } from "@/components/my-results";
 import { WelcomeBanner } from "@/components/welcome-banner";
 import { t, type Language } from "@/lib/i18n";
@@ -385,7 +386,9 @@ export function HomeBanners() {
                       key={i}
                       className="relative h-9 w-9 grid place-items-center text-lg leading-none rounded-lg bg-white/12 ring-1 ring-white/15"
                     >
-                      <span className={x ? "opacity-30 grayscale" : ""}>{tropeEmoji(idx)}</span>
+                      <span className={x ? "opacity-30 grayscale" : ""}>
+                        <FluentEmoji glyph={tropeEmoji(idx)} size={22} />
+                      </span>
                       {x && <span className="absolute inset-0 grid place-items-center text-white text-xl font-bold leading-none">✕</span>}
                     </span>
                   );
@@ -437,9 +440,9 @@ export function HomeBanners() {
                     {[...BET_CHIPS, ...BET_CHIPS].map((c, i) => (
                       <span
                         key={`top-${i}`}
-                        className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-lg shadow-md"
+                        className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"
                       >
-                        {c}
+                        <FluentEmoji glyph={c} size={22} />
                       </span>
                     ))}
                   </span>
@@ -450,9 +453,9 @@ export function HomeBanners() {
                     {[...BET_CHIPS, ...BET_CHIPS].map((c, i) => (
                       <span
                         key={`bot-${i}`}
-                        className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 text-lg shadow-md"
+                        className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"
                       >
-                        {c}
+                        <FluentEmoji glyph={c} size={22} />
                       </span>
                     ))}
                   </span>
