@@ -93,9 +93,9 @@ export function Highlights() {
             drift up + fade independently; sits below the gloss + content
             so they only read as a warm glow, never as foreground. */}
         <span className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-          <span className="absolute inset-x-0 bottom-0 h-2/3 fire-blob fire-blob-a" />
-          <span className="absolute inset-x-0 bottom-0 h-2/3 fire-blob fire-blob-b" />
-          <span className="absolute inset-x-0 bottom-0 h-2/3 fire-blob fire-blob-c" />
+          <span className="absolute inset-x-0 bottom-0 h-full fire-blob fire-blob-a" />
+          <span className="absolute inset-x-0 bottom-0 h-full fire-blob fire-blob-b" />
+          <span className="absolute inset-x-0 bottom-0 h-full fire-blob fire-blob-c" />
         </span>
         {/* Soft top-light strip (the skeuo gloss) */}
         <span

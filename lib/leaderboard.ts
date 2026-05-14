@@ -41,6 +41,10 @@ export type LeaderboardRow = {
   topTen: number;
   home: number;
   bets: BetBreakdown;
+  /** Voter's actual bet picks — what they put down, so the UI can
+   *  render a "you said / it was" comparison against `facts` /
+   *  `placements`. */
+  betPicks: Bets;
   betsTotal: number;
   /** Chat-highlights social bonus (already capped). */
   highlights: number;
@@ -54,6 +58,11 @@ export type RoomLeaderboard = {
   tallyEnabled: boolean;
   homeCountryCode: string;
   homeCountryOfficialPlacement: number | null;
+  /** Official placements (room override wins if set), so callers can
+   *  render bet-pick comparisons without a separate request. */
+  placements: OfficialPlacements;
+  /** Official facts (room override wins if set). */
+  facts: OfficialFacts;
   leaderboard: LeaderboardRow[];
 };
 
@@ -89,6 +98,8 @@ export async function computeRoomLeaderboard(room: {
     tallyEnabled: room.tallyEnabled,
     homeCountryCode: room.homeCountryCode,
     homeCountryOfficialPlacement: placements[room.homeCountryCode] ?? null,
+    placements,
+    facts,
   };
   if (!hasResults) {
     return { ...base, hasResults: false, leaderboard: [] };
@@ -194,6 +205,7 @@ export async function computeRoomLeaderboard(room: {
         topTen: score.topTen,
         home: score.home,
         bets: score.bets,
+        betPicks: bets,
         betsTotal: score.betsTotal,
         highlights,
         trivia,

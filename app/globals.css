@@ -246,14 +246,6 @@
   display: block;
 }
 
-/* contentEditable composer placeholder — editables have no :placeholder.
-   The composer toggles a `data-empty` attribute when it has no text. */
-[contenteditable][data-empty]::before {
-  content: attr(data-placeholder);
-  color: oklch(100% 0 0 / 0.35);
-  pointer-events: none;
-}
-
 /* Glass surface, intentionally cool + quiet. Hairline white-low border,
    restrained drop shadow, no inset bevels, no flamingo glow.
    No `position` here — that fights Tailwind's positioning utilities
@@ -267,6 +259,9 @@
       oklch(18% 0.05 264 / 0.46) 100%
     );
   border: 1px solid oklch(95% 0.005 250 / 0.10);
+  /* iOS Safari + WebKit need the prefixed property; without it the
+     menu reads as a flat tinted panel with no blur. */
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
   backdrop-filter: blur(20px) saturate(120%);
   box-shadow: var(--shadow-soft);
 }
@@ -433,26 +428,28 @@
   animation: uzk-skeleton 1.8s ease-in-out infinite;
 }
 
-/* Subtle "fire" glow underlay for the Vakaro akcentai widget. Three
+/* "Fire" glow underlay for the Vakaro akcentai widget. Three
    radial blobs drift upward + fade, each at a different speed +
-   horizontal anchor. Stays under all foreground content (place inside
-   a relatively-positioned card with `overflow-hidden`). */
+   horizontal anchor. Bigger + brighter than the first pass so the
+   card actually feels "on fire" instead of "warm". Stays under all
+   foreground content (place inside a relatively-positioned card
+   with `overflow-hidden`). */
 @keyframes uzk-fire-rise {
-  0%   { transform: translate3d(0, 35%, 0) scale(0.7);  opacity: 0;    }
-  20%  { opacity: 0.55; }
-  100% { transform: translate3d(0, -40%, 0) scale(1.3); opacity: 0;    }
+  0%   { transform: translate3d(0, 45%, 0) scale(0.8);  opacity: 0;    }
+  20%  { opacity: 0.75; }
+  100% { transform: translate3d(0, -55%, 0) scale(1.6); opacity: 0;    }
 }
 .fire-blob {
   background: radial-gradient(50% 60% at 50% 80%,
-                              oklch(85% 0.22 70  / 0.55) 0%,
-                              oklch(70% 0.27 30  / 0.40) 35%,
-                              transparent 70%);
-  filter: blur(8px);
+                              oklch(88% 0.24 70  / 0.78) 0%,
+                              oklch(72% 0.29 30  / 0.55) 38%,
+                              transparent 72%);
+  filter: blur(10px);
   animation: uzk-fire-rise 4.6s ease-in-out infinite;
 }
-.fire-blob-a { left: -18%; right: auto; width: 55%; animation-duration: 4.2s; animation-delay: 0s;   }
-.fire-blob-b { left: 28%;  right: auto; width: 50%; animation-duration: 5.4s; animation-delay: 1.6s; }
-.fire-blob-c { left: 55%;  right: auto; width: 60%; animation-duration: 6.1s; animation-delay: 0.8s; }
+.fire-blob-a { left: -22%; right: auto; width: 75%; animation-duration: 4.0s; animation-delay: 0s;   }
+.fire-blob-b { left: 22%;  right: auto; width: 70%; animation-duration: 5.2s; animation-delay: 1.4s; }
+.fire-blob-c { left: 50%;  right: auto; width: 80%; animation-duration: 5.9s; animation-delay: 0.7s; }
 
 input, button, textarea, select {
   -webkit-appearance: none;

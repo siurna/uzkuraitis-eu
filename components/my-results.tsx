@@ -6,7 +6,15 @@ import { Trophy } from "lucide-react";
 import { useEventListener } from "@/lib/liveblocks";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { ensureSessionId } from "@/lib/use-identity";
-import { totalBetPoints, type BetBreakdown } from "@/lib/scoring";
+import {
+  totalBetPoints,
+  type BetBreakdown,
+  type Bets,
+  type OfficialFacts,
+  type OfficialPlacements,
+} from "@/lib/scoring";
+import { BetsComparison } from "@/components/bets-comparison";
+import { countries } from "@/lib/countries";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 
@@ -16,9 +24,18 @@ type Row = {
   topTen: number;
   home: number;
   bets: BetBreakdown;
+  betPicks: Bets;
   highlights: number;
   trivia: number;
   total: number;
+};
+
+type Payload = {
+  hasResults: boolean;
+  homeCountryCode: string;
+  placements: OfficialPlacements;
+  facts: OfficialFacts;
+  leaderboard: Row[];
 };
 
 // Home banner: once results are tallied, shows YOUR card — a big rank
@@ -26,17 +43,17 @@ type Row = {
 // (TOP10 / Home / Bets / Highlights). Tap = jump to the Results tab
 // for the full breakdown + leaderboard. Hidden if results aren't in yet.
 export function MyResults() {
-  const { code, tallyEnabled } = useRoomLive();
+  const { code, tallyEnabled, homeCountryCode } = useRoomLive();
   const { setTab } = useRoomTab();
   const lang = useLang();
-  const [rows, setRows] = useState<Row[] | null>(null);
+  const [payload, setPayload] = useState<Payload | null>(null);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch(`/api/rooms/${code}/leaderboard`, { cache: "no-store" });
       if (!res.ok) return;
-      const data = (await res.json()) as { hasResults: boolean; leaderboard: Row[] };
-      if (data.hasResults) setRows(data.leaderboard);
+      const data = (await res.json()) as Payload;
+      if (data.hasResults) setPayload(data);
     } catch {
       /* network blip */
     }
@@ -50,7 +67,8 @@ export function MyResults() {
     if (event.type === "leaderboard:updated") load();
   });
 
-  if (!tallyEnabled || !rows || rows.length === 0) return null;
+  if (!tallyEnabled || !payload || payload.leaderboard.length === 0) return null;
+  const rows = payload.leaderboard;
   const session = ensureSessionId();
   const idx = rows.findIndex((r) => r.sessionId === session);
   const me = idx >= 0 ? rows[idx] : null;
@@ -59,7 +77,7 @@ export function MyResults() {
   const betsTotal = me ? totalBetPoints(me.bets) : 0;
 
   return (
-    <div id="my-results" className="container mx-auto max-w-3xl px-4 scroll-mt-16">
+    <div id="my-results" className="scroll-mt-16">
       <motion.button
         type="button"
         onClick={() => setTab("vote")}
@@ -140,6 +158,19 @@ export function MyResults() {
                   <Chip label={t(lang, "trivia_eyebrow")} value={`+${me.trivia}`} />
                 )}
               </ul>
+
+              {/* Per-bet "you said / it was" rows so the bets total
+                  isn't a black box. Self-hides when the voter didn't
+                  place any bets. */}
+              <BetsComparison
+                picks={me.betPicks}
+                earned={me.bets}
+                facts={payload.facts}
+                placements={payload.placements}
+                homeCountryCode={homeCountryCode}
+                lang={lang}
+                totalFinalists={countries.length}
+              />
             </>
           ) : null}
         </div>

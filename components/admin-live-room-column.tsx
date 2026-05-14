@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Trophy } from "lucide-react";
 import { AdminBroadcasts } from "@/components/admin-broadcasts";
 import { AdminRoomVotingToggleCard } from "@/components/admin-room-voting-toggle-card";
 import { AdminRoomTallyToggle } from "@/components/admin-room-tally-toggle";
@@ -69,8 +70,14 @@ export function AdminLiveRoomColumn({ rooms }: { rooms: RoomLite[] }) {
       <AdminBroadcasts rooms={rooms} room={room} onRoomChange={choose} hideRoomPicker />
 
       {selected && (
-        <section className="flex flex-col gap-4">
+        <section className="flex flex-col gap-4 pt-4">
           <header className="flex items-start gap-3">
+            <div
+              className="h-10 w-10 rounded-2xl bg-flamingo/15 ring-1 ring-flamingo/30
+                         grid place-items-center text-flamingo shrink-0"
+            >
+              <Trophy className="h-5 w-5" fill="currentColor" />
+            </div>
             <div>
               <h2 className="font-display text-xl leading-tight">Voting &amp; Results</h2>
               <p className="text-sm text-white/45 leading-snug mt-0.5">

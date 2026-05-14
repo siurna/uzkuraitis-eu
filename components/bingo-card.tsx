@@ -171,10 +171,11 @@ export function BingoCard() {
   const struckCount = card.filter((tx) => tx === FREE_SQUARE || struckSet.has(tx)).length;
 
   return (
-    // pt-4 = just enough breathing room below the fixed header for
-    // the ring overflow on the top tiles. pt-12 was overcorrecting
-    // from the original cutoff complaint.
-    <main className="container mx-auto max-w-3xl px-4 pt-4 pb-10 flex-1 flex flex-col gap-3">
+    // No pt on <main> — the pt now lives inside the ticket wrapper so
+    // the same visual breathing room above the grid is also "inside"
+    // the wrapper, where the cells' ring overflow has room to render
+    // without getting shaved by the fixed-header overlap on entry.
+    <main className="container mx-auto max-w-3xl px-4 pb-10 flex-1 flex flex-col gap-3">
       {/* Brand-rainbow stroke for the strike X, defined once. */}
       <svg width={0} height={0} className="absolute -z-10" aria-hidden>
         <defs>
@@ -188,8 +189,10 @@ export function BingoCard() {
 
       {/* The card. The wrapper clips the ticket slide-in/out sideways;
           the small -mx-2 px-2 gives the tiles' rings room so the edge
-          tiles aren't shaved by the clip. */}
-      <div className="relative overflow-x-clip -mx-2 px-2">
+          tiles aren't shaved by the clip. pt-4 inside the wrapper
+          (not on <main>) puts the breathing room *under* the clip
+          boundary so the top tiles' rings never get cut. */}
+      <div className="relative overflow-x-clip -mx-2 px-2 pt-4">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentTicket.id}

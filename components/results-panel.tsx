@@ -8,8 +8,14 @@ import { ensureSessionId } from "@/lib/use-identity";
 import { ScoreBreakdown } from "@/components/score-breakdown";
 import { Leaderboard } from "@/components/leaderboard";
 import { HeartFlag } from "@/components/flag";
-import { countryName, getCountry } from "@/lib/countries";
-import type { BetBreakdown } from "@/lib/scoring";
+import { BetsComparison } from "@/components/bets-comparison";
+import { countries, countryName, getCountry } from "@/lib/countries";
+import type {
+  BetBreakdown,
+  Bets,
+  OfficialFacts,
+  OfficialPlacements,
+} from "@/lib/scoring";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 
@@ -19,9 +25,18 @@ type Row = {
   topTen: number;
   home: number;
   bets: BetBreakdown;
+  betPicks: Bets;
   highlights: number;
   trivia: number;
   total: number;
+};
+
+type Payload = {
+  hasResults: boolean;
+  homeCountryCode: string;
+  placements: OfficialPlacements;
+  facts: OfficialFacts;
+  leaderboard: Row[];
 };
 
 type BallotPick = {
@@ -147,7 +162,7 @@ function BallotComparisonRow({
 export function ResultsPanel() {
   const { code, homeCountryCode } = useRoomLive();
   const lang = useLang();
-  const [rows, setRows] = useState<Row[] | null>(null);
+  const [payload, setPayload] = useState<Payload | null>(null);
   const [ballot, setBallot] = useState<BallotPick[] | null>(null);
   const [tab, setTab] = useState<"me" | "board">("me");
 
@@ -155,8 +170,8 @@ export function ResultsPanel() {
     try {
       const res = await fetch(`/api/rooms/${code}/leaderboard`, { cache: "no-store" });
       if (!res.ok) return;
-      const data = (await res.json()) as { hasResults: boolean; leaderboard: Row[] };
-      if (data.hasResults) setRows(data.leaderboard);
+      const data = (await res.json()) as Payload;
+      if (data.hasResults) setPayload(data);
     } catch {
       /* network blip */
     }
@@ -205,7 +220,7 @@ export function ResultsPanel() {
     }
   });
 
-  if (!rows || rows.length === 0) {
+  if (!payload || payload.leaderboard.length === 0) {
     return (
       <main className="flex-1 grid place-items-center text-white/45 px-8 text-center">
         <p className="text-sm">{t(lang, "loading")}</p>
@@ -213,6 +228,7 @@ export function ResultsPanel() {
     );
   }
 
+  const rows = payload.leaderboard;
   const session = ensureSessionId();
   const idx = rows.findIndex((r) => r.sessionId === session);
   const me = idx >= 0 ? rows[idx] : null;
@@ -279,6 +295,20 @@ export function ResultsPanel() {
                 that rank, what the country actually finished, and the
                 earned points. */}
             {ballot && <BallotComparison ballot={ballot} lang={lang} />}
+
+            {/* Same shape applied to the BONUS bets. Reuses the picks +
+                facts/placements that ride along on the leaderboard
+                response. Self-hides when the voter didn't place any
+                bets, so the rest of the breakdown still reads. */}
+            <BetsComparison
+              picks={me.betPicks}
+              earned={me.bets}
+              facts={payload.facts}
+              placements={payload.placements}
+              homeCountryCode={homeCountryCode}
+              lang={lang}
+              totalFinalists={countries.length}
+            />
 
             <ScoreBreakdown
               topTen={me.topTen}
