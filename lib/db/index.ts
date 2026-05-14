@@ -33,12 +33,13 @@ function getConnection(): PostgresJsDatabase<typeof schema> {
     // this — prepared statements can't survive across pooled
     // connections.
     prepare: false,
-    // One connection per Lambda invocation is enough. The free-tier
-    // Supabase project has a 60-connection cap shared across the
-    // workspace; the pooler multiplexes thousands of clients onto
-    // that. Keeping max=1 means we don't fan out within a single
-    // Lambda.
-    max: 1,
+    // Lazy-open up to 8 sockets per Lambda so Promise.all fan-outs
+    // (e.g. the profile drawer's 9 parallel queries) actually run in
+    // parallel instead of queuing on one connection. postgres-js only
+    // opens sockets when concurrent queries demand them, so the
+    // sequential-query case still costs 1 socket. pgbouncer multiplexes
+    // these onto the underlying Postgres pool.
+    max: 8,
     idle_timeout: 20,
     connect_timeout: 10,
   });
