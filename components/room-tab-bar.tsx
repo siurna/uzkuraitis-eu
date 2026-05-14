@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Home,
@@ -69,8 +71,17 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
   const { tab, setTab } = useRoomTab();
   const { tallyEnabled } = useRoomLive();
   const active = TABS.find((t) => t.id === tab) ?? TABS[0];
+  // SSR-safe portal mount. Same defensive pattern BottomSheet uses
+  // (see CLAUDE.md). The tab bar is `position: fixed`, so any ancestor
+  // that ever holds a `transform`/`filter`/`will-change: transform`
+  // — motion-react mid-tween, a View Transitions snapshot during a
+  // language swap, a backdrop-blur on the wrong wrapper, etc — will
+  // re-anchor the bar to THAT ancestor's box and float it mid-page.
+  // Portaling to body sidesteps the whole class of bug.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  return (
+  const bar = (
     <nav
       className="uzk-edge-bar fixed bottom-0 left-0 z-40 px-3
                  pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2
@@ -168,4 +179,7 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
       <span hidden aria-hidden>{active?.gradient}</span>
     </nav>
   );
+
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(bar, document.body);
 }
