@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import Image from "next/image";
 import { toast } from "sonner";
 import { Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 import { isValidRoomCode, normalizeRoomCode } from "@/lib/room-code";
@@ -184,16 +183,18 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
             className="flex flex-col items-center gap-4 text-white/50"
           >
             {/* The 70-heart pulses while we check for a remembered
-                room — same lub-dub as the rest of the brand, sized
-                small. When loading completes, the gate fades in and
-                Logo2026's full mark takes over. */}
+                room. Plain `<img>` instead of `next/image`: iOS
+                Safari computes `drop-shadow` against the wrapper
+                span's bounding box until the WebP fully decodes,
+                which renders a transparent square halo around the
+                heart for the first frame. */}
             <div className="heartbeat-loop">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/images/70-heart.webp"
                 alt=""
                 width={64}
                 height={64}
-                priority
                 className="h-16 w-16 object-contain
                            drop-shadow-[0_0_24px_rgba(255,46,222,0.5)]"
               />

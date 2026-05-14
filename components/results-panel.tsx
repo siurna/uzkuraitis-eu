@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Image from "next/image";
 import { motion } from "motion/react";
 import { AnimatePresence } from "motion/react";
 import { useEventListener } from "@/lib/realtime";
@@ -207,12 +206,17 @@ export function ResultsPanel() {
       <main className="flex-1 grid place-items-center px-8 text-center">
         <div className="flex flex-col items-center gap-4 text-white/55">
           <div className="heartbeat-loop">
-            <Image
+            {/* Plain `<img>` instead of `next/image`: iOS Safari
+                paints the `drop-shadow` filter against the wrapper
+                span's bounding box until the WebP fully decodes,
+                rendering a transparent square halo around the heart
+                on the first frame. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/images/70-heart.webp"
               alt=""
               width={56}
               height={56}
-              priority
               className="h-14 w-14 object-contain drop-shadow-[0_0_24px_rgba(255,46,222,0.45)]"
             />
           </div>

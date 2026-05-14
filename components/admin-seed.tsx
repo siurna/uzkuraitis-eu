@@ -125,14 +125,14 @@ export function AdminSeed({
         <SeedCard
           icon={<Shuffle className="h-4 w-4" />}
           title="Re-roll ballots"
-          desc="Re-randomize the TOP 10 &amp; bonus bets of everyone already in this room — no new voters"
+          desc="Re-randomize the TOP 10 &amp; bonus bets of everyone already in this room, no new voters"
           busy={busy === "reroll"}
           onClick={() => run("reroll", { needsRoom: true })}
         />
         <SeedCard
           icon={<Trophy className="h-4 w-4" />}
           title="Results &amp; facts"
-          desc="Random final placements + jury/televote winners, nul-points, host, solo, LT total — installation-wide"
+          desc="Random final placements + jury/televote winners, nul-points, host, solo, LT total, installation-wide"
           busy={busy === "results"}
           onClick={() => run("results")}
         />

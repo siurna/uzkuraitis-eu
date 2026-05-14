@@ -168,7 +168,7 @@ const S = {
   home_vs_room_empty_title: { en: "How do you stack up?", lt: "Kaip atrodai prieš kitus?" },
   home_vs_room_empty_sub:   { en: "Cast your TOP 10 to compare with the room.", lt: "Balsuok ir palygink savo TOP 10 su kitais." },
   chat_np_my_rank:     { en: (n: number) => `My #${n}`, lt: (n: number) => `Mano #${n}` },
-  chat_np_my_rank_aria:{ en: (n: number) => `Your #${n} in your TOP 10 — tap to change`, lt: (n: number) => `Tavo #${n} TOP 10 sąraše — palieskite, kad pakeistumėte` },
+  chat_np_my_rank_aria:{ en: (n: number) => `Your #${n} in your TOP 10, tap to change`, lt: (n: number) => `Tavo #${n} TOP 10 sąraše, palieskite, kad pakeistumėte` },
   home_results:        { en: "Results are in", lt: "Rezultatai jau čia" },
   home_bingo_won:      { en: "Bingo! 🎉 Tap to see your card", lt: "Bingo! 🎉 Bakstelėk savo kortelę" },
   bingo_widget_title:  { en: "Play bingo!", lt: "Žaisk bingo!" },
