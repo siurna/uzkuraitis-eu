@@ -221,14 +221,14 @@ export function AdminResultsTable({
         Results
       </AdminPageTitle>
 
-      <section className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-4">
+      <section className="glass-card rounded-2xl px-5 pt-3 pb-5 sm:px-6 sm:pt-4 sm:pb-6 flex flex-col gap-4">
       <ol className="flex flex-col">
         {rows.map((row, i) => {
           const picked = row.countryCode ? getCountry(row.countryCode) : null;
           return (
             <li
               key={row.placement}
-              className={`${i > 0 ? "py-1 border-t border-white/8" : "pb-1 pt-0"}`}
+              className={i > 0 ? "py-1 border-t border-white/8" : "py-1"}
             >
               <button
                 type="button"
