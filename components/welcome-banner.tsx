@@ -180,8 +180,18 @@ export function WelcomeMarkdown({ source }: { source: string }) {
       listBuf = [];
     }
   };
+  // Lines matching the `---[Label]---` chat-ticket split marker
+  // are content metadata (they tell the chat ticket where the
+  // short-version cut is), not visible text — drop them from the
+  // rendered output entirely.
+  const DIVIDER_RE = /^---\s*\[(.+?)\]\s*---$/;
   for (const raw of lines) {
     const line = raw.trim();
+    if (DIVIDER_RE.test(line)) {
+      flushP();
+      flushUl();
+      continue;
+    }
     const heading = /^(#{1,3})\s+(.+)$/.exec(line);
     const bullet = /^[-*]\s+(.+)$/.exec(line);
     if (heading) {

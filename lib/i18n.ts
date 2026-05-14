@@ -288,6 +288,11 @@ const S = {
   welcome_eyebrow:           { en: "From the organisers", lt: "Nuo organizatorių" },
   welcome_card_title:        { en: "A word from the organisers", lt: "Žodis nuo organizatorių" },
   welcome_card_sub:          { en: "House rules, schedule, the usual housekeeping. Tap to open.", lt: "Taisyklės, tvarkaraštis, smulkmenos. Bakstelėk." },
+  // Title used by the chat ticket's "Read more" drawer — friendlier
+  // than the eyebrow on the home banner because the drawer is the
+  // direct read-the-whole-thing surface.
+  welcome_drawer_title:      { en: "Welcome!", lt: "Sveiki atvykę!" },
+  welcome_read_more:         { en: "Read more", lt: "Skaityti daugiau" },
   // Plain-text fallback for the chat CTA card (rendered when a viewer
   // sees the chat row but no card matches, or for screen readers).
   sys_cta_welcome:           { en: "👋 Hello folks, a few housekeeping notes", lt: "👋 Sveiki, keletas tvarkos taisyklių" },

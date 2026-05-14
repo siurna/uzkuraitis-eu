@@ -6,11 +6,11 @@ import { Bell, Dices, ListChecks, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { HeartFlag } from "@/components/flag";
 import { WelcomeMarkdown } from "@/components/welcome-banner";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { FluentEmoji } from "@/components/fluent-emoji";
 import { countryName, getCountry } from "@/lib/countries";
 import { isSupported as pushIsSupported } from "@/lib/push-client";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
-import { useParticles } from "@/components/particle-layer";
 import { useLeaderboard } from "@/components/leaderboard-provider";
 import { useIdentity } from "@/lib/use-identity";
 import { fmt, t, tDyn, type MessageKey } from "@/lib/i18n";
@@ -564,10 +564,11 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
               "radial-gradient(80% 60% at 8% 0%, rgba(255,215,140,0.22) 0%, transparent 55%), radial-gradient(60% 50% at 96% 100%, rgba(255,170,80,0.14) 0%, transparent 60%)",
           }}
         />
-        {/* Foil sweep — diagonal warm band that drifts slowly across
-            the card with `mix-blend-screen`. It's the moving light
-            catching the foil; ~12s loop so it stays ambient, never
-            distracting. */}
+        {/* Foil sweep — wide diagonal warm band, drifting slowly with
+            `mix-blend-screen`. The band itself is broader (30→70%
+            range) and the loop runs at ~22s so the highlight is a
+            very gentle ambient drift; the earlier 12s/narrow band
+            read as a moving stripe. */}
         <div
           aria-hidden
           className="absolute inset-0 pointer-events-none mix-blend-screen overflow-hidden"
@@ -576,35 +577,9 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
             className="absolute inset-y-0 -left-1/4 w-[150%]"
             style={{
               background:
-                "linear-gradient(115deg, transparent 38%, rgba(255,220,140,0.14) 50%, transparent 62%)",
-              animation: "uzk-foil-sweep 12s ease-in-out infinite alternate",
+                "linear-gradient(115deg, transparent 30%, rgba(255,220,140,0.13) 50%, transparent 70%)",
+              animation: "uzk-foil-sweep 22s ease-in-out infinite alternate",
             }}
-          />
-        </div>
-        {/* Sparkle specs — five tiny twinkle dots scattered across
-            the gold strip, tear-line, and body. Different sizes +
-            staggered delays so they pulse like real foil glints,
-            not a synchronised string of lights. */}
-        <div aria-hidden className="absolute inset-0 pointer-events-none">
-          <span
-            className="absolute h-[3px] w-[3px] rounded-full bg-yellow mix-blend-screen"
-            style={{ left: "16%", top: "20%", animation: "uzk-twinkle 3s ease-in-out infinite" }}
-          />
-          <span
-            className="absolute h-[2px] w-[2px] rounded-full bg-yellow mix-blend-screen"
-            style={{ left: "42%", top: "10%", animation: "uzk-twinkle 3.6s ease-in-out 0.4s infinite" }}
-          />
-          <span
-            className="absolute h-[3px] w-[3px] rounded-full bg-yellow mix-blend-screen"
-            style={{ right: "20%", top: "38%", animation: "uzk-twinkle 4.2s ease-in-out 1.1s infinite" }}
-          />
-          <span
-            className="absolute h-[2px] w-[2px] rounded-full bg-yellow mix-blend-screen"
-            style={{ right: "14%", bottom: "22%", animation: "uzk-twinkle 2.8s ease-in-out 0.7s infinite" }}
-          />
-          <span
-            className="absolute h-[2px] w-[2px] rounded-full bg-yellow mix-blend-screen"
-            style={{ left: "26%", bottom: "32%", animation: "uzk-twinkle 3.4s ease-in-out 1.6s infinite" }}
           />
         </div>
 
@@ -639,48 +614,19 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
 
           {/* Body half — the host's message. Same WelcomeMarkdown the
               home banner uses; colours inverted to read on the dark
-              ticket surface. The split marker `---[Label]---` parks
-              everything below it behind a button that opens a
-              BottomSheet — so the ticket stays the size of a real
-              concert stub even when the host writes a small essay. */}
+              ticket surface. The split marker `---[Label]---` is a
+              CONTENT marker the admin uses to flag "this is where the
+              long version starts" — the ticket only ever shows the
+              `before` half inline; the "Read more" button at the
+              ticket's bottom is the single affordance to see the
+              whole thing in a drawer. */}
           <div
             className="px-4 py-3.5 text-[14px] leading-relaxed text-white/90
                        [&_strong]:text-white [&_em]:text-white
                        [&_a]:text-yellow [&_a]:decoration-yellow/60 [&_a]:underline-offset-2"
           >
             {md.trim() ? (
-              (() => {
-                const split = splitWelcome(md);
-                return (
-                  <>
-                    <WelcomeMarkdown source={split.before} />
-                    {split.after && split.label && !moreOpen && (
-                      // Button pinned bottom-right of the ticket
-                      // body so the message reads left-to-right
-                      // ending in the affordance. Compact pill
-                      // matches the ADMIT ONE strip's tracking.
-                      <div className="mt-3 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => setMoreOpen(true)}
-                          className="inline-flex items-center gap-1 rounded-full
-                                     bg-yellow/15 ring-1 ring-yellow/40 text-yellow
-                                     px-3 h-7 text-[11px] font-display tracking-[0.18em] uppercase
-                                     hover:bg-yellow/25 active:scale-[0.97] transition"
-                        >
-                          {split.label}
-                          <ChevronRight className="h-3 w-3" />
-                        </button>
-                      </div>
-                    )}
-                    {split.after && moreOpen && (
-                      <div className="mt-3 pt-3 border-t border-dashed border-yellow/20">
-                        <WelcomeMarkdown source={split.after} />
-                      </div>
-                    )}
-                  </>
-                );
-              })()
+              <WelcomeMarkdown source={splitWelcome(md).before} />
             ) : (
               <p className="text-[13px] text-white/45 italic">
                 {t(lang, "welcome_empty_chat")}
@@ -688,7 +634,41 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
             )}
           </div>
         </div>
+
+        {/* Bottom strip — only renders when the source has a `---[…]---`
+            split, signalling there's more behind the cut. Mirrors the
+            ADMIT ONE strip on top: dashed gold border + tracked
+            uppercase pill. Sits flush against the ticket bottom edge
+            with its own padding so it never feels orphaned by the
+            content above. */}
+        {md.trim() && splitWelcome(md).after && (
+          <div className="relative px-4 py-3 flex justify-end border-t border-dashed border-yellow/25">
+            <button
+              type="button"
+              onClick={() => setMoreOpen(true)}
+              className="inline-flex items-center gap-1 rounded-full
+                         bg-yellow/15 ring-1 ring-yellow/40 text-yellow
+                         px-3 h-7 text-[11px] font-display tracking-[0.18em] uppercase
+                         hover:bg-yellow/25 active:scale-[0.97] transition"
+            >
+              {t(lang, "welcome_read_more")}
+              <ChevronRight className="h-3 w-3" />
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Full-text drawer — same BottomSheet pattern the home banner
+          uses. Renders the entire markdown (admin's before + divider
+          + after, the divider line itself is skipped by the renderer)
+          so the user reads the host's complete message in one place. */}
+      <BottomSheet
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        title={t(lang, "welcome_drawer_title")}
+      >
+        <WelcomeMarkdown source={md} />
+      </BottomSheet>
     </motion.div>
   );
 }
@@ -702,7 +682,6 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
 // whoever's actively viewing the moment it lands (subsequent
 // re-renders / scroll-backs see the card without fresh particles).
 function ThanksCard({ lang }: { lang: Language }) {
-  const particles = useParticles();
   const { payload } = useLeaderboard();
   const fired = useRef(false);
 
@@ -717,37 +696,61 @@ function ThanksCard({ lang }: { lang: Language }) {
   useEffect(() => {
     if (fired.current) return;
     fired.current = true;
-    // Screen-wide cascade — three staggered waves spawned across the
-    // full viewport width, falling from above the top edge. Reads as
-    // confetti raining over the whole screen instead of a contained
-    // pop from one card. Each particle picks a random x along the
-    // viewport, an above-fold y so it drops into view, and a long
-    // duration so the cascade lingers ~3s.
-    const vw = typeof window !== "undefined" ? window.innerWidth : 360;
-    const vh = typeof window !== "undefined" ? window.innerHeight : 640;
-    const waveGlyphs = [
-      ["🎉", "✨", "🎊", "🎉", "⭐", "🎉", "✨", "🎊", "⭐", "🎉"],
-      ["❤️", "⭐", "🎉", "✨", "❤️", "🎊", "🎉", "✨", "❤️", "🎉"],
-      ["🎉", "🎊", "✨", "❤️", "⭐", "🎉", "🎊", "✨", "🎉", "❤️"],
-    ];
-    const fire = (glyphs: string[]) => {
-      particles.spawnMany(
-        glyphs.map((g) => ({
-          asset: { type: "emoji" as const, glyph: g },
-          from: { x: Math.random() * vw, y: -40 - Math.random() * 60 },
-          to: { x: Math.random() * vw, y: vh + 60 },
-          size: 36 + Math.random() * 22,
-          durationMs: 2400 + Math.random() * 1400,
-          rotate: 360,
-        })),
-      );
+    // Real confetti via `canvas-confetti`: spawns physical paper
+    // particles on a full-screen canvas instead of the brand emoji
+    // shower. Three staggered shots from both sides of the viewport
+    // arc into the middle so the whole screen sees confetti, not
+    // just whichever side the card sits on. Brand palette — gold,
+    // flamingo, white — picks up the gold ring of the card itself.
+    let cancelled = false;
+    void import("canvas-confetti").then(({ default: confetti }) => {
+      if (cancelled) return;
+      const colors = ["#f7b801", "#ff2ede", "#ffffff", "#ff7d3a"];
+      const shoot = (origin: { x: number; y: number }, angle: number) => {
+        confetti({
+          particleCount: 90,
+          spread: 70,
+          startVelocity: 55,
+          angle,
+          ticks: 260,
+          gravity: 0.95,
+          scalar: 1.05,
+          origin,
+          colors,
+          zIndex: 60,
+        });
+      };
+      shoot({ x: 0.05, y: 0.85 }, 60);
+      shoot({ x: 0.95, y: 0.85 }, 120);
+      setTimeout(() => {
+        shoot({ x: 0.15, y: 0.95 }, 75);
+        shoot({ x: 0.85, y: 0.95 }, 105);
+      }, 360);
+      setTimeout(() => {
+        confetti({
+          particleCount: 140,
+          spread: 120,
+          startVelocity: 45,
+          ticks: 320,
+          gravity: 1,
+          origin: { x: 0.5, y: 0.4 },
+          colors,
+          zIndex: 60,
+        });
+      }, 780);
+    });
+    return () => {
+      cancelled = true;
     };
-    fire(waveGlyphs[0]);
-    setTimeout(() => fire(waveGlyphs[1]), 380);
-    setTimeout(() => fire(waveGlyphs[2]), 780);
-  }, [particles]);
+  }, []);
 
-  const nextYear = t(lang, "sys_cta_thanks_next");
+  // {next} substitution: drop the next year's number into the
+  // closing line. Falls back to the literal i18n value if the
+  // current year math goes sideways for any reason.
+  const nextYear = useMemo(() => {
+    const y = new Date().getFullYear() + 1;
+    return Number.isFinite(y) ? String(y) : t(lang, "sys_cta_thanks_next");
+  }, [lang]);
   const sub = tDyn(lang, "sys_cta_thanks_sub", nextYear);
 
   return (
@@ -763,10 +766,10 @@ function ThanksCard({ lang }: { lang: Language }) {
       }}
     >
       <div className="relative px-5 py-8 flex flex-col items-center text-center gap-3">
-        {/* Winning country's heart crowns the card when leaderboard
-            data has landed. Until then the eyebrow text alone reads
-            as the headline — a missing flag is preferable to a
-            placeholder while results are still being typed. */}
+        {/* Winning country's heart sits ABOVE the eyebrow now — the
+            heart anchors the moment ("they won, here's who"), the
+            eyebrow + title follow. Hidden until placements have
+            landed so we never paint a placeholder. */}
         {winner && (
           <motion.div
             initial={{ opacity: 0, scale: 0.5, y: -10 }}
@@ -785,13 +788,13 @@ function ThanksCard({ lang }: { lang: Language }) {
         <p className="text-[10px] uppercase tracking-[0.3em] font-display text-yellow/85">
           {t(lang, "sys_cta_thanks_eyebrow")}
         </p>
-        <p className="font-display text-2xl leading-tight text-balance text-white drop-shadow-sm">
+        {/* Narrower title (max-w-xs) + text-balance so the line wrap
+            lands on natural phrase boundaries instead of a long
+            single line edge-to-edge. */}
+        <p className="font-display text-2xl leading-tight text-balance text-white drop-shadow-sm max-w-xs">
           {t(lang, "sys_cta_thanks_title")}
         </p>
         <p className="text-sm text-white/80 leading-snug">{sub}</p>
-        <p className="font-display text-3xl text-yellow tracking-[0.2em] tabular-nums mt-1 drop-shadow-sm">
-          {nextYear}
-        </p>
       </div>
     </motion.div>
   );

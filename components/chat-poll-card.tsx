@@ -207,7 +207,11 @@ export function ChatPollCard({
                   {/* Tally bar fills behind the row. Gold-tinted for
                       the leader, white for the picked, faded for
                       everyone else. Spring transition feels alive
-                      when votes land. */}
+                      when votes land. (The earlier `inset` shadow
+                      halo painted a dark stripe inside the bar's
+                      trailing edge — read as random padding inside
+                      the fill — so it's gone; the gradient itself
+                      carries enough depth.) */}
                   <motion.span
                     className={`absolute inset-y-0 left-0 origin-left
                                 ${isLeader
@@ -220,19 +224,6 @@ export function ChatPollCard({
                     transition={{ type: "spring", stiffness: 180, damping: 26 }}
                     aria-hidden
                   />
-                  {/* Glow halo when someone's vote nudges the bar */}
-                  {voted && pct > 0 && (
-                    <motion.span
-                      className="pointer-events-none absolute inset-y-0 origin-left"
-                      style={{
-                        width: `${pct}%`,
-                        boxShadow: isLeader
-                          ? "0 0 32px -4px oklch(80% 0.18 90 / 0.35) inset"
-                          : "0 0 24px -6px oklch(80% 0.12 200 / 0.25) inset",
-                      }}
-                      aria-hidden
-                    />
-                  )}
                   <span className="relative flex items-center gap-3">
                     <motion.span
                       className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-black/35 ring-1 ring-white/15"

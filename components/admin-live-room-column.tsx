@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Radio } from "lucide-react";
 import { AdminRoomPicker } from "@/components/admin-room-picker";
 import { AdminLiveControls } from "@/components/admin-live-controls";
@@ -24,14 +24,73 @@ export type RoomLite = {
 };
 
 const ROOM_STORAGE_KEY = "uzk_admin_live_room";
+// How often the picker re-pulls per-room active counts so the badge
+// updates without a page reload. 15s is a sweet spot — counts feel
+// live during the show, the endpoint stays cheap (one grouped query
+// against `voters`), and the dot stops "pinging" the moment someone
+// closes their tab.
+const ACTIVE_POLL_MS = 15_000;
 
-export function AdminLiveRoomColumn({ rooms }: { rooms: RoomLite[] }) {
-  const [room, setRoom] = useState<string>(rooms[0]?.code ?? "");
+export function AdminLiveRoomColumn({ rooms: initialRooms }: { rooms: RoomLite[] }) {
+  const [room, setRoom] = useState<string>(initialRooms[0]?.code ?? "");
+  // Live `activeCount` overrides keyed by room code. Polled from
+  // `/api/admin/rooms/active-counts`; falls back to the SSR value when
+  // a code isn't in the latest payload (handles a freshly-created
+  // room that the poll hasn't seen yet without flashing a zero).
+  const [liveCounts, setLiveCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const saved = localStorage.getItem(ROOM_STORAGE_KEY);
-    if (saved && rooms.some((r) => r.code === saved)) setRoom(saved);
-  }, [rooms]);
+    if (saved && initialRooms.some((r) => r.code === saved)) setRoom(saved);
+  }, [initialRooms]);
+
+  // Poll the active counts endpoint on a fixed cadence. Skips when
+  // the tab is hidden so a backgrounded admin tab doesn't keep
+  // pinging the DB; resumes on `visibilitychange`.
+  useEffect(() => {
+    let cancelled = false;
+    const fetchCounts = async () => {
+      try {
+        const res = await fetch("/api/admin/rooms/active-counts", {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { counts?: Record<string, number> };
+        if (!cancelled && data.counts) setLiveCounts(data.counts);
+      } catch {
+        /* network blip — keep the last good payload */
+      }
+    };
+    fetchCounts();
+    let id: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (id != null) return;
+      id = setInterval(fetchCounts, ACTIVE_POLL_MS);
+    };
+    const stop = () => {
+      if (id != null) {
+        clearInterval(id);
+        id = null;
+      }
+    };
+    if (typeof document !== "undefined" && document.visibilityState === "visible") {
+      start();
+    }
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        fetchCounts();
+        start();
+      } else {
+        stop();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelled = true;
+      stop();
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
 
   const choose = (code: string) => {
     setRoom(code);
@@ -42,6 +101,16 @@ export function AdminLiveRoomColumn({ rooms }: { rooms: RoomLite[] }) {
     }
   };
 
+  // Merge polled counts on top of the SSR initial rooms so the badge
+  // updates in place when participants join / drop without a reload.
+  const rooms = useMemo<RoomLite[]>(
+    () =>
+      initialRooms.map((r) => ({
+        ...r,
+        activeCount: liveCounts[r.code] ?? r.activeCount,
+      })),
+    [initialRooms, liveCounts],
+  );
   const selected = rooms.find((r) => r.code === room) ?? rooms[0] ?? null;
 
   return (
