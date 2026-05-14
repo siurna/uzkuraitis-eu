@@ -110,6 +110,8 @@ const S = {
   // ── VoteForm ─────────────────────────────────────────────────────
   your_top_10:       { en: "My TOP10", lt: "Mano TOP10" },
   tap_to_pick:       { en: "Pick", lt: "Pasirink" },
+  pick_avatar_apply: { en: "Change", lt: "Pakeisti" },
+  trivia_closed:     { en: "Time's up for this one. Wait for the next.", lt: "Šio jau nepavyks. Lauk kito." },
   pick_n_more:       { en: (n: number) => `Pick ${n} more`, lt: (n: number) => `Dar ${n}` },
   submitting:        { en: "Submitting…", lt: "Siunčiama…" },
   fill_n_more:       { en: (n: number) => `Fill all 10 slots, ${n} to go.`, lt: (n: number) => `Užpildyk visas 10 vietų, dar ${n}.` },

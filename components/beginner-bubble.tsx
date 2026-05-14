@@ -28,7 +28,16 @@ export function BeginnerBubble({
   useEffect(() => {
     let cancelled = false;
     requestExplanation(text, lang).then((r) => {
-      if (!cancelled) setHit(r);
+      if (!cancelled) {
+        setHit(r);
+        if (r.explain && r.text) {
+          // Bubble just grew — re-run the chat panel's sticky-scroll
+          // hook so the reader doesn't have to drag to see the gloss.
+          requestAnimationFrame(() =>
+            window.dispatchEvent(new Event("uzk:chat-media-loaded")),
+          );
+        }
+      }
     });
     return () => {
       cancelled = true;

@@ -338,21 +338,31 @@ export function SettingsModal({
         title={t(lang, "pick_avatar")}
         footer={
           // The picked-artist card lives in the (fixed) footer so it
-          // genuinely stays glued above the Done button — not "sticky"
-          // inside the scroll area where the scroll-edge fade nibbled it.
+          // genuinely stays glued above the Apply button. Tapping
+          // Apply commits the avatar immediately (writes localStorage
+          // + broadcasts the change) — earlier this was deferred to
+          // the outer "Save" in Settings, which made the picker feel
+          // non-committal.
           <div className="w-full flex flex-col gap-3">
             <SelectedAvatarCard avatarId={avatar} />
             <div className="flex items-center">
               <div className="flex-1" />
               <Button
                 type="button"
-                onClick={() => setPickerOpen(false)}
+                onClick={() => {
+                  if (avatar) {
+                    localStorage.setItem(AVATAR_KEY, avatar);
+                    updatePresence({ avatar });
+                    window.dispatchEvent(new Event("uzk:avatar-change"));
+                  }
+                  setPickerOpen(false);
+                }}
                 disabled={!avatar}
                 className="font-display rounded-2xl
                            bg-white text-dark-blue hover:bg-dark-blue-50
                            disabled:opacity-40"
               >
-                {t(lang, "done")}
+                {t(lang, "pick_avatar_apply")}
               </Button>
             </div>
           </div>

@@ -25,16 +25,22 @@ const LETTERS: ["A", "B", "C", "D"] = ["A", "B", "C", "D"];
 
 type Phase =
   | { kind: "idle" }
-  | { kind: "answered"; choice: TriviaPick; correct: boolean; correctIndex: TriviaPick };
+  | { kind: "answered"; choice: TriviaPick; correct: boolean; correctIndex: TriviaPick }
+  // "Country left the stage before this player answered." Card stays
+  // visible (so the question + correct answer can be read after the
+  // fact) but buttons are inert and no choice is highlighted.
+  | { kind: "closed"; correctIndex: TriviaPick };
 
 export function ChatTriviaCard({
   countryCode,
   roomCode,
   lang,
+  isOnStage,
 }: {
   countryCode: string;
   roomCode: string;
   lang: Language;
+  isOnStage: boolean;
 }) {
   const { sessionId: getSession } = useIdentity();
   const session = getSession();
@@ -63,6 +69,17 @@ export function ChatTriviaCard({
       /* ignore corrupt local state */
     }
   }, [card, countryCode, roomCode]);
+
+  // Country navigated away while this player was still on the idle
+  // buttons view → close the card (reveal answer, disable buttons).
+  // Stays sticky if the country later comes back on stage; the player
+  // had their window and missed it.
+  useEffect(() => {
+    if (!card) return;
+    if (!isOnStage && phase.kind === "idle") {
+      setPhase({ kind: "closed", correctIndex: card.correctIndex });
+    }
+  }, [card, isOnStage, phase.kind]);
 
   const submit = useCallback(
     async (choice: TriviaPick) => {
@@ -98,7 +115,8 @@ export function ChatTriviaCard({
   if (!card) return null;
   const country = getCountry(countryCode);
   const block = card[lang] ?? card.en;
-  const showReveal = phase.kind === "answered";
+  const showReveal = phase.kind === "answered" || phase.kind === "closed";
+  const closed = phase.kind === "closed";
 
   return (
     <div className="rounded-3xl ring-1 ring-yellow/45 shadow-[0_18px_44px_-18px_oklch(72%_0.18_85_/_0.5)] overflow-hidden">
@@ -131,11 +149,14 @@ export function ChatTriviaCard({
           {block.choices.map((c, i) => {
             const idx = i as TriviaPick;
             const isCorrect = idx === card.correctIndex;
-            const isPicked = showReveal && phase.kind === "answered" && phase.choice === idx;
+            const isPicked =
+              showReveal && phase.kind === "answered" && phase.choice === idx;
             const tone = !showReveal
               ? "bg-white/[0.08] ring-1 ring-white/15 hover:bg-white/[0.14]"
               : isCorrect
-                ? "bg-emerald-500/25 ring-1 ring-emerald-400/55 text-white"
+                ? closed
+                  ? "bg-white/[0.10] ring-1 ring-white/20 text-white/85"
+                  : "bg-emerald-500/25 ring-1 ring-emerald-400/55 text-white"
                 : isPicked
                   ? "bg-error/25 ring-1 ring-error/55 text-white"
                   : "bg-white/[0.04] ring-1 ring-white/10 text-white/55";
@@ -172,12 +193,16 @@ export function ChatTriviaCard({
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             className={`text-xs font-display text-center ${
-              phase.kind === "answered" && phase.correct ? "text-emerald-300" : "text-white/65"
+              phase.kind === "answered" && phase.correct
+                ? "text-emerald-300"
+                : "text-white/65"
             }`}
           >
-            {phase.kind === "answered" && phase.correct
-              ? t(lang, "trivia_answered_correct")
-              : t(lang, "trivia_answered_wrong")}
+            {closed
+              ? t(lang, "trivia_closed")
+              : phase.kind === "answered" && phase.correct
+                ? t(lang, "trivia_answered_correct")
+                : t(lang, "trivia_answered_wrong")}
           </motion.p>
         )}
       </div>

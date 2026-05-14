@@ -3,12 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { countries, getCountry } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 import { CountryDrawer } from "@/components/country-drawer";
+import { AdminPageTitle } from "@/components/admin-page-title";
 import { NONE_TOKEN } from "@/lib/scoring";
 
 // Merged editor for the Eurovision official-results page. Used to be
@@ -199,15 +200,24 @@ export function AdminResultsTable({
   const total = 10 + FACTS.length;
 
   return (
-    <section className="glass-card rounded-xl p-5 flex flex-col gap-3">
-      {/* Page title already says "Results"; this card just shows a
-          filled/total counter so the admin can eyeball completeness. */}
-      <div className="flex justify-end">
-        <span className="text-xs text-white/45 tabular-nums">
-          {filledCount} / {total}
-        </span>
-      </div>
+    <div className="flex flex-col gap-6">
+      {/* AdminPageTitle owns the chrome; we pass the dynamic "X / Y
+          filled" chip in the right-side trailing slot so the count
+          tracks edits live without a separate header row inside the
+          card. The card itself then gets uniform p-5 — its top edge
+          no longer carries an extra row of counter-padding. */}
+      <AdminPageTitle
+        icon={Trophy}
+        trailing={
+          <span className="inline-flex items-center rounded-full bg-flamingo/15 ring-1 ring-flamingo/35 px-3 h-7 text-xs font-display text-flamingo tabular-nums">
+            {filledCount} / {total}
+          </span>
+        }
+      >
+        Results
+      </AdminPageTitle>
 
+      <section className="glass-card rounded-xl p-5 flex flex-col gap-4">
       <ol className="flex flex-col">
         {rows.map((row, i) => (
           <li
@@ -279,7 +289,8 @@ export function AdminResultsTable({
           {pending ? "Saving…" : "Save"}
         </Button>
       </div>
-    </section>
+      </section>
+    </div>
   );
 }
 
