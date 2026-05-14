@@ -24,6 +24,7 @@ import {
   AdminParticipantMessages,
   type AdminMessageRow,
 } from "@/components/admin-participant-messages";
+import { AdminRemoveParticipant } from "@/components/admin-remove-participant";
 import { Flag } from "@/components/flag";
 import { timeAgo } from "@/lib/utils";
 
@@ -410,6 +411,19 @@ export default async function AdminRoomDetailPage({
                             Recent messages
                           </p>
                           <AdminParticipantMessages code={room.code} messages={v.recent} />
+                        </div>
+                        {/* Nuclear option: remove the participant from
+                            this room entirely + start a cooldown so the
+                            same session can't immediately re-engage. */}
+                        <div className="px-3 pb-3 pt-1 flex items-center justify-between gap-3 border-t border-white/5">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-white/35 font-display">
+                            Suspend
+                          </p>
+                          <AdminRemoveParticipant
+                            code={room.code}
+                            sessionId={v.sessionId}
+                            name={v.name}
+                          />
                         </div>
                       </details>
                     </li>
