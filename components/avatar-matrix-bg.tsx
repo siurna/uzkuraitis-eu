@@ -11,29 +11,39 @@ import { optimizedSrc } from "@/lib/img";
 // step body so the bell sits centred over a fully populated matrix
 // instead of a thin top strip.
 export function AvatarMatrixBg({ className = "" }: { className?: string }) {
-  // Three distinct samples so neighbouring rows don't repeat the
-  // same face. Stable across re-renders.
+  // Three DISJOINT samples so no artist repeats across the matrix:
+  // stride the photo list by 3 and assign by modulo — row N gets
+  // photos[i] where i % 3 === N. Capped at 36 photos so the rows
+  // stay visually full without dipping into the long tail of acts.
   const rows = useMemo(() => {
-    const photos = AVATARS.filter((a) => a.photo).slice(0, 36);
-    const take = (start: number, step: number, n: number) =>
-      Array.from({ length: n }, (_, i) => photos[(start + i * step) % photos.length]);
-    return [take(0, 1, 12), take(4, 2, 12), take(7, 3, 12)];
+    const photos = AVATARS.filter((a) => a.photo);
+    const cap = Math.min(36, photos.length - (photos.length % 3));
+    const pool = photos.slice(0, cap);
+    return [
+      pool.filter((_, i) => i % 3 === 0),
+      pool.filter((_, i) => i % 3 === 1),
+      pool.filter((_, i) => i % 3 === 2),
+    ];
   }, []);
 
+  // Mask: feathered radial vignette PLUS a linear top/bottom fade.
+  // Radial alone left the top edge fully visible on short viewports
+  // (the matrix container ends up wider than it is tall, so the
+  // radial reach in Y doesn't kill the top row). Stacking a vertical
+  // linear fade and intersecting the masks gives the matrix a clean
+  // soft edge on every side regardless of aspect.
+  const mask =
+    "linear-gradient(to bottom, transparent 0%, #000 14%, #000 86%, transparent 100%)," +
+    " radial-gradient(115% 110% at 50% 50%, #000 18%, rgba(0,0,0,0.55) 55%, transparent 92%)";
   return (
     <div
       aria-hidden
       className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
       style={{
-        // Feathered mask: photos sharp through the middle 60% of
-        // every axis, fading to fully transparent at the edges. No
-        // tinted overlay over the top — the bell + copy stay
-        // readable because the mask kills the matrix exactly where
-        // they sit, not because we tint everything.
-        maskImage:
-          "radial-gradient(115% 110% at 50% 50%, #000 18%, rgba(0,0,0,0.55) 55%, transparent 92%)",
-        WebkitMaskImage:
-          "radial-gradient(115% 110% at 50% 50%, #000 18%, rgba(0,0,0,0.55) 55%, transparent 92%)",
+        maskImage: mask,
+        maskComposite: "intersect",
+        WebkitMaskImage: mask,
+        WebkitMaskComposite: "source-in",
       }}
     >
       <div className="absolute inset-0 -rotate-12 origin-center scale-150 flex flex-col justify-center gap-3 opacity-40">

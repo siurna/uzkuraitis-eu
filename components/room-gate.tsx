@@ -217,6 +217,13 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                // Enter when ts is in the error state: keyboard
+                // submitters still get a productive action (retry the
+                // challenge) instead of a no-op arm.
+                if (tsError) {
+                  retryTurnstile();
+                  return;
+                }
                 submit(code);
               }}
               className="glass-card w-full rounded-2xl p-5 flex flex-col gap-4"
@@ -229,83 +236,72 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
                 disabled={pending}
               />
               {TURNSTILE_SITE_KEY && (
-                <>
-                  <TurnstileWidget
-                    siteKey={TURNSTILE_SITE_KEY}
-                    onToken={onTurnstileToken}
-                    onExpire={() => setTsToken(null)}
-                    onError={onTurnstileError}
-                    resetKey={tsResetKey}
-                  />
-                  {/* Status chip — explains the disabled state so it
-                      doesn't read as "the form is broken". Only two
-                      visible cases now: load failure (retry chip)
-                      and verifying (spinner). The "verified" success
-                      state used to render its own green tick chip
-                      that read as a redundant "all good" banner; the
-                      submit button enabling itself is signal enough,
-                      so verified renders nothing. */}
-                  <AnimatePresence mode="wait">
-                    {tsError ? (
-                      <motion.button
-                        key="ts-error"
-                        type="button"
-                        onClick={retryTurnstile}
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        className="self-stretch inline-flex items-center gap-2 rounded-xl
-                                   bg-error/12 ring-1 ring-error/35 text-error/95
-                                   px-3 h-9 text-xs font-display active:scale-[0.98] transition"
-                      >
-                        <ShieldAlert className="h-3.5 w-3.5" />
-                        {t(lang, "ts_error")}
-                      </motion.button>
-                    ) : !tsToken ? (
-                      <motion.div
-                        key="ts-checking"
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        className="self-stretch inline-flex items-center gap-2 rounded-xl
-                                   bg-white/[0.04] ring-1 ring-white/10 text-white/55
-                                   px-3 h-9 text-xs font-display"
-                      >
-                        <Loader2 className="h-3.5 w-3.5 animate-spin text-flamingo" />
-                        {t(lang, "ts_checking")}
-                      </motion.div>
-                    ) : null}
-                  </AnimatePresence>
-                </>
+                <TurnstileWidget
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onToken={onTurnstileToken}
+                  onExpire={() => setTsToken(null)}
+                  onError={onTurnstileError}
+                  resetKey={tsResetKey}
+                />
               )}
-              <button
-                type="submit"
-                disabled={
-                  pending ||
-                  code.length < 6 ||
-                  (!!TURNSTILE_SITE_KEY && !tsToken && !tsError)
-                }
-                className="rainbow-border rounded-2xl w-full block disabled:opacity-40 transition"
-              >
-                <span
-                  className="block w-full h-12 rounded-[14px] grid place-items-center gap-2
-                             bg-white text-dark-blue font-display text-[19px] pt-[2px]"
+              {/* Single CTA slot that absorbs Turnstile status so the
+                  form isn't a button + a banner. Three visual states:
+                  - error → tinted retry chip (taps `retryTurnstile`)
+                  - verifying → rainbow-border CTA disabled + in-pill
+                    spinner with the ts_checking copy
+                  - ready / submitting → rainbow-border CTA with the
+                    join copy or the submitting spinner.
+                  The form's onSubmit still fires on Enter; it falls
+                  through to `retryTurnstile` when we're in the error
+                  branch so the keyboard path doesn't dead-end. */}
+              {tsError ? (
+                <button
+                  type="button"
+                  onClick={retryTurnstile}
+                  className="w-full h-12 rounded-2xl inline-flex items-center justify-center gap-2
+                             bg-error/12 ring-1 ring-error/35 text-error/95
+                             font-display text-base active:scale-[0.98] transition"
                 >
-                  {pending ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      {t(lang, "checking")}
-                    </span>
-                  ) : armedRef.current && code.length === 6 ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      {t(lang, "ts_waiting_to_submit")}
-                    </span>
-                  ) : (
-                    t(lang, "enter_room")
-                  )}
-                </span>
-              </button>
+                  <ShieldAlert className="h-4 w-4" />
+                  {t(lang, "ts_error")}
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={
+                    pending ||
+                    code.length < 6 ||
+                    (!!TURNSTILE_SITE_KEY && !tsToken)
+                  }
+                  className="rainbow-border rounded-2xl w-full block disabled:opacity-40 transition"
+                >
+                  <span
+                    className="block w-full h-12 rounded-[14px] grid place-items-center gap-2
+                               bg-white text-dark-blue font-display text-[19px] pt-[2px]"
+                  >
+                    {pending ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {t(lang, "checking")}
+                      </span>
+                    ) : !!TURNSTILE_SITE_KEY && !tsToken ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-flamingo" />
+                        <span className="text-base text-dark-blue/75">
+                          {t(lang, "ts_checking")}
+                        </span>
+                      </span>
+                    ) : armedRef.current && code.length === 6 ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {t(lang, "ts_waiting_to_submit")}
+                      </span>
+                    ) : (
+                      t(lang, "enter_room")
+                    )}
+                  </span>
+                </button>
+              )}
             </form>
           </motion.div>
         )}

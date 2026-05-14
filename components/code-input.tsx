@@ -158,11 +158,12 @@ export function CodeInput({
             // background read as decorative noise on focus.
             "focus:outline-none",
             // Singing Sans has top-heavy metrics — pt nudges the
-            // cap-height visually centred in the cell. Extra
-            // padding-bottom moved the letters down further to fix
-            // the "floating high" feel; combined leading-none keeps
-            // the visual centre on the actual glyphs not their box.
-            "text-center font-display uppercase tabular-nums leading-none pt-2.5 pb-1.5",
+            // cap-height visually centred in the cell, and pb gives
+            // the line proper breathing room below so the glyphs
+            // don't kiss the cell's bottom rule. Combined with
+            // leading-none the visual centre lands on the actual
+            // letters, not on the line-box.
+            "text-center font-display uppercase tabular-nums leading-none pt-2 pb-3",
             "text-3xl sm:text-4xl text-white caret-flamingo",
             // Suppress text selection: tapping a cell shouldn't drag-
             // select neighbouring cells, and auto-select-on-focus is
