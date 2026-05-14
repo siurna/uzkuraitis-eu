@@ -180,7 +180,7 @@ async function dbStoreMany(
   }
 }
 
-export async function POST(req: Request) {
+async function _handlePost(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
@@ -309,6 +309,20 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ results });
+}
+
+// Catch + surface any uncaught throw as a JSON 500 instead of letting
+// Next.js return an empty body that hides the cause.
+export async function POST(req: Request) {
+  try {
+    return await _handlePost(req);
+  } catch (err) {
+    console.error("[explain] fatal", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : String(err) },
+      { status: 500 },
+    );
+  }
 }
 
 export const dynamic = "force-dynamic";
