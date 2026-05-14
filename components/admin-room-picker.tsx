@@ -56,10 +56,7 @@ export function AdminRoomPicker({
       >
         {selected ? (
           <span className="flex flex-1 min-w-0 flex-col leading-tight text-left">
-            <span className="flex items-center gap-2">
-              <span className="font-display text-sm text-white truncate">{selected.name}</span>
-              {renderBadge(selected.activeCount)}
-            </span>
+            <span className="font-display text-sm text-white truncate">{selected.name}</span>
             <span className="text-[10px] uppercase tracking-[0.22em] text-white/45 tabular-nums leading-none">
               {selected.code}
             </span>
@@ -67,7 +64,11 @@ export function AdminRoomPicker({
         ) : (
           <span className="flex-1 text-sm text-white/55">{emptyLabel}</span>
         )}
-        <ChevronDown className="h-4 w-4 text-white/55 shrink-0 ml-auto" />
+        {/* Active-count badge sits to the LEFT of the chevron so it
+            reads as a status indicator on the trigger, not as part
+            of the room title. */}
+        {selected && renderBadge(selected.activeCount)}
+        <ChevronDown className="h-4 w-4 text-white/55 shrink-0" />
       </button>
 
       <BottomSheet

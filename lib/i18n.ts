@@ -291,6 +291,14 @@ const S = {
   // Plain-text fallback for the chat CTA card (rendered when a viewer
   // sees the chat row but no card matches, or for screen readers).
   sys_cta_welcome:           { en: "👋 Hello folks, a few housekeeping notes", lt: "👋 Sveiki, keletas tvarkos taisyklių" },
+  // Closing card: fired by the host at the very end. The card
+  // surface owns the visual (gold gradient + confetti); these are
+  // the headline + sub for screen-readers + non-card fallback.
+  sys_cta_thanks:            { en: "🎉 Thank you for the wonderful evening, Europe!", lt: "🎉 Ačiū už nuostabų vakarą, Europa!" },
+  sys_cta_thanks_eyebrow:    { en: "That's a wrap", lt: "Tai ir viskas" },
+  sys_cta_thanks_title:      { en: "Thank you for the wonderful evening, Europe!", lt: "Ačiū už nuostabų vakarą, Europa!" },
+  sys_cta_thanks_sub:        { en: "See you in {next}.", lt: "Pasimatysim {next}." },
+  sys_cta_thanks_next:       { en: "2027", lt: "2027" },
   // Shown inside the chat card when the admin hasn't authored anything
   // for the viewer's language yet — quietly nudges the host.
   welcome_empty_chat:        { en: "The host hasn't written any housekeeping notes yet.", lt: "Šeimininkas dar neparašė jokių taisyklių." },

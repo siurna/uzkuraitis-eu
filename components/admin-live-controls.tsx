@@ -25,7 +25,8 @@ type BroadcastKind =
   | "selfie"
   | "drunk_poll"
   | "top3"
-  | "final";
+  | "final"
+  | "thanks";
 
 const ROOM_BROADCAST_KEY = (room: string, kind: BroadcastKind) =>
   `uzk_broadcast_${room}_${kind}`;
@@ -42,6 +43,7 @@ const SHOTS: { kind: BroadcastKind; title: string; desc: string }[] = [
   { kind: "drunk_poll",    title: "How drunk are you?",   desc: "Vibe-check tally bar." },
   { kind: "top3",          title: "Top 3 right now",      desc: "Live fan-aggregate podium." },
   { kind: "final",         title: "Final results",        desc: "Scored leaderboard." },
+  { kind: "thanks",        title: "Thank you, Europe",    desc: "Closing card with confetti." },
 ];
 
 export function AdminLiveControls({

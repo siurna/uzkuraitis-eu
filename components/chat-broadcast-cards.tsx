@@ -11,6 +11,7 @@ import { FluentEmoji } from "@/components/fluent-emoji";
 import { countryName, getCountry } from "@/lib/countries";
 import { isSupported as pushIsSupported } from "@/lib/push-client";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
+import { useParticles } from "@/components/particle-layer";
 import { useIdentity } from "@/lib/use-identity";
 import { fmt, t, tDyn, type MessageKey } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
@@ -65,6 +66,8 @@ export function ChatBroadcastCard({
       return <SelfieCard lang={lang} />;
     case "sys_cta_welcome":
       return <WelcomeChatCard lang={lang} />;
+    case "sys_cta_thanks":
+      return <ThanksCard lang={lang} />;
     case "sys_cta_top3":
       return <Top3PodiumCard codes={meta?.codes ?? null} fallback={meta?.sysArg ?? null} lang={lang} />;
     case "sys_cta_top3_empty":
@@ -633,6 +636,76 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
           </BottomSheet>
         );
       })()}
+    </motion.div>
+  );
+}
+
+// Closing-credits card. Fires once when mounted: a confetti shower
+// from the centre + the gold gradient. Reads as "the show is done,
+// thanks for being here". Server posts this via the `thanks` admin
+// broadcast kind; the message persists in chat, but the confetti
+// only fires for whoever's actively viewing the moment it lands
+// (subsequent re-renders / scroll-backs see the card without
+// fresh particles).
+function ThanksCard({ lang }: { lang: Language }) {
+  const particles = useParticles();
+  const ref = useRef<HTMLDivElement | null>(null);
+  const fired = useRef(false);
+
+  useEffect(() => {
+    if (fired.current) return;
+    const el = ref.current;
+    if (!el) return;
+    const box = el.getBoundingClientRect();
+    const cx = box.left + box.width / 2;
+    const cy = box.top + box.height / 2;
+    // Two sweeps so the burst feels like real cascading confetti
+    // instead of one synchronised pop. First wave is mostly party
+    // poppers + sparkles, second wave is hearts + stars.
+    const glyphs1 = ["🎉", "✨", "🎊", "🎉", "⭐", "🎉", "✨"];
+    const glyphs2 = ["❤️", "⭐", "🎉", "✨", "❤️", "🎊", "🎉"];
+    const fire = (glyphs: string[]) => {
+      particles.spawnMany(
+        glyphs.map((g) => ({
+          asset: { type: "emoji" as const, glyph: g },
+          from: { x: cx + (Math.random() - 0.5) * box.width * 0.6, y: cy },
+          driftRange: 240,
+          size: 42 + Math.random() * 18,
+          durationMs: 2000 + Math.random() * 1200,
+          rotate: 280,
+        })),
+      );
+    };
+    fire(glyphs1);
+    setTimeout(() => fire(glyphs2), 420);
+    fired.current = true;
+  }, [particles]);
+
+  const nextYear = t(lang, "sys_cta_thanks_next");
+  const sub = tDyn(lang, "sys_cta_thanks_sub", nextYear);
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+      className="relative w-full mx-auto max-w-md sm:max-w-lg overflow-hidden rounded-3xl
+                 ring-2 ring-yellow/40 shadow-[0_24px_64px_-22px_oklch(72%_0.18_85_/_0.6)]"
+      style={{
+        background:
+          "radial-gradient(120% 90% at 50% 0%, oklch(95% 0.19 95 / 0.55) 0%, transparent 55%), linear-gradient(155deg, #4a1d05 0%, #6e2b07 45%, #2a1208 100%)",
+      }}
+    >
+      <div className="relative px-5 py-7 flex flex-col items-center text-center gap-3">
+        <p className="text-[10px] uppercase tracking-[0.3em] font-display text-yellow/85">
+          {t(lang, "sys_cta_thanks_eyebrow")}
+        </p>
+        <p className="font-display text-2xl leading-tight text-balance text-white drop-shadow-sm">
+          {t(lang, "sys_cta_thanks_title")}
+        </p>
+        <p className="text-sm text-white/80 leading-snug">{sub}</p>
+      </div>
     </motion.div>
   );
 }
