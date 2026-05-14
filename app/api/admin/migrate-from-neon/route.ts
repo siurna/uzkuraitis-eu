@@ -163,11 +163,14 @@ async function runMigration(opts: {
 }
 
 export async function GET(req: Request) {
-  const secret = req.headers.get("x-migrate-secret");
+  const url = new URL(req.url);
+  // Accept secret in either header or query string so we can call it
+  // through Vercel's authenticated web-fetch (header-less).
+  const secret =
+    req.headers.get("x-migrate-secret") ?? url.searchParams.get("secret");
   if (secret !== SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const url = new URL(req.url);
   const schemaOnly = url.searchParams.get("schemaOnly") === "1";
   const dataOnly = url.searchParams.get("dataOnly") === "1";
   const dryRun = url.searchParams.get("dryRun") === "1";
