@@ -6,20 +6,25 @@
 // settings-modal ToggleRow, admin-room-boolean-toggle, room-manage)
 // — when we tweak one we want all to move.
 //
-// The accent prop lets admin "behaviour" rows render the gray
-// (subtle, non-color-signalling) variant while voter-facing prefs
-// render the green "success" variant. Lift it from inside the
-// callers' chain.
+// Accent variants:
+//  - "success"  → green, voter prefs (sub-feature toggles)
+//  - "neutral"  → gray, admin flags that shouldn't read celebratory
+//  - "electric" → cyan, the MASTER notifications switch only. Reads
+//    as the gate that gates everything else, distinct from the
+//    green sub-prefs underneath.
 export function TogglePill({
   on,
   accent = "success",
 }: {
   on: boolean;
-  /** "success" = green (voter prefs); "neutral" = gray (admin flags
-   *  that shouldn't read as celebratory). */
-  accent?: "success" | "neutral";
+  accent?: "success" | "neutral" | "electric";
 }) {
-  const onBg = accent === "success" ? "bg-success/90" : "bg-white/50";
+  const onBg =
+    accent === "electric"
+      ? "bg-[oklch(72%_0.18_225)] shadow-[0_0_18px_-2px_oklch(72%_0.2_225_/_0.7)]"
+      : accent === "success"
+        ? "bg-success/90"
+        : "bg-white/50";
   return (
     <span
       className={`relative h-6 w-11 rounded-full transition shrink-0 ${

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { Bell, Dices, ListChecks, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { HeartFlag } from "@/components/flag";
@@ -845,6 +845,26 @@ function SelfieCard({ lang }: { lang: Language }) {
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  // Paparazzi flash: a full-viewport white pulse that fires ONCE
+  // per room the very first time this card mounts. Keyed in
+  // sessionStorage so scrolling back to the message later doesn't
+  // re-fire, and so reloading the tab doesn't flash again. The
+  // card lives inside chat-row, so its mount = the viewer is
+  // looking at chat in this exact moment.
+  const [flash, setFlash] = useState(false);
+  useEffect(() => {
+    if (!code) return;
+    const key = `uzk_selfie_paparazzi_${code}`;
+    try {
+      if (sessionStorage.getItem(key) === "1") return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      /* private mode */
+    }
+    setFlash(true);
+    const t = setTimeout(() => setFlash(false), 600);
+    return () => clearTimeout(t);
+  }, [code]);
 
   // Revoke object URLs we hold so we don't leak when the user picks
   // a new shot or the card unmounts.
@@ -905,6 +925,24 @@ function SelfieCard({ lang }: { lang: Language }) {
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
       className="relative mx-auto max-w-[19rem]"
     >
+      {/* Paparazzi flash overlay — fires once per room when the card
+          first lands in chat. Fixed full-viewport white pulse, very
+          short (~500ms) so it reads as a camera-flash blip and not
+          a layout glitch. pointer-events-none so the user can keep
+          tapping the polaroid through it. */}
+      <AnimatePresence>
+        {flash && (
+          <motion.div
+            key="paparazzi"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.95, 0] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.55, times: [0, 0.18, 1], ease: [0.22, 1, 0.36, 1] }}
+            className="fixed inset-0 z-[80] pointer-events-none bg-white"
+            aria-hidden
+          />
+        )}
+      </AnimatePresence>
       <input
         ref={inputRef}
         type="file"
@@ -921,7 +959,7 @@ function SelfieCard({ lang }: { lang: Language }) {
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={busy}
-        className="relative block w-full text-left p-4 pb-3 rounded-sm
+        className="relative block w-full text-left p-6 pb-5 rounded-sm
                    bg-[#f5efe2]
                    shadow-[0_18px_44px_-18px_rgba(0,0,0,0.55),0_2px_6px_-2px_rgba(0,0,0,0.4)]
                    active:scale-[0.99] transition transform-gpu disabled:opacity-70"

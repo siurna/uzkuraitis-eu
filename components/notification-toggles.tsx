@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Bell, BellOff, HelpCircle } from "lucide-react";
+import {
+  Bell,
+  BellOff,
+  HelpCircle,
+  MessageCircle,
+  Reply,
+  Radio,
+  Vote,
+  Trophy,
+  type LucideIcon,
+} from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import {
@@ -158,58 +168,58 @@ export function NotificationToggles() {
       />
     );
   }
-  if (state.kind === "off") {
-    return (
-      <button
-        type="button"
-        onClick={enable}
-        disabled={pending || !state.vapidKey || !supported}
-        className="w-full flex items-center justify-between rounded-2xl px-4 py-3
-                   bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition
-                   text-sm disabled:opacity-40"
-      >
-        <span className="flex items-center gap-2">
-          <Bell className="h-4 w-4 text-dark-blue-200" />
-          {t(lang, "push_enable")}
-        </span>
-        <span className="text-xs text-white/40">{t(lang, "push_off")}</span>
-      </button>
-    );
-  }
-
+  // Master switch row — same shape in both on/off states so it
+  // reads as one consistent control. Electric cyan TogglePill
+  // because this is the gate that opens ALL the sub-prefs below;
+  // the per-pref pills are green (success), giving the page a
+  // clear hierarchy: blue master, green sub-features.
+  const masterOn = state.kind === "on";
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between rounded-2xl px-4 py-3
-                      bg-flamingo/10 ring-1 ring-flamingo/30">
+      <button
+        type="button"
+        onClick={() => (masterOn ? disable() : enable())}
+        disabled={pending || (!masterOn && (!state.vapidKey || !supported))}
+        className={`flex items-center justify-between rounded-2xl px-4 py-3 ring-1 transition text-left
+                    ${masterOn
+                      ? "bg-[oklch(72%_0.18_225_/_0.18)] ring-[oklch(72%_0.18_225_/_0.5)] hover:bg-[oklch(72%_0.18_225_/_0.24)]"
+                      : "bg-white/5 ring-white/10 hover:bg-white/10"}
+                    disabled:opacity-40`}
+      >
         <span className="flex items-center gap-2 text-sm flex-wrap">
-          <Bell className="h-4 w-4 text-flamingo" />
-          {t(lang, "push_on")}
-          {/* On iOS, web push only works inside the installed PWA.
-              Surfacing "iOS PWA" as a chip confirms the viewer is in
-              the right context — if they're seeing the chip + the
-              green toggle row, the OS-level plumbing is genuinely
-              hooked up. */}
-          {platform === "ios-safari" && installedPwaNow && (
+          <Bell
+            className={`h-4 w-4 ${masterOn ? "text-[oklch(82%_0.16_225)]" : "text-white/65"}`}
+            fill={masterOn ? "currentColor" : "none"}
+          />
+          <span className="font-display">
+            {masterOn ? t(lang, "push_on") : t(lang, "push_enable")}
+          </span>
+          {platform === "ios-safari" && installedPwaNow && masterOn && (
             <span className="text-[10px] uppercase tracking-[0.18em] font-display rounded-full bg-success/20 ring-1 ring-success/45 text-success px-2 h-5 inline-flex items-center">
               iOS PWA
             </span>
           )}
         </span>
-        <button
-          type="button"
-          onClick={disable}
-          disabled={pending}
-          className="text-xs text-white/55 hover:text-white inline-flex items-center gap-1.5"
-        >
-          <BellOff className="h-3.5 w-3.5" />
-          {t(lang, "push_disable")}
-        </button>
-      </div>
-      <PrefRow label={t(lang, "push_chat_all")}        sub={t(lang, "push_chat_all_sub")}        value={!!state.prefs.chatAll}        onChange={(v) => setPref("chatAll", v)} />
-      <PrefRow label={t(lang, "push_chat_replies")}    sub={t(lang, "push_chat_replies_sub")}    value={!!state.prefs.chatReplies}    onChange={(v) => setPref("chatReplies", v)} />
-      <PrefRow label={t(lang, "push_now_playing")}     sub={t(lang, "push_now_playing_sub")}     value={!!state.prefs.nowPlaying}     onChange={(v) => setPref("nowPlaying", v)} />
-      <PrefRow label={t(lang, "push_voting_state")}    sub={t(lang, "push_voting_state_sub")}    value={!!state.prefs.votingState}    onChange={(v) => setPref("votingState", v)} />
-      <PrefRow label={t(lang, "push_results_tallied")} sub={t(lang, "push_results_tallied_sub")} value={!!state.prefs.resultsTallied} onChange={(v) => setPref("resultsTallied", v)} />
+        <TogglePill on={masterOn} accent="electric" />
+      </button>
+      {masterOn && state.kind === "on" && (
+        <div className="flex flex-col gap-2">
+          <PrefRow icon={MessageCircle} label={t(lang, "push_chat_all")}        sub={t(lang, "push_chat_all_sub")}        value={!!state.prefs.chatAll}        onChange={(v) => setPref("chatAll", v)} />
+          <PrefRow icon={Reply}         label={t(lang, "push_chat_replies")}    sub={t(lang, "push_chat_replies_sub")}    value={!!state.prefs.chatReplies}    onChange={(v) => setPref("chatReplies", v)} />
+          <PrefRow icon={Radio}         label={t(lang, "push_now_playing")}     sub={t(lang, "push_now_playing_sub")}     value={!!state.prefs.nowPlaying}     onChange={(v) => setPref("nowPlaying", v)} />
+          <PrefRow icon={Vote}          label={t(lang, "push_voting_state")}    sub={t(lang, "push_voting_state_sub")}    value={!!state.prefs.votingState}    onChange={(v) => setPref("votingState", v)} />
+          <PrefRow icon={Trophy}        label={t(lang, "push_results_tallied")} sub={t(lang, "push_results_tallied_sub")} value={!!state.prefs.resultsTallied} onChange={(v) => setPref("resultsTallied", v)} />
+          <button
+            type="button"
+            onClick={disable}
+            disabled={pending}
+            className="self-start text-xs text-white/55 hover:text-white inline-flex items-center gap-1.5 mt-1 px-1"
+          >
+            <BellOff className="h-3.5 w-3.5" />
+            {t(lang, "push_disable")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -323,11 +333,13 @@ function installSteps(
 }
 
 function PrefRow({
+  icon: Icon,
   label,
   sub,
   value,
   onChange,
 }: {
+  icon: LucideIcon;
   label: string;
   sub?: string;
   value: boolean;
@@ -337,12 +349,24 @@ function PrefRow({
     <button
       type="button"
       onClick={() => onChange(!value)}
-      className="flex items-center gap-3 rounded-2xl px-4 py-3
+      aria-pressed={value}
+      className="flex items-center gap-3 rounded-2xl px-3 py-2.5
                  glass-surface hover:bg-white/[0.07] transition text-left"
     >
+      {/* Icon tile — gray when the pref is off, green when on.
+          Mirrors the settings-modal helper rows so the entire
+          notifications drawer reads as one visual family. */}
+      <span
+        className={`shrink-0 grid place-items-center h-9 w-9 rounded-xl transition
+                    ${value
+                      ? "bg-success/20 ring-1 ring-success/45 text-success"
+                      : "bg-white/8 ring-1 ring-white/12 text-white/55"}`}
+      >
+        <Icon className="h-4 w-4" fill="currentColor" />
+      </span>
       <span className="flex-1 min-w-0">
-        <span className="block text-sm text-white/90">{label}</span>
-        {sub && <span className="block text-xs text-white/45 leading-snug mt-0.5">{sub}</span>}
+        <span className="block font-display text-sm text-white">{label}</span>
+        {sub && <span className="block text-xs text-white/55 leading-snug mt-0.5">{sub}</span>}
       </span>
       <TogglePill on={value} />
     </button>
