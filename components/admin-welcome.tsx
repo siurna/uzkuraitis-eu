@@ -46,8 +46,13 @@ export function AdminWelcome({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ welcome_md_en: en, welcome_md_lt: lt }),
       });
-      if (res.ok) toast.success("Welcome saved.");
-      else toast.error("Save failed.");
+      if (res.ok) {
+        toast.success("Welcome saved.");
+        // Any room tab already mounted picks up the new content
+        // without a reload. Same event the home banner + chat card
+        // listen for.
+        window.dispatchEvent(new Event("uzk:welcome-refresh"));
+      } else toast.error("Save failed.");
     } catch {
       toast.error("Save failed (network).");
     } finally {

@@ -264,6 +264,12 @@ const S = {
   poll_voted:                { en: (n: number) => `Locked in. ${n} ${n === 1 ? "vote" : "votes"} so far.`, lt: (n: number) => `Užfiksuota. Šiuo metu balsų: ${n}.` },
   // Welcome / housekeeping widget at the bottom of every room home.
   welcome_eyebrow:           { en: "Hello folks", lt: "Sveiki sveiki" },
+  // Plain-text fallback for the chat CTA card (rendered when a viewer
+  // sees the chat row but no card matches, or for screen readers).
+  sys_cta_welcome:           { en: "👋 Hello folks, a few housekeeping notes", lt: "👋 Sveiki, keletas tvarkos taisyklių" },
+  // Shown inside the chat card when the admin hasn't authored anything
+  // for the viewer's language yet — quietly nudges the host.
+  welcome_empty_chat:        { en: "The host hasn't written any housekeeping notes yet.", lt: "Šeimininkas dar neparašė jokių taisyklių." },
   chat_edit:         { en: "Edit", lt: "Redaguoti" },
   chat_edited:       { en: "edited", lt: "redaguota" },
   chat_editing:      { en: "Editing your message", lt: "Redaguoji žinutę" },

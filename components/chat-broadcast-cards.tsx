@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Bell, Dices, Medal, ListChecks, ChevronRight, Camera, Loader2 } from "lucide-react";
+import { Bell, Dices, Medal, ListChecks, ChevronRight, Camera, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { HeartFlag } from "@/components/flag";
+import { WelcomeMarkdown } from "@/components/welcome-banner";
 import { countryName, getCountry } from "@/lib/countries";
 import { isSupported as pushIsSupported } from "@/lib/push-client";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
@@ -60,6 +61,8 @@ export function ChatBroadcastCard({
       return <BonusBetCard lang={lang} />;
     case "sys_cta_selfie":
       return <SelfieCard lang={lang} />;
+    case "sys_cta_welcome":
+      return <WelcomeChatCard lang={lang} />;
     case "sys_cta_top3":
       return <Top3PodiumCard codes={meta?.codes ?? null} fallback={meta?.sysArg ?? null} lang={lang} />;
     case "sys_cta_top3_empty":
@@ -444,6 +447,69 @@ function Top3PodiumCard({
               <span />
             )}
           </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// "Hello folks" — the host fires this and the chat thread shows the
+// housekeeping markdown the admin wrote in /admin/welcome, rendered
+// in each viewer's own language. Fetches /api/welcome on mount and
+// listens for `uzk:welcome-refresh` so admin saves push through to
+// already-rendered cards without a reload.
+type WelcomeData = { welcome_md_en: string; welcome_md_lt: string };
+
+function WelcomeChatCard({ lang }: { lang: Language }) {
+  const [data, setData] = useState<WelcomeData | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      fetch("/api/welcome", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: WelcomeData | null) => {
+          if (alive && d) setData(d);
+        })
+        .catch(() => {});
+    };
+    load();
+    window.addEventListener("uzk:welcome-refresh", load);
+    return () => {
+      alive = false;
+      window.removeEventListener("uzk:welcome-refresh", load);
+    };
+  }, []);
+
+  const md = (lang === "lt" ? data?.welcome_md_lt : data?.welcome_md_en) ?? "";
+  // No fallback copy when empty — the admin hasn't authored anything
+  // yet, so render a quiet placeholder rather than a blank card so
+  // the host immediately notices the empty state.
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+      className="rounded-3xl ring-1 ring-flamingo/45 shadow-[0_18px_44px_-18px_oklch(58%_0.24_336_/_0.5)] overflow-hidden"
+    >
+      <div
+        className="relative overflow-hidden p-5 flex flex-col gap-3"
+        style={{ background: "linear-gradient(160deg, #1b2360 0%, #2e1b6e 55%, #5a2295 100%)" }}
+      >
+        <header className="flex items-center gap-2">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-flamingo/20 ring-1 ring-flamingo/45 text-flamingo">
+            <Sparkles className="h-4 w-4" fill="currentColor" />
+          </span>
+          <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/85">
+            {t(lang, "welcome_eyebrow")}
+          </p>
+        </header>
+        {md.trim() ? (
+          <WelcomeMarkdown source={md} />
+        ) : (
+          <p className="text-sm text-white/70 italic">
+            {t(lang, "welcome_empty_chat")}
+          </p>
         )}
       </div>
     </motion.div>

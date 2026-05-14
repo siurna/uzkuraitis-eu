@@ -12,7 +12,7 @@ import { postSystemMessage, postResultsMessage, postPollMessage } from "@/lib/ch
 // in the target room. Admin session-gated.
 const Body = z.object({
   room: z.string().length(6),
-  kind: z.enum(["notifications", "vote", "bet", "top3", "final", "selfie", "drunk_poll"]),
+  kind: z.enum(["notifications", "vote", "bet", "top3", "final", "selfie", "drunk_poll", "welcome"]),
 });
 
 // Canned "vibe check" poll fired from admin broadcasts. Keyed by kind
@@ -52,6 +52,11 @@ export async function POST(req: Request) {
     await postSystemMessage(room.code, room.id, { key: "sys_cta_bet" });
   } else if (kind === "selfie") {
     await postSystemMessage(room.code, room.id, { key: "sys_cta_selfie" });
+  } else if (kind === "welcome") {
+    // The CTA's body is fetched client-side from /api/welcome so each
+    // viewer sees the markdown in their own language — server just
+    // drops the marker card into chat.
+    await postSystemMessage(room.code, room.id, { key: "sys_cta_welcome" });
   } else if (kind === "drunk_poll") {
     const poll = POLLS.drunk_poll;
     await postPollMessage(room.code, room.id, poll.question, [...poll.choices]);
