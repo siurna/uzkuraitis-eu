@@ -7,10 +7,10 @@ import {
   COMMENTATOR_NAME_KEY,
   COMMENTATOR_PHOTO_KEY,
 } from "@/lib/db/schema";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 import { getCountry } from "@/lib/countries";
 import { computeRoomLeaderboard } from "@/lib/leaderboard";
-import type { ChatMessagePayload, JsonObject } from "@/lib/liveblocks";
+import type { ChatMessagePayload, JsonObject } from "@/lib/realtime";
 
 // A system chat message, identified by its i18n key (+ optional arg).
 // The client renders it in the *recipient's* language from meta.sysKey;

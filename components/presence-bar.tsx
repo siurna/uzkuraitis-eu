@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
 import { Settings as SettingsIcon } from "lucide-react";
-import { useUpdateMyPresence } from "@/lib/liveblocks";
+import { useUpdateMyPresence } from "@/lib/realtime";
 import { useIdentity } from "@/lib/use-identity";
 import { useRoomLive } from "@/components/room-shell";
 import { SettingsModal } from "@/components/settings-modal";

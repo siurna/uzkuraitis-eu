@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { Share2, Check, LogOut, ChevronRight, Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useUpdateMyPresence } from "@/lib/liveblocks";
+import { useUpdateMyPresence } from "@/lib/realtime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BottomSheet } from "@/components/ui/bottom-sheet";

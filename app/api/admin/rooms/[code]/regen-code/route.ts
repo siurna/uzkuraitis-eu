@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { rooms } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
 import { isAdminAuthed } from "@/lib/admin/session";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 
 const ROOM_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 const generateCode = customAlphabet(ROOM_CODE_ALPHABET, 6);

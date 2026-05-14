@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { voters, votes } from "@/lib/db/schema";
 import { findRoomByCode, touchRoom } from "@/lib/rooms";
 import { countries } from "@/lib/countries";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 import { postSystemMessage } from "@/lib/chat-system";
 import { guardSession } from "@/lib/server-session";
 import { checkAndIncrement } from "@/lib/rate-limit";

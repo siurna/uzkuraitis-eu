@@ -26,7 +26,7 @@ import {
   useOthers,
   useUpdateMyPresence,
   type ChatMessagePayload,
-} from "@/lib/liveblocks";
+} from "@/lib/realtime";
 import { useRoomLive } from "@/components/room-shell";
 import { useIdentity } from "@/lib/use-identity";
 import { GifPicker } from "@/components/gif-picker";

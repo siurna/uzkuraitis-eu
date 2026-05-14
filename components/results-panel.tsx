@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { useEventListener } from "@/lib/liveblocks";
+import { useEventListener } from "@/lib/realtime";
 import { useRoomLive } from "@/components/room-shell";
 import { ensureSessionId } from "@/lib/use-identity";
 import { ScoreBreakdown } from "@/components/score-breakdown";

@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { motion } from "motion/react";
-import { useOthers, useSelf } from "@/lib/liveblocks";
+import { useOthers, useSelf } from "@/lib/realtime";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { ensureSessionId } from "@/lib/use-identity";

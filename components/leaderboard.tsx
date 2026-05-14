@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Crown, ChevronDown } from "lucide-react";
-import { useEventListener } from "@/lib/liveblocks";
+import { useEventListener } from "@/lib/realtime";
 import { getCountry, countryName } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 import { ScoreBreakdown } from "@/components/score-breakdown";

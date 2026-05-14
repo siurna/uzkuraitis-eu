@@ -6,7 +6,7 @@ import { Mic, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { countries, getCountry, countryName } from "@/lib/countries";
-import { useEventListener } from "@/lib/liveblocks";
+import { useEventListener } from "@/lib/realtime";
 import { HeartFlag, MetaPill } from "@/components/flag";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { useCountryDeepDive } from "@/components/country-deep-dive";

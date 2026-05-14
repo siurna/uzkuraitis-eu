@@ -7,7 +7,7 @@ import {
   findRoomByCodeWithToken,
   changeRoomCode,
 } from "@/lib/rooms";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 import { pushToRoom } from "@/lib/push";
 import { getCountry } from "@/lib/countries";
 import { participantPhoto } from "@/lib/participants";

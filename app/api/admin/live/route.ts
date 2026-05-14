@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { rooms } from "@/lib/db/schema";
 import { isAdminAuthed } from "@/lib/admin/session";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 import { pushToRoom } from "@/lib/push";
 import { getCountry } from "@/lib/countries";
 import { invalidateRoomCache } from "@/lib/rooms";

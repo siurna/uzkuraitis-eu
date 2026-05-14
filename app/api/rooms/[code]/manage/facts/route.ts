@@ -4,7 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { roomFacts, officialFacts } from "@/lib/db/schema";
 import { findRoomByCodeWithToken } from "@/lib/rooms";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 
 type RouteCtx = { params: Promise<{ code: string }> };
 

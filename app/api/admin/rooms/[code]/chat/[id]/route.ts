@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { chatMessages } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
 import { isAdminAuthed } from "@/lib/admin/session";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 
 // Admin-side delete for moderation. Mirrors the author-scoped DELETE on
 // /api/rooms/[code]/chat/[id] but uses the admin passkey session

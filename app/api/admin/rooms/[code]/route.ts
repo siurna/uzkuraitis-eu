@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { rooms, voters, votes } from "@/lib/db/schema";
 import { findRoomByCode, changeRoomCode, invalidateRoomCache } from "@/lib/rooms";
 import { isAdminAuthed } from "@/lib/admin/session";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 
 type RouteCtx = { params: Promise<{ code: string }> };
 

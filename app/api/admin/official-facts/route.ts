@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { officialFacts, rooms } from "@/lib/db/schema";
 import { isAdminAuthed } from "@/lib/admin/session";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 
 // Generic key-value store for the side-bet ground truth (jury winner,
 // televote winner, nul-points country, etc.). One row per key. Anyone can

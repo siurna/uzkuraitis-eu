@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { roomResults, officialResults } from "@/lib/db/schema";
 import { findRoomByCodeWithToken } from "@/lib/rooms";
 import { countries } from "@/lib/countries";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 
 type RouteCtx = { params: Promise<{ code: string }> };
 

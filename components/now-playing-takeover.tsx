@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { useEventListener } from "@/lib/liveblocks";
+import { useEventListener } from "@/lib/realtime";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { Flag } from "@/components/flag";

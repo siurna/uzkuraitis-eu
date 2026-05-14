@@ -1,6 +1,6 @@
 # Architecture
 
-A Eurovision 2026 second-screen party app. Multi-room voting + bonus-bet scoring + chat + bingo + now-playing, real-time via Liveblocks, durable via Supabase Postgres.
+A Eurovision 2026 second-screen party app. Multi-room voting + bonus-bet scoring + chat + bingo + now-playing, real-time via Supabase Realtime, durable via Supabase Postgres.
 
 Mobile-first. Lithuanian by default; English available. The visual identity is the official ESC 2026 heart-mark; every list row, country chip, and loading state echoes that shape.
 
@@ -13,7 +13,7 @@ Mobile-first. Lithuanian by default; English available. The visual identity is t
 | Framework | Next 16 (App Router, typed routes, RSC where possible) |
 | Style | Tailwind v4 (CSS-first `@theme`, no `tailwind.config.js`) |
 | DB | Supabase Postgres (via pgbouncer transaction pooler) via Drizzle ORM |
-| Real-time | Liveblocks (presence + broadcast events) |
+| Real-time | Supabase Realtime (presence + broadcast channels) |
 | Animation | `motion/react` (framer-motion successor) |
 | Drag/drop | `@dnd-kit` |
 | Auth (admin) | WebAuthn passkeys via `@simplewebauthn` + iron-session |
@@ -57,7 +57,7 @@ chat_reactions         (planned) hold-to-react on a message
 push_subscriptions     (planned) Web Push endpoint + prefs jsonb
 ```
 
-Every long-lived thing is in Supabase Postgres. Liveblocks carries presence + ephemeral broadcasts only.
+Every long-lived thing is in Supabase Postgres. Supabase Realtime carries presence + ephemeral broadcasts only.
 
 ---
 
@@ -66,14 +66,14 @@ Every long-lived thing is in Supabase Postgres. Liveblocks carries presence + ep
 Two stores, one direction:
 
 1. **Server writes to Supabase Postgres** (durable).
-2. **Server broadcasts a hint event over Liveblocks** (`scores:updated`, `chat:new`, …).
+2. **Server broadcasts a hint event over Supabase Realtime** (`scores:updated`, `chat:new`, …).
 3. **Clients listen for the hint, refetch the relevant slice of Postgres.**
 
-This is why we don't put chat messages in Liveblocks Storage despite the temptation: persistence + history + moderation belong in the DB. Broadcasts just say "something changed, look again."
+This is why we don't bundle full payloads into broadcasts despite the temptation: persistence + history + moderation belong in the DB. Broadcasts just say "something changed, look again."
 
 ### Broadcast event union
 
-Defined in `lib/liveblocks.ts`. Naming convention: `<feature>:<verb>`.
+Defined in `lib/realtime.tsx`. Naming convention: `<feature>:<verb>`.
 
 ```
 reaction:emoji        client → room    (emoji float, spawn particle)

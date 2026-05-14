@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { chatMessages, chatReactions } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
-import { broadcastToRoom } from "@/lib/liveblocks-server";
+import { broadcastToRoom } from "@/lib/realtime-server";
 import { guardSession } from "@/lib/server-session";
 import { checkAndIncrement } from "@/lib/rate-limit";
 
