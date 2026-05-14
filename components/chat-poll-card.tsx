@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Loader2, Crown } from "lucide-react";
+import { Crown } from "lucide-react";
 import { useIdentity } from "@/lib/use-identity";
 import { useRoomLive } from "@/components/room-shell";
 import { FluentEmoji } from "@/components/fluent-emoji";
@@ -15,6 +15,14 @@ import type { Reactions } from "@/components/chat-row";
 // enforced client-side by toggling the prior pick off first), so
 // the chat:react broadcast keeps the bars in sync for every viewer
 // without a new event type or table.
+//
+// Optimistic update: the tap commits to the local view immediately
+// — bar slides, mine/leader recompute — and the network call fires
+// in the background. The override clears when the chat:react
+// broadcast round-trips back and the server-authored reactions
+// reflect the same pick. Avoids the "I tapped, nothing happened
+// for a second" feel that used to land while two POSTs + a
+// broadcast + a refetch played out.
 
 type PollChoice = { emoji: string; en: string; lt: string };
 
@@ -37,7 +45,6 @@ export function ChatPollCard({
 }) {
   const { sessionId: getSession, name } = useIdentity();
   const { code } = useRoomLive();
-  const [submitting, setSubmitting] = useState<string | null>(null);
 
   const question = (meta?.question?.[lang] ?? meta?.question?.en ?? "") as string;
   const choices = useMemo<PollChoice[]>(
@@ -45,14 +52,45 @@ export function ChatPollCard({
     [meta],
   );
 
-  // Tallies — total votes + which choice this session picked + the
-  // current leading choice (highlighted with a small crown).
+  // What the server says this session picked.
+  const serverMyEmoji = useMemo(() => {
+    for (const c of choices) {
+      if (reactions[c.emoji]?.mine) return c.emoji;
+    }
+    return null;
+  }, [choices, reactions]);
+
+  // Pending local override (null inside the box = "I undid my vote";
+  // unset state = no override). Clears the moment the server-authored
+  // reactions reflect the same pick.
+  const [override, setOverride] = useState<{ emoji: string | null } | null>(null);
+  useEffect(() => {
+    if (!override) return;
+    if (override.emoji === serverMyEmoji) setOverride(null);
+  }, [serverMyEmoji, override]);
+
+  const myEmoji = override ? override.emoji : serverMyEmoji;
+
+  // Per-choice count adjusted for the optimistic override so the bars
+  // animate the instant the user taps.
+  const countFor = useCallback(
+    (emoji: string) => {
+      let c = reactions[emoji]?.count ?? 0;
+      if (override) {
+        if (serverMyEmoji === emoji && override.emoji !== emoji) c -= 1;
+        if (override.emoji === emoji && override.emoji !== serverMyEmoji) c += 1;
+      }
+      return Math.max(0, c);
+    },
+    [reactions, override, serverMyEmoji],
+  );
+
   const tally = useMemo(() => {
     let total = 0;
     let max = 0;
     let leader: string | null = null;
     for (const c of choices) {
-      const n = reactions[c.emoji]?.count ?? 0;
+      const n = countFor(c.emoji);
       total += n;
       if (n > max) {
         max = n;
@@ -60,52 +98,52 @@ export function ChatPollCard({
       }
     }
     return { total, leader, safe: Math.max(total, 1) };
-  }, [choices, reactions]);
+  }, [choices, countFor]);
 
-  const myEmoji = useMemo(() => {
-    for (const c of choices) {
-      if (reactions[c.emoji]?.mine) return c.emoji;
-    }
-    return null;
-  }, [choices, reactions]);
+  // Serialise actual POSTs so a fast double-tap doesn't fire two
+  // inserts on top of each other before the server reconciles. The
+  // UI itself still updates synchronously via the override; this
+  // only gates the network layer.
+  const inflight = useRef<Promise<unknown> | null>(null);
 
   const vote = useCallback(
-    async (emoji: string) => {
-      if (submitting || !code) return;
+    (emoji: string) => {
+      if (!code) return;
       const session = getSession();
       const senderName = (name ?? "").trim() || "anonymous";
-      setSubmitting(emoji);
-      // When switching votes we run the unset + set calls in parallel
-      // instead of sequentially — halves the perceived "I tapped, the
-      // bar isn't moving" latency. The two reactions are on the same
-      // chat_reactions PK so the server is fine with both arriving
-      // at once. The broadcast that follows reconciles the order.
-      try {
-        const calls: Promise<unknown>[] = [];
-        if (myEmoji && myEmoji !== emoji) {
-          calls.push(
-            fetch(`/api/rooms/${code}/chat/${messageId}/react`, {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ session, name: senderName, emoji: myEmoji }),
-            }),
-          );
+      // Effective next pick: tapping your current choice undoes it,
+      // anything else replaces.
+      const nextPick = myEmoji === emoji ? null : emoji;
+      setOverride({ emoji: nextPick });
+
+      const post = (e: string) =>
+        fetch(`/api/rooms/${code}/chat/${messageId}/react`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ session, name: senderName, emoji: e }),
+        });
+
+      const run = async () => {
+        // Wait for any prior tap's network round to finish so its
+        // delete/insert order isn't trampled.
+        if (inflight.current) {
+          try { await inflight.current; } catch { /* swallow */ }
         }
-        calls.push(
-          fetch(`/api/rooms/${code}/chat/${messageId}/react`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ session, name: senderName, emoji }),
-          }),
-        );
+        const calls: Promise<unknown>[] = [];
+        if (serverMyEmoji && serverMyEmoji !== nextPick) calls.push(post(serverMyEmoji));
+        if (nextPick && nextPick !== serverMyEmoji) calls.push(post(nextPick));
         await Promise.all(calls);
-      } catch {
-        /* live tally rebroadcast will reconcile next refetch */
-      } finally {
-        setSubmitting(null);
-      }
+      };
+      const p = run().catch(() => {
+        // Network blip — let the next broadcast-driven refetch
+        // reconcile and drop the override.
+      });
+      inflight.current = p;
+      p.finally(() => {
+        if (inflight.current === p) inflight.current = null;
+      });
     },
-    [submitting, code, myEmoji, getSession, name, messageId],
+    [code, getSession, name, messageId, myEmoji, serverMyEmoji],
   );
 
   if (!meta?.poll || choices.length === 0) return null;
@@ -143,17 +181,15 @@ export function ChatPollCard({
 
         <ul className="relative flex flex-col gap-2">
           {choices.map((c, i) => {
-            const count = reactions[c.emoji]?.count ?? 0;
+            const count = countFor(c.emoji);
             const pct = (count / tally.safe) * 100;
             const mine = myEmoji === c.emoji;
-            const busy = submitting === c.emoji;
             const isLeader = voted && tally.leader === c.emoji && tally.total > 0;
             return (
               <li key={c.emoji}>
                 <motion.button
                   type="button"
                   onClick={() => vote(c.emoji)}
-                  disabled={submitting != null}
                   aria-pressed={mine}
                   whileTap={{ scale: 0.985 }}
                   animate={mine ? { scale: [1, 1.03, 1] } : { scale: 1 }}
@@ -232,8 +268,6 @@ export function ChatPollCard({
                           {count}
                         </span>
                       </span>
-                    ) : busy ? (
-                      <Loader2 className="h-4 w-4 text-white/80 animate-spin shrink-0" />
                     ) : (
                       <span className="shrink-0 text-[10px] uppercase tracking-[0.22em] text-white/45 font-display">
                         {t(lang, "poll_tap")}
