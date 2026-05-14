@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { voters, votes } from "@/lib/db/schema";
-import { countries, countryName } from "@/lib/countries";
+import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { findRoomByCode } from "@/lib/rooms";
 import type { Language } from "@/lib/i18n";
@@ -70,7 +70,7 @@ export async function GET(req: Request, { params }: RouteCtx) {
 
     const picks = POINTS.map((p) => {
       const cc = byPoints.get(p);
-      const c = cc ? countries.find((x) => x.code === cc) : null;
+      const c = cc ? getCountry(cc) ?? null : null;
       return { points: p, code: cc ?? null, country: c };
     });
 

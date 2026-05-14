@@ -155,11 +155,14 @@ export async function POST(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Message is empty" }, { status: 400 });
   }
 
-  // A reply must point at a message that lives in *this* room — anything
-  // else would let someone with a stray UUID reply across rooms.
+  // PERF: replyTo used to be checked twice — once here for in-room
+  // validation, once below to pull the parent's sessionId for the
+  // reply-push fan-out. One query returns both; the sessionId is
+  // captured and reused below.
+  let replyTargetSession: string | null = null;
   if (data.replyTo) {
     const [parent] = await db
-      .select({ roomId: chatMessages.roomId })
+      .select({ roomId: chatMessages.roomId, sessionId: chatMessages.sessionId })
       .from(chatMessages)
       .where(eq(chatMessages.id, data.replyTo))
       .limit(1);
@@ -169,6 +172,7 @@ export async function POST(req: Request, { params }: RouteCtx) {
         { status: 400 },
       );
     }
+    replyTargetSession = parent.sessionId;
   }
 
   const finalMeta = room.nowPlayingCode
@@ -251,28 +255,22 @@ export async function POST(req: Request, { params }: RouteCtx) {
   }
 
   // Replies — fan separately to the original author only, if their prefs
-  // allow it. Doing this with one query keeps the chatAll path clean.
-  if (data.replyTo) {
-    const [parent] = await db
-      .select({ sessionId: chatMessages.sessionId })
-      .from(chatMessages)
-      .where(eq(chatMessages.id, data.replyTo))
-      .limit(1);
-    if (parent && parent.sessionId !== data.session) {
-      pushToRoom(
-        room.id,
-        // Skip anyone who'd already get the chatAll broadcast above —
-        // otherwise reply+text = two notifications.
-        (prefs, sub) =>
-          !!prefs.chatReplies && !prefs.chatAll && sub.sessionId === parent.sessionId,
-        {
-          title: `${data.name} replied to you`,
-          body: data.body?.slice(0, 120) ?? "Tap to see the reply",
-          url: `/r/${code}/chat`,
-          tag: `chat-reply:${data.replyTo}`,
-        },
-      ).catch(() => {});
-    }
+  // allow it. `replyTargetSession` was captured by the same single
+  // query that did the in-room validation above; no second SELECT.
+  if (data.replyTo && replyTargetSession && replyTargetSession !== data.session) {
+    pushToRoom(
+      room.id,
+      // Skip anyone who'd already get the chatAll broadcast above —
+      // otherwise reply+text = two notifications.
+      (prefs, sub) =>
+        !!prefs.chatReplies && !prefs.chatAll && sub.sessionId === replyTargetSession,
+      {
+        title: `${data.name} replied to you`,
+        body: data.body?.slice(0, 120) ?? "Tap to see the reply",
+        url: `/r/${code}/chat`,
+        tag: `chat-reply:${data.replyTo}`,
+      },
+    ).catch(() => {});
   }
 
   return NextResponse.json({ ok: true, id: row.id });

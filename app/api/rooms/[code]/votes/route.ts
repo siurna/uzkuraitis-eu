@@ -118,18 +118,11 @@ export async function POST(request: Request, { params }: RouteCtx) {
     used.add(code);
   }
 
-  // Is this the voter's first ballot in this room, or a re-cast? Only
-  // the first one narrates "X cast their vote" in chat.
-  const [existingVoter] = await db
-    .select({ id: voters.id })
-    .from(voters)
-    .where(and(eq(voters.roomId, room.id), eq(voters.sessionId, sessionId)))
-    .limit(1);
-  const isFirstCast = !existingVoter;
-
-  // Upsert voter on (room_id, session_id). Same call persists the home
-  // prediction + every side bet so the whole prediction state is saved
-  // atomically alongside the ballot.
+  // Upsert voter on (room_id, session_id) AND derive "first cast" from
+  // the same RETURNING — Postgres's `xmax` system column is 0 for a
+  // fresh insert, non-zero for the UPDATE branch of an UPSERT. So
+  // we collapse the previous SELECT-then-upsert pair into a single
+  // round-trip that yields the row + the isFirstCast flag.
   const voterValues = {
     roomId: room.id,
     sessionId,
@@ -152,7 +145,11 @@ export async function POST(request: Request, { params }: RouteCtx) {
       target: [voters.roomId, voters.sessionId],
       set: { ...voterValues, updatedAt: sql`now()` },
     })
-    .returning();
+    .returning({
+      id: voters.id,
+      isFirstCast: sql<boolean>`(xmax = 0)`,
+    });
+  const isFirstCast = voter.isFirstCast;
 
   // Replace ballot atomically.
   await db.delete(votes).where(eq(votes.voterId, voter.id));

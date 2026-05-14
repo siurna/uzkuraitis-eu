@@ -9,8 +9,11 @@ export async function GET(_req: Request, { params }: RouteCtx) {
   if (!room) {
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
-  // Bump activity so dashboards can show "active rooms".
-  await touchRoom(room.id);
+  // Bump activity so dashboards can show "active rooms". The client
+  // doesn't read the result; fire-and-forget keeps it off the
+  // critical path. Errors are swallowed so a transient touch-write
+  // failure never breaks the room load.
+  touchRoom(room.id).catch(() => {});
   return NextResponse.json({
     id: room.id,
     code: room.code,

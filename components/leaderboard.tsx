@@ -1,36 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Crown, ChevronDown } from "lucide-react";
-import { useEventListener } from "@/lib/realtime";
 import { getCountry, countryName } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 import { ScoreBreakdown } from "@/components/score-breakdown";
-import type { BetBreakdown } from "@/lib/scoring";
+import { useLeaderboard } from "@/components/leaderboard-provider";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
-
-type Row = {
-  voterId: string;
-  sessionId: string;
-  name: string;
-  homePrediction: number | null;
-  topTen: number;
-  home: number;
-  bets: BetBreakdown;
-  betsTotal: number;
-  highlights: number;
-  trivia?: number;
-  total: number;
-};
-
-type Response = {
-  hasResults: boolean;
-  homeCountryCode: string;
-  homeCountryOfficialPlacement?: number | null;
-  leaderboard: Row[];
-};
 
 // Per-room betting leaderboard. Hidden until the admin has entered the
 // official Eurovision result; once entered, scores are computed server-side
@@ -39,37 +17,19 @@ type Response = {
 //
 // Click a row to expand and see the per-component breakdown (top-10 ballot,
 // home placement, every side bet) so a player can see exactly where they
-// scored and where they whiffed.
+// scored and where they whiffed. Reads the same shared payload as
+// MyResults + ResultsPanel via the room-level provider — no third
+// redundant fetch.
+//
+// `code` kept in the props signature for backwards compatibility with
+// existing call sites; the payload itself comes from context now.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function Leaderboard({ code }: { code: string }) {
-  const [data, setData] = useState<Response | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { payload: data } = useLeaderboard();
   const [expanded, setExpanded] = useState<string | null>(null);
   const lang = useLang();
 
-  const fetchLeaderboard = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/rooms/${code}/leaderboard`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return;
-      const json = (await res.json()) as Response;
-      setData(json);
-    } finally {
-      setLoading(false);
-    }
-  }, [code]);
-
-  useEffect(() => {
-    fetchLeaderboard();
-  }, [fetchLeaderboard]);
-
-  useEventListener(({ event }) => {
-    if (event.type === "leaderboard:updated" || event.type === "scores:updated") {
-      fetchLeaderboard();
-    }
-  });
-
-  if (loading || !data?.hasResults) return null;
+  if (!data?.hasResults) return null;
 
   const { leaderboard, homeCountryCode, homeCountryOfficialPlacement } = data;
   if (leaderboard.length === 0) return null;

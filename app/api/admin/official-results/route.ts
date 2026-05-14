@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { officialResults } from "@/lib/db/schema";
 import { isAdminAuthed } from "@/lib/admin/session";
@@ -8,10 +9,13 @@ import { rooms } from "@/lib/db/schema";
 import { countries } from "@/lib/countries";
 
 // Read the current official result. Anyone can see it (it's the public
-// scoreboard data), no auth needed.
+// scoreboard data), no auth needed. Sort happens in SQL so the client
+// can render straight from the array.
 export async function GET() {
-  const rows = await db.select().from(officialResults);
-  rows.sort((a, b) => a.placement - b.placement);
+  const rows = await db
+    .select()
+    .from(officialResults)
+    .orderBy(asc(officialResults.placement));
   return NextResponse.json({ results: rows });
 }
 

@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { voters, votes } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
-import { countries } from "@/lib/countries";
+import { getCountry } from "@/lib/countries";
 
 type RouteCtx = { params: Promise<{ code: string }> };
 
@@ -31,14 +31,13 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     ORDER BY total_points DESC
   `);
 
-  const scores = scoreRows.map((r) => {
-    const c = countries.find((c) => c.code === r.country_code);
-    return {
-      code: r.country_code,
-      name: c?.name ?? r.country_code,
-      totalPoints: r.total_points,
-    };
-  });
+  // O(1) lookup via the country map instead of countries.find() per
+  // row — was O(scoreRows × countries) on a hot endpoint.
+  const scores = scoreRows.map((r) => ({
+    code: r.country_code,
+    name: getCountry(r.country_code)?.name ?? r.country_code,
+    totalPoints: r.total_points,
+  }));
 
   // PERF: short edge cache + SWR. When a chat:new or vote:updated
   // broadcast fans out to 30 connected clients, the first refetch hits

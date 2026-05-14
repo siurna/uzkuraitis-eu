@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { voters, votes } from "@/lib/db/schema";
 import { isAdminAuthed } from "@/lib/admin/session";
 import { findRoomByCode } from "@/lib/rooms";
-import { countries } from "@/lib/countries";
+import { getCountry } from "@/lib/countries";
 import { postSystemMessage, postResultsMessage, postPollMessage } from "@/lib/chat-system";
 
 // One-tap announcements the host fires from /admin/live → a chat message
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
       await postSystemMessage(room.code, room.id, { key: "sys_cta_top3_empty" });
     } else {
       const list = codes.map((cc) => {
-        const c = countries.find((x) => x.code === cc);
+        const c = getCountry(cc);
         return c ? `${c.flag} ${c.name}` : cc.toUpperCase();
       });
       await postSystemMessage(room.code, room.id, {

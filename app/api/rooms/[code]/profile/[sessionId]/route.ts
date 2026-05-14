@@ -61,11 +61,12 @@ export async function GET(req: Request, { params }: RouteCtx) {
     reaction_count: number;
   };
 
+  type ReactionsRow = { reactions_given: number; reactions_received: number };
+
   const [
     voterRow,
     authoredRows,
-    reactionsGivenRow,
-    reactionsReceivedRow,
+    reactionsRow,
     triviaStatsRow,
   ] = await Promise.all([
     db
@@ -89,24 +90,20 @@ export async function GET(req: Request, { params }: RouteCtx) {
         AND m.session_id = ${sessionId}
       GROUP BY m.id
     `),
-    db
-      .select({ reactionsGiven: sql<number>`COUNT(*)::int` })
-      .from(chatReactions)
-      .innerJoin(chatMessages, eq(chatMessages.id, chatReactions.messageId))
-      .where(and(
-        eq(chatMessages.roomId, room.id),
-        eq(chatReactions.sessionId, sessionId),
-      ))
-      .then((rows) => rows[0]),
-    db
-      .select({ reactionsReceived: sql<number>`COUNT(*)::int` })
-      .from(chatReactions)
-      .innerJoin(chatMessages, eq(chatMessages.id, chatReactions.messageId))
-      .where(and(
-        eq(chatMessages.roomId, room.id),
-        eq(chatMessages.sessionId, sessionId),
-      ))
-      .then((rows) => rows[0]),
+    // PERF: reactions given + received used to be two separate
+    // chat_reactions × chat_messages joins. They share the same
+    // (room_id) scope and only differ on which side of the join the
+    // session_id filter sits, so a single scan with FILTER aggregates
+    // returns both counts in one round-trip.
+    db.execute<ReactionsRow>(sql`
+      SELECT
+        COUNT(*) FILTER (WHERE r.session_id = ${sessionId})::int AS reactions_given,
+        COUNT(*) FILTER (WHERE m.session_id = ${sessionId})::int AS reactions_received
+      FROM ${chatReactions} r
+      INNER JOIN ${chatMessages} m ON m.id = r.message_id
+      WHERE m.room_id = ${room.id}
+        AND (r.session_id = ${sessionId} OR m.session_id = ${sessionId})
+    `).then((rows) => rows[0]),
     db
       .select({
         total: sql<number>`COUNT(*)::int`,
@@ -215,8 +212,8 @@ export async function GET(req: Request, { params }: RouteCtx) {
     lastActiveAt: voterRow?.updatedAt ?? latestMsg?.createdAt ?? null,
     stats: {
       messages: messagesRow?.messages ?? 0,
-      reactionsGiven: reactionsGivenRow?.reactionsGiven ?? 0,
-      reactionsReceived: reactionsReceivedRow?.reactionsReceived ?? 0,
+      reactionsGiven: reactionsRow?.reactions_given ?? 0,
+      reactionsReceived: reactionsRow?.reactions_received ?? 0,
       highlights: highlightRows.length,
       bingoStrikes: bingoStrikesRow?.bingoStrikes ?? 0,
       bets: betsPlaced,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { chatMessages, chatReactions } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
@@ -49,28 +49,32 @@ export async function POST(req: Request, { params }: RouteCtx) {
     );
   }
 
-  // Make sure the message exists and is in this room.
-  const [msg] = await db
-    .select({ id: chatMessages.id })
-    .from(chatMessages)
-    .where(and(eq(chatMessages.id, id), eq(chatMessages.roomId, room.id)))
-    .limit(1);
-  if (!msg) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const existing = await db
-    .select()
-    .from(chatReactions)
-    .where(
-      and(
-        eq(chatReactions.messageId, id),
-        eq(chatReactions.sessionId, session),
-        eq(chatReactions.emoji, emoji),
-      ),
-    )
-    .limit(1);
+  // PERF: msg-in-room check + existing-reaction lookup merged into a
+  // single roundtrip. The LEFT JOIN returns msg_ok (whether the
+  // message exists in this room) AND reaction_exists (whether this
+  // session already toggled this emoji on it) in one query — was
+  // two sequential selects. Final mutation (insert OR delete) is
+  // the only follow-up query.
+  type CheckRow = { msg_ok: boolean; reaction_exists: boolean };
+  const [check] = await db.execute<CheckRow>(sql`
+    SELECT
+      EXISTS(
+        SELECT 1 FROM ${chatMessages}
+        WHERE id = ${id}::uuid AND room_id = ${room.id}
+      ) AS msg_ok,
+      EXISTS(
+        SELECT 1 FROM ${chatReactions}
+        WHERE message_id = ${id}::uuid
+          AND session_id = ${session}
+          AND emoji = ${emoji}
+      ) AS reaction_exists
+  `);
+  if (!check?.msg_ok) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   let added: boolean;
-  if (existing.length > 0) {
+  if (check.reaction_exists) {
     await db
       .delete(chatReactions)
       .where(

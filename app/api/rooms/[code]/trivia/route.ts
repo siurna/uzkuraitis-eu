@@ -47,31 +47,36 @@ export async function POST(req: Request, { params }: RouteCtx) {
   // and N players already locked an answer for this country, this one
   // comes too late. We check BEFORE the insert so a denied answer
   // doesn't burn the player's idempotency slot.
+  //
+  // PERF: the count + "did this session already answer" lookups used
+  // to run sequentially; they share nothing so they fan out in
+  // parallel now. Hot path during a country's reveal window.
   if (room.triviaMaxAnswerers != null && room.triviaMaxAnswerers > 0) {
-    const [{ n }] = await db
-      .select({ n: sql<number>`COUNT(*)::int` })
-      .from(triviaAnswers)
-      .where(
-        and(
-          eq(triviaAnswers.roomId, room.id),
-          eq(triviaAnswers.countryCode, countryCode),
-        ),
-      );
-    // Allow the answer through if the same session already has a row
-    // (the insert below will no-op). Only block fresh sessions past
-    // the cap.
-    const [existing] = await db
-      .select({ sessionId: triviaAnswers.sessionId })
-      .from(triviaAnswers)
-      .where(
-        and(
-          eq(triviaAnswers.roomId, room.id),
-          eq(triviaAnswers.countryCode, countryCode),
-          eq(triviaAnswers.sessionId, sessionId),
-        ),
-      )
-      .limit(1);
-    if (!existing && (n ?? 0) >= room.triviaMaxAnswerers) {
+    const [countRow, existingRow] = await Promise.all([
+      db
+        .select({ n: sql<number>`COUNT(*)::int` })
+        .from(triviaAnswers)
+        .where(
+          and(
+            eq(triviaAnswers.roomId, room.id),
+            eq(triviaAnswers.countryCode, countryCode),
+          ),
+        )
+        .then((rows) => rows[0]),
+      db
+        .select({ sessionId: triviaAnswers.sessionId })
+        .from(triviaAnswers)
+        .where(
+          and(
+            eq(triviaAnswers.roomId, room.id),
+            eq(triviaAnswers.countryCode, countryCode),
+            eq(triviaAnswers.sessionId, sessionId),
+          ),
+        )
+        .limit(1)
+        .then((rows) => rows[0]),
+    ]);
+    if (!existingRow && (countRow?.n ?? 0) >= room.triviaMaxAnswerers) {
       return NextResponse.json(
         {
           ok: false,

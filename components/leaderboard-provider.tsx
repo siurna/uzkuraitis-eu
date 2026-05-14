@@ -25,13 +25,19 @@ import type {
 // extra leaderboard compute on the server. Now: one fetch per room,
 // shared via context, refreshed on `leaderboard:updated` broadcasts.
 
+// Mirrors lib/leaderboard.ts LeaderboardRow on the wire. Kept local
+// here so the client bundle doesn't drag in the server-only scoring
+// module just to type a payload.
 type Row = {
+  voterId: string;
   sessionId: string;
   name: string;
+  homePrediction: number | null;
   topTen: number;
   home: number;
   bets: BetBreakdown;
   betPicks: Bets;
+  betsTotal: number;
   highlights: number;
   trivia: number;
   total: number;
@@ -40,6 +46,7 @@ type Row = {
 export type LeaderboardPayload = {
   hasResults: boolean;
   homeCountryCode: string;
+  homeCountryOfficialPlacement?: number | null;
   placements: OfficialPlacements;
   facts: OfficialFacts;
   leaderboard: Row[];
@@ -90,7 +97,12 @@ export function LeaderboardProvider({ children }: { children: ReactNode }) {
   }, [tallyEnabled, refresh]);
 
   useEventListener(({ event }) => {
-    if (event.type === "leaderboard:updated") refresh();
+    // Both leaderboard:updated (admin entered results) and
+    // scores:updated (a fresh ballot landed) invalidate the cached
+    // payload — the leaderboard's totals fold in those ballots.
+    if (event.type === "leaderboard:updated" || event.type === "scores:updated") {
+      refresh();
+    }
   });
 
   return <Context.Provider value={{ payload, refresh }}>{children}</Context.Provider>;
