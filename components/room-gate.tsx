@@ -172,6 +172,25 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
 
   return (
     <main className="relative min-h-dvh flex flex-col items-center justify-center px-4 py-12">
+      {/* Splash-to-app handoff. The iOS/Android PWA splash is the
+          manifest's solid `#10142a`; first paint of the gate paints
+          a downward gradient on top so the splash colour appears to
+          extend into the page. The gradient fades out, revealing
+          html::before's brand backdrop (heart blooms + texture) and
+          the HeartbeatBackdrop layer underneath. No splash images
+          required — the colour at the very top stays #10142a long
+          enough that the OS splash hands off without a flash. */}
+      <motion.div
+        aria-hidden
+        initial={{ opacity: 1 }}
+        animate={{ opacity: 0 }}
+        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
+        className="fixed inset-0 -z-[1] pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(180deg, #10142a 0%, #1d1546 45%, #3a1664 100%)",
+        }}
+      />
       <HeartbeatBackdrop />
       <AnimatePresence mode="wait">
         {rehydrating ? (
@@ -209,7 +228,10 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            // 0.5s delay so the gate stays hidden until the splash
+            // gradient is mostly faded; user reads it as the
+            // backdrop being unveiled before the form fades up.
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: 0.5 }}
             className="w-full max-w-sm flex flex-col items-center gap-8"
           >
             <Logo2026 className="w-full max-w-[14rem]" />

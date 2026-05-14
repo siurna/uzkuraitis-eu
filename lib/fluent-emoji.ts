@@ -160,6 +160,14 @@ const FLUENT_EMOJI: Record<string, FluentEntry> = {
   // Bingo trope leads that the manifest was missing.
   "🪑":  { folder: "Chair", slug: "chair" },
   "0️⃣":  { folder: "Keycap 0", slug: "keycap_0" },
+  "🎷":  { folder: "Saxophone", slug: "saxophone" },
+
+  // Toast icon set (`components/app-toaster.tsx`). MS Fluent ships
+  // "Red exclamation mark" (not "Exclamation mark") so the slug
+  // mirrors that. Warning / light bulb take their plain folder name.
+  "❗":  { folder: "Red exclamation mark", slug: "red_exclamation_mark" },
+  "⚠️":  { folder: "Warning", slug: "warning" },
+  "💡":  { folder: "Light bulb", slug: "light_bulb" },
 };
 
 // Country-flag emojis are encoded as a pair of regional-indicator
