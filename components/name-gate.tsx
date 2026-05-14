@@ -14,7 +14,6 @@ import {
   detectPlatform,
   isInstalledPwa,
 } from "@/components/notification-toggles";
-import { useRoomLive } from "@/components/room-shell";
 import { getState, subscribe, isSupported } from "@/lib/push-client";
 import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
 import { readLang, writeLang } from "@/lib/i18n-client";
@@ -40,7 +39,17 @@ const ONBOARD_PREFS = {
 // On step 2 we render a sticky "selected artist" card just above the
 // footer so the picked face stays visible while the user scrolls the
 // grid. No avatar pulse — the check pip + outline are enough.
-export function NameGate({ children }: { children: React.ReactNode }) {
+// NameGate sits OUTSIDE RoomLiveProvider in the room shell (it's the
+// gate that runs BEFORE the room state is built), so it can't reach
+// the room code via `useRoomLive()`. The shell threads the code in
+// as a prop instead — it already has it from the route params.
+export function NameGate({
+  code: roomCode,
+  children,
+}: {
+  code: string;
+  children: React.ReactNode;
+}) {
   const [hydrated, setHydrated] = useState(false);
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -55,7 +64,6 @@ export function NameGate({ children }: { children: React.ReactNode }) {
   const [pushOnboardComplete, setPushOnboardComplete] = useState(false);
   const updatePresence = useUpdateMyPresence();
   const others = useOthers();
-  const { code: roomCode } = useRoomLive();
   const platform = useMemo(() => detectPlatform(), []);
 
   // Cheeky heads-up if someone in the room already goes by this name —
