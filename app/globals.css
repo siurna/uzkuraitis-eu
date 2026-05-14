@@ -251,6 +251,29 @@
   display: block;
 }
 
+/* iOS Safari pulls its native bottom sheet with a chunky ~40px top
+   radius; matching that in our portaled drawer makes the room feel
+   native there without changing the PWA standalone shell. Scoped
+   via display-mode so the same drawer in PWA / desktop keeps the
+   regular 24px (rounded-3xl) we set in Tailwind. */
+@media (display-mode: browser) {
+  .uzk-sheet-ios-radius {
+    border-top-left-radius: 40px;
+    border-top-right-radius: 40px;
+  }
+}
+
+/* Sporadic "hi 👋" wave for the welcome home widget. Mostly idle so
+   it doesn't pull focus, then a quick two-beat tilt every ~7 seconds.
+   Origin sits at the wrist (70/70%) so the hand pivots correctly. */
+@keyframes waving-hand {
+  0%, 85%, 100% { transform: rotate(0deg); }
+  88%           { transform: rotate(-14deg); }
+  91%           { transform: rotate(12deg); }
+  94%           { transform: rotate(-10deg); }
+  97%           { transform: rotate(6deg); }
+}
+
 /* Same 2px ESC stroke, but the gradient loops L→R so the border
    reads as live. Used by the home Vote-now hero (the rest of the
    app sticks with the static .rainbow-border so nothing else flickers

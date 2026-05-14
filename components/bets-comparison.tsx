@@ -283,26 +283,25 @@ function BetValue({
       </span>
     );
   }
-  // nul televote: array of codes
+  // nul televote: array of codes. Same bare HeartFlag + name shape
+  // as every other country value on this card; the codes wrap onto
+  // multiple lines when there are too many for the column.
   const arr = value as string[];
   return (
-    <span className="mt-1 flex flex-wrap items-center gap-1">
+    <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
       {arr.map((code) =>
         code === NONE_TOKEN ? (
-          <span
-            key={code}
-            className="inline-flex items-center gap-1 rounded-full bg-white/10 ring-1 ring-white/15 px-2 h-5 text-[11px] italic"
-          >
+          <span key={code} className="inline-flex items-center gap-1.5 text-sm text-white/75 italic">
             {t(lang, "bet_none_label")}
           </span>
         ) : (
           <span
             key={code}
-            className="inline-flex items-center gap-1 rounded-full bg-white/10 ring-1 ring-white/15 pl-1 pr-2 h-6 text-[11px]"
+            className="inline-flex items-center gap-1.5 min-w-0"
             title={countryName(code, lang) ?? code.toUpperCase()}
           >
             <HeartFlag code={code} size="sm" />
-            <span className="truncate max-w-[6.5rem]">
+            <span className="text-sm truncate max-w-[7.5rem]">
               {countryName(code, lang) ?? code.toUpperCase()}
             </span>
           </span>

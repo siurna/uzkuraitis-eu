@@ -11,7 +11,9 @@ export default async function AdminCommentatorPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <AdminPageTitle>Commentator</AdminPageTitle>
+      <AdminPageTitle subtitle="One line per finalist. Drops into chat when the country takes the stage.">
+        Banter
+      </AdminPageTitle>
       <AdminCommentator initial={initial} />
     </div>
   );

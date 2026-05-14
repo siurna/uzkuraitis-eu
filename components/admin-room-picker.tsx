@@ -33,23 +33,26 @@ export function AdminRoomPicker({
         type="button"
         onClick={() => setOpen(true)}
         disabled={rooms.length === 0}
-        className={`inline-flex items-center gap-2 rounded-xl bg-white/[0.04] ring-1 ring-white/12
+        className={`inline-flex items-center gap-3 rounded-xl bg-white/[0.04] ring-1 ring-white/12
                     px-3 h-10 text-left transition hover:bg-white/[0.07] hover:ring-white/20
                     disabled:opacity-50 disabled:cursor-not-allowed
                     focus:outline-none focus:ring-2 focus:ring-flamingo/45
                     ${className}`}
       >
         {selected ? (
-          <span className="flex flex-col min-w-0 leading-tight text-left">
+          // `flex-1` pushes the chevron to the far right of the
+          // trigger so the affordance is always at the edge, not
+          // hugging the end of the title.
+          <span className="flex flex-1 min-w-0 flex-col leading-tight text-left">
             <span className="font-display text-sm text-white truncate">{selected.name}</span>
             <span className="text-[10px] uppercase tracking-[0.22em] text-white/45 tabular-nums leading-none">
               {selected.code}
             </span>
           </span>
         ) : (
-          <span className="text-sm text-white/55">{emptyLabel}</span>
+          <span className="flex-1 text-sm text-white/55">{emptyLabel}</span>
         )}
-        <ChevronDown className="h-4 w-4 text-white/55 shrink-0" />
+        <ChevronDown className="h-4 w-4 text-white/55 shrink-0 ml-auto" />
       </button>
 
       <BottomSheet

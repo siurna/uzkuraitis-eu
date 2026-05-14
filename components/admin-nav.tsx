@@ -11,7 +11,7 @@ const navItems: { path: Route; label: string; icon: typeof Vote }[] = [
   { path: "/admin/live" as Route,        label: "Live",        icon: Radio },
   { path: "/admin/rooms" as Route,       label: "Rooms",       icon: Vote },
   { path: "/admin/trivia" as Route,      label: "Trivia",      icon: Lightbulb },
-  { path: "/admin/commentator" as Route, label: "Commentator", icon: Mic },
+  { path: "/admin/commentator" as Route, label: "Banter", icon: Mic },
   { path: "/admin/results" as Route,     label: "Results",     icon: Trophy },
   { path: "/admin/settings" as Route,    label: "Settings",    icon: Settings },
 ];

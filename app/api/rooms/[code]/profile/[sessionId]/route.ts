@@ -123,8 +123,10 @@ export async function GET(req: Request, { params }: RouteCtx) {
   const bingoStrikesRow = {
     bingoStrikes: authoredRows.filter((r) => r.kind === "bingo_strike").length,
   };
+  // Per-room threshold override (falls back to the global default).
+  const threshold = room.highlightThreshold ?? HIGHLIGHT_THRESHOLD;
   const highlightRows = authoredRows.filter(
-    (r) => (r.reaction_count ?? 0) >= HIGHLIGHT_THRESHOLD,
+    (r) => (r.reaction_count ?? 0) >= threshold,
   );
   const latestMsg = (() => {
     if (authoredRows.length === 0) return undefined;

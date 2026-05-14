@@ -200,6 +200,7 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
       id: room.id,
       homeCountryCode: room.homeCountryCode,
       tallyEnabled: true,
+      highlightThreshold: room.highlightThreshold,
     });
     await broadcastToRoom(newCode, { type: "leaderboard:updated" });
   }

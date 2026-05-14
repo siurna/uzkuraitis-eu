@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { Sparkles, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { useLang } from "@/lib/i18n-client";
 import { t, type Language } from "@/lib/i18n";
@@ -64,14 +64,19 @@ export function WelcomeBanner() {
           aria-hidden
         />
         <div className="relative flex items-center gap-4 p-5">
-          <span className="shrink-0 grid place-items-center h-12 w-12 rounded-2xl bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo">
-            <Sparkles className="h-6 w-6" fill="currentColor" />
+          {/* Waving hand emoji, large + sporadically waving. Same
+              wave choreography lives in `globals.css` — every ~7s
+              the hand tilts left/right twice then rests. */}
+          <span
+            className="shrink-0 grid place-items-center h-12 w-12 rounded-2xl
+                       bg-white/12 ring-1 ring-white/20 text-2xl leading-none
+                       motion-safe:[animation:waving-hand_7s_ease-in-out_infinite] origin-[70%_70%]"
+            aria-hidden
+          >
+            👋
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.32em] font-display leading-tight text-white/80">
-              {t(lang, "welcome_eyebrow")}
-            </p>
-            <p className="font-display text-lg text-white leading-tight mt-0.5 text-balance">
+            <p className="font-display text-lg text-white leading-tight text-balance">
               {t(lang, "welcome_card_title")}
             </p>
             <p className="text-xs text-white/65 leading-snug mt-0.5">
@@ -146,10 +151,13 @@ function renderInline(s: string, key: string): React.ReactNode {
 
 export function WelcomeMarkdown({ source }: { source: string }) {
   // Group lines into blocks: contiguous bullet lines fold into a
-  // single <ul>; blank lines split paragraphs.
+  // single <ul>; blank lines split paragraphs; `#`/`##`/`###` at the
+  // start of a line lifts into h1/h2/h3 (with the level visible by
+  // type size so a long welcome reads structured, not as a wall).
   const lines = source.replace(/\r\n/g, "\n").split("\n");
   type Block =
     | { kind: "p"; text: string }
+    | { kind: "h"; level: 1 | 2 | 3; text: string }
     | { kind: "ul"; items: string[] };
   const blocks: Block[] = [];
   let buf: string[] = [];
@@ -168,8 +176,14 @@ export function WelcomeMarkdown({ source }: { source: string }) {
   };
   for (const raw of lines) {
     const line = raw.trim();
+    const heading = /^(#{1,3})\s+(.+)$/.exec(line);
     const bullet = /^[-*]\s+(.+)$/.exec(line);
-    if (bullet) {
+    if (heading) {
+      flushP();
+      flushUl();
+      const level = Math.min(3, heading[1].length) as 1 | 2 | 3;
+      blocks.push({ kind: "h", level, text: heading[2] });
+    } else if (bullet) {
       flushP();
       listBuf.push(bullet[1]);
     } else if (line === "") {
@@ -185,26 +199,40 @@ export function WelcomeMarkdown({ source }: { source: string }) {
 
   return (
     <div className="flex flex-col gap-2 text-sm text-white/85 leading-snug">
-      {blocks.map((b, i) =>
-        b.kind === "p" ? (
-          <p key={i} className="text-balance">
-            {renderInline(b.text, `p-${i}`)}
-          </p>
-        ) : (
+      {blocks.map((b, i) => {
+        if (b.kind === "h") {
+          const sizeCls =
+            b.level === 1
+              ? "font-display text-2xl text-white leading-tight"
+              : b.level === 2
+                ? "font-display text-xl text-white leading-tight"
+                : "font-display text-base text-white leading-tight";
+          return (
+            <p key={i} className={`${sizeCls} text-balance mt-2 first:mt-0`}>
+              {renderInline(b.text, `h-${i}`)}
+            </p>
+          );
+        }
+        if (b.kind === "p") {
+          return (
+            <p key={i} className="text-balance whitespace-pre-line">
+              {renderInline(b.text, `p-${i}`)}
+            </p>
+          );
+        }
+        return (
           <ul key={i} className="flex flex-col gap-1 pl-1">
             {b.items.map((it, j) => (
               <li key={j} className="flex gap-2">
-                <span className="text-flamingo shrink-0" aria-hidden>
-                  •
-                </span>
+                <span className="text-flamingo shrink-0" aria-hidden>•</span>
                 <span className="min-w-0 flex-1 text-balance">
                   {renderInline(it, `ul-${i}-${j}`)}
                 </span>
               </li>
             ))}
           </ul>
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }

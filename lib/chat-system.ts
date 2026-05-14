@@ -212,7 +212,12 @@ export async function postPollMessage(
 // a chat badge. Pass the *post-flip* tallyEnabled (true).
 export async function postResultsMessage(
   roomCode: string,
-  room: { id: string; homeCountryCode: string; tallyEnabled: boolean },
+  room: {
+    id: string;
+    homeCountryCode: string;
+    tallyEnabled: boolean;
+    highlightThreshold?: number | null;
+  },
 ): Promise<void> {
   try {
     const { hasResults, leaderboard } = await computeRoomLeaderboard(room);

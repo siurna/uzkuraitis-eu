@@ -144,7 +144,28 @@ export function ResultsPanel() {
   // ballot still lives on the per-session profile route below.
   const { payload } = useLeaderboard();
   const [ballot, setBallot] = useState<BallotPick[] | null>(null);
-  const [tab, setTab] = useState<"me" | "board">("me");
+  // Persist the "me / board" choice per-room so flipping back to
+  // Results lands on whichever side the viewer was on last.
+  const [tab, _setTab] = useState<"me" | "board">("me");
+  const setTab = useCallback(
+    (next: "me" | "board") => {
+      _setTab(next);
+      try {
+        localStorage.setItem(`uzk_results_subtab_${code}`, next);
+      } catch {
+        /* ignore */
+      }
+    },
+    [code],
+  );
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`uzk_results_subtab_${code}`);
+      if (saved === "me" || saved === "board") _setTab(saved);
+    } catch {
+      /* ignore */
+    }
+  }, [code]);
 
   // Per-pick breakdown ("you said / it was"). Lives on the profile
   // route so the same scoring helper is the single source of truth.
@@ -212,6 +233,7 @@ export function ResultsPanel() {
   const rows = payload.leaderboard;
   const session = ensureSessionId();
   const me = rows.find((r) => r.sessionId === session) ?? null;
+  const myRank = me ? rows.findIndex((r) => r.sessionId === session) + 1 : 0;
   const effTab = me ? tab : "board";
 
   return (
@@ -236,8 +258,24 @@ export function ResultsPanel() {
                         transition={{ type: "spring", stiffness: 380, damping: 32 }}
                       />
                     )}
-                    <span className={`relative transition-colors ${active ? "text-dark-blue" : "text-white/65"}`}>
+                    <span className={`relative inline-flex items-center gap-1.5 transition-colors ${active ? "text-dark-blue" : "text-white/65"}`}>
                       {t(lang, id === "me" ? "results_tab_me" : "results_tab_board")}
+                      {/* Rank badge on the Leaderboard tab so the
+                          viewer can read their "10 / 14" at a glance
+                          without scrolling into the list. Tinted to
+                          stay legible whether the pill is the white
+                          active state or the muted resting one. */}
+                      {id === "board" && me && (
+                        <span
+                          className={`inline-flex items-center gap-0.5 rounded-full px-2 h-5 text-[11px] tabular-nums font-display
+                                       ${active
+                                         ? "bg-dark-blue text-white"
+                                         : "bg-white/10 text-white/75 ring-1 ring-white/12"}`}
+                        >
+                          <span>{myRank}</span>
+                          <span className={active ? "text-white/60" : "text-white/45"}>/{rows.length}</span>
+                        </span>
+                      )}
                     </span>
                   </button>
                 );

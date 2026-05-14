@@ -83,6 +83,19 @@ export async function POST(req: Request) {
     // order — no separate control.
     update.runningOrderPos = nowPlayingCode ? getCountry(nowPlayingCode)?.order ?? null : null;
   }
+  // Show-state transition to break / ended needs to also clear
+  // nowPlaying — otherwise the highlights aggregator keeps tagging
+  // every fresh reaction with whatever was last on stage, which the
+  // host can see for hours after the show ends. Only fire when the
+  // admin didn't explicitly set a country in the same call.
+  if (
+    showStatus !== undefined &&
+    (showStatus === "break" || showStatus === "ended") &&
+    nowPlayingCode === undefined
+  ) {
+    update.nowPlayingCode = null;
+    update.runningOrderPos = null;
+  }
 
   await db.update(rooms).set(update);
 
@@ -94,34 +107,42 @@ export async function POST(req: Request) {
   await Promise.all(
     all.map(async ({ id, code }) => {
       await broadcastToRoom(code, { type: "room:updated" });
-      if (nowPlayingCode !== undefined) {
+      // Either an explicit nowPlayingCode change OR the show-state
+      // transition that auto-nulled the country deserves a
+      // now-playing:change broadcast so clients clear their
+      // active-country UI in lockstep.
+      const nowPlayingChanged =
+        nowPlayingCode !== undefined ||
+        (update.nowPlayingCode !== undefined);
+      if (nowPlayingChanged) {
+        const next = (update.nowPlayingCode as string | null | undefined) ?? null;
         await broadcastToRoom(code, {
           type: "now-playing:change",
-          countryCode: nowPlayingCode ?? null,
+          countryCode: next,
         });
-        if (nowPlayingCode) {
-          await postNowPlayingMessage(code, id, nowPlayingCode);
-          await postCommentatorMessage(code, id, nowPlayingCode);
+        if (next) {
+          await postNowPlayingMessage(code, id, next);
+          await postCommentatorMessage(code, id, next);
           // Trivia card lands as its own chat message right after the
           // now-playing banner (when the country has a question in the
           // merged deck — file default + admin overrides). The card
           // itself gates UI tap-state on the server's per-(room,
           // session) answer record.
-          if (await getTriviaMerged(nowPlayingCode)) {
-            await postTriviaMessage(code, id, nowPlayingCode);
+          if (await getTriviaMerged(next)) {
+            await postTriviaMessage(code, id, next);
           }
-          const c = getCountry(nowPlayingCode);
+          const c = getCountry(next);
           await pushToRoom(
             id,
             (prefs) => !!prefs.nowPlaying,
             {
-              title: `${c?.flag ? `${c.flag} ` : ""}${c?.name ?? nowPlayingCode.toUpperCase()} is on stage`,
+              title: `${c?.flag ? `${c.flag} ` : ""}${c?.name ?? next.toUpperCase()} is on stage`,
               body: c?.artist
                 ? `${c.artist}${c.song ? ` — ${c.song}` : ""}`
                 : "Tap to open the room",
               url: `/r/${code}`,
               tag: `now-playing:${code}`,
-              image: participantPhoto(nowPlayingCode) ?? undefined,
+              image: participantPhoto(next) ?? undefined,
             },
           ).catch(() => {});
         }

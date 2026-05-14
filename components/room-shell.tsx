@@ -171,6 +171,14 @@ function RoomBody({ children }: { children: React.ReactNode }) {
         if (typeof window !== "undefined") {
           const url = next === "home" ? `/r/${code}` : `/r/${code}?tab=${next}`;
           window.history.replaceState(window.history.state, "", url);
+          // Per-room "last tab" memory so reopening the room lands
+          // on whichever tab the user left it on. Not used when a
+          // deep-link ?tab= is present (that wins).
+          try {
+            localStorage.setItem(`uzk_last_tab_${code}`, next);
+          } catch {
+            /* private mode */
+          }
           // Each tab starts at the top, the way a fresh screen would.
           window.scrollTo(0, 0);
         }
@@ -180,10 +188,20 @@ function RoomBody({ children }: { children: React.ReactNode }) {
     [code],
   );
 
-  // Read ?tab= once on mount (deep links / redirect shims land here).
+  // On mount: deep-link ?tab= wins; otherwise restore the per-room
+  // last-tab memory from localStorage so reopening feels native.
   useEffect(() => {
     const param = new URLSearchParams(window.location.search).get("tab");
-    if (isRoomTab(param) && param !== "home") setTab(param);
+    if (isRoomTab(param) && param !== "home") {
+      setTab(param);
+      return;
+    }
+    try {
+      const saved = localStorage.getItem(`uzk_last_tab_${code}`);
+      if (saved && isRoomTab(saved) && saved !== "home") setTab(saved);
+    } catch {
+      /* ignore */
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

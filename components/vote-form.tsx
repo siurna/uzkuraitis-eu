@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { motion, AnimatePresence } from "motion/react";
@@ -65,7 +65,21 @@ export function VoteForm({
   const [showCongrats, setShowCongrats] = useState(false);
   const [voterId, setVoterId] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
-  const [tab, setTab] = useState<VoteTab>("ballot");
+  // Per-room sub-tab memory: persist the last ballot/bets/rules
+  // pick so reopening the Vote tab feels native — same shape as
+  // the room-level tab persistence in RoomShell.
+  const [tab, _setTab] = useState<VoteTab>("ballot");
+  const setTab = useCallback(
+    (next: VoteTab) => {
+      _setTab(next);
+      try {
+        localStorage.setItem(`uzk_vote_subtab_${roomCode}`, next);
+      } catch {
+        /* private mode */
+      }
+    },
+    [roomCode],
+  );
   // Which ballot slot is currently being edited via the country drawer.
   const [pickingPoints, setPickingPoints] = useState<Points | null>(null);
   // Slot that just got filled / moved into — gets a one-shot heartbeat
@@ -141,6 +155,17 @@ export function VoteForm({
     };
     window.addEventListener("uzk:vote-tab", onVoteTab);
     return () => window.removeEventListener("uzk:vote-tab", onVoteTab);
+  }, [setTab]);
+
+  // Restore last sub-tab on mount unless a deep-link already fired.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`uzk_vote_subtab_${roomCode}`);
+      if (saved === "ballot" || saved === "bets" || saved === "rules") _setTab(saved);
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

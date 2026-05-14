@@ -57,6 +57,13 @@ export const rooms = pgTable(
     // trivia feel like a race (first 5 players, etc.) rather than a
     // group exercise. Server enforces in /api/rooms/[code]/trivia.
     triviaMaxAnswerers: integer("trivia_max_answerers"),
+    // How many reactions a chat message needs before it counts as a
+    // "highlight" (worth bonus points + flagged in the leaderboard's
+    // highlights tally). Higher = harder to game in big rooms, lower
+    // = quicker wins in small parties. NULL falls back to the global
+    // default (5). The leaderboard + profile aggregations honour
+    // whichever is set per-room.
+    highlightThreshold: integer("highlight_threshold"),
     // Beginner mode is a PER-USER preference (localStorage toggle,
     // same shape as translate mode), not a per-room setting. No
     // column lives on `rooms` for it. The shared `chat_helper_cache`

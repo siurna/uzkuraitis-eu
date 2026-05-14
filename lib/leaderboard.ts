@@ -70,7 +70,10 @@ export async function computeRoomLeaderboard(room: {
   id: string;
   homeCountryCode: string;
   tallyEnabled: boolean;
+  /** Per-room override; falls back to global HIGHLIGHT_THRESHOLD. */
+  highlightThreshold?: number | null;
 }): Promise<RoomLeaderboard> {
+  const threshold = room.highlightThreshold ?? HIGHLIGHT_THRESHOLD;
   const [officialRows, factRows, roomResultRows, roomFactRows] = await Promise.all([
     db.select().from(officialResults),
     db.select().from(officialFacts),
@@ -143,7 +146,7 @@ export async function computeRoomLeaderboard(room: {
       .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
       .where(eq(chatMessages.roomId, room.id))
       .groupBy(chatMessages.id, chatMessages.sessionId)
-      .having(sql`count(${chatReactions.messageId}) >= ${HIGHLIGHT_THRESHOLD}`),
+      .having(sql`count(${chatReactions.messageId}) >= ${threshold}`),
     db
       .select({
         sessionId: triviaAnswers.sessionId,

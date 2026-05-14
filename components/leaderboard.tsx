@@ -85,28 +85,23 @@ export function Leaderboard({ code }: { code: string }) {
                              transition active:scale-[0.99]"
                   aria-expanded={isOpen}
                 >
-                  {/* Rank badge — "10/14" format so each row carries
-                      its own position-in-room context. The crown +
-                      gold treatment for #1 takes precedence over the
-                      number. Tinted to medal palette for 1/2/3. */}
+                  {/* Reverted to the original medal-disc badge — gold
+                      crown for #1, silver / bronze for 2 / 3, flamingo
+                      pill for the rest. The room-position (10/14)
+                      signal moved to the Results tab pill itself so
+                      this row stays clean. */}
                   <div
-                    className={`shrink-0 h-10 min-w-[2.75rem] px-2 rounded-xl flex items-center justify-center
-                                font-display text-sm tabular-nums leading-none gap-0.5
-                                ${
-                                  i === 0
-                                    ? "bg-gold text-black"
-                                    : i === 1
-                                      ? "bg-white/80 text-black"
-                                      : i === 2
-                                        ? "bg-orange text-black"
-                                        : "bg-white/[0.06] ring-1 ring-white/12 text-white/85"
-                                }`}
+                    className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center font-display text-base ${
+                      i === 0
+                        ? "bg-gold text-black"
+                        : i === 1
+                          ? "bg-white/80 text-black"
+                          : i === 2
+                            ? "bg-orange text-black"
+                            : "bg-flamingo/80 text-white"
+                    }`}
                   >
-                    {i === 0 && <Crown className="h-4 w-4 shrink-0 -ml-0.5" />}
-                    <span>{rank}</span>
-                    <span className={`text-xs ${i < 3 ? "text-black/55" : "text-white/55"}`}>
-                      /{total}
-                    </span>
+                    {i === 0 ? <Crown className="h-5 w-5" /> : rank}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-display truncate">{row.name}</p>

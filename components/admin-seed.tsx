@@ -9,11 +9,26 @@ import { AdminRoomPicker } from "@/components/admin-room-picker";
 
 type Mode = "voters" | "highlights" | "results" | "reroll";
 
-// Admin › Settings: a tidy dev-seed panel — demo voters, random official
-// results + facts, and reaction-heavy "highlights" — so the leaderboard
-// and Home widgets have something to chew on without a real crowd.
-export function AdminSeed({ rooms }: { rooms: { code: string; name: string }[] }) {
-  const [room, setRoom] = useState(rooms[0]?.code ?? "");
+// Admin dev-seed panel — demo voters, random official results + facts,
+// reaction-heavy "highlights" — so the leaderboard + Home widgets
+// have something to chew on without a real crowd.
+//
+// Two modes:
+//   - Standalone (default): picker chip in the title row, host can
+//     hop between rooms without leaving the page.
+//   - Embedded: pinned to a single room (the per-room detail page
+//     under Operations). The picker is hidden and the title chrome
+//     compacts since the room context is already shown above.
+export function AdminSeed({
+  rooms,
+  embeddedRoom,
+}: {
+  rooms: { code: string; name: string }[];
+  /** When set, hides the room picker and uses this code as the
+   *  scope for every action. Used on /admin/rooms/[code]. */
+  embeddedRoom?: string;
+}) {
+  const [room, setRoom] = useState(embeddedRoom ?? rooms[0]?.code ?? "");
   const [voterN, setVoterN] = useState(8);
   const [busy, setBusy] = useState<Mode | null>(null);
 
@@ -56,30 +71,35 @@ export function AdminSeed({ rooms }: { rooms: { code: string; name: string }[] }
     }
   };
 
-  return (
-    <section className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-5">
-      <header className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
-          <FlaskConical className="h-5 w-5" />
-        </span>
-        <div>
-          <h2 className="font-display text-xl leading-tight">Seed data</h2>
-          <p className="text-sm text-white/45 leading-snug mt-0.5">Dev only. Fills a room (or the whole show) with throwaway data. There's no undo.</p>
-        </div>
-      </header>
+  // Embedded mode (per-room page): the section sits inside an
+  // outer glass-card already, so we drop the panel's own glass-card
+  // shell + page-title header. Standalone mode keeps both.
+  const shellClass = embeddedRoom
+    ? "flex flex-col gap-4"
+    : "glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-5";
 
-      {/* room scope — used by the per-room actions below. Drawer
-          trigger sits on the right so the row reads as "scope: pick
-          room"; matches the room picker on /admin/live. */}
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-xs uppercase tracking-[0.18em] text-white/40 font-display">Room</span>
-        <AdminRoomPicker
-          rooms={rooms}
-          value={room}
-          onChange={setRoom}
-          className="min-w-[12rem]"
-        />
-      </div>
+  return (
+    <section className={shellClass}>
+      {!embeddedRoom && (
+        <header className="flex items-center gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+            <FlaskConical className="h-5 w-5" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <h2 className="font-display text-xl leading-tight">Seed data</h2>
+            <p className="text-sm text-white/45 leading-snug mt-0.5">Dev only. Fills a room (or the whole show) with throwaway data. There's no undo.</p>
+          </div>
+          {/* Room scope picker sits in the title row on the right — no
+              "Room" label, the picker chip's own subscript already
+              shows the active code. */}
+          <AdminRoomPicker
+            rooms={rooms}
+            value={room}
+            onChange={setRoom}
+            className="shrink-0 min-w-[10rem]"
+          />
+        </header>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <SeedCard

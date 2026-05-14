@@ -19,6 +19,8 @@ import { AdminRoomManageLink } from "@/components/admin-room-manage-link";
 import { AdminRoomCommentatorToggle } from "@/components/admin-room-commentator-toggle";
 import { AdminRoomTallyToggle } from "@/components/admin-room-tally-toggle";
 import { AdminRoomTriviaThreshold } from "@/components/admin-room-trivia-threshold";
+import { AdminRoomHighlightThreshold } from "@/components/admin-room-highlight-threshold";
+import { AdminSeed } from "@/components/admin-seed";
 import { AdminRoomTabs } from "@/components/admin-room-tabs";
 import {
   AdminParticipantMessages,
@@ -434,19 +436,20 @@ export default async function AdminRoomDetailPage({
           </section>
         }
         settings={
-          // Three groups, every row carrying the same tile shape (icon
-          // tile + title + sub + body) so Identity, Behaviour and
-          // Operations read as one visual family. Outer cards stripped
-          // of internal h2s — the section header on the page does that
-          // job; the per-row label inside each tile is the heading.
+          // Three sections, every row carrying the same tile shape
+          // (icon tile + title + sub + body) so the page reads as one
+          // visual family. Identity now owns the share-link tiles
+          // (host link + join link); Operations is just the dev-seed
+          // panel + the wipe-everything actions.
           <div className="flex flex-col gap-6">
             <section className="glass-card rounded-xl p-5 flex flex-col gap-3">
               <header>
-                <h2 className="font-display text-xl leading-tight">Identity</h2>
-                <p className="text-xs text-white/45 mt-0.5">What this room is called and how guests join it.</p>
+                <h2 className="font-display text-xl leading-tight">Identity & invites</h2>
+                <p className="text-xs text-white/45 mt-0.5">What the room is called, the join code, and the links you hand out.</p>
               </header>
               <AdminRoomRename code={room.code} initialName={room.name} />
               <AdminRoomCode code={room.code} />
+              <AdminRoomManageLink code={room.code} adminToken={room.adminToken} />
             </section>
 
             <section className="glass-card rounded-xl p-5 flex flex-col gap-3">
@@ -463,14 +466,18 @@ export default async function AdminRoomDetailPage({
                 code={room.code}
                 initialMax={room.triviaMaxAnswerers}
               />
+              <AdminRoomHighlightThreshold
+                code={room.code}
+                initialThreshold={room.highlightThreshold ?? 5}
+              />
             </section>
 
             <section className="glass-card rounded-xl p-5 flex flex-col gap-3">
               <header>
                 <h2 className="font-display text-xl leading-tight">Operations</h2>
-                <p className="text-xs text-white/45 mt-0.5">Links the host + voters need, plus the wipe-everything escape hatch.</p>
+                <p className="text-xs text-white/45 mt-0.5">Throwaway seed data for testing + the wipe-everything escape hatch.</p>
               </header>
-              <AdminRoomManageLink code={room.code} adminToken={room.adminToken} />
+              <AdminSeed rooms={[{ code: room.code, name: room.name }]} embeddedRoom={room.code} />
               <AdminRoomDangerZone code={room.code} />
             </section>
           </div>

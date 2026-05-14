@@ -63,7 +63,12 @@ export async function POST(req: Request) {
   } else if (kind === "final") {
     // The scored leaderboard podium (falls back to a plain "results are
     // in" line if nothing's scoreable yet).
-    await postResultsMessage(room.code, { id: room.id, homeCountryCode: room.homeCountryCode, tallyEnabled: true });
+    await postResultsMessage(room.code, {
+      id: room.id,
+      homeCountryCode: room.homeCountryCode,
+      tallyEnabled: true,
+      highlightThreshold: room.highlightThreshold,
+    });
   } else {
     // top3 — the live fan aggregate. We pass the country CODES in
     // `data.codes` so the client can render its own podium (heart-flags,
