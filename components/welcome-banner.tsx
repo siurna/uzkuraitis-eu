@@ -86,7 +86,7 @@ export function WelcomeBanner() {
             <p className="font-display text-lg text-white leading-tight text-balance">
               {t(lang, "welcome_card_title")}
             </p>
-            <p className="text-xs text-white/65 leading-snug mt-0.5">
+            <p className="text-sm text-white/70 leading-snug text-balance mt-0.5">
               {t(lang, "welcome_card_sub")}
             </p>
           </div>

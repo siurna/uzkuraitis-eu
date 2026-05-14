@@ -716,7 +716,7 @@ function VsRoomCard({
           </span>
         ) : (
           <span className="opacity-30 -rotate-6 select-none shrink-0 mr-2" aria-hidden>
-            <FluentEmoji glyph="📊" size={48} />
+            <FluentEmoji glyph="📊" size={72} />
           </span>
         )}
       </div>

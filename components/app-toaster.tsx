@@ -59,7 +59,10 @@ export function AppToaster() {
         classNames: {
           title: "font-display",
           description: "text-sm text-white/70",
-          icon: "shrink-0",
+          // Icon slot: square, locked size, plus a small right-side
+          // breathing gap so the 3D PNG isn't kissing the toast
+          // body copy.
+          icon: "shrink-0 mr-1.5",
         },
       }}
     />

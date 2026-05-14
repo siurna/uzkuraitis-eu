@@ -9,8 +9,11 @@ import {
 import { cn } from "@/lib/utils";
 
 const LENGTH = 6;
-// Same alphabet as lib/rooms.ts — no 0/O/1/I/L confusion.
-const ALPHABET = /^[2-9ABCDEFGHJKMNPQRSTUVWXYZ]$/;
+// Same alphabet as lib/rooms.ts. We exclude 0 (looks like O on
+// most fonts) and I/L (look like 1) but DO allow O — hosts wanted
+// to type memorable codes like "HELLOX" without the picker
+// stripping the O.
+const ALPHABET = /^[2-9ABCDEFGHJKMNOPQRSTUVWXYZ]$/;
 
 // Six-cell OTP-style input rendered as a single conjoined pill — one outer
 // rounded border, dashed dividers between cells, no gaps. Each cell is its
@@ -38,7 +41,7 @@ export function CodeInput({
   }, [autoFocus]);
 
   const setAt = (index: number, char: string) => {
-    const sanitized = char.toUpperCase().replace(/[^2-9ABCDEFGHJKMNPQRSTUVWXYZ]/g, "").slice(0, 1);
+    const sanitized = char.toUpperCase().replace(/[^2-9ABCDEFGHJKMNOPQRSTUVWXYZ]/g, "").slice(0, 1);
     if (!sanitized) return;
     const next = (value + " ".repeat(LENGTH))
       .slice(0, LENGTH)
@@ -85,7 +88,7 @@ export function CodeInput({
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
     const pasted = e.clipboardData.getData("text").toUpperCase();
-    const filtered = pasted.replace(/[^2-9ABCDEFGHJKMNPQRSTUVWXYZ]/g, "").slice(0, LENGTH);
+    const filtered = pasted.replace(/[^2-9ABCDEFGHJKMNOPQRSTUVWXYZ]/g, "").slice(0, LENGTH);
     if (!filtered) return;
     e.preventDefault();
     onChange(filtered);
@@ -133,7 +136,7 @@ export function CodeInput({
             if (raw.length > 1) {
               const filtered = raw
                 .toUpperCase()
-                .replace(/[^2-9ABCDEFGHJKMNPQRSTUVWXYZ]/g, "")
+                .replace(/[^2-9ABCDEFGHJKMNOPQRSTUVWXYZ]/g, "")
                 .slice(0, LENGTH - i);
               if (!filtered) return;
               const next = (value.slice(0, i) + filtered).slice(0, LENGTH);

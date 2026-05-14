@@ -627,28 +627,13 @@
   100% { transform: translateX(30%); }
 }
 
-/* Language toggle pill: opt out of the View Transitions crossfade
-   so it snaps instantly to the picked side instead of fading
-   across. Everything else on the page still crossfades via the
-   root snapshot. The earlier rule only killed the GROUP animation
-   (which controls layout movement); the OLD + NEW pseudo-elements
-   keep their own opacity fades by default, which read as a slide
-   from the picked side back to the new picked side. Killing all
-   four pseudo-elements forces an immediate cut. */
-::view-transition-group(uzk-lang-pill),
-::view-transition-image-pair(uzk-lang-pill),
-::view-transition-old(uzk-lang-pill),
-::view-transition-new(uzk-lang-pill) {
-  animation: none !important;
-}
-/* Also: zero-duration on the new snapshot so it appears at the new
-   left position the moment the transition starts, no easing pause. */
-::view-transition-new(uzk-lang-pill) {
-  opacity: 1;
-}
-::view-transition-old(uzk-lang-pill) {
-  opacity: 0;
-}
+/* Language toggle pill: the SettingsModal commits the pill move on
+   a frame before the view-transition opens (see `pillSide` state),
+   so the snapshot capture already has the pill at its new position
+   and no per-name opt-out CSS is needed. Earlier rounds tried to
+   override the view-transition pseudo-elements here — kept the
+   approach commented for the next time a similar shared-element
+   snap behaviour is needed. */
 
 input, button, textarea, select {
   -webkit-appearance: none;

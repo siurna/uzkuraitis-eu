@@ -53,14 +53,22 @@ const S = {
   // ── Auto-translate to English (Settings) ─────────────────────────
   settings_translate_h:    { en: "Auto-translate to English", lt: "Auto-vertimas į anglų" },
   settings_translate_sub:  { en: "We'll pop a clean English rendering under any Lithuanian message: slang, cultural beats, all of it.", lt: "Po lietuvišku tekstu paberiama angliška versija." },
-  settings_beginner_h:     { en: "Beginner mode", lt: "Pradedantiems" },
-  settings_beginner_sub:   { en: "New to Eurovision? We'll tuck a short explainer under any message that drops a reference, in your language.", lt: "Naujokas Eurovizijoje? Po žinute su Eurovizijos užuomina pridėsim trumpą paaiškinimą tavo kalba." },
+  // "Beginner mode" was the original handle; reading it back the
+  // label sounded patronising for a feature that's genuinely a
+  // delight (Eurovision is FULL of references nobody catches on a
+  // first watch). Friendlier framing — "Eurovision tips".
+  settings_beginner_h:     { en: "Eurovision tips", lt: "Eurovizijos užuominos" },
+  settings_beginner_sub:   { en: "We'll tuck a short explainer under any message that drops a reference, in your language.", lt: "Po žinute su Eurovizijos užuomina pridėsim trumpą paaiškinimą tavo kalba." },
 
   // ── NameGate / SettingsModal ─────────────────────────────────────
   welcome:           { en: "Welcome", lt: "Labas!" },
   name_prompt:       { en: "What should we call you in this room?", lt: "Kaip į tave kreiptis?" },
   your_name:         { en: "Your name", lt: "Tavo vardas" },
-  name_taken_hint:   { en: "A fan with that name's already here. Add an initial or a second name so we can tell who's who!", lt: "Fanas jau su tokiu vardu egzistuoja. Pridėk inicialą ar antrą vardą, kad atskirtume, apie ką kalbam!" },
+  // Friendly nudge, not a block. The user CAN keep the name (no
+  // server enforcement) — just a heads-up that someone else here
+  // already uses it, so adding an initial helps THEM not get
+  // confused for the other fan.
+  name_taken_hint:   { en: "Someone here already goes by this. Totally fine to keep, but adding an initial saves you some 'wait, which one?' moments.", lt: "Kažkas čia jau tokiu vardu. Gali likti taip, bet pridėjus inicialą bus mažiau „palauk, apie kurį?“ momentų." },
   join_party:        { en: "Join the party", lt: "Pradėti vakarėlį" },
   pick_avatar:       { en: "Pick an avatar", lt: "Pasirink avatarą" },
   settings:          { en: "Settings", lt: "Nustatymai" },
@@ -383,7 +391,11 @@ const S = {
   push_on:              { en: "Notifications on", lt: "Pranešimai įjungti" },
   push_disable:         { en: "Turn off", lt: "Išjungti" },
   push_enabled:         { en: "Notifications enabled", lt: "Pranešimai įjungti" },
-  push_denied:          { en: "Permission denied", lt: "Leidimas nesuteiktas" },
+  // "Permission denied" was the literal browser response, but it
+  // reads as "you tried something and we said no" — the actual
+  // situation is the OS-level toggle being off. Reframe as
+  // actionable advice the user can take.
+  push_denied:          { en: "Notifications are blocked. Open your browser's site settings to re-enable them.", lt: "Pranešimai užblokuoti. Atidaryk svetainės nustatymus naršyklėje, kad vėl įjungtum." },
   push_chat_all:        { en: "All chat messages", lt: "Visos pokalbių žinutės" },
   push_chat_all_sub:    { en: "Every message in the room thread.", lt: "Kiekviena žinutė kambario pokalbyje." },
   push_chat_replies:    { en: "Replies to my messages", lt: "Atsakymai į mano žinutes" },

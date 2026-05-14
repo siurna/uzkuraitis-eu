@@ -200,17 +200,15 @@ function VoteOpenCard({ lang }: { lang: Language }) {
         className="relative overflow-hidden px-5 pt-5 pb-5 flex flex-col gap-3"
         style={{ background: "linear-gradient(125deg, #f10d59 0%, #ff3ede 46%, #6020c6 100%)" }}
       >
-        {/* Equalizer bars: now genuinely anchored to the bottom edge
-            of the card (no pb padding) so they read as a stage chart
-            rising from the floor. */}
-        <div className="pointer-events-none absolute bottom-0 right-0 flex items-end gap-1.5 h-2/3 px-3 opacity-95">
-          {[28, 64, 42, 88, 36].map((h, i) => (
-            <span
-              key={i}
-              className="w-2 rounded-t-full bg-white/85 shadow-[0_0_10px_rgba(255,255,255,0.35)]"
-              style={{ height: `${h}%` }}
-            />
-          ))}
+        {/* Single ballot-box glyph off the right edge — the
+            equalizer bars on the previous revision read as random
+            audio meters that didn't tie to voting. A big 🗳️ in
+            Fluent 3D is direct: "this is about your ballot". */}
+        <div
+          className="pointer-events-none absolute -right-2 bottom-1 -rotate-[8deg] opacity-95 drop-shadow"
+          aria-hidden
+        >
+          <FluentEmoji glyph="🗳️" size={92} />
         </div>
         <div
           className="pointer-events-none absolute inset-0"
@@ -782,7 +780,18 @@ function ThanksCard({ lang }: { lang: Language }) {
               damping: 18,
               delay: 0.18,
             }}
-            className="mb-1"
+            className="mb-1 inline-flex rounded-full p-1"
+            style={{
+              // Subtle inset shadow — the heart looks pressed INTO the
+              // card surface instead of floating flat on top. Two
+              // layers: a warm inner ring (warm-amber against the
+              // gold radial) + a darker bottom-inner shadow so the
+              // heart catches "light from above". Plus a soft outer
+              // glow that ties the heart to the gold radial bloom
+              // behind it.
+              boxShadow:
+                "inset 0 1px 2px rgba(255,255,255,0.22), inset 0 -6px 14px rgba(0,0,0,0.35), 0 0 28px -6px oklch(85% 0.18 80 / 0.55)",
+            }}
           >
             <HeartFlag code={winner} size="lg" />
           </motion.div>

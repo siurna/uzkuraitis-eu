@@ -14,6 +14,7 @@ import {
   type PushState,
 } from "@/lib/push-client";
 import { TogglePill } from "@/components/ui/toggle-pill";
+import { FluentEmoji } from "@/components/fluent-emoji";
 import { useRoomLive } from "@/components/room-shell";
 import { NAME_KEY, SESSION_KEY } from "@/lib/use-identity";
 import { t } from "@/lib/i18n";
@@ -420,12 +421,16 @@ export function NotificationsCta() {
       className="relative block w-full overflow-hidden rounded-3xl"
       style={{ background: "linear-gradient(135deg, #00b3a4 0%, #0f7fb5 52%, #2360c8 100%)" }}
     >
-      {/* artwork — a clutch of bell glyphs, off the right edge */}
+      {/* artwork — a clutch of bell glyphs, off the right edge.
+          Routed through `<FluentEmoji>` so the 3D PNGs render
+          everywhere instead of the OS-native bell, which on macOS
+          / Windows looks like a flat outline that fights the
+          gradient backdrop. */}
       <div className="pointer-events-none absolute inset-y-0 -right-3 flex items-center" aria-hidden>
-        <span className="flex items-end gap-1 pr-6 -rotate-[6deg] opacity-90">
-          <span className="text-3xl">🔕</span>
-          <span className="text-5xl drop-shadow">🔔</span>
-          <span className="text-2xl">🔔</span>
+        <span className="flex items-end gap-1 pr-6 -rotate-[6deg] opacity-90 drop-shadow">
+          <FluentEmoji glyph="🔕" size={36} />
+          <FluentEmoji glyph="🔔" size={56} />
+          <FluentEmoji glyph="🔔" size={28} />
         </span>
       </div>
       <div
@@ -437,8 +442,8 @@ export function NotificationsCta() {
           <Bell className="h-3 w-3" />
           {t(lang, "push_off")}
         </p>
-        <p className="font-display text-xl text-white leading-tight drop-shadow-sm">{t(lang, "push_cta_title")}</p>
-        <p className="text-sm text-white/70 leading-snug">{t(lang, "push_cta_sub")}</p>
+        <p className="font-display text-xl text-white leading-tight text-balance drop-shadow-sm">{t(lang, "push_cta_title")}</p>
+        <p className="text-sm text-white/70 leading-snug text-balance">{t(lang, "push_cta_sub")}</p>
         <span className="mt-1.5">
           <button
             type="button"

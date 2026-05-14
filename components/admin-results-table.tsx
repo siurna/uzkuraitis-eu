@@ -102,6 +102,20 @@ export function AdminResultsTable({
     }));
   });
   const [factDraft, setFactDraft] = useState<Record<string, string>>(initialFacts);
+  // Saved snapshot — used by the trailing "X / Y" badge to flip
+  // flamingo → yellow + show an "unsaved" sub when the draft has
+  // diverged from what's actually on the server. Re-armed on every
+  // successful save so the badge settles back to "all good" once
+  // the round-trip lands.
+  const [savedRows, setSavedRows] = useState(() =>
+    initialResults
+      .map((r) => `${r.placement}:${r.countryCode}`)
+      .sort()
+      .join("|"),
+  );
+  const [savedFacts, setSavedFacts] = useState(() =>
+    JSON.stringify(initialFacts),
+  );
   const [pending, start] = useTransition();
   // Which TOP-10 placement is currently being edited via the country-
   // picker drawer. The drawer replaces a native <select> that was
@@ -160,6 +174,15 @@ export function AdminResultsTable({
         return;
       }
       toast.success("Saved. Leaderboards refreshed.");
+      // Re-snap the saved baseline so the badge flips back to its
+      // calm flamingo state until the next edit.
+      setSavedRows(
+        filled
+          .map((r) => `${r.placement}:${r.countryCode}`)
+          .sort()
+          .join("|"),
+      );
+      setSavedFacts(JSON.stringify(factPayload));
       router.refresh();
     });
   };
@@ -204,6 +227,24 @@ export function AdminResultsTable({
     FACTS.filter((f) => factDraft[f.key] && factDraft[f.key] !== "").length;
   const total = 10 + FACTS.length;
 
+  // "Are there edits not yet pushed?" Cheap signature comparison
+  // against the last saved snapshot. Both rows and facts contribute;
+  // the badge cares about EITHER being dirty.
+  const currentRowsSig = rows
+    .filter((r) => r.countryCode)
+    .map((r) => `${r.placement}:${r.countryCode}`)
+    .sort()
+    .join("|");
+  const currentFactsSig = JSON.stringify(
+    Object.fromEntries(
+      FACTS.map((f) => [
+        f.key,
+        factDraft[f.key] && factDraft[f.key] !== "" ? factDraft[f.key] : null,
+      ]),
+    ),
+  );
+  const dirty = currentRowsSig !== savedRows || currentFactsSig !== savedFacts;
+
   return (
     <div className="flex flex-col gap-6">
       {/* AdminPageTitle owns the chrome; we pass the dynamic "X / Y
@@ -213,8 +254,24 @@ export function AdminResultsTable({
           no longer carries an extra row of counter-padding. */}
       <AdminPageTitle
         trailing={
-          <span className="inline-flex items-center rounded-full bg-flamingo/15 ring-1 ring-flamingo/35 px-3 h-7 text-xs font-display text-flamingo tabular-nums">
-            {filledCount} / {total}
+          // Two-line trailing chip: top row is the {filled} / {total}
+          // count, bottom row is the "Unsaved" hint that surfaces
+          // ONLY when the draft has diverged from the saved baseline.
+          // Tint swaps flamingo (calm) → yellow (attention) on the
+          // dirty branch so it reads as actionable at a glance.
+          <span
+            className={`inline-flex flex-col items-end leading-tight rounded-xl px-3 py-1 text-xs font-display tabular-nums transition
+                        ${dirty
+                          ? "bg-yellow/15 ring-1 ring-yellow/45 text-yellow"
+                          : "bg-flamingo/15 ring-1 ring-flamingo/35 text-flamingo"}`}
+            aria-live="polite"
+          >
+            <span>{filledCount} / {total}</span>
+            {dirty && (
+              <span className="text-[10px] uppercase tracking-[0.22em] text-yellow/85">
+                Unsaved
+              </span>
+            )}
           </span>
         }
       >

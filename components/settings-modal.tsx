@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Share2, Check, LogOut, ChevronRight, Bell } from "lucide-react";
+import { Share2, Check, LogOut, ChevronRight, Bell, Languages, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useUpdateMyPresence } from "@/lib/realtime";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { optimizedSrc } from "@/lib/img";
 import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
 import { readLang, withLangTransition, writeLang } from "@/lib/i18n-client";
 import { readBeginner, writeBeginner } from "@/lib/beginner-client";
+import { readTranslate, writeTranslate } from "@/lib/translate-client";
 
 const NAME_KEY = "uzk_name";
 const AVATAR_KEY = "uzk_avatar";
@@ -40,7 +41,17 @@ export function SettingsModal({
   const lastGoodName = useRef("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [lang, setLang] = useState<Language>("lt");
+  // Separate state for the pill's `left` so we can commit the pill
+  // move BEFORE we open the view-transition that crossfades the
+  // strings. The view-transition snapshots a frame where the pill
+  // is already on its new side; the snapshot crossfade only animates
+  // the surrounding labels. This is the only way to get "items
+  // crossfade AND pill snaps" both true at once — the View
+  // Transitions API itself can't be told to skip an element
+  // reliably across browsers.
+  const [pillSide, setPillSide] = useState<Language>("lt");
   const [beginner, setBeginner] = useState(false);
+  const [translate, setTranslate] = useState(false);
   const [copied, setCopied] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [notifSheetOpen, setNotifSheetOpen] = useState(false);
@@ -51,9 +62,11 @@ export function SettingsModal({
     const initial = localStorage.getItem(NAME_KEY) ?? "";
     setName(initial);
     setBeginner(readBeginner());
+    setTranslate(readTranslate());
     lastGoodName.current = initial;
     setAvatar(localStorage.getItem(AVATAR_KEY) ?? null);
     setLang(readLang());
+    setPillSide(readLang());
     setCopied(false);
   }, [open]);
 
@@ -81,9 +94,17 @@ export function SettingsModal({
   };
 
   const setLanguage = (next: Language) => {
-    withLangTransition(() => {
-      setLang(next);
-      writeLang(next);
+    // Commit the pill move on this frame WITHOUT view-transitions so
+    // it snaps. Defer the actual lang change to the next animation
+    // frame so React renders the pill-only update first, THEN the
+    // view-transition starts and only the lang strings get captured
+    // in the crossfade.
+    setPillSide(next);
+    requestAnimationFrame(() => {
+      withLangTransition(() => {
+        setLang(next);
+        writeLang(next);
+      });
     });
   };
 
@@ -136,23 +157,26 @@ export function SettingsModal({
 
           <Section label={t(lang, "language")}>
             <div className="relative grid grid-cols-2 gap-1 rounded-2xl bg-black/30 ring-1 ring-white/10 p-1">
-              {/* Active-pill: separate absolutely-positioned bg so we
-                  can opt it out of the View Transitions capture (see
-                  globals.css → ::view-transition-group(uzk-lang-pill)).
-                  The rest of the page crossfades through the root
-                  view-transition; the pill snaps instantly to the
-                  picked side, exactly the "items crossfade BUT toggle
-                  pops" behaviour the brief asked for. */}
+              {/* Active-pill bg, driven by `pillSide` (NOT `lang`)
+                  so the pill commits its new position on the frame
+                  BEFORE the lang view-transition opens. No
+                  view-transition-name needed — the pill is already
+                  at its target left when the snapshot is taken, so
+                  the snapshot crossfade has nothing to interpolate
+                  for the pill. */}
               <span
                 aria-hidden
                 className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-xl bg-white pointer-events-none"
                 style={{
-                  left: lang === LANGUAGES[0] ? "0.25rem" : "50%",
-                  viewTransitionName: "uzk-lang-pill",
+                  left: pillSide === LANGUAGES[0] ? "0.25rem" : "50%",
                 }}
               />
               {LANGUAGES.map((code) => {
-                const active = lang === code;
+                // Text colour tracks `pillSide` too so it flips
+                // instantly when the user taps; the LANGUAGE_NAMES
+                // labels themselves are language-agnostic (LT/EN)
+                // and don't need to crossfade.
+                const active = pillSide === code;
                 return (
                   <button
                     key={code}
@@ -169,40 +193,36 @@ export function SettingsModal({
             </div>
           </Section>
 
-          {/* Beginner-mode toggle. The earlier flamingo-tinted
-              explainer card with copy + icon is gone (it read as
-              neon noise next to the avatar picker), but the toggle
-              itself stays — it's the only way for a viewer to flip
-              the per-message gloss on. Plain row treatment to match
-              the rest of the drawer. */}
-          <Section label={t(lang, "settings_beginner_h")}>
-            <button
-              type="button"
-              onClick={() => {
-                const next = !beginner;
+          {/* In-chat helpers. Two parallel rows: auto-translate to
+              English (LT → EN gloss) and Eurovision tips (cultural
+              reference explainer). Same tile shape the notification
+              prefs use elsewhere in the drawer: icon tile on the
+              left, label + sub stacked, switch on the right. The
+              old "neon" explainer card is gone, but the toggles
+              themselves are back — they're the only way for a
+              viewer to flip these features on. */}
+          <div className="flex flex-col gap-2">
+            <PrefRow
+              icon={<Languages className="h-5 w-5" />}
+              title={t(lang, "settings_translate_h")}
+              sub={t(lang, "settings_translate_sub")}
+              value={translate}
+              onChange={(next) => {
+                setTranslate(next);
+                writeTranslate(next);
+              }}
+            />
+            <PrefRow
+              icon={<Sparkles className="h-5 w-5" fill="currentColor" />}
+              title={t(lang, "settings_beginner_h")}
+              sub={t(lang, "settings_beginner_sub")}
+              value={beginner}
+              onChange={(next) => {
                 setBeginner(next);
                 writeBeginner(next);
               }}
-              aria-pressed={beginner}
-              className="w-full flex items-center gap-3 rounded-2xl px-3 py-2.5
-                         bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition text-left"
-            >
-              <span className="flex-1 min-w-0">
-                <span className="block text-xs text-white/55 leading-snug">
-                  {t(lang, "settings_beginner_sub")}
-                </span>
-              </span>
-              <span
-                className={`shrink-0 inline-flex items-center h-6 w-10 rounded-full transition
-                            ${beginner ? "bg-success/85" : "bg-white/15"}`}
-              >
-                <span
-                  className={`block h-5 w-5 rounded-full bg-white transition-transform
-                              ${beginner ? "translate-x-[18px]" : "translate-x-0.5"}`}
-                />
-              </span>
-            </button>
-          </Section>
+            />
+          </div>
 
           <Section label={t(lang, "pick_avatar")}>
             <button
@@ -381,6 +401,59 @@ export function SettingsModal({
   );
 }
 
+
+// Toggle row used by the auto-translate + Eurovision tips prefs.
+// Mirrors the notification-toggles PrefRow shape (icon tile on the
+// left, label + sub stacked, switch on the right) so the in-chat
+// helpers feel like one family with the notification prefs deeper
+// in the drawer. Tile tints flamingo while ON to match.
+function PrefRow({
+  icon,
+  title,
+  sub,
+  value,
+  onChange,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  sub?: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!value)}
+      aria-pressed={value}
+      className="w-full flex items-center gap-3 rounded-2xl px-3 py-2.5
+                 bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition text-left"
+    >
+      <span
+        className={`shrink-0 grid place-items-center h-10 w-10 rounded-xl transition
+                    ${value
+                      ? "bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo"
+                      : "bg-white/8 ring-1 ring-white/12 text-white/65"}`}
+      >
+        {icon}
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block font-display text-sm text-white truncate">{title}</span>
+        {sub && (
+          <span className="block text-[11px] text-white/55 leading-snug">{sub}</span>
+        )}
+      </span>
+      <span
+        className={`shrink-0 inline-flex items-center h-6 w-10 rounded-full transition
+                    ${value ? "bg-success/90" : "bg-white/15"}`}
+      >
+        <span
+          className={`block h-5 w-5 rounded-full bg-white transition-transform
+                      ${value ? "translate-x-[18px]" : "translate-x-0.5"}`}
+        />
+      </span>
+    </button>
+  );
+}
 
 function Section({
   label,

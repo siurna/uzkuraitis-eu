@@ -6,10 +6,11 @@
 //
 // Six-character codes from an unambiguous alphabet. The generator
 // (server-side, in lib/rooms.ts) uses [23456789A-HJ-NP-Z]; the
-// validator additionally allows `1` so a host can type a memorable
-// custom code like "PARTY1" without rejecting it. 0/O and I/L stay
-// out — visually indistinguishable.
-export const ROOM_CODE_REGEX = /^[1-9ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/;
+// validator additionally allows `1` AND `O` so a host can type a
+// memorable custom code like "PARTY1" or "HELLOX" without rejecting
+// it. `0` and `I`/`L` stay out — easy to confuse with `O` and `1`
+// on common fonts.
+export const ROOM_CODE_REGEX = /^[1-9ABCDEFGHJKMNOPQRSTUVWXYZ]{6}$/;
 
 export function isValidRoomCode(code: string): boolean {
   return ROOM_CODE_REGEX.test(code);

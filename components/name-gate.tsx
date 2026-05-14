@@ -281,6 +281,18 @@ export function NameGate({
             mode="wait" holds the next body until the previous one has
             faded out. Height of the sheet itself still reflows
             naturally because BottomSheet hugs content. */}
+        {/* Wrapper carries `layout` so the BottomSheet's height
+            animates between step-1's compact form and step-2's
+            tall avatar grid (and step-3's notif card) instead of
+            snapping. AnimatePresence still handles the per-step
+            crossfade; the layout transition smooths the height
+            change UNDER the crossfade so the sheet eases up/down
+            in one motion. Same easing curve as the in/out for a
+            consistent feel. */}
+        <motion.div
+          layout
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        >
         <AnimatePresence mode="wait" initial={false}>
         {step === 1 ? (
           // Compact — sheet auto-sizes to content. No min-h.
@@ -306,7 +318,7 @@ export function NameGate({
                 maxLength={40}
               />
               {nameTaken && (
-                <p className="text-xs text-flamingo/90 text-center leading-snug px-1">
+                <p className="text-xs text-flamingo/90 text-center text-balance leading-snug px-1">
                   {t(lang, "name_taken_hint")}
                 </p>
               )}
@@ -380,6 +392,7 @@ export function NameGate({
           </motion.div>
         )}
         </AnimatePresence>
+        </motion.div>
       </BottomSheet>
     </>
   );

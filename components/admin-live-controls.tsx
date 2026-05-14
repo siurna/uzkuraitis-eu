@@ -3,7 +3,22 @@
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { motion } from "motion/react";
-import { Loader2, Megaphone, Vote, Trophy, ChevronRight } from "lucide-react";
+import {
+  Loader2,
+  Megaphone,
+  Vote,
+  Trophy,
+  ChevronRight,
+  Hand,
+  Bell,
+  Coins,
+  Camera,
+  Wine,
+  Medal,
+  Flag,
+  PartyPopper,
+  type LucideIcon,
+} from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { TogglePill } from "@/components/ui/toggle-pill";
 import { AdminRoomTriviaThreshold } from "@/components/admin-room-trivia-threshold";
@@ -34,16 +49,21 @@ const ROOM_BROADCAST_KEY = (room: string, kind: BroadcastKind) =>
 // Compact broadcast list — title + one-line sub, no icon. Order is
 // "soft → loud": welcome first, then the routine nudges, then the
 // hype moments, then the final reveal.
-const SHOTS: { kind: BroadcastKind; title: string; desc: string }[] = [
-  { kind: "welcome",       title: "Hello folks",          desc: "Drops your housekeeping notes." },
-  { kind: "notifications", title: "Turn on notifications", desc: "Nudge to enable push." },
-  { kind: "vote",          title: "Lines are open",       desc: "Lock in your TOP 10." },
-  { kind: "bet",           title: "Don't forget bonus bets", desc: "Free points if you call them." },
-  { kind: "selfie",        title: "Selfie time",          desc: "Polaroid prompt into chat." },
-  { kind: "drunk_poll",    title: "How drunk are you?",   desc: "Vibe-check tally bar." },
-  { kind: "top3",          title: "Top 3 right now",      desc: "Live fan-aggregate podium." },
-  { kind: "final",         title: "Final results",        desc: "Scored leaderboard." },
-  { kind: "thanks",        title: "Thank you, Europe",    desc: "Closing card with confetti." },
+// Icon picked to telegraph the broadcast at a glance — lucide for
+// continuity with the rest of the admin controls (Vote / Trophy /
+// Megaphone above). Filled where the glyph has a fill variant so
+// the icon TILE doesn't read as a hollow outline next to the
+// solid pill rows on Live.
+const SHOTS: { kind: BroadcastKind; title: string; desc: string; icon: LucideIcon }[] = [
+  { kind: "welcome",       title: "Hello folks",          desc: "Drops your housekeeping notes.", icon: Hand },
+  { kind: "notifications", title: "Turn on notifications", desc: "Nudge to enable push.",          icon: Bell },
+  { kind: "vote",          title: "Lines are open",       desc: "Lock in your TOP 10.",            icon: Vote },
+  { kind: "bet",           title: "Don't forget bonus bets", desc: "Free points if you call them.", icon: Coins },
+  { kind: "selfie",        title: "Selfie time",          desc: "Polaroid prompt into chat.",      icon: Camera },
+  { kind: "drunk_poll",    title: "How drunk are you?",   desc: "Vibe-check tally bar.",            icon: Wine },
+  { kind: "top3",          title: "Top 3 right now",      desc: "Live fan-aggregate podium.",       icon: Medal },
+  { kind: "final",         title: "Final results",        desc: "Scored leaderboard.",              icon: Trophy },
+  { kind: "thanks",        title: "Thank you, Europe",    desc: "Closing card with confetti.",      icon: PartyPopper },
 ];
 
 export function AdminLiveControls({
@@ -248,10 +268,16 @@ export function AdminLiveControls({
         open={open}
         onClose={() => setOpen(false)}
         title="Broadcasts"
-        sub={room || "No room selected"}
+        sub={
+          // Show the human-readable room NAME under the drawer
+          // title — the code is shorthand for the URL, the name
+          // is what the admin actually thinks of when picking a
+          // room to broadcast into.
+          rooms.find((r) => r.code === room)?.name ?? "No room selected"
+        }
       >
         <ul className="flex flex-col gap-1">
-          {SHOTS.map(({ kind, title, desc }) => {
+          {SHOTS.map(({ kind, title, desc, icon: Icon }) => {
             const last = lastFired[kind];
             const sending = busyShot === kind;
             return (
@@ -264,6 +290,9 @@ export function AdminLiveControls({
                              bg-white/[0.03] ring-1 ring-white/8 hover:bg-white/[0.06] transition text-left
                              disabled:opacity-60"
                 >
+                  <span className="shrink-0 grid place-items-center h-9 w-9 rounded-lg bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+                    <Icon className="h-4 w-4" fill="currentColor" />
+                  </span>
                   <span className="flex-1 min-w-0">
                     <span className="block font-display text-sm text-white truncate">{title}</span>
                     <span className="block text-[11px] text-white/50 leading-snug">{desc}</span>
