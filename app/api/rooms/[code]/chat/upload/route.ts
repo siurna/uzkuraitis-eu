@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
-import { put } from "@vercel/blob";
 import { nanoid } from "nanoid";
 import { findRoomByCode } from "@/lib/rooms";
 import { guardAnySession, readSignedSessionId } from "@/lib/server-session";
 import { checkAndIncrement } from "@/lib/rate-limit";
+import { uploadImage } from "@/lib/storage";
 
 // Image upload for chat. Accepts a multipart form ("file") or a raw
-// image body, validates type + size, drops it in the Blob store and
-// returns the public URL. The client then posts a normal chat message
-// with kind:"image" and gifUrl set to that URL.
+// image body, validates type + size, drops it in the Supabase Storage
+// `chat` bucket under `<room_id>/<nanoid>.<ext>` and returns the
+// public URL. The client then posts a normal chat message with
+// kind:"image" and gifUrl set to that URL.
 //
-// Needs BLOB_READ_WRITE_TOKEN in the environment (Vercel Blob store).
+// The room-id prefix lets the room DELETE handler do a single
+// prefix-list-then-remove to clean up every file the room ever held.
 
 type RouteCtx = { params: Promise<{ code: string }> };
 
@@ -53,13 +55,6 @@ export async function POST(req: Request, { params }: RouteCtx) {
     }
   }
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return NextResponse.json(
-      { error: "Image uploads aren't configured." },
-      { status: 503 },
-    );
-  }
-
   // Pull the file out of either a multipart form or the raw request body.
   let data: ArrayBuffer;
   let type: string;
@@ -87,14 +82,20 @@ export async function POST(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Image is too large (max 8 MB)" }, { status: 413 });
   }
 
-  const key = `chat/${room.id}/${nanoid(16)}.${EXT[type]}`;
-  const blob = await put(key, data, {
-    access: "public",
-    contentType: type,
-    addRandomSuffix: false,
-  });
-
-  return NextResponse.json({ url: blob.url });
+  try {
+    const { url } = await uploadImage(
+      "chat",
+      `${room.id}/${nanoid(16)}.${EXT[type]}`,
+      data,
+      type,
+    );
+    return NextResponse.json({ url });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Upload failed" },
+      { status: 500 },
+    );
+  }
 }
 
 export const dynamic = "force-dynamic";
