@@ -78,8 +78,28 @@ export function Standings() {
   if (!votingEnabled && !tallyEnabled) return null;
 
   return (
-    <main className="container mx-auto max-w-3xl px-4 pt-2 pb-6 flex flex-col gap-3">
-      <h2 className="font-display text-xl gradient-text px-1">{t(lang, "fan_top5")}</h2>
+    <main className="container mx-auto max-w-3xl px-4">
+      {/* Widget surface — a calm dark wrapper instead of the loose-rows
+          + rainbow-gradient title we had. The home page is rich with
+          colour banners above (vote hero, bingo, vs-room, bonus); the
+          TOP 5 sits between those and the quieter "akcentai / who's
+          here" stack below, so it needs to dial back the saturation
+          without disappearing. Single ring + a faint top gloss is
+          enough. */}
+      <section
+        className="relative overflow-hidden rounded-3xl ring-1 ring-white/10
+                   bg-gradient-to-b from-dark-blue-900/85 to-dark-blue-900/65
+                   shadow-[0_10px_30px_-22px_rgba(0,0,0,0.6)]
+                   p-4 flex flex-col gap-3"
+      >
+        <span
+          className="pointer-events-none absolute inset-x-0 top-0 h-1/4"
+          style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.06), transparent)" }}
+          aria-hidden
+        />
+        <h2 className="relative text-[11px] uppercase tracking-[0.22em] text-white/55 font-display px-1">
+          {t(lang, "fan_top5")}
+        </h2>
       {loading ? (
         <ul className="flex flex-col gap-2">
           {[0, 1, 2, 3, 4].map((i) => (
@@ -133,6 +153,7 @@ export function Standings() {
           ))}
         </ol>
       </BottomSheet>
+      </section>
     </main>
   );
 }

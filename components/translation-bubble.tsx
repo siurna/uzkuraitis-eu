@@ -25,7 +25,18 @@ export function TranslationBubble({
   useEffect(() => {
     let cancelled = false;
     requestTranslation(text).then((r) => {
-      if (!cancelled) setHit(r);
+      if (!cancelled) {
+        setHit(r);
+        // When a bubble appears (the row's height just grew) we
+        // reuse the chat panel's media-loaded sticky-scroll hook so
+        // the reader who was parked at the bottom doesn't have to
+        // manually drag to see the rendering.
+        if (r.translate && r.text) {
+          requestAnimationFrame(() =>
+            window.dispatchEvent(new Event("uzk:chat-media-loaded")),
+          );
+        }
+      }
     });
     return () => {
       cancelled = true;

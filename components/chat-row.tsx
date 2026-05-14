@@ -195,21 +195,55 @@ export type Message = {
   pending?: boolean;
 };
 
-// Inline **bold** / *italic* / __underline__ (non-greedy, no nesting).
-// Returns a string when there's no markup, else an array of nodes.
+// Markdown + URL renderer for a single string segment.
+// Supports **bold**, *italic*, __underline__ (non-greedy, no nesting),
+// plus auto-linking of http(s):// URLs and bare www.* URLs. Returns a
+// string when there's no markup, else an array of nodes.
+const INLINE_RE =
+  /\*\*([^*]+?)\*\*|\*([^*]+?)\*|__([^_]+?)__|(https?:\/\/[^\s<>"')\]]+|www\.[^\s<>"')\]]+)/g;
+
 function renderInline(s: string): React.ReactNode {
-  if (!s.includes("*") && !s.includes("__")) return s;
+  if (!s.includes("*") && !s.includes("__") && !/https?:\/\/|www\./.test(s)) {
+    return s;
+  }
   const parts: React.ReactNode[] = [];
-  const re = /\*\*([^*]+?)\*\*|\*([^*]+?)\*|__([^_]+?)__/g;
   let last = 0;
   let k = 0;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(s))) {
+  // Reset lastIndex — INLINE_RE is module-scoped + has /g, so reuse
+  // between calls would skip ahead.
+  INLINE_RE.lastIndex = 0;
+  while ((m = INLINE_RE.exec(s))) {
     if (m.index > last) parts.push(s.slice(last, m.index));
     if (m[1] != null) parts.push(<strong key={k++}>{m[1]}</strong>);
     else if (m[2] != null) parts.push(<em key={k++}>{m[2]}</em>);
-    else parts.push(<u key={k++}>{m[3]}</u>);
-    last = re.lastIndex;
+    else if (m[3] != null) parts.push(<u key={k++}>{m[3]}</u>);
+    else if (m[4] != null) {
+      // Strip trailing punctuation that's almost always sentence-ending
+      // rather than part of the URL. Re-emit it as plain text so the
+      // sentence reads naturally.
+      let url = m[4];
+      let tail = "";
+      while (/[.,!?:;)]/.test(url[url.length - 1] ?? "")) {
+        tail = url[url.length - 1] + tail;
+        url = url.slice(0, -1);
+      }
+      const href = url.startsWith("http") ? url : `https://${url}`;
+      parts.push(
+        <a
+          key={k++}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="underline decoration-flamingo/60 underline-offset-2 hover:decoration-flamingo break-all"
+        >
+          {url}
+        </a>,
+      );
+      if (tail) parts.push(tail);
+    }
+    last = INLINE_RE.lastIndex;
   }
   if (parts.length === 0) return s;
   if (last < s.length) parts.push(s.slice(last));
@@ -416,7 +450,15 @@ export function ChatRow({
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         className="my-1 px-1"
       >
-        <ChatTriviaCard countryCode={cc} roomCode={roomCode} lang={lang} />
+        <ChatTriviaCard
+          countryCode={cc}
+          roomCode={roomCode}
+          lang={lang}
+          // When admin advances past this country, freeze the card —
+          // players shouldn't be able to answer trivia about whoever
+          // was on stage 5 minutes ago.
+          isOnStage={cc === nowPlayingCode}
+        />
       </motion.li>
     );
   }
@@ -925,32 +967,41 @@ export function ChatRow({
                       })}
                     </div>
                   </motion.div>
-                  {/* actions — below the bubble. The `.glass-card`
-                      surface lives directly on the motion element
-                      (not a child) so the backdrop-filter shares the
-                      stacking context that motion's transform
-                      creates. Nesting it inside a wrapper made the
-                      blur read as flat tint. */}
+                  {/* actions — below the bubble. We finally pinned the
+                      blur: motion.div on its own (opacity-only fade,
+                      no transform) creates NO stacking context, and
+                      the inner `.glass-card` wrapper does its
+                      backdrop-filter against whatever's behind the
+                      menu in the page. Round 6 used a nested wrapper
+                      but motion had a scale animation that gave it a
+                      transform-driven stacking context, and round 7
+                      hoisted glass-card onto motion which ran into
+                      the same wall in iOS Safari (transform +
+                      backdrop-filter on the same element renders
+                      flat). Strip the transform animation and the
+                      nesting both works. */}
                   <motion.div
                     key="actions"
-                    initial={{ opacity: 0, scale: 0.9, y: -8 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: -6 }}
-                    transition={{ type: "spring", stiffness: 900, damping: 30, mass: 0.4 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.14 }}
                     onClick={(e) => e.stopPropagation()}
-                    className={`glass-card absolute top-full mt-2 z-30 rounded-2xl overflow-hidden min-w-[10.5rem] flex flex-col ${mine ? "right-0" : "left-0"}`}
+                    className={`absolute top-full mt-2 z-30 ${mine ? "right-0" : "left-0"}`}
                   >
-                    <MenuAction onClick={onReply} icon={Reply} label={t(lang, "chat_reply")} />
-                    {reactionTotal > 0 && (
-                      <MenuAction
-                        onClick={() => setReactorsOpen(true)}
-                        icon={Users}
-                        label={t(lang, "chat_who_reacted")}
-                      />
-                    )}
-                    {canEdit && <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />}
-                    {m.body && <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />}
-                    {mine && <MenuAction onClick={onDelete} icon={Trash2} label={t(lang, "chat_delete")} danger />}
+                    <div className="glass-card rounded-2xl overflow-hidden min-w-[10.5rem] flex flex-col">
+                      <MenuAction onClick={onReply} icon={Reply} label={t(lang, "chat_reply")} />
+                      {reactionTotal > 0 && (
+                        <MenuAction
+                          onClick={() => setReactorsOpen(true)}
+                          icon={Users}
+                          label={t(lang, "chat_who_reacted")}
+                        />
+                      )}
+                      {canEdit && <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />}
+                      {m.body && <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />}
+                      {mine && <MenuAction onClick={onDelete} icon={Trash2} label={t(lang, "chat_delete")} danger />}
+                    </div>
                   </motion.div>
                 </>
               )}

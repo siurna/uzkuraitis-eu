@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ROOM_CODE_REGEX } from "@/lib/rooms";
+import { ROOM_CODE_REGEX } from "@/lib/room-code";
 
 // Admin › room › Settings: change the human-friendly join code.
 // Heads-up: this invalidates any links/QRs already handed out.

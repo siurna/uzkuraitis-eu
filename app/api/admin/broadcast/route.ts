@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       FROM ${votes} v INNER JOIN ${voters} vt ON vt.id = v.voter_id
       WHERE vt.room_id = ${room.id}
       GROUP BY v.country_code ORDER BY total_points DESC LIMIT 3`);
-    const codes = rows.rows.map((r) => r.country_code);
+    const codes = rows.map((r) => r.country_code);
     if (codes.length === 0) {
       await postSystemMessage(room.code, room.id, { key: "sys_cta_top3_empty" });
     } else {

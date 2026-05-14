@@ -36,6 +36,6 @@ export async function checkAndIncrement(
       END
     RETURNING hits;
   `);
-  const hits = result.rows[0]?.hits ?? 0;
+  const hits = result[0]?.hits ?? 0;
   return { ok: hits <= max, hits };
 }

@@ -4,8 +4,9 @@ const nextConfig = {
   // than flipping these back on.
   reactStrictMode: true,
   typedRoutes: true,
-  // Both Neon and Liveblocks ship with their own Edge-friendly drivers.
-  serverExternalPackages: ["@neondatabase/serverless"],
+  // postgres-js needs to live outside the bundled Next runtime so its
+  // TCP socket internals aren't browser-shimmed during build.
+  serverExternalPackages: ["postgres"],
   // Let the image optimizer fetch avatar photos mirrored to the Vercel
   // Blob store by `pnpm avatars:upload` — otherwise `/_next/image?url=
   // https://…blob.vercel-storage.com/…` is rejected. Single `*` for the

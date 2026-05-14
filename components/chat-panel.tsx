@@ -1187,10 +1187,26 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                   setComposerFocused(true);
                   window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: true }));
                 }}
-                onBlur={() => {
+                onBlur={(e) => {
                   setComposerFocused(false);
                   if (!editing) clearTyping();
                   window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: false }));
+
+                  // iOS keyboard toolbar "Done" / checkmark dismisses
+                  // the keyboard via input.blur() without moving focus
+                  // anywhere else (`relatedTarget` is null). That same
+                  // signature fires when the user taps a background
+                  // area to dismiss too — but in this composer the
+                  // GIF + Photo buttons preventDefault on mousedown so
+                  // they never become the new focus target either. So
+                  // the heuristic "blur with no relatedTarget AND a
+                  // non-empty composer" is a clean proxy for "user
+                  // signalled they're done with the keyboard". Send.
+                  const text = (editing ? editBody : body).trim();
+                  if (!e.relatedTarget && text) {
+                    if (editing) submitEdit();
+                    else send();
+                  }
                 }}
                 placeholder={editing ? t(lang, "chat_edit_placeholder") : t(lang, "chat_placeholder")}
                 className="flex-1 min-w-0 bg-transparent px-1.5 py-2
