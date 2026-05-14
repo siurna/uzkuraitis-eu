@@ -541,18 +541,19 @@
    pulses with a soft outer glow that follows the same lub-dub rhythm
    as .heartbeat. Apply via class="heartbeat-focus". */
 @keyframes heartbeat-border {
-  0%, 100% { box-shadow: 0 0 0 0 oklch(61.3% 0.2412 13.09 / 0); }
-  10%      { box-shadow: 0 0 0 8px oklch(61.3% 0.2412 13.09 / 0.28); }
-  22%      { box-shadow: 0 0 0 0 oklch(61.3% 0.2412 13.09 / 0); }
-  32%      { box-shadow: 0 0 0 5px oklch(61.3% 0.2412 13.09 / 0.18); }
-  44%      { box-shadow: 0 0 0 0 oklch(61.3% 0.2412 13.09 / 0); }
+  /* Single calm pulse per cycle — the previous double-beat lub-dub
+     was reading as sporadic / nervous on the room-gate input. The
+     focus indicator should feel like a steady glow that breathes,
+     not a cardiac trace. */
+  0%, 100% { box-shadow: 0 0 0 0   oklch(61.3% 0.2412 13.09 / 0); }
+  50%      { box-shadow: 0 0 0 6px oklch(61.3% 0.2412 13.09 / 0.22); }
 }
 .heartbeat-focus { transition: border-color 0.18s ease; }
 .heartbeat-focus:focus,
 .heartbeat-focus:focus-visible {
   outline: none;
   border-color: var(--color-fuchsia);
-  animation: heartbeat-border 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  animation: heartbeat-border 2.2s ease-in-out infinite;
 }
 
 /* Endless left-to-right marquee. The track holds two copies of its

@@ -669,7 +669,9 @@ function SelfieCard({ lang }: { lang: Language }) {
                 <span className="grid h-20 w-20 place-items-center rounded-full
                                   bg-white/15 ring-1 ring-white/30 backdrop-blur-sm
                                   text-white shadow-[0_8px_24px_-8px_rgba(0,0,0,0.4)]">
-                  <FluentEmoji glyph="📸" size={48} />
+                  {/* Fluent 3D camera's optical mass sits low —
+                      nudge up so the chip reads as centred. */}
+                  <FluentEmoji glyph="📸" size={48} className="-translate-y-[3px]" />
                 </span>
               </span>
             </>

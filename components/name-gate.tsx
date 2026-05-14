@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useOthers, useUpdateMyPresence } from "@/lib/realtime";
 import { ensureSessionId, SESSION_KEY } from "@/lib/use-identity";
@@ -16,7 +17,7 @@ import {
 } from "@/components/notification-toggles";
 import { getState, subscribe, isSupported } from "@/lib/push-client";
 import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
-import { readLang, writeLang } from "@/lib/i18n-client";
+import { readLang, withLangTransition, writeLang } from "@/lib/i18n-client";
 
 const NAME_KEY = "uzk_name";
 const AVATAR_KEY = "uzk_avatar";
@@ -178,6 +179,7 @@ export function NameGate({
           /* not dismissible without submit */
         }}
         dismissible={false}
+        trailing={<StepDots current={step} total={3} />}
         title={
           step === 1
             ? t(lang, "welcome")
@@ -194,13 +196,13 @@ export function NameGate({
         }
         footer={
           // On step 2 the picked-artist card lives in the (fixed) footer
-          // so it stays glued above the buttons, same pattern as the
-          // settings avatar sheet, not "sticky" inside the scroll area
-          // where it floated. Step dots are absolutely centred so they
-          // don't shift when the Back button appears on step 2.
+          // so it stays glued above the buttons. Step dots used to live
+          // here too, absolutely centred; they're now in the header's
+          // top-right slot (where an X would be) so the footer can be
+          // a clean Back / Next pair.
           <div className="w-full flex flex-col gap-3">
             {step === 2 && <SelectedAvatarCard avatarId={draftAvatar} />}
-            <div className="relative flex items-center gap-3 w-full">
+            <div className="flex items-center gap-3 w-full">
               {step === 2 ? (
                 <Button
                   type="button"
@@ -214,9 +216,6 @@ export function NameGate({
               ) : (
                 <span className="w-9 shrink-0" aria-hidden />
               )}
-              <span className="pointer-events-none absolute left-1/2 -translate-x-1/2">
-                <StepDots current={step} total={3} />
-              </span>
               <div className="flex-1" />
               {step === 1 ? (
                 <Button
@@ -271,9 +270,20 @@ export function NameGate({
           </div>
         }
       >
+        {/* Step bodies crossfade between transitions so the swap from
+            name → avatar → notifications doesn't snap. AnimatePresence
+            mode="wait" holds the next body until the previous one has
+            faded out. Height of the sheet itself still reflows
+            naturally because BottomSheet hugs content. */}
+        <AnimatePresence mode="wait" initial={false}>
         {step === 1 ? (
           // Compact — sheet auto-sizes to content. No min-h.
-          <form
+          <motion.form
+            key="step-1"
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -8 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
             id="name-gate-step1"
             onSubmit={advance}
             className="flex flex-col gap-5 pt-2"
@@ -300,8 +310,8 @@ export function NameGate({
                 <button
                   key={code}
                   type="button"
-                  onClick={() => setLang(code)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-display transition ${
+                  onClick={() => withLangTransition(() => setLang(code))}
+                  className={`px-5 py-2 rounded-full text-sm font-display transition ${
                     lang === code
                       ? "bg-white text-dark-blue"
                       : "text-white/60 hover:text-white"
@@ -311,19 +321,33 @@ export function NameGate({
                 </button>
               ))}
             </div>
-          </form>
+          </motion.form>
         ) : step === 2 ? (
           // Step 2 expands the sheet; the grid scrolls inside the
           // existing overflow container. The picked-artist card sits in
           // the footer (above), not inline here.
-          <div className="flex flex-col gap-3 min-h-[60dvh]">
+          <motion.div
+            key="step-2"
+            initial={{ opacity: 0, x: 8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -8 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-col gap-3 min-h-[60dvh]"
+          >
             <AvatarPicker value={draftAvatar} onChange={setDraftAvatar} />
-          </div>
+          </motion.div>
         ) : (
           // Step 3: the friendly nudge to enable notifications. Big
           // ringing Fluent bell, copy, and (on iOS-no-PWA) the
           // install-as-app steps inline. Footer carries the CTA pair.
-          <div className="flex flex-col items-center gap-4 pt-2 pb-1">
+          <motion.div
+            key="step-3"
+            initial={{ opacity: 0, x: 8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -8 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-col items-center gap-4 pt-2 pb-1"
+          >
             <span className="ringing-bell">
               <FluentEmoji glyph="🔔" size={96} ariaLabel="bell" />
             </span>
@@ -339,8 +363,9 @@ export function NameGate({
                 </ol>
               </div>
             )}
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </BottomSheet>
     </>
   );

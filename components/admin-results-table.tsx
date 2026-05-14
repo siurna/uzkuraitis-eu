@@ -221,7 +221,7 @@ export function AdminResultsTable({
         {rows.map((row, i) => (
           <li
             key={row.placement}
-            className={`flex items-center gap-3 py-2 ${i > 0 ? "border-t border-white/8" : ""}`}
+            className={`flex items-center gap-3 ${i > 0 ? "py-2 border-t border-white/8" : "pb-2 pt-0"}`}
           >
             <span
               className={`shrink-0 w-8 text-center font-display text-lg tabular-nums ${

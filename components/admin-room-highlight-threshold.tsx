@@ -38,17 +38,22 @@ export function AdminRoomHighlightThreshold({
     });
   };
 
+  // Same DrawerSwitch row shape as voting + reveal-results above:
+  // smaller icon tile, tighter padding. Flamingo accent kicks in when
+  // the threshold differs from the default 5 — visual signal that
+  // "this room is non-standard".
+  const accented = Number(value) !== 5;
   return (
-    <div className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 glass-surface text-left">
-      <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/65">
-        <Flame className="h-5 w-5" fill="currentColor" />
+    <div className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 glass-surface text-left">
+      <span
+        className={`shrink-0 grid place-items-center h-8 w-8 rounded-lg transition
+                    ${accented ? "bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo" : "bg-white/[0.06] ring-1 ring-white/12 text-white/55"}`}
+      >
+        <Flame className="h-4 w-4" fill="currentColor" />
       </span>
-      <div className="flex-1 min-w-0">
-        <p className="font-display text-base">Highlight threshold</p>
-        <p className="text-xs text-white/50 leading-snug">
-          Reactions a chat message needs to count as a highlight. Default 5.
-        </p>
-      </div>
+      <span className="flex-1 font-display text-sm text-white">
+        Highlight threshold
+      </span>
       <input
         type="number"
         min={1}

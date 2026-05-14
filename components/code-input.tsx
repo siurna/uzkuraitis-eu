@@ -147,7 +147,6 @@ export function CodeInput({
           }}
           onKeyDown={handleKey(i)}
           onPaste={handlePaste}
-          onFocus={(e) => e.target.select()}
           className={cn(
             // Square cell, no individual border-radius (the outer pill
             // handles rounded corners).
@@ -162,6 +161,11 @@ export function CodeInput({
             // the cap-height visually centered in the cell.
             "text-center font-display uppercase tabular-nums leading-none pt-1",
             "text-3xl sm:text-4xl text-white caret-flamingo",
+            // Suppress text selection: tapping a cell shouldn't drag-
+            // select neighbouring cells, and auto-select-on-focus is
+            // gone above (it was making the first letter randomly
+            // highlight when the input took focus on iOS).
+            "select-none [&::selection]:bg-transparent",
           )}
         />
       ))}

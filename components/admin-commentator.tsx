@@ -88,7 +88,9 @@ export function AdminCommentator({ initial }: { initial: Record<string, string> 
         Banter
       </AdminPageTitle>
       <section className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-5">
-        <div className="flex flex-col items-start gap-4">
+        {/* Photo on the left, upload + name fields stacked on the
+            right, so the row reads as a single identity card. */}
+        <div className="flex items-start gap-4">
           <span className="relative grid h-32 w-32 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white/[0.06] ring-1 ring-white/12 text-white/40">
             {lines[PHOTO_KEY] ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -108,30 +110,39 @@ export function AdminCommentator({ initial }: { initial: Record<string, string> 
             )}
           </span>
 
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = "";
-              if (f) void uploadPhoto(f);
-            }}
-          />
-          <Button type="button" variant="secondary" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
-            <ImagePlus className="h-4 w-4 mr-1.5" />
-            {uploading ? "Uploading…" : lines[PHOTO_KEY] ? "Replace photo" : "Upload photo"}
-          </Button>
-
-          <label className="flex flex-col gap-1.5 w-full">
-            <span className="text-xs uppercase tracking-wider text-white/45 font-display">Name</span>
-            <Input
-              value={lines[NAME_KEY] ?? ""}
-              onChange={(e) => set(NAME_KEY, e.target.value)}
-              className="h-10"
+          <div className="flex-1 min-w-0 flex flex-col gap-3">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void uploadPhoto(f);
+              }}
             />
-          </label>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="self-start"
+            >
+              <ImagePlus className="h-4 w-4 mr-1.5" />
+              {uploading ? "Uploading…" : lines[PHOTO_KEY] ? "Replace photo" : "Upload photo"}
+            </Button>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs uppercase tracking-wider text-white/45 font-display">Name</span>
+              <Input
+                value={lines[NAME_KEY] ?? ""}
+                onChange={(e) => set(NAME_KEY, e.target.value)}
+                className="h-10"
+              />
+            </label>
+          </div>
         </div>
       </section>
 
@@ -142,18 +153,46 @@ export function AdminCommentator({ initial }: { initial: Record<string, string> 
             <span className="w-28 sm:w-40 shrink-0 truncate pt-2 text-sm text-white/70">
               {c.flag} {c.name}
             </span>
-            <textarea
+            <AutogrowTextarea
               value={lines[c.code] ?? ""}
-              onChange={(e) => set(c.code, e.target.value)}
-              rows={2}
-              className="flex-1 min-w-0 rounded-lg bg-black/30 border border-white/15 px-3 py-2
-                         text-sm leading-snug text-white resize-y min-h-[2.5rem]
-                         focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 transition"
+              onChange={(v) => set(c.code, v)}
             />
           </label>
         ))}
       </section>
     </div>
+  );
+}
+
+// Autogrow textarea: starts at min 2 rows, expands as content fills.
+// Resets back to single-row when emptied. Uses the natural scroll
+// height of a mirror div instead of a measured-then-set-height
+// dance because lines are short enough that recomputing on each
+// keystroke is fine.
+function AutogrowTextarea({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      rows={2}
+      className="flex-1 min-w-0 rounded-lg bg-black/30 border border-white/15 px-3 py-2
+                 text-sm leading-snug text-white resize-none overflow-hidden
+                 focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 transition"
+    />
   );
 }
 

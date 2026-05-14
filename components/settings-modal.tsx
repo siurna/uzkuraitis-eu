@@ -16,7 +16,7 @@ import { FluentEmoji } from "@/components/fluent-emoji";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
-import { readLang, writeLang } from "@/lib/i18n-client";
+import { readLang, withLangTransition, writeLang } from "@/lib/i18n-client";
 import { readTranslate, writeTranslate } from "@/lib/translate-client";
 import { readBeginner, writeBeginner } from "@/lib/beginner-client";
 
@@ -86,8 +86,10 @@ export function SettingsModal({
   };
 
   const setLanguage = (next: Language) => {
-    setLang(next);
-    writeLang(next);
+    withLangTransition(() => {
+      setLang(next);
+      writeLang(next);
+    });
   };
 
   const toggleTranslate = () => {
@@ -207,25 +209,6 @@ export function SettingsModal({
               onChange={toggleBeginner}
               label={t(lang, "settings_beginner_sub")}
             />
-            <AnimatePresence initial={false}>
-              {beginner && (
-                <motion.div
-                  key="beginner-preview"
-                  initial={{ opacity: 0, height: 0, y: -6 }}
-                  animate={{ opacity: 1, height: "auto", y: 0 }}
-                  exit={{ opacity: 0, height: 0, y: -6 }}
-                  transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-                  className="overflow-hidden"
-                >
-                  <div className="mt-2 rounded-2xl bg-turquoise/12 ring-1 ring-turquoise/35 px-3 py-2.5 flex items-start gap-2.5">
-                    <FluentEmoji glyph="💡" size={18} className="mt-0.5 shrink-0" />
-                    <p className="text-[13px] text-turquoise leading-snug">
-                      {t(lang, "settings_beginner_sub")}
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </Section>
 
           <Section label={t(lang, "pick_avatar")}>
@@ -278,6 +261,16 @@ export function SettingsModal({
           <Section label="">
             <button
               type="button"
+              onClick={() => setNotifSheetOpen(true)}
+              className="flex items-center gap-3 rounded-2xl px-4 py-3
+                         bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition text-left"
+            >
+              <Bell className="h-4 w-4 text-dark-blue-200 shrink-0" />
+              <span className="flex-1">{t(lang, "notifications")}</span>
+              <ChevronRight className="h-4 w-4 text-dark-blue-300 shrink-0" />
+            </button>
+            <button
+              type="button"
               onClick={share}
               disabled={!shareUrl}
               className="flex items-center gap-3 rounded-2xl px-4 py-3
@@ -292,16 +285,6 @@ export function SettingsModal({
               <span className="flex-1">
                 {copied ? t(lang, "link_copied") : t(lang, "share_link")}
               </span>
-              <ChevronRight className="h-4 w-4 text-dark-blue-300 shrink-0" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setNotifSheetOpen(true)}
-              className="flex items-center gap-3 rounded-2xl px-4 py-3
-                         bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition text-left"
-            >
-              <Bell className="h-4 w-4 text-dark-blue-200 shrink-0" />
-              <span className="flex-1">{t(lang, "notifications")}</span>
               <ChevronRight className="h-4 w-4 text-dark-blue-300 shrink-0" />
             </button>
             <button

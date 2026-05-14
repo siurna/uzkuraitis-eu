@@ -31,6 +31,7 @@ export function BottomSheet({
   onClose,
   title,
   sub,
+  trailing,
   children,
   footer,
   dismissible = true,
@@ -40,6 +41,11 @@ export function BottomSheet({
   onClose: () => void;
   title?: React.ReactNode;
   sub?: React.ReactNode;
+  /** Right-side slot in the header. When a `trailing` node is passed
+   *  AND the sheet isn't dismissible, the X is replaced by this slot
+   *  (e.g. NameGate uses it for step progress dots). When dismissible,
+   *  this renders alongside the X. */
+  trailing?: React.ReactNode;
   children: React.ReactNode;
   /** Sticky bottom row; e.g. confirm/cancel buttons. */
   footer?: React.ReactNode;
@@ -102,8 +108,8 @@ export function BottomSheet({
                        border-x-0 border-b-0
                        max-h-[78dvh] flex flex-col"
           >
-            {(title || sub || dismissible) && (
-              <div className="px-5 pt-5 pb-2 flex items-center gap-3 shrink-0">
+            {(title || sub || dismissible || trailing) && (
+              <div className="px-5 pt-5 pb-2 flex items-start gap-3 shrink-0">
                 <div className="flex-1 min-w-0">
                   {title && (
                     <h2 className="font-display text-3xl sm:text-[2rem] leading-tight gradient-text text-balance">
@@ -116,16 +122,26 @@ export function BottomSheet({
                     </p>
                   )}
                 </div>
-                {dismissible && (
+                {/* Right slot. When the sheet is dismissible, render
+                    the X chip (Apple-style circular pill aligned to
+                    the first line of the title). When it's not
+                    dismissible but a `trailing` node was passed, use
+                    that instead — e.g. NameGate puts its step
+                    progress dots up here where the X would be. */}
+                {dismissible ? (
                   <button
                     type="button"
                     onClick={onClose}
                     aria-label={t(lang, "close")}
-                    className="text-white/50 hover:text-white p-1 -m-1 transition shrink-0 self-center"
+                    className="shrink-0 mt-[5px] grid h-8 w-8 place-items-center rounded-full
+                               bg-white/10 ring-1 ring-white/12 text-white/65
+                               hover:bg-white/15 hover:text-white transition"
                   >
-                    <X className="h-5 w-5" />
+                    <X className="h-4 w-4" />
                   </button>
-                )}
+                ) : trailing ? (
+                  <div className="shrink-0 mt-[10px]">{trailing}</div>
+                ) : null}
               </div>
             )}
 

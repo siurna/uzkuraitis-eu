@@ -43,20 +43,26 @@ export function AdminRoomTriviaThreshold({
     });
   };
 
+  // Matches the DrawerSwitch row shape used by voting + reveal-results
+  // on the same Live cockpit: smaller icon tile, tighter padding, and
+  // the same `transition` set on the icon so the tile flips colour
+  // when the cap is set to a non-default value (yellow accent = "this
+  // room has a cap on").
+  const active = value.trim() !== "" && Number(value) > 0;
   return (
     <div
-      className="w-full flex items-center gap-3 rounded-2xl px-4 py-3
+      className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5
                  glass-surface text-left"
     >
-      <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/65">
-        <Lightbulb className="h-5 w-5" fill="currentColor" />
+      <span
+        className={`shrink-0 grid place-items-center h-8 w-8 rounded-lg transition
+                    ${active ? "bg-yellow/20 ring-1 ring-yellow/40 text-yellow" : "bg-white/[0.06] ring-1 ring-white/12 text-white/55"}`}
+      >
+        <Lightbulb className="h-4 w-4" fill="currentColor" />
       </span>
-      <div className="flex-1 min-w-0">
-        <p className="font-display text-base">Trivia answer cap</p>
-        <p className="text-xs text-white/50 leading-snug">
-          How many players can lock an answer per question. Blank = unlimited.
-        </p>
-      </div>
+      <span className="flex-1 font-display text-sm text-white">
+        Trivia answer cap
+      </span>
       <input
         type="number"
         min={0}

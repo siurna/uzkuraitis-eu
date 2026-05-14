@@ -22,6 +22,27 @@ export function writeLang(lang: Language): void {
   window.dispatchEvent(new CustomEvent(LANG_CHANGE_EVENT, { detail: lang }));
 }
 
+// Wraps a language-changing apply() in `document.startViewTransition`
+// so every translated string crossfades between the old and new value
+// in one GPU pass, instead of snapping. Falls back to running apply()
+// directly on browsers that don't support the API yet (Firefox <132,
+// older Safari) — no breakage, just no animation.
+type DocumentWithVT = Document & {
+  startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+};
+export function withLangTransition(apply: () => void): void {
+  if (typeof document === "undefined") {
+    apply();
+    return;
+  }
+  const doc = document as DocumentWithVT;
+  if (typeof doc.startViewTransition === "function") {
+    doc.startViewTransition(apply);
+  } else {
+    apply();
+  }
+}
+
 export function useLang(): Language {
   const [lang, setLang] = useState<Language>("lt");
   useEffect(() => {
