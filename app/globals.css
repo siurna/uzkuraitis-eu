@@ -182,7 +182,13 @@
   }
 
   body {
-    background-color: var(--color-dark-blue-900);
+    /* Transparent so html::before (the participant-backdrop +
+       radial blooms decorative layer) paints through. Without this,
+       body's solid bg covers ::before everywhere — the admin pages
+       (which don't draw their own backdrop) lost the texture
+       entirely. html itself carries the dark-blue-900 fallback so
+       iOS cold-start frame still lands on brand colour, not white. */
+    background-color: transparent;
     color: var(--color-foreground);
     /* No grey/coloured tap flash — this is an app; press states are
        explicit (`active:` styles), not a browser overlay. */
