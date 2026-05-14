@@ -202,7 +202,9 @@ export function NameGate({
           // top-right slot (where an X would be) so the footer can be
           // a clean Back / Next pair.
           <div className="w-full flex flex-col gap-3">
-            {step === 2 && <SelectedAvatarCard avatarId={draftAvatar} />}
+            {step === 2 && (
+              <SelectedAvatarCard avatarId={draftAvatar} layoutHandoff />
+            )}
             <div className="flex items-center gap-3 w-full">
               {step === 2 ? (
                 <Button
@@ -357,7 +359,7 @@ export function NameGate({
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
             className="relative flex flex-col items-center justify-center gap-4 min-h-[52dvh] -mx-5 px-5"
           >
-            <AvatarMatrixBg />
+            <AvatarMatrixBg pickedAvatarId={avatar ?? draftAvatar} />
             <span className="ringing-bell relative">
               <FluentEmoji glyph="🔔" size={120} ariaLabel="bell" />
             </span>
