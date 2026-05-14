@@ -32,7 +32,6 @@ import { useIdentity } from "@/lib/use-identity";
 import { GifPicker } from "@/components/gif-picker";
 import { ChatRow, type Message, type MessageKind } from "@/components/chat-row";
 import { Lightbox } from "@/components/chat-lightbox";
-import { ChatEditableInput } from "@/components/chat-editable-input";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 import { haptic } from "@/lib/haptics";
@@ -130,7 +129,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const listRef = useRef<HTMLDivElement | null>(null);
   // The composer is a contentEditable <div> (an experiment — dodges the
   // iOS keyboard accessory bar that <textarea>/<input> always get).
-  const taRef = useRef<HTMLDivElement | null>(null);
+  const taRef = useRef<HTMLInputElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const didInitialScroll = useRef(false);
   const atBottomRef = useRef(true);
@@ -1140,24 +1139,37 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                 </motion.div>
               )}
             </AnimatePresence>
-            {/* Composer pill. No send button — Enter (or the keyboard's
-                "send" key) sends. Photo + GIF sit on the right. */}
-            <div className="flex items-end gap-1 rounded-2xl border border-white/15 bg-black/40 px-1.5 py-1.5 transition focus-within:border-white/30">
-              <ChatEditableInput
-                innerRef={taRef}
+            {/* Composer pill. Real <form> + <input> so the keyboard's
+                "send" / "go" key (and a Bluetooth keyboard Return)
+                naturally submits, and iOS doesn't show the awkward
+                "‹ › Done" accessory bar that <textarea> triggers.
+                Single-line is fine because the chat is a quick chat:
+                the toolbar already shows GIF/photo/reply, the user
+                doesn't need Shift+Enter line breaks. */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (editing) submitEdit();
+                else send();
+              }}
+              className="flex items-end gap-1 rounded-2xl border border-white/15 bg-black/40 px-1.5 py-1.5 transition focus-within:border-white/30"
+            >
+              <input
+                ref={taRef}
+                type="text"
                 enterKeyHint="send"
+                autoCapitalize="sentences"
+                autoComplete="off"
+                autoCorrect="on"
+                spellCheck
+                maxLength={2000}
                 value={editing ? editBody : body}
-                onChange={(v) =>
-                  editing ? setEditBody(v.slice(0, 2000)) : onComposerChange(v)
-                }
-                onPaste={editing ? undefined : onPaste}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    if (editing) submitEdit();
-                    else send();
-                  }
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (editing) setEditBody(v.slice(0, 2000));
+                  else onComposerChange(v);
                 }}
+                onPaste={editing ? undefined : onPaste}
                 onFocus={() => {
                   setComposerFocused(true);
                   window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: true }));
@@ -1168,8 +1180,8 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                   window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: false }));
                 }}
                 placeholder={editing ? t(lang, "chat_edit_placeholder") : t(lang, "chat_placeholder")}
-                className="flex-1 min-w-0 max-h-[120px] overflow-y-auto bg-transparent px-1.5 py-2
-                           text-base leading-snug text-white whitespace-pre-wrap break-words focus:outline-none"
+                className="flex-1 min-w-0 bg-transparent px-1.5 py-2
+                           text-base leading-snug text-white focus:outline-none"
               />
               {!editing && (
                 <div className="flex items-center gap-1 shrink-0">
@@ -1212,7 +1224,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                   </button>
                 </div>
               )}
-            </div>
+            </form>
           </div>
         </div>
       </div>

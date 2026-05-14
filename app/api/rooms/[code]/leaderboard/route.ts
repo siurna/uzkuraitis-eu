@@ -26,6 +26,11 @@ export async function GET(_req: Request, { params }: RouteCtx) {
         hasResults: true as const,
         homeCountryCode: result.homeCountryCode,
         homeCountryOfficialPlacement: result.homeCountryOfficialPlacement,
+        // Pulling these into the response lets MyResults render the
+        // per-bet "you said / it was" comparison without a separate
+        // /api/admin/results round-trip.
+        placements: result.placements,
+        facts: result.facts,
         leaderboard: result.leaderboard,
       };
 

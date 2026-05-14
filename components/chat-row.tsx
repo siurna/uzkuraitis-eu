@@ -17,8 +17,10 @@ import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { useProfile } from "@/components/profile-sheet";
 import { useParticles } from "@/components/particle-layer";
 import { TranslationBubble } from "@/components/translation-bubble";
+import { BeginnerBubble } from "@/components/beginner-bubble";
 import { ChatTriviaCard } from "@/components/chat-trivia-inline";
 import { useTranslateEnabled } from "@/lib/translate-client";
+import { useBeginnerEnabled } from "@/lib/beginner-client";
 import { useSwipeToReply } from "@/lib/use-swipe-to-reply";
 import { haptic } from "@/lib/haptics";
 import { getTrope, type TropeIndex } from "@/lib/bingo-tropes";
@@ -314,6 +316,7 @@ export function ChatRow({
   const particles = useParticles();
   const roomTab = useRoomTab();
   const translateOn = useTranslateEnabled();
+  const beginnerOn = useBeginnerEnabled();
   const lastTap = useRef(0); // for double-tap-a-text-bubble → ❤️
   // Bot rows (the commentator) don't open a profile — there's no DB row
   // to look up. Real participants do.
@@ -439,18 +442,19 @@ export function ChatRow({
         transition={{ duration: 0.3 }}
         className="my-1 px-1"
       >
-        {/* Different gradient + theme-tinted border (was rainbow). Cool
-            turquoise → indigo → flamingo wash distinguishes the
-            "results dropped" beat from the other broadcast cards.
-            Thicker (ring-2) so the card reads as a Big Deal among
-            the surrounding chatter. */}
-        <div className="rounded-3xl ring-2 ring-turquoise/55 shadow-[0_18px_44px_-18px_oklch(70%_0.15_190_/_0.6)] overflow-hidden">
+        {/* Thicker turquoise border (ring-[3px]) so the card reads as a
+            clear "Big Deal among the surrounding chatter" frame.
+            Gradient is intentionally calmer than the earlier
+            turquoise → indigo → flamingo rainbow: a single deep
+            teal-to-indigo wash with a subtle plum closing note. Less
+            visual noise behind the leaderboard bars. */}
+        <div className="rounded-3xl ring-[3px] ring-turquoise/75 shadow-[0_18px_44px_-18px_oklch(70%_0.15_190_/_0.55)] overflow-hidden">
           <div
             className="relative overflow-hidden p-5 flex flex-col gap-4
-                       shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+                       shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]"
             style={{
               background:
-                "linear-gradient(135deg, #00b8b0 0%, #2a17e6 50%, #f10d59 100%)",
+                "linear-gradient(140deg, #006a73 0%, #142255 55%, #261545 100%)",
             }}
           >
             <header className="flex items-center gap-2">
@@ -599,12 +603,12 @@ export function ChatRow({
                   <button
                     type="button"
                     onClick={() => setAddOpen(true)}
-                    aria-label={`#${ballotPos} in your TOP 10 — tap to change`}
-                    className="inline-flex items-center justify-center h-8 min-w-[2.25rem] px-2 rounded-full
+                    aria-label={t(lang, "chat_np_my_rank_aria", ballotPos)}
+                    className="inline-flex items-center justify-center h-8 px-2.5 rounded-full
                                bg-white/18 ring-1 ring-white/30 text-white font-display text-xs tabular-nums
                                active:scale-95 transition transform-gpu"
                   >
-                    #{ballotPos}
+                    {t(lang, "chat_np_my_rank", ballotPos)}
                   </button>
                 ) : (
                   <button
@@ -921,7 +925,12 @@ export function ChatRow({
                       })}
                     </div>
                   </motion.div>
-                  {/* actions — below the bubble */}
+                  {/* actions — below the bubble. The `.glass-card`
+                      surface lives directly on the motion element
+                      (not a child) so the backdrop-filter shares the
+                      stacking context that motion's transform
+                      creates. Nesting it inside a wrapper made the
+                      blur read as flat tint. */}
                   <motion.div
                     key="actions"
                     initial={{ opacity: 0, scale: 0.9, y: -8 }}
@@ -929,28 +938,19 @@ export function ChatRow({
                     exit={{ opacity: 0, scale: 0.9, y: -6 }}
                     transition={{ type: "spring", stiffness: 900, damping: 30, mass: 0.4 }}
                     onClick={(e) => e.stopPropagation()}
-                    className={`absolute top-full mt-2 z-30 ${mine ? "right-0" : "left-0"}`}
+                    className={`glass-card absolute top-full mt-2 z-30 rounded-2xl overflow-hidden min-w-[10.5rem] flex flex-col ${mine ? "right-0" : "left-0"}`}
                   >
-                    {/* Reuse the brand `.glass-card` surface (the same
-                        treatment NameGate / Settings / CountryDrawer
-                        use) so the long-press menu sits inside the
-                        chat the same way every other floating panel
-                        does — saturating backdrop blur, white inner
-                        border, soft shadow. No more bespoke gradient
-                        stack here. */}
-                    <div className="glass-card rounded-2xl overflow-hidden min-w-[10.5rem] flex flex-col">
-                      <MenuAction onClick={onReply} icon={Reply} label={t(lang, "chat_reply")} />
-                      {reactionTotal > 0 && (
-                        <MenuAction
-                          onClick={() => setReactorsOpen(true)}
-                          icon={Users}
-                          label={t(lang, "chat_who_reacted")}
-                        />
-                      )}
-                      {canEdit && <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />}
-                      {m.body && <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />}
-                      {mine && <MenuAction onClick={onDelete} icon={Trash2} label={t(lang, "chat_delete")} danger />}
-                    </div>
+                    <MenuAction onClick={onReply} icon={Reply} label={t(lang, "chat_reply")} />
+                    {reactionTotal > 0 && (
+                      <MenuAction
+                        onClick={() => setReactorsOpen(true)}
+                        icon={Users}
+                        label={t(lang, "chat_who_reacted")}
+                      />
+                    )}
+                    {canEdit && <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />}
+                    {m.body && <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />}
+                    {mine && <MenuAction onClick={onDelete} icon={Trash2} label={t(lang, "chat_delete")} danger />}
                   </motion.div>
                 </>
               )}
@@ -959,6 +959,10 @@ export function ChatRow({
 
           {translateOn && !mine && m.kind === "text" && m.body && (
             <TranslationBubble text={m.body} mine={mine} />
+          )}
+
+          {beginnerOn && !mine && m.kind === "text" && m.body && (
+            <BeginnerBubble text={m.body} lang={lang} mine={mine} />
           )}
 
           {Object.keys(m.reactions).length > 0 && (

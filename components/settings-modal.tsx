@@ -17,6 +17,7 @@ import { optimizedSrc } from "@/lib/img";
 import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
 import { readLang, writeLang } from "@/lib/i18n-client";
 import { readTranslate, writeTranslate } from "@/lib/translate-client";
+import { readBeginner, writeBeginner } from "@/lib/beginner-client";
 
 const NAME_KEY = "uzk_name";
 const AVATAR_KEY = "uzk_avatar";
@@ -46,6 +47,7 @@ export function SettingsModal({
   const [notifSheetOpen, setNotifSheetOpen] = useState(false);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
   const [translate, setTranslate] = useState(false);
+  const [beginner, setBeginner] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -53,6 +55,7 @@ export function SettingsModal({
     setAvatar(localStorage.getItem(AVATAR_KEY) ?? null);
     setLang(readLang());
     setTranslate(readTranslate());
+    setBeginner(readBeginner());
     setCopied(false);
   }, [open]);
 
@@ -72,6 +75,12 @@ export function SettingsModal({
     const next = !translate;
     setTranslate(next);
     writeTranslate(next);
+  };
+
+  const toggleBeginner = () => {
+    const next = !beginner;
+    setBeginner(next);
+    writeBeginner(next);
   };
 
   const save = (e?: React.FormEvent) => {
@@ -220,6 +229,38 @@ export function SettingsModal({
               </button>
             </Section>
           )}
+
+          {/* Beginner mode: available in both languages because the
+              gloss is written in the user's UI lang, not English.
+              Drops a turquoise tip-bubble under any message that
+              carries a Eurovision-specific reference. */}
+          <Section label={t(lang, "settings_beginner_h")}>
+            <button
+              type="button"
+              onClick={toggleBeginner}
+              aria-pressed={beginner}
+              className="w-full flex items-center gap-3 rounded-2xl px-4 py-3
+                         bg-white/[0.04] ring-1 ring-white/8 hover:bg-white/[0.07] transition text-left"
+            >
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm text-white/90 leading-snug">
+                  {t(lang, "settings_beginner_sub")}
+                </span>
+              </span>
+              <span
+                className={`relative h-6 w-11 rounded-full transition shrink-0 ${
+                  beginner ? "bg-success/70" : "bg-white/10"
+                }`}
+                aria-hidden
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition transform ${
+                    beginner ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </span>
+            </button>
+          </Section>
 
           <Section label={t(lang, "pick_avatar")}>
             <button

@@ -53,6 +53,8 @@ const S = {
   // ── Auto-translate to English (Settings) ─────────────────────────
   settings_translate_h:    { en: "Auto-translate to English", lt: "Auto-vertimas į anglų" },
   settings_translate_sub:  { en: "We'll pop a clean English rendering under any Lithuanian message: slang, cultural beats, all of it.", lt: "Po lietuvišku tekstu paberiama angliška versija." },
+  settings_beginner_h:     { en: "Beginner mode", lt: "Pradedantiems" },
+  settings_beginner_sub:   { en: "New to Eurovision? We'll tuck a short explainer under any message that drops a reference, in your language.", lt: "Naujokas Eurovizijoje? Po žinute su Eurovizijos užuomina pridėsim trumpą paaiškinimą tavo kalba." },
 
   // ── NameGate / SettingsModal ─────────────────────────────────────
   welcome:           { en: "Welcome", lt: "Labas!" },
@@ -157,6 +159,10 @@ const S = {
   home_vs_room_outlier:    { en: "Lone wolf. Barely any of your picks crack the room's top 10", lt: "Vienišas vilkas. Beveik nė vienas tavo favoritas nepatenka į kitų TOP 10" },
   home_vs_room_empty_title: { en: "How do you stack up?", lt: "Kaip atrodai prieš kitus?" },
   home_vs_room_empty_sub:   { en: "Cast your TOP 10 to compare with the room.", lt: "Balsuok ir palygink savo TOP 10 su kitais." },
+  home_vs_room_you:    { en: "You", lt: "Tu" },
+  home_vs_room_them:   { en: "Room", lt: "Kiti" },
+  chat_np_my_rank:     { en: (n: number) => `My #${n}`, lt: (n: number) => `Mano #${n}` },
+  chat_np_my_rank_aria:{ en: (n: number) => `Your #${n} in your TOP 10 — tap to change`, lt: (n: number) => `Tavo #${n} TOP 10 sąraše — palieskite, kad pakeistumėte` },
   home_results:        { en: "Results are in", lt: "Rezultatai jau čia" },
   home_bingo_won:      { en: "Bingo! 🎉 Tap to see your card", lt: "Bingo! 🎉 Bakstelėk savo kortelę" },
   bingo_widget_title:  { en: "Play bingo!", lt: "Žaisk bingo!" },
@@ -173,6 +179,10 @@ const S = {
   results_pick_vs_actual_h: { en: "Your TOP 10 vs the result", lt: "Tavo TOP 10 prieš realybę" },
   results_you_said:    { en: "You said", lt: "Tu pasakei" },
   results_it_was:      { en: "It was", lt: "Buvo" },
+  results_bets_breakdown_h: { en: "Bonus bets", lt: "Papildomi statymai" },
+  bet_yes:             { en: "Yes", lt: "Taip" },
+  bet_no:              { en: "No", lt: "Ne" },
+  bet_none_label:      { en: "No country", lt: "Jokios šalies" },
 
   // ── Chat ─────────────────────────────────────────────────────────
   chat_empty:        { en: "No messages yet. Say hi 👋", lt: "Dar nieks nieko nerašė. Pasisveikink pirmas 👋" },
@@ -202,7 +212,7 @@ const S = {
   sys_voting_closed: { en: "🔒 Voting is CLOSED.", lt: "🔒 Balsavimas UŽDARYTAS." },
   sys_show_started:  { en: "🟢 The show is underway, Europe, get ready!", lt: "🟢 Šou prasidėjo, Europa, pasiruošk!" },
   sys_show_break:    { en: "⏸ Interval break. Stretch those legs.", lt: "⏸ Pertrauka. Pajudink kojas." },
-  sys_show_ended:    { en: "🏁 Performances are over. Time to vote!", lt: "🏁 Pasirodymai baigti. Laikas balsuoti!" },
+  sys_show_ended:    { en: "🏁 Performances have ended.", lt: "🏁 Pasirodymai baigti." },
   sys_show_doors:    { en: "🎬 Doors open, the show hasn't started yet.", lt: "🎬 Durys atvertos, šou dar neprasidėjo." },
   sys_results_in:    { en: "🏆 Results are in, leaderboard's live!", lt: "🏆 Rezultatai jau čia, lyderių lentelė gyva!" },
   sys_cta_notifications: { en: "🔔 Turn on notifications so you don't miss a beat (tap your avatar).", lt: "🔔 Įsijunk pranešimus, kad nieko nepražiopsotum (bakstelėk savo avatarą)." },
