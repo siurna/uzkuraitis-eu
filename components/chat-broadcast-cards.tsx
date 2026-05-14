@@ -407,25 +407,23 @@ function Top3PodiumCard({
           }}
           aria-hidden
         />
-        <header className="relative flex items-center justify-between">
+        <header className="relative flex items-center">
           <p className="text-[10px] uppercase tracking-[0.3em] font-display text-white/85 flex items-center gap-1.5">
             <Medal className="h-3 w-3 text-yellow" fill="currentColor" />
             {t(lang, "sys_cta_top3_eyebrow")}
           </p>
-          <span className="text-2xl leading-none">🏆</span>
         </header>
 
-        {/* #1 — hero row. Large heart-flag + country name + gold pill. */}
+        {/* #1 — hero row. Large heart-flag + gold medal leading the
+            country name; the secondary "Leading" eyebrow is gone (the
+            podium ordering carries that signal on its own). */}
         {first && (
           <div className="relative flex items-center gap-4">
             <span className="shrink-0">
               <HeartFlag code={first} size="lg" />
             </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-yellow font-display flex items-center gap-1">
-                <span className="text-base leading-none">🥇</span>
-                {t(lang, "sys_cta_top3_first")}
-              </p>
+            <div className="min-w-0 flex-1 flex items-center gap-2">
+              <span className="text-2xl leading-none shrink-0" aria-hidden>🥇</span>
               <p className="font-display text-2xl text-white leading-tight truncate drop-shadow">
                 {countryName(first, lang) ?? first.toUpperCase()}
               </p>

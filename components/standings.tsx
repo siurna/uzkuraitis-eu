@@ -109,7 +109,13 @@ export function Standings() {
             aria-hidden
           />
           <span
-            className="font-display text-lg uppercase tracking-[0.22em] leading-none bg-clip-text text-transparent drop-shadow-[0_1px_0_rgba(0,0,0,0.35)]"
+            // `leading-none` was clipping the dot on Ė (Lithuanian's
+            // capital-with-overdot eats vertical space above the cap
+            // line). `leading-[1.15]` gives the diacritic room without
+            // changing the visual centring of the row. Also keep
+            // `pt-[2px]` so the text sits true to the sparkle icons
+            // either side.
+            className="font-display text-lg uppercase tracking-[0.22em] leading-[1.15] pt-[2px] bg-clip-text text-transparent drop-shadow-[0_1px_0_rgba(0,0,0,0.35)]"
             style={{
               backgroundImage:
                 "linear-gradient(180deg, #fff3c2 0%, #f4c869 45%, #c98a2f 100%)",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { motion } from "motion/react";
 import { useEventListener } from "@/lib/realtime";
 import { useRoomLive } from "@/components/room-shell";
@@ -185,19 +186,32 @@ export function ResultsPanel() {
   });
 
   if (!payload || payload.leaderboard.length === 0) {
+    // Same beating-heart loader as the room-gate rehydration so the
+    // brand pulse carries through to every "we're fetching" moment.
     return (
-      <main className="flex-1 grid place-items-center text-white/45 px-8 text-center">
-        <p className="text-sm">{t(lang, "loading")}</p>
+      <main className="flex-1 grid place-items-center px-8 text-center">
+        <div className="flex flex-col items-center gap-4 text-white/55">
+          <div className="heartbeat-loop">
+            <Image
+              src="/images/70-heart.webp"
+              alt=""
+              width={56}
+              height={56}
+              priority
+              className="h-14 w-14 object-contain drop-shadow-[0_0_24px_rgba(255,46,222,0.45)]"
+            />
+          </div>
+          <p className="text-xs uppercase tracking-[0.3em] font-display">
+            {t(lang, "loading")}
+          </p>
+        </div>
       </main>
     );
   }
 
   const rows = payload.leaderboard;
   const session = ensureSessionId();
-  const idx = rows.findIndex((r) => r.sessionId === session);
-  const me = idx >= 0 ? rows[idx] : null;
-  const rank = idx >= 0 ? idx + 1 : 0;
-  const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : null;
+  const me = rows.find((r) => r.sessionId === session) ?? null;
   const effTab = me ? tab : "board";
 
   return (
@@ -234,25 +248,11 @@ export function ResultsPanel() {
 
         {effTab === "me" && me ? (
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-3 rounded-2xl bg-white/[0.04] ring-1 ring-white/8 px-4 py-3">
-              <span className="shrink-0 grid place-items-center h-11 w-11 rounded-xl bg-white/[0.07] ring-1 ring-white/12 text-xl font-display text-white">
-                {medal ?? `#${rank}`}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="font-display text-white truncate leading-tight">{me.name}</p>
-                <p className="text-xs text-white/55 leading-tight">
-                  {t(lang, "home_my_results_rank", rank, rows.length)}
-                </p>
-              </div>
-              <span className="text-right shrink-0">
-                <span className="block font-display text-2xl text-flamingo tabular-nums leading-none">
-                  {me.total}
-                </span>
-                <span className="block text-[10px] uppercase tracking-wider text-white/40 mt-0.5">
-                  {t(lang, "pts_short")}
-                </span>
-              </span>
-            </div>
+            {/* The rank/total card used to live here; that signal now
+                rides on the leaderboard row's "10/14" badge (the
+                viewer's row is highlighted in flamingo over there).
+                The breakdown sections below carry the rest of the
+                "where did your points come from" story. */}
 
             {/* "You said / it was" — per-pick comparison for the TOP10
                 ballot. Reads as a scorecard: each row shows the pick at

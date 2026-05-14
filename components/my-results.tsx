@@ -6,8 +6,6 @@ import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { useLeaderboard } from "@/components/leaderboard-provider";
 import { ensureSessionId } from "@/lib/use-identity";
 import { totalBetPoints } from "@/lib/scoring";
-import { BetsComparison } from "@/components/bets-comparison";
-import { countries } from "@/lib/countries";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 
@@ -15,8 +13,13 @@ import { useLang } from "@/lib/i18n-client";
 // + total in a vertical layout, with a row of breakdown chips below
 // (TOP10 / Home / Bets / Highlights). Tap = jump to the Results tab
 // for the full breakdown + leaderboard. Hidden if results aren't in yet.
+//
+// The per-bet "you said / it was" comparison used to render inside
+// this banner too — it's gone from here so the home card stays
+// scannable; the chips below the total carry the breakdown signal,
+// the full comparison lives one tap away in the Results tab.
 export function MyResults() {
-  const { tallyEnabled, homeCountryCode } = useRoomLive();
+  const { tallyEnabled } = useRoomLive();
   const { setTab } = useRoomTab();
   const lang = useLang();
   const { payload } = useLeaderboard();
@@ -113,18 +116,6 @@ export function MyResults() {
                 )}
               </ul>
 
-              {/* Per-bet "you said / it was" rows so the bets total
-                  isn't a black box. Self-hides when the voter didn't
-                  place any bets. */}
-              <BetsComparison
-                picks={me.betPicks}
-                earned={me.bets}
-                facts={payload.facts}
-                placements={payload.placements}
-                homeCountryCode={homeCountryCode}
-                lang={lang}
-                totalFinalists={countries.length}
-              />
             </>
           ) : null}
         </div>

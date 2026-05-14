@@ -263,7 +263,11 @@ const S = {
   poll_prompt:               { en: "Tap your pick. You can switch later.", lt: "Bakstelėk variantą. Galėsi persigalvoti." },
   poll_voted:                { en: (n: number) => `Locked in. ${n} ${n === 1 ? "vote" : "votes"} so far.`, lt: (n: number) => `Užfiksuota. Šiuo metu balsų: ${n}.` },
   // Welcome / housekeeping widget at the bottom of every room home.
-  welcome_eyebrow:           { en: "Hello folks", lt: "Sveiki sveiki" },
+  // The card itself is a single tap target; the markdown opens in a
+  // drawer rather than sitting open on the home scroll.
+  welcome_eyebrow:           { en: "From the organisers", lt: "Nuo organizatorių" },
+  welcome_card_title:        { en: "A word from the organisers", lt: "Žodis nuo organizatorių" },
+  welcome_card_sub:          { en: "House rules, schedule, the usual housekeeping. Tap to open.", lt: "Taisyklės, tvarkaraštis, smulkmenos. Bakstelėk." },
   // Plain-text fallback for the chat CTA card (rendered when a viewer
   // sees the chat row but no card matches, or for screen readers).
   sys_cta_welcome:           { en: "👋 Hello folks, a few housekeeping notes", lt: "👋 Sveiki, keletas tvarkos taisyklių" },

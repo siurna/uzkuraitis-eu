@@ -137,6 +137,11 @@
   --rainbow-thickness: 2px;
   --rainbow-gradient:
     linear-gradient(-195deg, #f10d59, #ff3ede 24%, #00d4cc 95%);
+  /* Animated variant — same brand colours laid out as a wider
+     gradient that loops left→right. The Vote-now hero uses this so
+     the border reads as "live" instead of static decoration. */
+  --rainbow-gradient-anim:
+    linear-gradient(90deg, #f10d59, #ff3ede 25%, #00d4cc 50%, #ff3ede 75%, #f10d59);
 }
 
 @layer base {
@@ -244,6 +249,25 @@
   padding: var(--rainbow-thickness);
   background-image: var(--rainbow-gradient);
   display: block;
+}
+
+/* Same 2px ESC stroke, but the gradient loops L→R so the border
+   reads as live. Used by the home Vote-now hero (the rest of the
+   app sticks with the static .rainbow-border so nothing else flickers
+   in your peripheral vision). */
+@keyframes rainbow-flow {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+.rainbow-border-anim {
+  padding: var(--rainbow-thickness);
+  background-image: var(--rainbow-gradient-anim);
+  background-size: 200% 100%;
+  display: block;
+  animation: rainbow-flow 6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rainbow-border-anim { animation: none; }
 }
 
 /* Glass surface, intentionally cool + quiet. Hairline white-low border,

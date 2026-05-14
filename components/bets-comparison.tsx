@@ -298,10 +298,13 @@ function BetValue({
         ) : (
           <span
             key={code}
-            className="inline-flex items-center gap-1 rounded-full bg-white/10 ring-1 ring-white/15 px-1.5 h-5 text-[11px]"
+            className="inline-flex items-center gap-1 rounded-full bg-white/10 ring-1 ring-white/15 pl-1 pr-2 h-6 text-[11px]"
+            title={countryName(code, lang) ?? code.toUpperCase()}
           >
             <HeartFlag code={code} size="sm" />
-            <span className="tabular-nums uppercase">{code.toUpperCase()}</span>
+            <span className="truncate max-w-[6.5rem]">
+              {countryName(code, lang) ?? code.toUpperCase()}
+            </span>
           </span>
         ),
       )}

@@ -7,6 +7,7 @@ import { getCountry, countryName } from "@/lib/countries";
 import { Flag } from "@/components/flag";
 import { ScoreBreakdown } from "@/components/score-breakdown";
 import { useLeaderboard } from "@/components/leaderboard-provider";
+import { ensureSessionId } from "@/lib/use-identity";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 
@@ -36,6 +37,8 @@ export function Leaderboard({ code }: { code: string }) {
 
   const topTotal = leaderboard[0]?.total ?? 0;
   const home = getCountry(homeCountryCode);
+  const mySession = typeof window !== "undefined" ? ensureSessionId() : "";
+  const total = leaderboard.length;
 
   return (
     <section className="flex flex-col gap-3">
@@ -53,6 +56,8 @@ export function Leaderboard({ code }: { code: string }) {
         <AnimatePresence initial={false}>
           {leaderboard.map((row, i) => {
             const isOpen = expanded === row.voterId;
+            const isMe = !!mySession && row.sessionId === mySession;
+            const rank = i + 1;
             return (
               <motion.li
                 key={row.voterId}
@@ -63,7 +68,15 @@ export function Leaderboard({ code }: { code: string }) {
                 transition={{
                   layout: { type: "spring", stiffness: 320, damping: 30 },
                 }}
-                className="list-card-hover glass-card rounded-xl overflow-hidden"
+                // "Me" row glows with a flamingo ring + tint so the
+                // viewer can spot themselves at a glance without
+                // scanning names. Everyone else keeps the cool glass
+                // shell.
+                className={`list-card-hover rounded-xl overflow-hidden ${
+                  isMe
+                    ? "bg-flamingo/12 ring-1 ring-flamingo/45 shadow-[0_4px_24px_-8px_oklch(70%_0.27_336_/_0.45)]"
+                    : "glass-card"
+                }`}
               >
                 <button
                   type="button"
@@ -72,18 +85,28 @@ export function Leaderboard({ code }: { code: string }) {
                              transition active:scale-[0.99]"
                   aria-expanded={isOpen}
                 >
+                  {/* Rank badge — "10/14" format so each row carries
+                      its own position-in-room context. The crown +
+                      gold treatment for #1 takes precedence over the
+                      number. Tinted to medal palette for 1/2/3. */}
                   <div
-                    className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center font-display text-base ${
-                      i === 0
-                        ? "bg-gold text-black"
-                        : i === 1
-                          ? "bg-white/80 text-black"
-                          : i === 2
-                            ? "bg-orange text-black"
-                            : "bg-flamingo/80 text-white"
-                    }`}
+                    className={`shrink-0 h-10 min-w-[2.75rem] px-2 rounded-xl flex items-center justify-center
+                                font-display text-sm tabular-nums leading-none gap-0.5
+                                ${
+                                  i === 0
+                                    ? "bg-gold text-black"
+                                    : i === 1
+                                      ? "bg-white/80 text-black"
+                                      : i === 2
+                                        ? "bg-orange text-black"
+                                        : "bg-white/[0.06] ring-1 ring-white/12 text-white/85"
+                                }`}
                   >
-                    {i === 0 ? <Crown className="h-5 w-5" /> : i + 1}
+                    {i === 0 && <Crown className="h-4 w-4 shrink-0 -ml-0.5" />}
+                    <span>{rank}</span>
+                    <span className={`text-xs ${i < 3 ? "text-black/55" : "text-white/55"}`}>
+                      /{total}
+                    </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-display truncate">{row.name}</p>

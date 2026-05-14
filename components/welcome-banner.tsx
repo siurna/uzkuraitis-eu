@@ -1,21 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { motion } from "motion/react";
+import { Sparkles, ChevronRight } from "lucide-react";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { useLang } from "@/lib/i18n-client";
 import { t, type Language } from "@/lib/i18n";
 
-// "Hello folks" housekeeping widget — the closing card on every room
-// home. Renders the markdown the admin set for the current language;
-// hides when empty for that language. Polls once per mount (the
-// content barely changes mid-event); a manual `uzk:welcome-refresh`
-// event lets the admin page force a reload without a hard refresh.
+// "A word from the organizers" — the closing widget on every room
+// home. Now a compact tappable card with a flamingo-violet wash:
+// tap it and the full markdown opens in a bottom-sheet drawer so the
+// home scroll stays scannable. Same fetch + `uzk:welcome-refresh`
+// listener as before; the widget self-hides when the admin hasn't
+// authored anything for the viewer's language yet.
 
 type Welcome = { welcome_md_en: string; welcome_md_lt: string };
 
 export function WelcomeBanner() {
   const lang = useLang();
   const [data, setData] = useState<Welcome | null>(null);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -39,17 +43,54 @@ export function WelcomeBanner() {
   if (!md || !md.trim()) return null;
 
   return (
-    <section className="relative overflow-hidden rounded-3xl ring-1 ring-white/10 bg-gradient-to-br from-dark-blue-800/80 to-dark-blue-900/95 px-5 py-5">
-      <header className="flex items-center gap-2 mb-3">
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
-          <Sparkles className="h-4 w-4" fill="currentColor" />
-        </span>
-        <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/75">
-          {t(lang, "welcome_eyebrow")}
-        </p>
-      </header>
-      <WelcomeMarkdown source={md} />
-    </section>
+    <>
+      <motion.button
+        type="button"
+        onClick={() => setOpen(true)}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+        className="relative w-full overflow-hidden rounded-3xl text-left
+                   ring-1 ring-white/10
+                   shadow-[0_18px_44px_-22px_rgba(0,0,0,0.6)]"
+        style={{
+          background:
+            "radial-gradient(120% 130% at 0% 0%, oklch(58% 0.22 336 / 0.55) 0%, transparent 55%), linear-gradient(135deg, #2a1664 0%, #4a1f7a 55%, #1b2360 100%)",
+        }}
+      >
+        <span
+          className="pointer-events-none absolute inset-x-0 top-0 h-1/3"
+          style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.16), transparent)" }}
+          aria-hidden
+        />
+        <div className="relative flex items-center gap-4 p-5">
+          <span className="shrink-0 grid place-items-center h-12 w-12 rounded-2xl bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo">
+            <Sparkles className="h-6 w-6" fill="currentColor" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] uppercase tracking-[0.32em] font-display leading-tight text-white/80">
+              {t(lang, "welcome_eyebrow")}
+            </p>
+            <p className="font-display text-lg text-white leading-tight mt-0.5 text-balance">
+              {t(lang, "welcome_card_title")}
+            </p>
+            <p className="text-xs text-white/65 leading-snug mt-0.5">
+              {t(lang, "welcome_card_sub")}
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-white/55 shrink-0" />
+        </div>
+      </motion.button>
+
+      <BottomSheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title={t(lang, "welcome_card_title")}
+        sub={t(lang, "welcome_eyebrow")}
+      >
+        <WelcomeMarkdown source={md} />
+      </BottomSheet>
+    </>
   );
 }
 
