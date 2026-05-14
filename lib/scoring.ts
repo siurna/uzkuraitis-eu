@@ -34,7 +34,121 @@ export const POINTS_BY_PLACEMENT: Record<number, number> = {
   1: 12, 2: 10, 3: 8, 4: 7, 5: 6, 6: 5, 7: 4, 8: 3, 9: 2, 10: 1,
 };
 
+// Per-room precomputed scoring context. Building these maps is
+// O(N) over `placements` / `facts`; doing it once per voter when a
+// 50-person room scores is wasteful. Build once in the room scope,
+// pass through to scoreVoter.
+export type ScoringContext = {
+  /** code → placement, for the top 10 only. */
+  officialTop10: Map<string, number>;
+  /** placement → code, for fast inverse lookups. */
+  placementToCountry: Map<number, string>;
+  /** wooden-spoon country code, if any (fact OR last-placement fallback). */
+  last: string | null;
+  /** highest-finishing Big-5 country, if any. */
+  bestBig5: string | null;
+  /** parsed jury_winner / televote_winner / winner_solo / nul_televote. */
+  juryWinner: string | null;
+  teleWinner: string | null;
+  winnerSolo: boolean | null;
+  /** parsed nul-televote truth set (split on commas). */
+  nulTrueSet: Set<string>;
+  /** Pre-resolved home placement (fact > placements lookup). */
+  officialHomePlacement: number | null;
+  /** Cached lt_total_points truth as a number, or null. */
+  ltTotalTruth: number | null;
+};
+
+export function precomputeScoringContext(
+  placements: OfficialPlacements,
+  facts: OfficialFacts,
+  totalFinalists: number,
+  homeCountryCode: string,
+): ScoringContext {
+  const officialTop10 = new Map<string, number>();
+  const placementToCountryMap = new Map<number, string>();
+  for (const [code, p] of Object.entries(placements)) {
+    placementToCountryMap.set(p, code);
+    if (p >= 1 && p <= 10) officialTop10.set(code, p);
+  }
+
+  const last =
+    facts.wooden_spoon_country ??
+    placementToCountryMap.get(totalFinalists) ??
+    null;
+
+  const big5Sorted = BIG_5
+    .map((c) => ({ c, p: placements[c] ?? Infinity }))
+    .sort((a, b) => a.p - b.p);
+  const bestBig5 =
+    big5Sorted[0]?.p === Infinity ? null : big5Sorted[0]!.c;
+
+  const winnerSolo =
+    facts.winner_solo === "true"
+      ? true
+      : facts.winner_solo === "false"
+        ? false
+        : null;
+
+  const nulTrueSet = new Set(
+    (facts.nul_televote ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+
+  const homePlacementRaw = facts.home_country_placement;
+  const homePlacementFact =
+    homePlacementRaw != null && homePlacementRaw !== ""
+      ? Number(homePlacementRaw)
+      : null;
+  const officialHomePlacement =
+    homePlacementFact != null && Number.isFinite(homePlacementFact)
+      ? homePlacementFact
+      : placements[homeCountryCode] ?? null;
+
+  const ltTotalRaw = facts.lt_total_points;
+  const ltTotalNum = ltTotalRaw != null && ltTotalRaw !== "" ? Number(ltTotalRaw) : null;
+  const ltTotalTruth = Number.isFinite(ltTotalNum) ? ltTotalNum : null;
+
+  return {
+    officialTop10,
+    placementToCountry: placementToCountryMap,
+    last,
+    bestBig5,
+    juryWinner: facts.jury_winner ?? null,
+    teleWinner: facts.televote_winner ?? null,
+    winnerSolo,
+    nulTrueSet,
+    officialHomePlacement,
+    ltTotalTruth,
+  };
+}
+
 // ---------- top-10 ballot ----------
+
+// Internal scorer that takes the precomputed `officialTop10`. The
+// public `scoreTopTen` below wraps it for callers that don't have
+// a context yet (single-voter use cases like the profile route).
+function scoreTopTenWithCtx(
+  ballot: Ballot,
+  officialTop10: Map<string, number>,
+): number {
+  const voterPicks = new Set<string>(Object.values(ballot));
+  let total = 0;
+  for (const [code, officialPlacement] of officialTop10) {
+    if (!voterPicks.has(code)) continue;
+    const slotEntry = Object.entries(ballot).find(([, c]) => c === code);
+    if (!slotEntry) continue;
+    const voterPlacement = pointsKeyToPlacement(slotEntry[0]);
+    if (voterPlacement < 1) continue;
+    // Notch-down: score the value of the spot `distance` rungs below the
+    // country's real finish. Exact → full value; past 10th → 0.
+    const distance = Math.abs(voterPlacement - officialPlacement);
+    total += POINTS_BY_PLACEMENT[officialPlacement + distance] ?? 0;
+  }
+  return total;
+}
 
 export function scoreTopTen(
   ballot: Ballot,
@@ -44,24 +158,7 @@ export function scoreTopTen(
   for (const [code, placement] of Object.entries(officialPlacements)) {
     if (placement >= 1 && placement <= 10) officialTop10.set(code, placement);
   }
-  const voterPicks = new Set<string>(Object.values(ballot));
-
-  let total = 0;
-  for (const [code, officialPlacement] of officialTop10) {
-    if (!voterPicks.has(code)) continue;
-
-    const slotEntry = Object.entries(ballot).find(([, c]) => c === code);
-    if (!slotEntry) continue;
-
-    const voterPlacement = pointsKeyToPlacement(slotEntry[0]);
-    if (voterPlacement < 1) continue;
-
-    // Notch-down: score the value of the spot `distance` rungs below the
-    // country's real finish. Exact → full value; past 10th → 0.
-    const distance = Math.abs(voterPlacement - officialPlacement);
-    total += POINTS_BY_PLACEMENT[officialPlacement + distance] ?? 0;
-  }
-  return total;
+  return scoreTopTenWithCtx(ballot, officialTop10);
 }
 
 function pointsKeyToPlacement(pointsKey: string): number {
@@ -182,47 +279,27 @@ export const NUL_TELEVOTE_PER_HIT = 4;
 export const NUL_TELEVOTE_MAX = 12;
 export const NUL_TELEVOTE_MAX_PICKS = 5;
 
-// Helper: invert the placements map into a "by placement -> country" lookup.
-function placementToCountry(placements: OfficialPlacements): Map<number, string> {
-  const m = new Map<number, string>();
-  for (const [code, p] of Object.entries(placements)) m.set(p, code);
-  return m;
-}
-
-export function scoreBets(input: {
+// Internal scorer that consumes a precomputed `ScoringContext` so a
+// loop over many voters doesn't rebuild placementToCountry / bestBig5
+// / nulTrueSet on every iteration. The public `scoreBets` wraps it
+// for single-voter use cases.
+function scoreBetsWithCtx(input: {
   bets: Bets;
   homeCountryCode: string;
   placements: OfficialPlacements;
   facts: OfficialFacts;
   totalFinalists: number;
+  ctx: ScoringContext;
 }): BetBreakdown {
-  const { bets, placements, facts, totalFinalists } = input;
-  const placementByCountry = placements;
-  // Wooden spoon comes from the explicit `wooden_spoon_country` fact —
-  // the placement editor only handles the top 10, and 26 finalists
-  // means "last place" lives well outside that range. Fall back to the
-  // top-10 lookup for legacy data that may still rely on it.
-  const last =
-    facts.wooden_spoon_country ?? placementToCountry(placements).get(totalFinalists);
-
-  const big5Sorted = BIG_5
-    .map((c) => ({ c, p: placementByCountry[c] ?? Infinity }))
-    .sort((a, b) => a.p - b.p);
-  const bestBig5 = big5Sorted[0]?.p === Infinity ? null : big5Sorted[0]!.c;
-
-  const juryWinner   = facts.jury_winner ?? null;
-  const teleWinner   = facts.televote_winner ?? null;
-  const nulTele      = facts.nul_televote ?? null;
-  const winnerSolo   = facts.winner_solo === "true"
-    ? true
-    : facts.winner_solo === "false" ? false : null;
+  const { bets, placements, facts, totalFinalists, ctx } = input;
+  const { last, bestBig5, juryWinner, teleWinner, winnerSolo, nulTrueSet, ltTotalTruth } = ctx;
 
   // Wooden spoon: exact +5, off-by-1 +2 (only useful when last is in
   // the placement table), else 0.
   let woodenSpoon = 0;
   if (bets.woodenSpoon && last) {
     const lastPlacement = totalFinalists;
-    const guessPlacement = placementByCountry[bets.woodenSpoon] ?? null;
+    const guessPlacement = placements[bets.woodenSpoon] ?? null;
     if (bets.woodenSpoon === last) woodenSpoon = 5;
     else if (guessPlacement != null && Math.abs(guessPlacement - lastPlacement) === 1) {
       woodenSpoon = 2;
@@ -242,62 +319,45 @@ export function scoreBets(input: {
   // Nul points televote: voter can pick multiple country guesses + the
   // NONE token. Score NUL_TELEVOTE_PER_HIT per correct guess, capped at
   // NUL_TELEVOTE_MAX so spamming the entire ballot doesn't auto-win.
-  // The fact "nul_televote" itself is a CSV of country codes (or NONE).
   let nulT = 0;
-  if (bets.nulTelevote && bets.nulTelevote.length > 0) {
-    const truth = new Set(
-      (nulTele ?? "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    );
-    if (truth.size > 0) {
-      const guesses = new Set(bets.nulTelevote);
-      let hits = 0;
-      for (const g of guesses) if (truth.has(g)) hits++;
-      nulT = Math.min(hits * NUL_TELEVOTE_PER_HIT, NUL_TELEVOTE_MAX);
-    }
+  if (bets.nulTelevote && bets.nulTelevote.length > 0 && nulTrueSet.size > 0) {
+    const guesses = new Set(bets.nulTelevote);
+    let hits = 0;
+    for (const g of guesses) if (nulTrueSet.has(g)) hits++;
+    nulT = Math.min(hits * NUL_TELEVOTE_PER_HIT, NUL_TELEVOTE_MAX);
   }
 
-  // Host (Austria) top 3: +3.
-  let hostTop3 = 0;
+  // Host (Austria) top-3: +3 if the voter's yes/no matches the
+  // host's actual top-3 status. Only counts when we can resolve the
+  // host's placement.
+  let hostT3 = 0;
   if (bets.hostTop3 != null) {
-    const hostPlacement = placementByCountry[HOST_COUNTRY] ?? null;
+    const hostPlacement = placements[HOST_COUNTRY] ?? null;
     if (hostPlacement != null) {
-      if (bets.hostTop3 === hostPlacement <= 3) hostTop3 = 3;
+      if (bets.hostTop3 === (hostPlacement <= 3)) hostT3 = 3;
     }
   }
 
-  // Winner is a solo act: +2. Needs the winner_solo fact.
-  let winnerSoloPts = 0;
-  if (bets.winnerSolo != null && winnerSolo != null) {
-    if (bets.winnerSolo === winnerSolo) winnerSoloPts = 2;
-  }
+  // Winner solo (vs group): +2 when the voter's yes/no matches the
+  // winner_solo fact. Same rule the original scorer used.
+  const winnerS =
+    bets.winnerSolo != null && winnerSolo != null && bets.winnerSolo === winnerSolo ? 2 : 0;
 
-  // LT total points: closeness-based scoring. Reads the official total
-  // from facts.lt_total_points (admin enters as a number string).
+  // LT total points: closeness-graded, five tiers.
   //   exact      +10
   //   off-by-5   +7
   //   off-by-15  +5
   //   off-by-30  +3
   //   off-by-60  +1
   //   beyond     +0
-  let ltTotalPts = 0;
-  const officialLtTotalRaw = facts.lt_total_points;
-  if (
-    bets.ltTotalPoints != null &&
-    officialLtTotalRaw != null &&
-    officialLtTotalRaw !== ""
-  ) {
-    const officialN = Number(officialLtTotalRaw);
-    if (Number.isFinite(officialN)) {
-      const diff = Math.abs(bets.ltTotalPoints - officialN);
-      if (diff === 0) ltTotalPts = 10;
-      else if (diff <= 5) ltTotalPts = 7;
-      else if (diff <= 15) ltTotalPts = 5;
-      else if (diff <= 30) ltTotalPts = 3;
-      else if (diff <= 60) ltTotalPts = 1;
-    }
+  let ltTotal = 0;
+  if (bets.ltTotalPoints != null && ltTotalTruth != null) {
+    const diff = Math.abs(bets.ltTotalPoints - ltTotalTruth);
+    if (diff === 0) ltTotal = 10;
+    else if (diff <= 5) ltTotal = 7;
+    else if (diff <= 15) ltTotal = 5;
+    else if (diff <= 30) ltTotal = 3;
+    else if (diff <= 60) ltTotal = 1;
   }
 
   return {
@@ -307,10 +367,26 @@ export function scoreBets(input: {
     juryWinner: juryW,
     televoteWinner: teleW,
     nulTelevote: nulT,
-    hostTop3,
-    winnerSolo: winnerSoloPts,
-    ltTotalPoints: ltTotalPts,
+    hostTop3: hostT3,
+    winnerSolo: winnerS,
+    ltTotalPoints: ltTotal,
   };
+}
+
+export function scoreBets(input: {
+  bets: Bets;
+  homeCountryCode: string;
+  placements: OfficialPlacements;
+  facts: OfficialFacts;
+  totalFinalists: number;
+}): BetBreakdown {
+  const ctx = precomputeScoringContext(
+    input.placements,
+    input.facts,
+    input.totalFinalists,
+    input.homeCountryCode,
+  );
+  return scoreBetsWithCtx({ ...input, ctx });
 }
 
 export function totalBetPoints(b: BetBreakdown): number {
@@ -337,6 +413,13 @@ export function scoreVoter(input: {
   officialPlacements: OfficialPlacements;
   facts: OfficialFacts;
   totalFinalists: number;
+  /** Optional precomputed context. When supplied, the per-voter
+   *  loop avoids rebuilding placementToCountry / bestBig5 /
+   *  nulTrueSet / officialTop10 for every voter — caller hoists the
+   *  computation out of the loop instead. Single-voter use cases
+   *  (the profile route) can omit this and accept the small extra
+   *  cost. */
+  ctx?: ScoringContext;
 }): {
   topTen: number;
   home: number;
@@ -344,26 +427,23 @@ export function scoreVoter(input: {
   betsTotal: number;
   total: number;
 } {
-  const topTen = scoreTopTen(input.ballot, input.officialPlacements);
-  // Home placement: prefer the explicit `home_country_placement` fact
-  // (1..N), since the placement editor only captures the top 10 — the
-  // home country can easily finish 11+ and never appear there.
-  const homePlacementRaw = input.facts.home_country_placement;
-  const homePlacementFact =
-    homePlacementRaw != null && homePlacementRaw !== ""
-      ? Number(homePlacementRaw)
-      : null;
-  const officialHomePlacement =
-    homePlacementFact != null && Number.isFinite(homePlacementFact)
-      ? homePlacementFact
-      : input.officialPlacements[input.homeCountryCode] ?? null;
-  const home = scoreHomePrediction(input.homePrediction, officialHomePlacement);
-  const bets = scoreBets({
+  const ctx =
+    input.ctx ??
+    precomputeScoringContext(
+      input.officialPlacements,
+      input.facts,
+      input.totalFinalists,
+      input.homeCountryCode,
+    );
+  const topTen = scoreTopTenWithCtx(input.ballot, ctx.officialTop10);
+  const home = scoreHomePrediction(input.homePrediction, ctx.officialHomePlacement);
+  const bets = scoreBetsWithCtx({
     bets: input.bets,
     homeCountryCode: input.homeCountryCode,
     placements: input.officialPlacements,
     facts: input.facts,
     totalFinalists: input.totalFinalists,
+    ctx,
   });
   const betsTotal = totalBetPoints(bets);
   return { topTen, home, bets, betsTotal, total: topTen + home + betsTotal };

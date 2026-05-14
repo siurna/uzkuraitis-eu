@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles } from "lucide-react";
 import { requestExplanation, type ExplanationHit } from "@/lib/beginner-batcher";
+import { useRoomLive } from "@/components/room-shell";
 import type { Language } from "@/lib/i18n";
 
 // Renders a short Eurovision-reference explainer under an incoming
@@ -12,7 +13,10 @@ import type { Language } from "@/lib/i18n";
 // render nothing if no reference was detected) but tinted with the
 // turquoise "tip" palette so a translation bubble + a beginner bubble
 // can co-exist under the same message without reading as duplicates.
-
+//
+// Threads `nowPlayingCode` to the batcher so the server can fold the
+// on-stage country's recent entries into the prompt — "tonight's
+// Italian entry follows Måneskin 2021" beats generic filler.
 export function BeginnerBubble({
   text,
   lang,
@@ -24,10 +28,11 @@ export function BeginnerBubble({
   mine: boolean;
 }) {
   const [hit, setHit] = useState<ExplanationHit | null>(null);
+  const { nowPlayingCode } = useRoomLive();
 
   useEffect(() => {
     let cancelled = false;
-    requestExplanation(text, lang).then((r) => {
+    requestExplanation(text, lang, nowPlayingCode).then((r) => {
       if (!cancelled) {
         setHit(r);
         if (r.explain && r.text) {
@@ -42,7 +47,7 @@ export function BeginnerBubble({
     return () => {
       cancelled = true;
     };
-  }, [text, lang]);
+  }, [text, lang, nowPlayingCode]);
 
   if (!hit || !hit.explain || !hit.text) return null;
 

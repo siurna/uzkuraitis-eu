@@ -9,6 +9,8 @@ import { readSignedSessionId } from "@/lib/server-session";
 import { checkAndIncrement } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { chatHelperCache } from "@/lib/db/schema";
+import { getCountry } from "@/lib/countries";
+import { getRecentEntries, type HistoricalEntry } from "@/lib/eurovision-history";
 
 // POST /api/explain
 //
@@ -30,10 +32,47 @@ import { chatHelperCache } from "@/lib/db/schema";
 // (same input + same lang → same explanation), so heavy use across many
 // rooms shares one set of cached gloss.
 
+// Optional live context — when the client passes `nowCountry`, the
+// route looks up the country's name + recent entries server-side
+// (the client doesn't need to ship the whole history table). Used
+// in the prompt so the LLM can say "Tonight's Italian entry follows
+// Måneskin 2021…" instead of "this country often…".
 const Body = z.object({
   texts: z.array(z.string().min(1).max(2000)).min(1).max(50),
   lang: z.enum(["en", "lt"]),
+  ctx: z
+    .object({
+      nowCountry: z
+        .string()
+        .toLowerCase()
+        .regex(/^[a-z]{2}$/)
+        .optional(),
+      nowYear: z.number().int().min(2000).max(2100).optional(),
+    })
+    .optional(),
 });
+
+type LiveCtx = {
+  nowCountry: string;
+  nowYear: number;
+  nowCountryName: string | null;
+  nowArtist: string | null;
+  nowSong: string | null;
+  recent: HistoricalEntry[];
+};
+
+function resolveCtx(input: { nowCountry?: string; nowYear?: number } | undefined): LiveCtx | null {
+  if (!input?.nowCountry) return null;
+  const c = getCountry(input.nowCountry);
+  return {
+    nowCountry: input.nowCountry,
+    nowYear: input.nowYear ?? new Date().getFullYear(),
+    nowCountryName: c?.name ?? null,
+    nowArtist: c?.artist ?? null,
+    nowSong: c?.song ?? null,
+    recent: getRecentEntries(input.nowCountry).slice(0, 5),
+  };
+}
 
 const Item = zv4.object({
   index: zv4
@@ -72,15 +111,42 @@ function memSet(k: string, hit: CachedHit): void {
 const EMPTY: CachedHit = { explain: false, text: "" };
 const KIND = "beginner";
 
-function hashText(text: string): string {
-  return createHash("sha256").update(text).digest("hex");
+// Cache fingerprint. The scope is folded into the digest so the
+// durable chat_helper_cache table (keyed on `(kind, text_key, lang)`)
+// stays unchanged: a "live:se" answer for the same text gets a
+// different text_key than the global "lore" answer, instead of
+// overwriting each other.
+function hashText(text: string, scope: string): string {
+  return createHash("sha256").update(scope).update("\n").update(text).digest("hex");
 }
 
-function systemPrompt(lang: "en" | "lt"): string {
+function systemPrompt(lang: "en" | "lt", ctx: LiveCtx | null): string {
   const target = lang === "lt" ? "Lithuanian" : "English";
+  // When the client passes `ctx`, give the model a small structured
+  // brief of the moment — who's on stage right now + that country's
+  // most recent entries — so it can land "Tonight's Italian entry
+  // follows Måneskin 2021…" callbacks instead of generic filler.
+  const ctxBlock = ctx
+    ? [
+        "",
+        "LIVE CONTEXT (use this — names are authoritative, do NOT contradict it):",
+        `- Right now (${ctx.nowYear}): ${ctx.nowCountryName ?? ctx.nowCountry.toUpperCase()} is on stage with ${ctx.nowArtist ?? "an artist"}${ctx.nowSong ? `, "${ctx.nowSong}"` : ""}.`,
+        ctx.recent.length > 0
+          ? `- ${ctx.nowCountryName ?? ctx.nowCountry.toUpperCase()}'s last entries: ${ctx.recent
+              .map(
+                (e) =>
+                  `${e.year} ${e.artist}, "${e.song}"${e.placement != null ? ` (#${e.placement})` : ""}`,
+              )
+              .join("; ")}.`
+          : `- I don't have ${ctx.nowCountryName ?? ctx.nowCountry.toUpperCase()}'s recent entries cached; if you're not sure, say so plainly instead of inventing.`,
+        "When a line is about the current performer or that country, USE these names. \"Reminds me of last year's Italy\" → name the actual prior-year entry from the list above.",
+        "",
+      ].join("\n")
+    : "";
   return [
     `You help someone follow a Lithuanian Eurovision watch-party chat. Output language: ${target}.`,
     "Input: a JSON array `{ index, text }`. Output: `{ results: [{ index, explain, text }] }`, exactly one entry per input, indices unique.",
+    ctxBlock,
     "",
     "STEP 1. Does this line hang on a SPECIFIC, NAMED Eurovision fact a newcomer can be handed and remember? Real facts only — named artists, named songs, real placements, real years, real running jokes.",
     "",
@@ -198,11 +264,19 @@ async function _handlePost(req: Request) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
   const { texts, lang } = parsed.data;
+  const ctx = resolveCtx(parsed.data.ctx);
+  // Cache scope: when the client gives us a live nowCountry, the
+  // answer depends on who's on stage right now — fold the country
+  // into the cache key so a "this country" gloss for Sweden doesn't
+  // serve when Italy's on stage. No ctx → "lore" entries share
+  // across every room.
+  const cacheScope = ctx ? `live:${ctx.nowCountry}` : "lore";
+  const keyOf = (textKey: string) => `${lang}\n${cacheScope}\n${textKey}`;
 
   // Per-text routing tables: original index → final hit, plus the list
   // of unique-uncached texts we'll actually send to the model.
   const results: CachedHit[] = new Array<CachedHit>(texts.length).fill(EMPTY);
-  const textKeys = texts.map(hashText);
+  const textKeys = texts.map((t) => hashText(t, cacheScope));
   const missingText: string[] = [];
   const missingKeys: string[] = [];
   const missingIdx: number[] = [];
@@ -212,7 +286,7 @@ async function _handlePost(req: Request) {
   const dbCandidateKeys: string[] = [];
   const dbCandidateIdx: number[] = [];
   for (let i = 0; i < texts.length; i++) {
-    const memKey = `${lang}\n${textKeys[i]}`;
+    const memKey = keyOf(textKeys[i]);
     const m = memGet(memKey);
     if (m) {
       results[i] = m;
@@ -232,7 +306,7 @@ async function _handlePost(req: Request) {
       const idx = dbCandidateIdx[i];
       const hit = fromDb.get(key);
       if (hit) {
-        memSet(`${lang}\n${key}`, hit);
+        memSet(keyOf(key), hit);
         results[idx] = hit;
       } else {
         missingText.push(texts[idx]);
@@ -264,7 +338,7 @@ async function _handlePost(req: Request) {
           const response = await client.messages.parse({
             model: process.env.ANTHROPIC_EXPLAIN_MODEL ?? "claude-haiku-4-5",
             max_tokens: maxTokens,
-            system: systemPrompt(lang),
+            system: systemPrompt(lang, ctx),
             messages: [{ role: "user", content: payload }],
             output_config: { format: zodOutputFormat(Batch) },
           });
@@ -280,7 +354,7 @@ async function _handlePost(req: Request) {
                 explain: !!r.explain,
                 text: r.explain ? (r.text ?? "").slice(0, 240) : "",
               };
-              memSet(`${lang}\n${missingKeys[idx]}`, hit);
+              memSet(keyOf(missingKeys[idx]), hit);
               results[missingIdx[idx]] = hit;
               toStore.push({ textKey: missingKeys[idx], payload: hit });
             }
@@ -288,7 +362,7 @@ async function _handlePost(req: Request) {
             // again about the same near-empty inputs forever.
             for (let j = 0; j < missingText.length; j++) {
               if (!placed.has(j)) {
-                memSet(`${lang}\n${missingKeys[j]}`, EMPTY);
+                memSet(keyOf(missingKeys[j]), EMPTY);
                 toStore.push({ textKey: missingKeys[j], payload: EMPTY });
               }
             }
@@ -315,7 +389,7 @@ async function _handlePost(req: Request) {
   // Backfill duplicate slots within the request from in-memory cache.
   for (let i = 0; i < texts.length; i++) {
     if (results[i] === EMPTY) {
-      const m = memGet(`${lang}\n${textKeys[i]}`);
+      const m = memGet(keyOf(textKeys[i]));
       if (m) results[i] = m;
     }
   }

@@ -13,6 +13,7 @@ import {
 } from "@/lib/db/schema";
 import {
   scoreVoter,
+  precomputeScoringContext,
   HIGHLIGHT_THRESHOLD,
   HIGHLIGHT_POINTS_PER,
   HIGHLIGHT_POINTS_MAX,
@@ -179,6 +180,19 @@ export async function computeRoomLeaderboard(room: {
   const totalFinalists = countries.length;
   const officialHome = placements[room.homeCountryCode] ?? null;
 
+  // PERF: hoist the scoring context out of the per-voter loop. The
+  // maps inside `ScoringContext` (officialTop10, placementToCountry,
+  // bestBig5, nulTrueSet, …) depend only on the room-level facts +
+  // placements, not on any voter. Building them once instead of
+  // once-per-voter is the cheapest leaderboard-compute win we have
+  // for a 50+ person room.
+  const scoringCtx = precomputeScoringContext(
+    placements,
+    facts,
+    totalFinalists,
+    room.homeCountryCode,
+  );
+
   const leaderboard = voterRows
     .map((v) => {
       const bets: Bets = {
@@ -200,6 +214,7 @@ export async function computeRoomLeaderboard(room: {
         officialPlacements: placements,
         facts,
         totalFinalists,
+        ctx: scoringCtx,
       });
       const highlights = highlightPoints(v.sessionId);
       const trivia = triviaPoints(v.sessionId);
