@@ -3,12 +3,11 @@ import { db } from "@/lib/db";
 import { siteContent } from "@/lib/db/schema";
 
 // Public read of the welcome / housekeeping markdown. Anonymous —
-// every voter needs it. Cached at the edge with a short SWR window:
-// content changes ~daily (admin edits between shows), so a 60-second
-// stale window is invisible and saves a DB roundtrip on every fresh
-// room arrival. Admin saves don't need an explicit purge because
-// the home banner subscribes to `uzk:welcome-refresh` and refetches
-// on its own.
+// every voter needs it. Cached aggressively at the edge: content
+// changes ~daily (admin edits between shows) and rooms broadcast
+// `uzk:welcome-refresh` to trigger their own client refetches, so
+// the edge cache can live for 5 minutes and the SWR window for an
+// hour without anyone noticing.
 export async function GET() {
   const rows = await db.select().from(siteContent);
   const res = NextResponse.json({
@@ -17,7 +16,7 @@ export async function GET() {
   });
   res.headers.set(
     "Cache-Control",
-    "public, s-maxage=60, stale-while-revalidate=600",
+    "public, s-maxage=300, stale-while-revalidate=3600",
   );
   return res;
 }

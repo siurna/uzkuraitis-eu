@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Share2, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { useRoomLive } from "@/components/room-shell";
 import { shareTopTen } from "@/lib/share-card";
 import { t } from "@/lib/i18n";
@@ -31,15 +30,14 @@ export function SharePicks() {
     if (sharing) return;
     setSharing(true);
     try {
-      const result = await shareTopTen({
+      await shareTopTen({
         roomCode: code,
         voterId,
         caption: t(lang, "share_picks_caption"),
         lang,
       });
-      if (result === "clipboard") toast.success(t(lang, "share_image_copied"));
     } catch {
-      toast.error(t(lang, "share_failed"));
+      /* native share cancelled or clipboard refused — silent */
     } finally {
       setSharing(false);
     }

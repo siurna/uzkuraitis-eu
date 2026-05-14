@@ -652,10 +652,15 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         body: JSON.stringify({ session: mySession, name: senderName, avatarId, body: text, replyTo: reply, mentions }),
       });
       if (!res.ok) {
+        // Pull the optimistic message back and restore the composer
+        // text + reply target so the user can retry. The 429 case
+        // keeps its toast — it's actionable info the user can't
+        // infer from the composer state. Generic send failures stay
+        // silent: the text reappearing in the composer IS the signal.
         setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
         setBody(text);
         setReplyTo(replyTo);
-        toast.error(t(lang, res.status === 429 ? "chat_slow_down" : "chat_send_failed"));
+        if (res.status === 429) toast.error(t(lang, "chat_slow_down"));
         return;
       }
       const data = (await res.json()) as { id?: string };
@@ -673,9 +678,10 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         });
       }
     } catch {
+      // Network blip — pull the optimistic row back and restore the
+      // composer; the text reappearing is the signal.
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
       setBody(text);
-      toast.error(t(lang, "chat_send_failed"));
     }
   };
 
@@ -741,8 +747,12 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       preload.onerror = finishSwap;
       preload.src = url;
     } catch (err) {
+      // Upload bounced — the optimistic image vanishes (signal
+      // enough). Surface a toast only for the size-cap message
+      // since that's actionable.
+      const msg = (err as Error).message;
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-      toast.error((err as Error).message);
+      if (msg === t(lang, "chat_image_too_big")) toast.error(msg);
       URL.revokeObjectURL(localUrl);
     } finally {
       setUploading(false);
@@ -847,8 +857,10 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       body: JSON.stringify({ session, body: text }),
     });
     if (!res.ok) {
+      // Roll back to whatever the server has — the optimistic edit
+      // didn't land. No toast: the message snapping back is the
+      // signal.
       fetchMessages();
-      toast.error(t(lang, "chat_edit_failed"));
     }
   };
 
@@ -862,8 +874,8 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       { method: "DELETE" },
     );
     if (!res.ok) {
+      // Server refused — re-pull and re-render so the message reappears.
       fetchMessages();
-      toast.error(t(lang, "chat_delete_failed"));
     }
   };
 
@@ -872,7 +884,6 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     const text = m.body ?? "";
     if (!text) return;
     navigator.clipboard.writeText(text).catch(() => {});
-    toast.success(t(lang, "chat_copied"));
   };
 
   const byId = useMemo(() => {

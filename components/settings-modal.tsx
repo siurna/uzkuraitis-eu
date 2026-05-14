@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Share2, Check, LogOut, ChevronRight, Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { useUpdateMyPresence } from "@/lib/realtime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -115,10 +114,9 @@ export function SettingsModal({
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
-      toast.success(t(lang, "link_copied"));
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      toast.error(t(lang, "couldnt_copy"));
+      /* clipboard refused — user can long-press the address bar */
     }
   };
 

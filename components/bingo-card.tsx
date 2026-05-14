@@ -9,7 +9,6 @@ import {
 } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, ChevronLeft, ChevronRight, Check } from "lucide-react";
-import { toast } from "sonner";
 import { useRoomLive } from "@/components/room-shell";
 import { FluentEmoji } from "@/components/fluent-emoji";
 import { useIdentity } from "@/lib/use-identity";
@@ -127,7 +126,8 @@ export function BingoCard() {
                 meta: { tropeIndex: tropeIdx, bingo: true },
               }),
             }).catch(() => {});
-            toast.success(t(lang, "bingo_you_did_it"));
+            // No toast — the confetti animation + the bingo-strike
+            // broadcast that lands in chat carry the moment.
           }
           return { ...tk, struck, bingoFired: tk.bingoFired || wonNow };
         }),
