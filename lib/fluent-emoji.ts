@@ -35,16 +35,10 @@ const FLUENT_EMOJI: Record<string, FluentEntry> = {
 
   // Quick reactions strip (chat-row long-press menu).
   "❤️": { folder: "Red heart", slug: "red_heart" },
-  "😂": {
-    folder: "Face with tears of joy",
-    slug: "face_with_tears_of_joy",
-  },
+  "😂": { folder: "Face with tears of joy", slug: "face_with_tears_of_joy" },
   "🤯": { folder: "Exploding head", slug: "exploding_head" },
   "🙌": { folder: "Raising hands", slug: "raising_hands", skin: true },
-  "😱": {
-    folder: "Face screaming in fear",
-    slug: "face_screaming_in_fear",
-  },
+  "😱": { folder: "Face screaming in fear", slug: "face_screaming_in_fear" },
   "💀": { folder: "Skull", slug: "skull" },
 
   // Medals — used by the top-3 broadcast card + leaderboard chip.
@@ -168,6 +162,16 @@ const FLUENT_EMOJI: Record<string, FluentEntry> = {
   "❗":  { folder: "Red exclamation mark", slug: "red_exclamation_mark" },
   "⚠️":  { folder: "Warning", slug: "warning" },
   "💡":  { folder: "Light bulb", slug: "light_bulb" },
+
+  // System-message leads from lib/i18n.ts (sys_voting_open / closed,
+  // sys_show_started / ended, sys_voted, sys_cta_vote). They render
+  // inline inside chat rows — wrap them in <FluentEmoji> at the
+  // chat-system-row renderer to lift them to 3D too.
+  "📣":  { folder: "Megaphone", slug: "megaphone" },
+  "🔒":  { folder: "Locked", slug: "locked" },
+  "🟢":  { folder: "Green circle", slug: "green_circle" },
+  "🏁":  { folder: "Chequered flag", slug: "chequered_flag" },
+  "🗳️":  { folder: "Ballot box with ballot", slug: "ballot_box_with_ballot" },
 };
 
 // Country-flag emojis are encoded as a pair of regional-indicator
