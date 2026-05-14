@@ -31,6 +31,30 @@ export type PushPayload = {
   image?: string;
 };
 
+// Per-request memo for the room's subscription roster — the same
+// chat POST commonly fans out three push waves (chatAll / mentions /
+// replies) and they were each running an identical SELECT. With
+// this cache the second and third call hit memory. Cleared between
+// requests because the lambda warm-instance object stays in scope
+// only while the route handler is awaiting.
+const roomSubsCache = new Map<
+  string,
+  { rows: (typeof pushSubscriptions.$inferSelect)[]; until: number }
+>();
+const ROOM_SUBS_TTL_MS = 5_000;
+
+async function readRoomSubs(roomId: string) {
+  const hit = roomSubsCache.get(roomId);
+  const now = Date.now();
+  if (hit && hit.until > now) return hit.rows;
+  const rows = await db
+    .select()
+    .from(pushSubscriptions)
+    .where(eq(pushSubscriptions.roomId, roomId));
+  roomSubsCache.set(roomId, { rows, until: now + ROOM_SUBS_TTL_MS });
+  return rows;
+}
+
 // Fan out a payload to every subscription in a room whose `prefs`
 // pass the given filter. Filter is a thunk so callers can read fields
 // of the subscription (e.g. reply-to: msg.replyTo === session) without
@@ -50,10 +74,7 @@ export async function pushToRoom(
     return;
   }
 
-  const subs = await db
-    .select()
-    .from(pushSubscriptions)
-    .where(eq(pushSubscriptions.roomId, roomId));
+  const subs = await readRoomSubs(roomId);
 
   const eligible = subs.filter((s) => filter(s.prefs as PushPrefs, s));
   if (eligible.length === 0) return;

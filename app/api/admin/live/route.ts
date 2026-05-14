@@ -138,7 +138,7 @@ export async function POST(req: Request) {
             {
               title: `${c?.flag ? `${c.flag} ` : ""}${c?.name ?? next.toUpperCase()} is on stage`,
               body: c?.artist
-                ? `${c.artist}${c.song ? ` — ${c.song}` : ""}`
+                ? `${c.artist}${c.song ? ` · ${c.song}` : ""}`
                 : "Tap to open the room",
               url: `/r/${code}`,
               tag: `now-playing:${code}`,

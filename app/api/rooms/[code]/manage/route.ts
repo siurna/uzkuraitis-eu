@@ -132,7 +132,7 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
         {
           title: `${c?.flag ? `${c.flag} ` : ""}${c?.name ?? nextNowPlaying.toUpperCase()} is on stage`,
           body: c?.artist
-            ? `${c.artist}${c.song ? ` — ${c.song}` : ""}`
+            ? `${c.artist}${c.song ? ` · ${c.song}` : ""}`
             : "Tap to open the room",
           url: `/r/${newCode}`,
           tag: `now-playing:${newCode}`,

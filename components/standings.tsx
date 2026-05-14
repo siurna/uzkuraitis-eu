@@ -43,12 +43,14 @@ export function Standings() {
     }
   }, [code]);
 
-  // Initial load + slow fallback poll; primary update path is the
-  // Liveblocks "scores:updated" broadcast.
+  // Initial load only. The primary update path is the
+  // `scores:updated` broadcast; an extra 60s poll on top of N
+  // viewers turns into thousands of pointless GETs during the
+  // show. If the websocket drops, the next vote / broadcast will
+  // re-trigger anyway, and a stale snapshot for a minute is
+  // acceptable.
   useEffect(() => {
     fetchScores();
-    const id = setInterval(fetchScores, 60_000);
-    return () => clearInterval(id);
   }, [fetchScores]);
 
   useEventListener(({ event }) => {

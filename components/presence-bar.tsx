@@ -70,7 +70,7 @@ export function PresenceBar() {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-30 backdrop-blur-md bg-dark-blue-900/80 border-b border-white/5 overflow-x-hidden"
+      className="uzk-edge-bar fixed top-0 left-0 z-30 backdrop-blur-md bg-dark-blue-900/80 border-b border-white/5 overflow-x-hidden"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <div className="container mx-auto max-w-3xl px-4 h-14 flex items-center gap-3">

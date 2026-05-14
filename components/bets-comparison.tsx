@@ -177,6 +177,14 @@ export function BetsComparison({
       <h3 className="text-[11px] uppercase tracking-[0.2em] text-white/45 font-display px-1">
         {t(lang, "results_bets_breakdown_h")}
       </h3>
+      {/* Shared You said / It was header at the table top — the
+          per-row labels are gone so the grid columns read as a real
+          two-column table instead of a stack of mini-cards. */}
+      <div className="px-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-x-3 text-[10px] uppercase tracking-[0.18em] text-white/40 font-display">
+        <span>{t(lang, "results_you_said")}</span>
+        <span>{t(lang, "results_it_was")}</span>
+        <span />
+      </div>
       <ol className="flex flex-col gap-1.5">
         {rows.map((r) => (
           <BetRow key={r.key} row={r} lang={lang} />
@@ -196,35 +204,30 @@ function BetRow({ row, lang }: { row: Row; lang: Language }) {
   const won = row.earned > 0;
   return (
     <li
-      className={`flex items-center gap-3 rounded-2xl px-3 py-2.5
+      className={`flex flex-col gap-1.5 rounded-2xl px-3 py-2.5
                   ${won ? "bg-flamingo/10 ring-1 ring-flamingo/25" : "bg-white/[0.04] ring-1 ring-white/8"}`}
     >
-      <div className="flex-1 min-w-0">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-white/55 font-display leading-tight truncate">
+      {/* Bet label sits above the values + earned chip on the
+          right; below, the two value columns align to the same grid
+          as the table header so "You said / It was" reads as one
+          table, not stacked mini-cards. */}
+      <div className="flex items-center gap-2">
+        <p className="flex-1 min-w-0 text-[11px] uppercase tracking-[0.16em] text-white/55 font-display leading-tight truncate">
           {row.label}
         </p>
-        <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-0.5">
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-display leading-none">
-              {t(lang, "results_you_said")}
-            </p>
-            <BetValue value={row.you} kind={row.kind} lang={lang} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-display leading-none">
-              {t(lang, "results_it_was")}
-            </p>
-            <BetValue value={row.truth} kind={row.kind} lang={lang} />
-          </div>
-        </div>
+        <span
+          className={`shrink-0 font-display tabular-nums text-sm ${
+            won ? "text-flamingo" : "text-white/30"
+          }`}
+        >
+          {won ? `+${row.earned}` : "—"}
+        </span>
       </div>
-      <span
-        className={`shrink-0 font-display tabular-nums text-sm pl-1 ${
-          won ? "text-flamingo" : "text-white/30"
-        }`}
-      >
-        {won ? `+${row.earned}` : "—"}
-      </span>
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-x-3 items-center">
+        <BetValue value={row.you} kind={row.kind} lang={lang} />
+        <BetValue value={row.truth} kind={row.kind} lang={lang} />
+        <span className="w-0" />
+      </div>
     </li>
   );
 }

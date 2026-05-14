@@ -236,6 +236,19 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     [runFetch],
   );
 
+  // Reaction-storm refetch: every chat:react used to fire a full
+  // 50-message GET. During a climax that's hundreds per minute
+  // per viewer. Throttle to one refetch per second; the trailing
+  // edge picks up any toggles that arrived during the cooldown.
+  const reactTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleReactRefetch = useCallback(() => {
+    if (reactTimer.current) return;
+    reactTimer.current = setTimeout(() => {
+      reactTimer.current = null;
+      void runFetch();
+    }, 1000);
+  }, [runFetch]);
+
   // Mount: paint the last-seen messages from sessionStorage instantly so
   // switching to the Chat tab isn't a blank flash, then refresh in the
   // background.
@@ -441,7 +454,13 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       fetchMessages();
       return;
     }
-    if (ev.type === "chat:react") fetchMessages();
+    // chat:react used to refetch the entire 50-msg window for every
+    // toggle. With N viewers × M reactions/min during a song's
+    // climax that's a thundering-herd at the API. We throttle to
+    // one refetch per second; broadcasts that land during the
+    // cooldown still register as "we need another refresh once the
+    // window opens" via the trailing flag.
+    if (ev.type === "chat:react") scheduleReactRefetch();
   });
 
   // First render: jump to the bottom (no animation). After that:
@@ -540,7 +559,14 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       cancelAnimationFrame(raf);
       window.clearTimeout(settle);
     };
-  }, [replyTo, composerFocused, viewport]);
+    // PERF: deps were [replyTo, composerFocused, viewport] which
+    // fired the smooth-scroll-into-view on every keyboard tick + on
+    // every focus flip — the list kept "fighting back to centre" as
+    // the iOS keyboard animated open. The intent is "scroll once
+    // when a reply target is selected", so the only dep we need is
+    // the reply target's id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replyTo?.id]);
 
   // ----- composer / typing -----
   const onComposerChange = (v: string) => {

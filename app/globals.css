@@ -23,6 +23,15 @@
   font-weight: 400;
   font-style: normal;
   font-display: swap;
+  /* Singing Sans's intrinsic metrics put more space below the
+     baseline than above the cap. In tight centered containers
+     (pill badges, chips, button labels, code cells) the cap reads
+     ~1px low. Nudging ascent up + descent down by ~3% each
+     re-centres the cap visually for every uppercase/display use
+     globally — no per-badge `pt-[1px]` workaround needed. */
+  ascent-override: 91%;
+  descent-override: 22%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Neulis Neue";
@@ -286,11 +295,35 @@
   padding: var(--rainbow-thickness);
   background-image: var(--rainbow-gradient-anim);
   background-size: 200% 100%;
+  /* Tile seamlessly: the gradient starts and ends with the same
+     colour stop (#f10d59) so a `repeat` background hides the
+     pixel-boundary between loops. Explicit `repeat-x` here defends
+     against future Tailwind defaults changing the background-repeat
+     basics. */
+  background-repeat: repeat-x;
   display: block;
   animation: rainbow-flow 6s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   .rainbow-border-anim { animation: none; }
+}
+
+/* App-bar gradient fade strips (the chrome that masks chat / vote
+   tab content under the fixed tab bar) sometimes show a 1px gap on
+   the right because Tailwind's `inset-x-0` + sub-pixel rendering
+   doesn't always cover the final column. Pin the bar width with a
+   defensive 100vw fallback so the gradient always reaches the right
+   edge regardless of scrollbar gutter rounding. Applied via the
+   `.uzk-edge-bar` utility — the room-tab-bar and presence-bar opt
+   in below. */
+.uzk-edge-bar {
+  /* `100dvw` accounts for the dynamic viewport (URL bar collapse on
+     iOS), `100%` is the fallback. */
+  width: 100%;
+  width: 100dvw;
+  /* When a vertical scrollbar takes pixels off the inline size, the
+     gradient should still cover all of them. */
+  background-clip: border-box;
 }
 
 /* Glass surface, intentionally cool + quiet. Hairline white-low border,

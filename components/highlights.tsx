@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Flame } from "lucide-react";
 import { useEventListener } from "@/lib/realtime";
@@ -51,14 +51,20 @@ export function Highlights() {
     load();
   }, [load]);
 
+  // Highlights are a derived view of "messages with ≥ threshold
+  // reactions". A fresh chat:new never qualifies on its own; only
+  // chat:react and chat:delete can change the set. Throttle to one
+  // refetch per 5s so a reaction storm doesn't slam the GET with N
+  // viewers × M reactions/min. The endpoint is already SWR-cached,
+  // but the round-trip JS + parse still costs every client.
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEventListener(({ event }) => {
-    if (
-      event.type === "chat:react" ||
-      event.type === "chat:new" ||
-      event.type === "chat:delete"
-    ) {
+    if (event.type !== "chat:react" && event.type !== "chat:delete") return;
+    if (highlightTimer.current) return;
+    highlightTimer.current = setTimeout(() => {
+      highlightTimer.current = null;
       load();
-    }
+    }, 5_000);
   });
 
   if (items.length === 0) return null;

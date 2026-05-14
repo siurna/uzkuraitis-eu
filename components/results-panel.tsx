@@ -52,6 +52,16 @@ function BallotComparison({
       <h3 className="text-[11px] uppercase tracking-[0.2em] text-white/45 font-display px-1">
         {t(lang, "results_pick_vs_actual_h")}
       </h3>
+      {/* Single column header strip — "You said / It was" lives once
+          at the top of the table instead of repeating in every row.
+          Aligned to the same grid the rows use so the columns sit
+          true. */}
+      <div className="px-3 grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1fr)_auto] gap-x-3 text-[10px] uppercase tracking-[0.18em] text-white/40 font-display">
+        <span />
+        <span>{t(lang, "results_you_said")}</span>
+        <span>{t(lang, "results_it_was")}</span>
+        <span />
+      </div>
       <ol className="flex flex-col gap-1.5">
         {ballot.map((pick) => (
           <BallotComparisonRow
@@ -80,48 +90,34 @@ function BallotComparisonRow({
   const youGotIt = !!youCountry && !!actual && youCountry.code === actual.code;
   return (
     <li
-      className={`flex items-center gap-3 rounded-2xl px-3 py-2.5
+      className={`grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-x-3 rounded-2xl px-3 py-2.5
                   ${youGotIt ? "bg-flamingo/10 ring-1 ring-flamingo/25" : "bg-white/[0.04] ring-1 ring-white/8"}`}
     >
-      <span className="shrink-0 w-7 text-flamingo font-display text-base tabular-nums">
+      <span className="text-flamingo font-display text-base tabular-nums">
         {pick.points}
       </span>
-      <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-3 gap-y-0.5">
-        {/* "You said" */}
-        <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-display leading-none">
-            {t(lang, "results_you_said")}
-          </p>
-          <div className="flex items-center gap-1.5 mt-1 min-w-0">
-            {youCountry ? (
-              <>
-                <HeartFlag code={youCountry.code} size="sm" />
-                <span className="text-sm truncate">{countryName(youCountry.code, lang)}</span>
-              </>
-            ) : (
-              <span className="text-sm text-white/30 italic">—</span>
-            )}
-          </div>
-        </div>
-        {/* "It was" */}
-        <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-display leading-none">
-            {t(lang, "results_it_was")}
-          </p>
-          <div className="flex items-center gap-1.5 mt-1 min-w-0">
-            {actual ? (
-              <>
-                <HeartFlag code={actual.code} size="sm" />
-                <span className="text-sm truncate">{countryName(actual.code, lang)}</span>
-              </>
-            ) : (
-              <span className="text-sm text-white/30 italic">—</span>
-            )}
-          </div>
-        </div>
-      </div>
+      <span className="flex items-center gap-1.5 min-w-0">
+        {youCountry ? (
+          <>
+            <HeartFlag code={youCountry.code} size="sm" />
+            <span className="text-sm truncate">{countryName(youCountry.code, lang)}</span>
+          </>
+        ) : (
+          <span className="text-sm text-white/30 italic">—</span>
+        )}
+      </span>
+      <span className="flex items-center gap-1.5 min-w-0">
+        {actual ? (
+          <>
+            <HeartFlag code={actual.code} size="sm" />
+            <span className="text-sm truncate">{countryName(actual.code, lang)}</span>
+          </>
+        ) : (
+          <span className="text-sm text-white/30 italic">—</span>
+        )}
+      </span>
       <span
-        className={`shrink-0 font-display tabular-nums text-sm pl-1 ${
+        className={`font-display tabular-nums text-sm pl-1 ${
           pick.earned > 0 ? "text-flamingo" : "text-white/30"
         }`}
       >

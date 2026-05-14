@@ -967,6 +967,13 @@ export function ChatRow({
                     // `touch-manipulation` blocks iOS Safari's native
                     // double-tap-to-zoom on the image so the bubble's
                     // own click + double-tap-to-react handlers run.
+                    // `aspect-ratio: 4/3` is a baseline placeholder
+                    // shape that keeps the chat list from layout-
+                    // jumping while the real image decodes — the
+                    // moment the image lands the browser swaps to the
+                    // real ratio and the layout's already at the
+                    // right place.
+                    style={{ aspectRatio: "4 / 3" }}
                     className="block max-h-60 w-auto rounded-2xl touch-manipulation"
                     draggable={false}
                   />
