@@ -224,24 +224,22 @@ export function ChatTriviaCard({
           }}
         />
 
-        <header className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.32em] text-yellow/90 font-display leading-tight">
-              {t(lang, "trivia_eyebrow")}
-            </p>
-            {country && (
-              <p className="text-xs text-white/70 leading-snug truncate flex items-center gap-1.5 mt-0.5">
-                <HeartFlag code={country.code} size="sm" />
-                {countryName(country.code, lang)}
-              </p>
-            )}
-          </div>
-        </header>
+        {/* No eyebrow + no country chip — by the time this card is
+            in chat, the country is ALREADY on stage in the room
+            header (PresenceBar shows the heart-flag + name there).
+            Repeating that here just steals headline-space from the
+            question. Question takes the whole stage instead. */}
 
-        {/* Question. Slight gold underline glow to echo the WWTBAM
-            "question podium". */}
-        <div className="relative">
-          <p className="font-display text-base sm:text-lg text-white leading-snug text-balance text-center px-2">
+        {/* Question — the headline of the card. Bigger type, centred,
+            with a soft gold drop-shadow so it reads as the lit
+            podium element on the dark stage behind it. */}
+        <div className="relative pt-1">
+          <p
+            className="font-display text-xl sm:text-2xl text-white leading-snug text-balance text-center px-2"
+            style={{
+              textShadow: "0 1px 22px oklch(80% 0.18 85 / 0.35)",
+            }}
+          >
             {block.question}
           </p>
         </div>
