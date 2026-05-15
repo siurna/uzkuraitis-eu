@@ -33,8 +33,6 @@ export type Presence = {
   name: string | null;
   /** Avatar id from lib/avatars.ts; null = colour+initial fallback. */
   avatar: string | null;
-  emoji: string | null;
-  hoveredCountry: string | null;
   /** Chat: currently composing a message. */
   typing?: boolean;
   /** Chat: ISO timestamp of the newest message this user has seen. */
@@ -171,8 +169,6 @@ const Context = createContext<Ctx | null>(null);
 const EMPTY_PRESENCE: Presence = {
   name: null,
   avatar: null,
-  emoji: null,
-  hoveredCountry: null,
 };
 
 export function RoomProvider({
@@ -270,17 +266,27 @@ export function RoomProvider({
 
     channelRef.current = channel;
 
-    // Defensive re-track on tab return only. The earlier revision
-    // also ran a 30s interval that kept re-pushing `channel.track`,
-    // which was suspected of interacting badly with the supabase-js
-    // reconnect cycle ("chat doesn't update without a refresh"
-    // symptom). Visibility-return is cheap, narrowly scoped, and
-    // covers the only common case the original interval was
-    // designed for: a tab that was backgrounded came back and
-    // needs to tell peers it's here.
+    // Coarse presence heartbeat. Fires `channel.track()` at a fixed
+    // 30s cadence with the LATEST presence snapshot — peers see
+    // up-to-date name/avatar/typing/vibe/seenAt within one cycle.
+    // No tight-loop track-on-patch, so we can't blow the Supabase
+    // presence rate limit and get kicked off the channel
+    // (the previous symptom). Plus an immediate fire on
+    // visibilitychange-return: a tab coming back from background
+    // should announce itself fresh, not wait up to 30s.
+    //
+    // The initial track is wired in the subscribe callback above
+    // (fires once the channel is SUBSCRIBED), so the very first
+    // "I joined" lands within ~1s of mount independent of the
+    // 30s tick.
+    const heartbeat = setInterval(() => {
+      const ch = channelRef.current;
+      if (ch) void ch.track({ info: myInfo, presence: presenceRef.current });
+    }, 30_000);
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
-        void channel.track({ info: myInfo, presence: presenceRef.current });
+        const ch = channelRef.current;
+        if (ch) void ch.track({ info: myInfo, presence: presenceRef.current });
       }
     };
     if (typeof document !== "undefined") {
@@ -288,6 +294,7 @@ export function RoomProvider({
     }
 
     return () => {
+      clearInterval(heartbeat);
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", onVisibility);
       }
@@ -296,15 +303,37 @@ export function RoomProvider({
     };
   }, [id, myKey, supabase, myInfo]);
 
+  // Coarse presence: local state updates fire synchronously on every
+  // patch (UI stays reactive), but the network `channel.track()` runs
+  // on a 30s heartbeat regardless of how many local patches landed
+  // in that window. Plus one immediate track on initial SUBSCRIBED
+  // (wired in the subscribe callback above) and one on
+  // visibilitychange-return (wired below).
+  //
+  // Why: Supabase enforces a per-client presence rate limit and the
+  // fine-grained "track on every patch" pattern blew past it the
+  // moment seenAt/vibe/typing started overlapping. WhosHere doesn't
+  // need second-by-second precision; "who's in the room right now"
+  // is fine at a ~30s cadence. Typing indicator + vibe ring become
+  // coarse to match — acceptable trade for never getting kicked off
+  // the channel mid-show.
+  //
+  // No-op skip: if the patch doesn't actually change any current
+  // field, return early so we don't even trigger a re-render.
   const updateMyPresence = useCallback((patch: Partial<Presence>) => {
-    const next = { ...presenceRef.current, ...patch };
+    const current = presenceRef.current;
+    let changed = false;
+    for (const k of Object.keys(patch) as (keyof Presence)[]) {
+      if (current[k] !== patch[k]) {
+        changed = true;
+        break;
+      }
+    }
+    if (!changed) return;
+    const next = { ...current, ...patch };
     presenceRef.current = next;
     setMyPresence(next);
-    const ch = channelRef.current;
-    if (ch) {
-      void ch.track({ info: myInfo, presence: next });
-    }
-  }, [myInfo]);
+  }, []);
 
   const broadcast = useCallback((event: RoomEvent) => {
     const ch = channelRef.current;

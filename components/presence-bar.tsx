@@ -60,11 +60,10 @@ export function PresenceBar() {
       ? `${window.location.origin}/?room=${code}`
       : "";
 
-  // Mirror identity into Liveblocks presence so other voters' bars +
-  // honeycomb update when we change name/avatar.
-  useEffect(() => {
-    if (name) updatePresence({ name, avatar: avatarId });
-  }, [name, avatarId, updatePresence]);
+  // Identity → presence is owned by name-gate (initial entry) and
+  // settings-modal (edits). PresenceBar used to push name+avatar on
+  // every mount too, which was a no-op duplicate AND burned a
+  // presence track for nothing. Trust the upstream writers.
 
   const deepDive = useCountryDeepDive();
   // Only treat a country as "on stage" while the show status is

@@ -495,14 +495,25 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   };
 
   // ----- "seen" beacon: when I'm parked at the bottom and the tab is
-  // visible, broadcast the newest message's timestamp so others can show
-  // "seen by N". -----
+  // visible, the newest message's timestamp goes into my presence so
+  // others can show "seen by N". Throttled to ≥10s between updates
+  // (and only when the timestamp actually moved forward) — without
+  // this it fired on every new chat message, which during a busy
+  // climax cluttered presence with no UX gain. The 30s presence
+  // heartbeat picks up the latest seenAt regardless.
   const newestIso = messages.length ? messages[messages.length - 1].createdAt : null;
+  const lastSeenSent = useRef<string | null>(null);
+  const lastSeenSentAt = useRef(0);
   useEffect(() => {
     if (!newestIso || !active) return;
-    if (atBottom && (typeof document === "undefined" || !document.hidden)) {
-      updatePresence({ seenAt: newestIso });
-    }
+    if (!atBottom) return;
+    if (typeof document !== "undefined" && document.hidden) return;
+    if (newestIso === lastSeenSent.current) return;
+    const now = Date.now();
+    if (now - lastSeenSentAt.current < 10_000) return;
+    lastSeenSent.current = newestIso;
+    lastSeenSentAt.current = now;
+    updatePresence({ seenAt: newestIso });
   }, [newestIso, atBottom, active, updatePresence]);
 
   // Tab-bar unread badge clear — only while the chat tab is actually

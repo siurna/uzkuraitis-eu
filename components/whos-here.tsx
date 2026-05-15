@@ -24,7 +24,6 @@ type Person = {
   key: string;
   name: string;
   avatarId: string | null;
-  emoji: string | null;
   typing: boolean;
   isSelf: boolean;
   /** Their stable browser-session id (set in presence by the name gate).
@@ -85,7 +84,6 @@ export function WhosHere() {
         key: "self",
         name: self.presence.name,
         avatarId: self.presence.avatar ?? null,
-        emoji: self.presence.emoji ?? null,
         typing: !!self.presence.typing,
         isSelf: true,
         sessionId: self.presence.sessionId ?? ensureSessionId(),
@@ -98,7 +96,6 @@ export function WhosHere() {
         key: `c${o.connectionId}`,
         name: o.presence.name,
         avatarId: o.presence.avatar ?? null,
-        emoji: o.presence.emoji ?? null,
         typing: !!o.presence.typing,
         isSelf: false,
         sessionId: o.presence.sessionId ?? null,
@@ -241,16 +238,6 @@ function Bubble({
             />
           ))}
         </span>
-      ) : person.emoji ? (
-        <motion.span
-          key={person.emoji}
-          initial={{ scale: 0, y: 4 }}
-          animate={{ scale: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 500, damping: 18 }}
-          className="pointer-events-none absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-white/10 ring-1 ring-white/15 px-1.5 py-0.5 text-sm leading-none backdrop-blur-sm"
-        >
-          {person.emoji}
-        </motion.span>
       ) : null}
     </div>
   );
