@@ -926,7 +926,7 @@ function SelfieCard({ lang }: { lang: Language }) {
       animate={{ opacity: 1, scale: 1, rotate: -1.5 }}
       whileTap={{ scale: 0.99 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-      className="relative mx-auto max-w-[19rem]"
+      className="relative mx-auto max-w-[21rem]"
     >
       {/* Paparazzi flash overlay — fires once per room when the card
           first lands in chat. Portalled to document.body because the
@@ -936,7 +936,9 @@ function SelfieCard({ lang }: { lang: Language }) {
           ~19rem bounding box (rendered as a tiny white square inside
           the card) instead of covering the viewport. Same gotcha
           CLAUDE.md flags for PageTransition. pointer-events-none so
-          the user can keep tapping the polaroid through it. */}
+          the user can keep tapping the polaroid through it.
+          Two-pulse keyframe (flash-blink-flash-out) reads more
+          "camera shutter" than the previous single fade. */}
       {typeof document !== "undefined" &&
         createPortal(
           <AnimatePresence>
@@ -944,9 +946,13 @@ function SelfieCard({ lang }: { lang: Language }) {
               <motion.div
                 key="paparazzi"
                 initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 0.95, 0] }}
+                animate={{ opacity: [0, 1, 0.15, 0.85, 0] }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.55, times: [0, 0.18, 1], ease: [0.22, 1, 0.36, 1] }}
+                transition={{
+                  duration: 0.85,
+                  times: [0, 0.12, 0.36, 0.5, 1],
+                  ease: [0.22, 1, 0.36, 1],
+                }}
                 className="fixed inset-0 z-[80] pointer-events-none bg-white"
                 aria-hidden
               />
@@ -970,7 +976,7 @@ function SelfieCard({ lang }: { lang: Language }) {
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={busy}
-        className="relative block w-full text-left p-6 pb-5 rounded-sm
+        className="relative block w-full text-left p-7 pb-6 rounded-sm
                    bg-[#f5efe2]
                    shadow-[0_18px_44px_-18px_rgba(0,0,0,0.55),0_2px_6px_-2px_rgba(0,0,0,0.4)]
                    active:scale-[0.99] transition transform-gpu disabled:opacity-70"
@@ -1015,7 +1021,7 @@ function SelfieCard({ lang }: { lang: Language }) {
             </span>
           )}
         </span>
-        <span className="block px-1 pt-3 pb-2 text-center">
+        <span className="block px-1 pt-4 pb-2 text-center">
           <span
             className="block font-display text-[10px] uppercase tracking-[0.32em] text-[#8a614a]"
           >

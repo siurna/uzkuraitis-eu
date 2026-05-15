@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type ReactNode, type CSSProperties } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
 import { MessageCircle, ChevronRight } from "lucide-react";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
@@ -101,31 +101,121 @@ function Banner({
   );
 }
 
-// Vote artwork: a five-bar audio equalizer in the points colours
-// (12 = gold, then white fading down), each bar dancing on its own
-// loop. Reads as "the room is making noise" + "this is where points
-// happen".
-function VoteEqualizer() {
-  const BARS = [
-    { n: "12", grad: "from-yellow to-yellow/50", dur: "0.9s",  delay: "0s"    },
-    { n: "10", grad: "from-white to-white/65",   dur: "1.15s", delay: "0.18s" },
-    { n: "8",  grad: "from-white/80 to-white/40", dur: "0.8s", delay: "0.34s" },
-    { n: "7",  grad: "from-white/55 to-white/25", dur: "1.3s", delay: "0.06s" },
-    { n: "6",  grad: "from-white/40 to-white/15", dur: "1.0s", delay: "0.46s" },
-  ];
+// Vote artwork: the Eurovision points spread (1, 2, 3, 4, 5, 6, 7, 8,
+// 10, 12) falling from the top in random order, settling into a tight
+// pyramid pile at the bottom, holding for a beat, then fading out and
+// restarting on a loop. Reads as "this is where points happen" with
+// the live-stage drama of the actual scoreboard reveal. Bigger value
+// → bigger ball. 12 is the golden one (douze points).
+//
+// Motion shape: each ball gets a spring drop with a tiny stiffness/
+// damping overshoot so they bounce on landing. Per-cycle the entry
+// order is reshuffled so it doesn't drum out the same sequence on
+// repeat. AnimatePresence on a wrapper handles the synchronous fade-
+// out before the next cycle's balls remount.
+const VOTE_BALLS: ReadonlyArray<{
+  v: string;
+  x: number;
+  y: number;
+  size: number;
+  gold?: boolean;
+}> = [
+  // Bottom row — the heavy hitters.
+  { v: "12", x: 30, y: 14, size: 32, gold: true },
+  { v: "10", x: 60, y: 18, size: 28 },
+  { v: "8",  x: 88, y: 18, size: 26 },
+  { v: "7",  x: 112, y: 18, size: 24 },
+  // Row two.
+  { v: "6", x: 44, y: 40, size: 22 },
+  { v: "5", x: 74, y: 42, size: 22 },
+  { v: "4", x: 100, y: 42, size: 22 },
+  // Row three.
+  { v: "3", x: 54, y: 62, size: 20 },
+  { v: "2", x: 84, y: 62, size: 20 },
+  // Top dot.
+  { v: "1", x: 68, y: 82, size: 18 },
+];
+
+function VoteBallsRain() {
+  const [cycle, setCycle] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  // Cycle clock. Show: 4.5s pile. Hide: ~0.5s fade. Hold a beat, bump
+  // the cycle (fresh shuffle, fresh drops). Total cadence ~5.6s.
+  useEffect(() => {
+    let cancelled = false;
+    setVisible(true);
+    const hide = window.setTimeout(() => {
+      if (!cancelled) setVisible(false);
+    }, 4500);
+    const next = window.setTimeout(() => {
+      if (!cancelled) setCycle((c) => c + 1);
+    }, 5500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(hide);
+      window.clearTimeout(next);
+    };
+  }, [cycle]);
+
+  // Shuffle the entry order so the same ball doesn't always drop first.
+  const order = useMemo(() => {
+    const idx = VOTE_BALLS.map((_, i) => i);
+    for (let i = idx.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+    return idx;
+    // Reshuffle each cycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cycle]);
+
   return (
-    <span className="flex items-end gap-2 pr-10 -rotate-[6deg] opacity-95" aria-hidden>
-      {BARS.map(({ n, grad, dur, delay }) => (
-        <span key={n} className="flex w-5 flex-col items-center gap-1">
-          <span className="relative h-16 w-full overflow-hidden rounded-t-md bg-white/10 ring-1 ring-white/10">
-            <span
-              className={`absolute inset-x-0 bottom-0 h-full rounded-t-md bg-gradient-to-t ${grad}`}
-              style={{ transformOrigin: "bottom", animation: `uzk-eq ${dur} ease-in-out ${delay} infinite` }}
-            />
-          </span>
-          <span className="font-display text-[9px] tabular-nums leading-none text-white/80">{n}</span>
-        </span>
-      ))}
+    <span
+      className="relative block w-36 h-32 mr-2 opacity-95"
+      aria-hidden
+    >
+      <AnimatePresence>
+        {visible &&
+          VOTE_BALLS.map((ball, i) => {
+            const entryPos = order.indexOf(i);
+            const delay = entryPos * 0.11;
+            return (
+              <motion.span
+                key={`${cycle}-${ball.v}`}
+                initial={{ y: -120, opacity: 0, rotate: -14 }}
+                animate={{ y: 0, opacity: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.4 } }}
+                transition={{
+                  delay,
+                  type: "spring",
+                  stiffness: 240,
+                  damping: 13,
+                  mass: 0.9,
+                  opacity: { delay, duration: 0.12 },
+                }}
+                style={{
+                  position: "absolute",
+                  bottom: ball.y,
+                  left: ball.x,
+                  width: ball.size,
+                  height: ball.size,
+                  fontSize: Math.max(9, Math.round(ball.size * 0.42)),
+                  background: ball.gold
+                    ? "radial-gradient(circle at 35% 30%, #fff4c2 0%, #ffd166 45%, #c98c1c 100%)"
+                    : "radial-gradient(circle at 35% 30%, #ffffff 0%, #e8ecff 55%, #9aa3d6 100%)",
+                  color: ball.gold ? "#3a1d00" : "#1c1a44",
+                  boxShadow: ball.gold
+                    ? "inset 0 -2px 4px rgba(120,60,0,0.45), inset 0 1px 1px rgba(255,255,255,0.7), 0 4px 10px -2px rgba(0,0,0,0.45)"
+                    : "inset 0 -2px 4px rgba(40,40,70,0.35), inset 0 1px 1px rgba(255,255,255,0.85), 0 4px 10px -2px rgba(0,0,0,0.4)",
+                }}
+                className="rounded-full grid place-items-center font-display font-black tabular-nums leading-none"
+              >
+                {ball.v}
+              </motion.span>
+            );
+          })}
+      </AnimatePresence>
     </span>
   );
 }
@@ -363,7 +453,7 @@ export function HomeBanners() {
               title={t(lang, voted ? "home_vote_done" : "home_vote_open")}
               sub={t(lang, voted ? "home_vote_done_sub" : "home_vote_open_sub")}
               onClick={() => setTab("vote")}
-              artwork={<VoteEqualizer />}
+              artwork={<VoteBallsRain />}
             />
           </motion.div>
         )}
@@ -642,7 +732,7 @@ function VoteHeroCard({
         style={{ background: "linear-gradient(125deg, #f10d59 0%, #ff3ede 46%, #6020c6 100%)" }}
       >
         <div className="pointer-events-none absolute inset-y-0 -right-5 flex items-center">
-          <VoteEqualizer />
+          <VoteBallsRain />
         </div>
         <div
           className="pointer-events-none absolute inset-0"
