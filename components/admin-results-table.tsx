@@ -109,12 +109,28 @@ export function AdminResultsTable({
   // the round-trip lands.
   const [savedRows, setSavedRows] = useState(() =>
     initialResults
+      .filter((r) => r.countryCode)
       .map((r) => `${r.placement}:${r.countryCode}`)
       .sort()
       .join("|"),
   );
+  // Snap the initial facts using the SAME normalised shape the dirty
+  // check rebuilds below ({factKey: value-or-null} across ALL FACTS).
+  // The earlier `JSON.stringify(initialFacts)` only included keys
+  // that had a value, while currentFactsSig adds `null` for missing
+  // ones — so on first paint the page reported "Unsaved" against
+  // itself.
   const [savedFacts, setSavedFacts] = useState(() =>
-    JSON.stringify(initialFacts),
+    JSON.stringify(
+      Object.fromEntries(
+        FACTS.map((f) => [
+          f.key,
+          initialFacts[f.key] && initialFacts[f.key] !== ""
+            ? initialFacts[f.key]
+            : null,
+        ]),
+      ),
+    ),
   );
   const [pending, start] = useTransition();
   // Which TOP-10 placement is currently being edited via the country-
@@ -254,13 +270,14 @@ export function AdminResultsTable({
           no longer carries an extra row of counter-padding. */}
       <AdminPageTitle
         trailing={
-          // Two-line trailing chip: top row is the {filled} / {total}
-          // count, bottom row is the "Unsaved" hint that surfaces
-          // ONLY when the draft has diverged from the saved baseline.
-          // Tint swaps flamingo (calm) → yellow (attention) on the
-          // dirty branch so it reads as actionable at a glance.
+          // Single-line trailing chip. Default state shows the
+          // {filled}/{total} count in flamingo. When the draft has
+          // diverged from the saved baseline (only AFTER the
+          // initial render; see savedRows/savedFacts init), the
+          // chip tints yellow and grows an inline "Unsaved" label
+          // next to the count.
           <span
-            className={`inline-flex flex-col items-end leading-tight rounded-xl px-3 py-1 text-xs font-display tabular-nums transition
+            className={`inline-flex items-center gap-2 rounded-full h-7 px-3 text-xs font-display tabular-nums transition
                         ${dirty
                           ? "bg-yellow/15 ring-1 ring-yellow/45 text-yellow"
                           : "bg-flamingo/15 ring-1 ring-flamingo/35 text-flamingo"}`}
