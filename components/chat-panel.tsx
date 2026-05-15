@@ -19,6 +19,7 @@ import {
   Loader2,
   ChevronUp,
   ArrowDown,
+  ArrowUp,
   ImageDown,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -1553,18 +1554,35 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
             (mask-image, see globals.css) which softly dissolves its
             top + bottom edges into the chrome. Wrapper is transparent
             so the page bg shows through and the pill provides its
-            own backdrop. */}
-        <div className="shrink-0 pb-2 pt-2">
-          {/* Typing indicator */}
-          {typingNames.length > 0 && !editing && (
-            <p className="px-3 pb-1 text-[11px] text-white/45">
-              {typingNames.length === 1
-                ? t(lang, "chat_typing_one", typingNames[0])
-                : typingNames.length === 2
-                  ? t(lang, "chat_typing_two", typingNames[0], typingNames[1])
-                  : t(lang, "chat_typing_many")}
-            </p>
-          )}
+            own backdrop. `relative` so the floating typing pill
+            below can anchor against it. */}
+        <div className="shrink-0 pb-2 pt-2 relative">
+          {/* Typing indicator — floats ABOVE the composer pill as a
+              small glass chip so it doesn't extend the composer's
+              visual height (which used to push the fade-scroll-y mask
+              up + made the typing line read as part of the chrome).
+              Pointer-events-none so it never intercepts a tap. */}
+          <AnimatePresence>
+            {typingNames.length > 0 && !editing && (
+              <motion.span
+                key="typing-pill"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="pointer-events-none absolute bottom-full mb-1 left-3
+                           inline-flex items-center gap-1.5 rounded-full
+                           bg-black/55 ring-1 ring-white/10 backdrop-blur-md
+                           px-2.5 py-1 text-[11px] text-white/70 leading-none"
+              >
+                {typingNames.length === 1
+                  ? t(lang, "chat_typing_one", typingNames[0])
+                  : typingNames.length === 2
+                    ? t(lang, "chat_typing_two", typingNames[0], typingNames[1])
+                    : t(lang, "chat_typing_many")}
+              </motion.span>
+            )}
+          </AnimatePresence>
 
           {(replyTo || editing) && (
             // Sits on the right — it's about your (right-aligned) message.
@@ -1700,53 +1718,65 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                   // keyboard heuristic so the dock hides either way.
                   chrome.setComposerActive(true);
                 }}
-                onBlur={(e) => {
+                onBlur={() => {
                   chrome.setComposerActive(false);
                   if (!editing) clearTyping();
-
-                  // iOS keyboard toolbar "Done" / checkmark dismisses
-                  // the keyboard via input.blur() without moving focus
-                  // anywhere else (`relatedTarget` is null). That same
-                  // signature fires when the user taps a background
-                  // area to dismiss too — but in this composer the
-                  // GIF + Photo buttons preventDefault on mousedown so
-                  // they never become the new focus target either. So
-                  // the heuristic "blur with no relatedTarget AND a
-                  // non-empty composer" is a clean proxy for "user
-                  // signalled they're done with the keyboard". Send.
-                  const text = (editing ? editBody : body).trim();
-                  if (!e.relatedTarget && text) {
-                    if (editing) submitEdit();
-                    else send();
-                  }
+                  // Used to auto-send here when blur fired without a
+                  // relatedTarget (iOS keyboard "Done" tap) — but the
+                  // same signature fires on tab switch / app
+                  // backgrounding / programmatic blur too, which led
+                  // to messages being sent every time the input lost
+                  // focus for any reason. Now the user has to either
+                  // press the iOS keyboard's Send key (handled by
+                  // onKeyDown above) or tap the visible Send button
+                  // that appears in the toolbar when text is
+                  // non-empty. Dismissing the keyboard via Done
+                  // leaves the draft sitting in the composer.
                 }}
                 placeholder={editing ? t(lang, "chat_edit_placeholder") : t(lang, "chat_placeholder")}
                 className="flex-1 min-w-0 bg-transparent px-1.5 py-2
                            text-base leading-snug text-white focus:outline-none"
               />
-              {/* Hidden submit button forces iOS Safari's implicit-submit
-                  rule (form needs a submit button OR exactly one text
-                  input — we have a hidden <input type="file"> sibling,
-                  which trips the count). */}
-              <button type="submit" hidden aria-hidden tabIndex={-1} />
+              {/* Right-side toolbar. When the input is empty we show
+                  GIF + Photo (composing media); when it has text we
+                  swap them out for a single visible Send button that
+                  submits the form. The auto-send-on-blur is gone, so
+                  Send is the user's primary way to actually push the
+                  message — Enter / iOS keyboard Send still works
+                  too via onKeyDown above. */}
               {!editing && (
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  tabIndex={-1}
+                  aria-hidden
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = "";
+                    if (f) queueImage(f);
+                  }}
+                />
+              )}
+              {(editing ? editBody : body).trim().length > 0 ? (
+                <button
+                  type="submit"
+                  // Don't pull focus from the input — keeps the
+                  // keyboard up so the user can keep typing after
+                  // sending.
+                  onMouseDown={(e) => e.preventDefault()}
+                  onTouchStart={(e) => e.preventDefault()}
+                  aria-label={t(lang, "chat_image_send")}
+                  className="h-9 w-9 shrink-0 rounded-full grid place-items-center text-dark-blue
+                             bg-white hover:bg-white/90 transition active:scale-[0.92]"
+                >
+                  <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.5} />
+                </button>
+              ) : !editing ? (
                 <div className="flex items-center gap-1 shrink-0">
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    tabIndex={-1}
-                    aria-hidden
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      e.target.value = "";
-                      if (f) queueImage(f);
-                    }}
-                  />
                   <button
                     type="button"
-                    // Keep the keyboard up when tapping the attach buttons.
                     onMouseDown={(e) => e.preventDefault()}
                     onTouchStart={(e) => e.preventDefault()}
                     onClick={() => setGifOpen(true)}
@@ -1769,7 +1799,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                     {uploading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <ImagePlus className="h-[18px] w-[18px]" />}
                   </button>
                 </div>
-              )}
+              ) : null}
             </form>
           </div>
         </div>

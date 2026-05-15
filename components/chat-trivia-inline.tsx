@@ -171,6 +171,20 @@ export function ChatTriviaCard({
     if (!card) return;
     if (flashFiredRef.current) return;
     if (phase.kind === "answered") return;
+    // Belt to the phase-state braces: the restore-from-localStorage
+    // effect above sets phase to "answered" but state writes don't
+    // apply within the same render cycle, so on FIRST mount this
+    // effect still sees phase.kind = "idle" even when an answer is
+    // already on disk. Peek at LOCAL_KEY directly here so a card
+    // that's already been answered skips straight to the reveal —
+    // no flash, no animation replay.
+    try {
+      const raw = localStorage.getItem(LOCAL_KEY(roomCode));
+      const map = raw ? (JSON.parse(raw) as Record<string, TriviaPick>) : {};
+      if (typeof map[countryCode] === "number") return;
+    } catch {
+      /* ignore */
+    }
     try {
       const raw = localStorage.getItem(SEEN_KEY(roomCode));
       const seen = raw ? (JSON.parse(raw) as Record<string, true>) : {};
