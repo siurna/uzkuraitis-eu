@@ -35,6 +35,7 @@ export default async function HostManagePage({
         name: room.name,
         votingEnabled: room.votingEnabled,
         tallyEnabled: room.tallyEnabled,
+        triviaEnabled: room.triviaEnabled,
         commentatorEnabled: room.commentatorEnabled,
       }}
     />

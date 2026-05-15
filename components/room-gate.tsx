@@ -264,8 +264,15 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex flex-col items-center gap-4 text-white/50"
+            // Fixed-centered: the <main> uses pt-[18dvh] to pull the
+            // gate's logo+form up so it balances above the install
+            // banner, but the loader should stay PERFECTLY centred
+            // regardless of that offset. Lifting it out of the main
+            // flow with `fixed inset-0` keeps it dead-centre on any
+            // viewport.
+            className="fixed inset-0 grid place-items-center text-white/50 pointer-events-none"
           >
+            <div className="flex flex-col items-center gap-4">
             {/* The 70-heart pulses while we check for a remembered
                 room. Plain `<img>` instead of `next/image`: iOS
                 Safari computes `drop-shadow` against the wrapper
@@ -286,6 +293,7 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
             <p className="text-xs uppercase tracking-[0.3em] font-display">
               {t(lang, "reconnecting")}
             </p>
+            </div>
           </motion.div>
         ) : (
           <motion.div

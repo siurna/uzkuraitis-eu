@@ -7,6 +7,7 @@ import {
   Check,
   Eraser,
   Hash,
+  Lightbulb,
   Megaphone,
   Mic,
   Share2,
@@ -32,6 +33,7 @@ type Room = {
   name: string;
   votingEnabled: boolean;
   tallyEnabled: boolean;
+  triviaEnabled: boolean;
   commentatorEnabled: boolean;
 };
 
@@ -45,6 +47,7 @@ export function HostControls({
   const router = useRouter();
   const [voting, setVoting] = useState(room.votingEnabled);
   const [tally, setTally] = useState(room.tallyEnabled);
+  const [trivia, setTrivia] = useState(room.triviaEnabled);
   const [commentator, setCommentator] = useState(room.commentatorEnabled);
   const [pending, start] = useTransition();
   const [confirmClean, setConfirmClean] = useState(false);
@@ -89,6 +92,11 @@ export function HostControls({
     const next = !commentator;
     setCommentator(next);
     patch({ commentatorEnabled: next });
+  };
+  const toggleTrivia = () => {
+    const next = !trivia;
+    setTrivia(next);
+    patch({ triviaEnabled: next });
   };
 
   const saveCode = () => {
@@ -220,6 +228,18 @@ export function HostControls({
           }
           on={commentator}
           onChange={toggleCommentator}
+          disabled={pending}
+        />
+        <ToggleRow
+          icon={<Lightbulb className="h-5 w-5" />}
+          title="Trivia in chat"
+          sub={
+            trivia
+              ? "Mid-song trivia card drops in when the global scheduler fires."
+              : "No trivia in this room, even if the rest of the show gets one."
+          }
+          on={trivia}
+          onChange={toggleTrivia}
           disabled={pending}
         />
       </section>
