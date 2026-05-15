@@ -1226,15 +1226,22 @@ function ChatRowInner({
               of bubbles into existence across the visible thread —
               they ease in (and ease out when turned off) as the user
               expects from a chat companion-feature. */}
+          {/* Translation + beginner bubbles. Used to ease their height
+              from 0 → auto with `overflow: hidden`, but that clipped
+              the 1px ring on the bubble inside (outset shadow gets
+              chopped by the wrapper's clip rect). Animate opacity +
+              y only; the bubble's natural height claims its space
+              immediately. The chat-row's flex layout absorbs the
+              tiny visible bump cleanly enough that dropping the
+              height tween isn't noticeable, but the ring shows. */}
           <AnimatePresence initial={false}>
             {translateOn && !mine && m.kind === "text" && m.body && (
               <motion.div
                 key="translate"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.22, ease: "easeOut" }}
-                style={{ overflow: "hidden" }}
               >
                 <TranslationBubble text={m.body} mine={mine} />
               </motion.div>
@@ -1242,11 +1249,10 @@ function ChatRowInner({
             {beginnerOn && !translateOn && !mine && m.kind === "text" && m.body && (
               <motion.div
                 key="beginner"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.22, ease: "easeOut" }}
-                style={{ overflow: "hidden" }}
               >
                 <BeginnerBubble text={m.body} lang={lang} mine={mine} />
               </motion.div>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Lightbulb, Loader2, RotateCcw, X } from "lucide-react";
+import { toast } from "sonner";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { countryName } from "@/lib/countries";
@@ -105,11 +106,28 @@ export function AdminTriviaScheduler({
     lastScheduled.current = code;
     setFiring(true);
     try {
-      await fetch("/api/admin/live/trivia", {
+      const res = await fetch("/api/admin/live/trivia", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ countryCode: code }),
       });
+      // Surface the fan-out result so a silent zero-room fire (no
+      // room has BOTH this country on stage AND triviaEnabled, or
+      // the country lacks a question in the deck) is debuggable.
+      // The endpoint returns `{ fired: N }` on success.
+      if (res.ok) {
+        const data = (await res.json().catch(() => null)) as
+          | { fired?: number }
+          | null;
+        const fired = data?.fired ?? 0;
+        if (fired > 0) {
+          toast.success(`Trivia fanned out to ${fired} room${fired === 1 ? "" : "s"}.`);
+        } else {
+          toast.warning("Trivia fired but no rooms received it. Check that trivia is enabled and the country is on stage.");
+        }
+      } else {
+        toast.error(`Trivia fire failed (${res.status}).`);
+      }
       try {
         localStorage.setItem(LAST_FIRED_KEY, code);
       } catch {
@@ -117,7 +135,7 @@ export function AdminTriviaScheduler({
       }
       setLastFired(code);
     } catch {
-      /* admin can re-pick / re-resend to retry */
+      toast.error("Trivia fire request failed. Network blip?");
     } finally {
       firingRef.current = false;
       setFiring(false);
