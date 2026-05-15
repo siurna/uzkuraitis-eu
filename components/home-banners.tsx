@@ -108,11 +108,13 @@ function Banner({
 // the live-stage drama of the actual scoreboard reveal. Bigger value
 // → bigger ball. 12 is the golden one (douze points).
 //
-// Motion shape: each ball gets a spring drop with a tiny stiffness/
-// damping overshoot so they bounce on landing. Per-cycle the entry
-// order is reshuffled so it doesn't drum out the same sequence on
-// repeat. AnimatePresence on a wrapper handles the synchronous fade-
-// out before the next cycle's balls remount.
+// Each ball is a real SVG (gradient circle + specular highlight +
+// numeral) so it renders crisp at any pixel density, matches the
+// vector vocabulary of the flag SVGs in /public/flags/, and the
+// numeral lives in the same <svg> as the sphere so they scale + drop
+// together. Motion shape: spring drop with stiffness 240 / damping 13
+// for a tiny bounce on landing. Per-cycle the entry order reshuffles.
+// AnimatePresence handles the synchronous fade-out between cycles.
 const VOTE_BALLS: ReadonlyArray<{
   v: string;
   x: number;
@@ -135,6 +137,88 @@ const VOTE_BALLS: ReadonlyArray<{
   // Top dot.
   { v: "1", x: 68, y: 82, size: 18 },
 ];
+
+function PointsBallSvg({ value, gold }: { value: string; gold?: boolean }) {
+  // viewBox is 100×100; circle centred at (50, 50) with r=46 leaves a
+  // 4-unit edge for the soft outer shadow inside the svg bounds.
+  // The numeral sits dead-centre via dominant-baseline. Specular
+  // highlight is a pale ellipse over the top-left — same trick the
+  // real Eurovision points balls use on the broadcast.
+  const fillId = gold ? "uzk-ball-gold" : "uzk-ball-white";
+  const shadowId = gold ? "uzk-ball-shadow-gold" : "uzk-ball-shadow-white";
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      width="100%"
+      height="100%"
+      overflow="visible"
+      aria-hidden
+    >
+      <defs>
+        <radialGradient id={fillId} cx="35%" cy="28%" r="78%">
+          {gold ? (
+            <>
+              <stop offset="0%" stopColor="#fff7d4" />
+              <stop offset="40%" stopColor="#ffd166" />
+              <stop offset="80%" stopColor="#c08418" />
+              <stop offset="100%" stopColor="#8a5a0e" />
+            </>
+          ) : (
+            <>
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="55%" stopColor="#eaeefc" />
+              <stop offset="100%" stopColor="#8a93c4" />
+            </>
+          )}
+        </radialGradient>
+        <radialGradient id={shadowId} cx="50%" cy="100%" r="55%">
+          <stop offset="0%" stopColor="rgba(0,0,0,0.55)" />
+          <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+        </radialGradient>
+      </defs>
+      {/* Soft drop shadow under the ball. */}
+      <ellipse cx="50" cy="94" rx="36" ry="6" fill={`url(#${shadowId})`} />
+      {/* Sphere. */}
+      <circle cx="50" cy="50" r="46" fill={`url(#${fillId})`} />
+      {/* Outer rim hairline for definition against bright banner fills. */}
+      <circle
+        cx="50"
+        cy="50"
+        r="46"
+        fill="none"
+        stroke={gold ? "rgba(110, 60, 0, 0.55)" : "rgba(40, 40, 80, 0.45)"}
+        strokeWidth="1.5"
+      />
+      {/* Specular highlight — soft ellipse top-left. */}
+      <ellipse
+        cx="36"
+        cy="30"
+        rx="20"
+        ry="13"
+        fill="rgba(255,255,255,0.55)"
+      />
+      <ellipse cx="32" cy="26" rx="8" ry="5" fill="rgba(255,255,255,0.85)" />
+      {/* Numeral. text-anchor=middle + dominant-baseline=central
+          centres the digits regardless of count (1 vs 12). */}
+      <text
+        x="50"
+        y="54"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontFamily="var(--font-display), system-ui, sans-serif"
+        fontWeight="900"
+        fontSize={value.length > 1 ? 46 : 54}
+        fill={gold ? "#3a1d00" : "#15163d"}
+        style={{
+          fontVariantNumeric: "tabular-nums",
+          paintOrder: "stroke",
+        }}
+      >
+        {value}
+      </text>
+    </svg>
+  );
+}
 
 function VoteBallsRain() {
   const [cycle, setCycle] = useState(0);
@@ -200,18 +284,10 @@ function VoteBallsRain() {
                   left: ball.x,
                   width: ball.size,
                   height: ball.size,
-                  fontSize: Math.max(9, Math.round(ball.size * 0.42)),
-                  background: ball.gold
-                    ? "radial-gradient(circle at 35% 30%, #fff4c2 0%, #ffd166 45%, #c98c1c 100%)"
-                    : "radial-gradient(circle at 35% 30%, #ffffff 0%, #e8ecff 55%, #9aa3d6 100%)",
-                  color: ball.gold ? "#3a1d00" : "#1c1a44",
-                  boxShadow: ball.gold
-                    ? "inset 0 -2px 4px rgba(120,60,0,0.45), inset 0 1px 1px rgba(255,255,255,0.7), 0 4px 10px -2px rgba(0,0,0,0.45)"
-                    : "inset 0 -2px 4px rgba(40,40,70,0.35), inset 0 1px 1px rgba(255,255,255,0.85), 0 4px 10px -2px rgba(0,0,0,0.4)",
                 }}
-                className="rounded-full grid place-items-center font-display font-black tabular-nums leading-none"
+                className="block"
               >
-                {ball.v}
+                <PointsBallSvg value={ball.v} gold={ball.gold} />
               </motion.span>
             );
           })}
