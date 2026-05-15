@@ -130,6 +130,11 @@ const S = {
   fill_n_more:       { en: (n: number) => `Fill all 10 slots, ${n} to go.`, lt: (n: number) => `Užpildyk visas 10 vietų, dar ${n}.` },
   add_name_first:    { en: "Add your name first.", lt: "Pirma įvesk vardą." },
   couldnt_submit:    { en: "Couldn't submit vote.", lt: "Nepavyko išsiųsti balso." },
+  // Shown under the trivia card when the country left the stage
+  // before the player tapped an answer. The card stays mounted (so
+  // the right answer is still readable in the chat scrollback) but
+  // the buttons are inert and this line explains the muted look.
+  trivia_closed:     { en: "Time's up for this one. Wait for the next.", lt: "Šio jau nepavyks. Lauk kito." },
   tab_ballot:        { en: "Ballot", lt: "Balsavimas" },
   tab_bets:          { en: "Guesses", lt: "Spėjimai" },
   tab_rules:         { en: "Rules", lt: "Taisyklės" },

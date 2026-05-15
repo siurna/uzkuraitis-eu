@@ -357,6 +357,23 @@ export function ChatTriviaCard({
             );
           })}
         </ul>
+
+        {/* Closed-state hint. Only renders when the country left the
+            stage before the player answered — the right answer plate
+            is still visible above (in muted white), this line just
+            explains WHY everything's dimmed and that they missed the
+            window. The answered (correct/wrong) state doesn't get a
+            line; the +2 chip + plate colours speak for themselves. */}
+        {closed && (
+          <motion.p
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.32 }}
+            className="text-xs font-display text-center text-white/65"
+          >
+            {t(lang, "trivia_closed")}
+          </motion.p>
+        )}
       </div>
 
       {/* Breaking-news flash overlay. Lives on top of the millionaire
