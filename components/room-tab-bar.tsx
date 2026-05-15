@@ -90,13 +90,18 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
 
   const bar = (
     <nav
-      className={`uzk-edge-bar fixed bottom-0 left-0 z-40 px-3
+      className={`uzk-edge-bar fixed bottom-0 left-0 z-40
                  pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2
                  bg-gradient-to-t from-dark-blue-900 via-dark-blue-900/92 to-transparent
                  ${chromeHidden ? "max-md:hidden" : ""}`}
     >
+      {/* Same container chrome as Home widgets + chat composer
+          (container mx-auto max-w-3xl px-4) so the dock pill's left/right
+          edges line up exactly with the cards stacked above it instead
+          of fighting them with its own narrower width. */}
+      <div className="container mx-auto max-w-3xl px-4">
       <ul
-        className="mx-auto max-w-md flex items-stretch justify-around gap-1
+        className="flex items-stretch justify-around gap-1
                    rounded-[28px] bg-black/55 ring-1 ring-white/10 p-1.5 backdrop-blur-md"
       >
         {TABS.map(({ id, labelKey, Icon, gradient, glow }) => {
@@ -182,6 +187,7 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
           );
         })}
       </ul>
+      </div>
       {/* Hidden accessor for screen readers — reads the current tab
           gradient direction for completeness. */}
       <span hidden aria-hidden>{active?.gradient}</span>

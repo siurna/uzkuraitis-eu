@@ -1296,7 +1296,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     // space (otherwise there's an empty strip up top). Hidden (kept
     // mounted, scroll + state intact) when off the chat tab.
     <main
-      className={`fixed inset-x-0 z-10 flex justify-center px-3 sm:px-4 ${
+      className={`fixed inset-x-0 z-10 flex justify-center px-4 ${
         dockHidden
           ? "pt-[env(safe-area-inset-top)]"
           : "pt-[calc(env(safe-area-inset-top)+3.5rem)]"
@@ -1488,8 +1488,14 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           )}
         </AnimatePresence>
 
-        {/* Composer */}
-        <div className="shrink-0 pb-2 pt-2 bg-gradient-to-t from-dark-blue-900 via-dark-blue-900/95 to-dark-blue-900/0">
+        {/* Composer. The wrapper carries a tall fade-to-dark gradient
+            so messages scrolling underneath the composer melt into the
+            page backdrop instead of being chopped by a hard horizontal
+            edge. `pt-8` gives the gradient real estate to breathe (vs
+            the old `pt-2` which left ~8px of fade and read as a cut),
+            and the from-stop is held to 35% so the bottom is the solid
+            dark plate while the upper 65% does the actual fade. */}
+        <div className="shrink-0 pb-2 pt-8 bg-gradient-to-t from-dark-blue-900 from-35% to-dark-blue-900/0">
           {/* Typing indicator */}
           {typingNames.length > 0 && !editing && (
             <p className="px-3 pb-1 text-[11px] text-white/45">
