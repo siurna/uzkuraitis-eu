@@ -54,16 +54,28 @@ const ROOM_BROADCAST_KEY = (room: string, kind: BroadcastKind) =>
 // Megaphone above). Filled where the glyph has a fill variant so
 // the icon TILE doesn't read as a hollow outline next to the
 // solid pill rows on Live.
-const SHOTS: { kind: BroadcastKind; title: string; desc: string; icon: LucideIcon }[] = [
-  { kind: "welcome",       title: "Hello folks",          desc: "Drops your housekeeping notes.", icon: Hand },
-  { kind: "notifications", title: "Turn on notifications", desc: "Nudge to enable push.",          icon: Bell },
-  { kind: "vote",          title: "Lines are open",       desc: "Lock in your TOP 10.",            icon: Vote },
-  { kind: "bet",           title: "Don't forget bonus bets", desc: "Free points if you call them.", icon: Coins },
-  { kind: "selfie",        title: "Selfie time",          desc: "Polaroid prompt into chat.",      icon: Camera },
-  { kind: "drunk_poll",    title: "How drunk are you?",   desc: "Vibe-check tally bar.",            icon: Wine },
-  { kind: "top3",          title: "Top 3 right now",      desc: "Live fan-aggregate podium.",       icon: Medal },
-  { kind: "final",         title: "Final results",        desc: "Scored leaderboard.",              icon: Trophy },
-  { kind: "thanks",        title: "Thank you, Europe",    desc: "Closing card with confetti.",      icon: PartyPopper },
+// Broadcasts grouped by where in the show they belong, ordered by
+// the natural sequence the admin would fire them on the night.
+type ShotGroup = "beginning" | "during" | "closers";
+const SHOT_GROUP_LABELS: Record<ShotGroup, string> = {
+  beginning: "Beginning",
+  during: "During the show",
+  closers: "Closers",
+};
+
+const SHOTS: { kind: BroadcastKind; group: ShotGroup; title: string; desc: string; icon: LucideIcon }[] = [
+  // ── Beginning: doors, housekeeping, opt-ins, voting open ──
+  { kind: "welcome",       group: "beginning", title: "Hello folks",          desc: "Drops your housekeeping notes.", icon: Hand },
+  { kind: "notifications", group: "beginning", title: "Turn on notifications", desc: "Nudge to enable push.",          icon: Bell },
+  { kind: "bet",           group: "beginning", title: "Don't forget bonus bets", desc: "Free points if you call them.", icon: Coins },
+  { kind: "vote",          group: "beginning", title: "Lines are open",       desc: "Lock in your TOP 10.",            icon: Vote },
+  // ── During the show: vibe checks, mid-show drama ──
+  { kind: "selfie",        group: "during",    title: "Selfie time",          desc: "Polaroid prompt into chat.",      icon: Camera },
+  { kind: "drunk_poll",    group: "during",    title: "How drunk are you?",   desc: "Vibe-check tally bar.",            icon: Wine },
+  { kind: "top3",          group: "during",    title: "Top 3 right now",      desc: "Live fan-aggregate podium.",       icon: Medal },
+  // ── Closers: results + curtain ──
+  { kind: "final",         group: "closers",   title: "Final results",        desc: "Scored leaderboard.",              icon: Trophy },
+  { kind: "thanks",        group: "closers",   title: "Thank you, Europe",    desc: "Closing card with confetti.",      icon: PartyPopper },
 ];
 
 export function AdminLiveControls({
@@ -276,51 +288,66 @@ export function AdminLiveControls({
           rooms.find((r) => r.code === room)?.name ?? "No room selected"
         }
       >
-        <ul className="flex flex-col gap-3">
-          {SHOTS.map(({ kind, title, desc, icon: Icon }) => {
-            const last = lastFired[kind];
-            const sending = busyShot === kind;
+        <div className="flex flex-col gap-5">
+          {(Object.keys(SHOT_GROUP_LABELS) as ShotGroup[]).map((group) => {
+            const groupShots = SHOTS.filter((s) => s.group === group);
+            if (groupShots.length === 0) return null;
             return (
-              <li key={kind}>
-                <button
-                  type="button"
-                  onClick={() => fireBroadcast(kind)}
-                  disabled={busyShot !== null}
-                  className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5
-                             bg-white/[0.03] ring-1 ring-white/8 hover:bg-white/[0.06] transition text-left
-                             disabled:opacity-60"
-                >
-                  <span className="shrink-0 grid place-items-center h-9 w-9 rounded-lg bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
-                    {/* Outline lucide variant — fills looked muddy
-                        against the flamingo tile (icons blob into
-                        one shape). The default stroke reads clean. */}
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block font-display text-sm text-white truncate">{title}</span>
-                    <span className="block text-[11px] text-white/50 leading-snug text-balance">{desc}</span>
-                    {last && !sending && (
-                      <span className="block text-[10px] text-white/35 mt-0.5">
-                        fired {timeAgo(last)}
-                      </span>
-                    )}
-                  </span>
-                  {sending ? (
-                    <Loader2 className="h-4 w-4 text-white/65 animate-spin shrink-0" />
-                  ) : (
-                    <motion.span
-                      whileTap={{ scale: 0.95 }}
-                      className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-white text-dark-blue
-                                 font-display text-xs h-8 px-3"
-                    >
-                      Post
-                    </motion.span>
-                  )}
-                </button>
-              </li>
+              <section key={group} className="flex flex-col gap-2.5">
+                <p className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-display px-1">
+                  {SHOT_GROUP_LABELS[group]}
+                </p>
+                <ul className="flex flex-col gap-2.5">
+                  {groupShots.map(({ kind, title, desc, icon: Icon }) => {
+                    const last = lastFired[kind];
+                    const sending = busyShot === kind;
+                    return (
+                      <li key={kind}>
+                        <button
+                          type="button"
+                          onClick={() => fireBroadcast(kind)}
+                          disabled={busyShot !== null}
+                          className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5
+                                     bg-white/[0.03] ring-1 ring-white/8 hover:bg-white/[0.06] transition text-left
+                                     disabled:opacity-60"
+                        >
+                          <span className="shrink-0 grid place-items-center h-9 w-9 rounded-lg bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <span className="flex-1 min-w-0">
+                            <span className="block font-display text-sm text-white truncate">{title}</span>
+                            <span className="block text-[11px] text-white/50 leading-snug text-balance">{desc}</span>
+                            {/* Status line: keep the "fired X ago" text
+                                mounted regardless of post state, append a
+                                Posting… badge when sending. Used to swap
+                                the whole line which shifted the row
+                                height on every click. */}
+                            <span className="block text-[10px] text-white/35 mt-0.5 inline-flex items-center gap-1.5">
+                              {last ? <>fired {timeAgo(last)}</> : <>not fired yet</>}
+                              {sending && (
+                                <span className="inline-flex items-center gap-1 text-flamingo/85">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  posting…
+                                </span>
+                              )}
+                            </span>
+                          </span>
+                          <motion.span
+                            whileTap={{ scale: 0.95 }}
+                            className="shrink-0 inline-flex items-center justify-center rounded-lg bg-white text-dark-blue
+                                       font-display text-xs h-8 w-[60px]"
+                          >
+                            {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Post"}
+                          </motion.span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
             );
           })}
-        </ul>
+        </div>
       </BottomSheet>
     </>
   );

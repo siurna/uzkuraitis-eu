@@ -416,10 +416,16 @@ const S = {
   push_help_android_title: { en: "On Android", lt: "„Android“" },
   push_help_android_1:     { en: "Tap the ⋮ menu in Chrome (or your browser).", lt: "„Chrome“ (ar kitoje naršyklėje) paspausk ⋮ meniu." },
   push_help_android_2:     { en: 'Choose "Install app" or "Add to Home Screen".', lt: "Pasirink „Install app“ arba „Add to Home Screen“." },
-  push_help_android_3:     { en: "Open the installed app and turn on notifications here.", lt: "Atidaryk įdiegtą aplikaciją ir įjunk pranešimus." },
+  push_help_android_3:     { en: "Open the app from your home screen.", lt: "Atidaryk programėlę iš pagrindinio ekrano." },
   push_help_desktop_title: { en: "On desktop", lt: "Kompiuteryje" },
   push_help_desktop_1:     { en: "Click the install icon in the address bar (or browser menu → Install).", lt: "Adreso juostoje paspausk įdiegimo ikoną (arba naršyklės meniu → „Install“)." },
   push_help_desktop_2:     { en: "Open the installed app and turn on notifications.", lt: "Atidaryk įdiegtą aplikaciją ir įjunk pranešimus." },
+  // Reworded desktop install steps for the install drawer (clearer
+  // than the notifications-flow copy: tells the user EXACTLY where
+  // the install icon hides instead of "address bar OR menu").
+  install_desktop_1:       { en: "Look at the right edge of the address bar for a small monitor icon (Chrome, Edge, Brave). Click it.", lt: "Adreso juostos dešiniajame krašte ieškok mažos monitoriaus ikonėlės („Chrome“, „Edge“, „Brave“). Spausk." },
+  install_desktop_2:       { en: 'Confirm "Install" in the dialog that pops up.', lt: "Atsidariusiame dialoge spausk „Install“." },
+  install_desktop_3:       { en: "Open the app from your dock or Start menu.", lt: "Atidaryk programėlę iš doko ar pradžios meniu." },
   push_help_other_title:   { en: "On this device", lt: "Šiame įrenginyje" },
   push_help_other_1:       { en: "Add this site to your home screen, then come back and try again.", lt: "Pridėk šį puslapį į pagrindinį ekraną ir bandyk dar kartą." },
   push_help_blocked_title: { en: "Allow notifications in your browser", lt: "Leisk pranešimus naršyklės nustatymuose" },

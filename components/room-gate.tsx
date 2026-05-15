@@ -201,7 +201,10 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
   };
 
   return (
-    <main className="relative min-h-dvh flex flex-col items-center justify-center px-4 py-12">
+    <main
+      className="relative min-h-dvh flex flex-col items-center px-4
+                 pt-[18dvh] pb-32 sm:justify-center sm:pt-12 sm:pb-12"
+    >
       {/* Splash-to-app handoff. The iOS/Android PWA splash is the
           manifest's solid `#10142a`; first paint of the gate paints
           a downward gradient on top so the splash colour appears to
@@ -328,26 +331,36 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
                     code.length < 6 ||
                     (!!TURNSTILE_SITE_KEY && !tsToken)
                   }
-                  className="rainbow-border rounded-2xl w-full block disabled:opacity-40 transition"
+                  className="rainbow-border rounded-2xl w-full block transition"
+                  // Opacity ramps with how many code characters have
+                  // been typed: 0 chars = 0.4 (clearly inactive), each
+                  // typed char adds 0.1, 6 chars = 1.0 (CTA fully lit).
+                  // Replaces the binary disabled:opacity-40 jump so the
+                  // user feels their progress.
+                  style={{
+                    opacity: pending
+                      ? 0.7
+                      : Math.min(1, 0.4 + Math.min(code.length, 6) * 0.1),
+                  }}
                 >
                   <span
                     className="block w-full h-12 rounded-[14px] grid place-items-center gap-2
-                               bg-white text-dark-blue font-display text-[19px] pt-[2px]"
+                               bg-white text-dark-blue font-display text-[19px] leading-none"
                   >
                     {pending ? (
-                      <span className="inline-flex items-center gap-2">
+                      <span className="inline-flex items-center gap-2 leading-none">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         {t(lang, "checking")}
                       </span>
                     ) : !!TURNSTILE_SITE_KEY && !tsToken ? (
-                      <span className="inline-flex items-center gap-2">
+                      <span className="inline-flex items-center gap-2 leading-none">
                         <Loader2 className="h-4 w-4 animate-spin text-flamingo" />
                         <span className="text-base text-dark-blue/75">
                           {t(lang, "ts_checking")}
                         </span>
                       </span>
                     ) : armedRef.current && code.length === 6 ? (
-                      <span className="inline-flex items-center gap-2">
+                      <span className="inline-flex items-center gap-2 leading-none">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         {t(lang, "ts_waiting_to_submit")}
                       </span>

@@ -116,53 +116,61 @@ function Banner({
 // pile rather than landing on hand-tuned grid coordinates. Driven
 // directly via refs + rAF (no React re-render per frame) so it stays
 // cheap. Cycle: ~5.5s settle + hold, then fade and reshuffle.
-// Ball tint variants. The headline 12 is golden; 10 and 8 get their
-// own subtle tints (silver-bronze) so the eye reads "the medal-tier
-// values are special" — top three at a glance even before the
-// number registers. The rest are the regular cool-white spheres.
-type BallTint = "gold" | "silver" | "bronze" | "white";
+// Ball tint variants. The medal-tier values (12, 10, 8) carry the
+// Eurovision brand palette so the eye sorts them at a glance:
+//   12 → flamingo pink (the brand's loudest colour, headline ball)
+//   10 → electric blue (the second-loudest)
+//    8 → violet purple (third)
+// Silver was unreadable against the banner's blue-purple wash —
+// looked like a slightly-dimmer regular ball. The rest are the cool
+// white spheres so the medal trio pops even harder.
+type BallTint = "flamingo" | "blue" | "violet" | "white";
 
 const VOTE_BALLS: ReadonlyArray<{
   v: string;
   size: number;
   tint: BallTint;
 }> = [
-  // Bigger across the board — the banner artwork slot can take it,
-  // and the user wants the pile to feel substantial. 12 leads at
-  // 66px, smallest (1) at 26px. Roughly 2.5× the old equalizer
-  // proportions.
-  { v: "12", size: 66, tint: "gold" },
-  { v: "10", size: 56, tint: "silver" },
-  { v: "8",  size: 50, tint: "bronze" },
-  { v: "7",  size: 44, tint: "white" },
-  { v: "6",  size: 40, tint: "white" },
-  { v: "5",  size: 36, tint: "white" },
-  { v: "4",  size: 33, tint: "white" },
-  { v: "3",  size: 30, tint: "white" },
-  { v: "2",  size: 28, tint: "white" },
-  { v: "1",  size: 26, tint: "white" },
+  // Even bigger than last round. 12 leads at 78px, smallest (1) at
+  // 30px — the biggest ball is roughly half the container height.
+  { v: "12", size: 78, tint: "flamingo" },
+  { v: "10", size: 66, tint: "blue" },
+  { v: "8",  size: 58, tint: "violet" },
+  { v: "7",  size: 50, tint: "white" },
+  { v: "6",  size: 46, tint: "white" },
+  { v: "5",  size: 42, tint: "white" },
+  { v: "4",  size: 38, tint: "white" },
+  { v: "3",  size: 35, tint: "white" },
+  { v: "2",  size: 32, tint: "white" },
+  { v: "1",  size: 30, tint: "white" },
 ];
 
 // Per-tint colour stops for the radial gradient + the rim + the
-// numeral fill. Kept inline so it's all in one place.
+// numeral fill. Eurovision brand palette: flamingo / electric blue /
+// violet for the medal tier, cool white for the rest.
 const BALL_TINTS: Record<
   BallTint,
   { stops: [string, string, string, string]; rim: string; text: string }
 > = {
-  gold: {
-    stops: ["#fff7d4", "#ffd166", "#c08418", "#8a5a0e"],
-    rim: "rgba(110, 60, 0, 0.55)",
-    text: "#3a1d00",
+  // 12 = flamingo pink (brand's loudest). White core highlight, deep
+  // magenta toward the equator, near-black at the rim for contrast.
+  flamingo: {
+    stops: ["#ffe1ee", "#ff6ab1", "#c01b6e", "#5a0a35"],
+    rim: "rgba(80, 8, 50, 0.6)",
+    text: "#3a0220",
   },
-  silver: {
-    stops: ["#fbfdff", "#d8e0ee", "#8794ad", "#525d75"],
-    rim: "rgba(40, 50, 70, 0.55)",
-    text: "#1a2030",
+  // 10 = electric blue.
+  blue: {
+    stops: ["#dceeff", "#5fa6ff", "#1c52cf", "#0a1f6a"],
+    rim: "rgba(8, 24, 80, 0.6)",
+    text: "#031040",
   },
-  bronze: {
-    stops: ["#ffe2c8", "#d99362", "#8d4d24", "#5a2c10"],
-    rim: "rgba(80, 38, 14, 0.55)",
-    text: "#2d1206",
+  // 8 = violet (the bridge between flamingo and blue on the brand
+  // gradient).
+  violet: {
+    stops: ["#efe2ff", "#b072ff", "#6f24cf", "#2e0d70"],
+    rim: "rgba(30, 8, 70, 0.6)",
+    text: "#170346",
   },
   white: {
     stops: ["#ffffff", "#eaeefc", "#a7afd2", "#8a93c4"],
@@ -241,26 +249,32 @@ function PointsBallSvg({ value, tint }: { value: string; tint: BallTint }) {
 // container sits flush against the banner's right edge and no ball
 // is clipped at the rounded corner. PHYS_H matches the lg banner
 // height so the pile fills the whole vertical column.
-const PHYS_W = 144;
+const PHYS_W = 168;
 const PHYS_H = 140;
 const PHYS_FLOOR = PHYS_H - 2;
-const PHYS_GRAVITY = 1100; // px / s²
-const PHYS_RESTITUTION_WALL = 0.42;
-const PHYS_RESTITUTION_BALL = 0.36;
-const PHYS_HORIZONTAL_FRICTION = 0.985;
-// |vy| under this on the floor → snap to 0. Bumped from 18 → 55 to
-// kill the jitter that used to set in once a ball got pinched between
-// two neighbours and the contact-resolution impulse kept
-// reanimating it just enough to fight gravity in convolution.
-const PHYS_REST_THRESHOLD = 55;
-// After collision resolution, any ball whose total speed is below
-// this AND is sitting on the floor gets its velocity pinned to 0.
-// Stops the slow drift / shimmy you'd otherwise see in a settled
-// pile when one ball passes a tiny impulse through three neighbours.
-const PHYS_SLEEP_SPEED = 22;
-const CYCLE_MS = 6500;
-const FADE_MS = 700;
-const STAGGER_MS = 130;
+const PHYS_GRAVITY = 1050; // px / s²
+const PHYS_RESTITUTION_WALL = 0.38;
+const PHYS_RESTITUTION_BALL = 0.30;
+const PHYS_HORIZONTAL_FRICTION = 0.97;
+// |vy| under this on the floor → snap to 0.
+const PHYS_REST_THRESHOLD = 90;
+// Stop-stayed-on-floor speed: any ball under this threshold for
+// more than PHYS_SLEEP_FRAMES consecutive frames gets pinned to
+// rest (vx=vy=0, y clamped to floor). Frame-counter approach
+// instead of single-frame check kills the jitter where contact
+// impulses keep re-animating a near-rest ball: a ball needs to
+// stay slow for ~250ms before sleep latches.
+const PHYS_SLEEP_SPEED = 35;
+const PHYS_SLEEP_FRAMES = 15; // ~250ms at 60fps
+// Longer + more sporadic. CYCLE_MS bumped 6.5s → 9s so the pile
+// gets to settle and breathe before the fade. FADE_MS doubled so
+// the crossfade between cycles is gentler. Stagger is now a min/max
+// range — each ball picks a random delay in that window so the
+// drop sequence varies cycle-to-cycle instead of metronoming.
+const CYCLE_MS = 9000;
+const FADE_MS = 1400;
+const STAGGER_MIN_MS = 80;
+const STAGGER_MAX_MS = 320;
 
 type BallSim = {
   v: string;
@@ -272,6 +286,8 @@ type BallSim = {
   vx: number;
   vy: number;
   spawnAt: number; // performance.now() when this ball starts integrating
+  slowFrames: number; // consecutive frames with speed < PHYS_SLEEP_SPEED
+  asleep: boolean; // once latched: skip integration, no jitter possible
 };
 
 function VoteBallsRain() {
@@ -293,6 +309,17 @@ function VoteBallsRain() {
 
   useEffect(() => {
     const start = performance.now();
+    // Build the spawn schedule by accumulating randomised gaps in
+    // entry-order — each ball's gap from the previous is a random
+    // pick in [STAGGER_MIN_MS, STAGGER_MAX_MS], so the drop sequence
+    // varies cycle-to-cycle and never metronomes.
+    const spawnTimes = new Array<number>(VOTE_BALLS.length);
+    let cursor = start;
+    for (let pos = 0; pos < VOTE_BALLS.length; pos++) {
+      spawnTimes[pos] = cursor;
+      const gap = STAGGER_MIN_MS + Math.random() * (STAGGER_MAX_MS - STAGGER_MIN_MS);
+      cursor += gap;
+    }
     stateRef.current = VOTE_BALLS.map((b, i) => {
       const entryPos = order.indexOf(i);
       return {
@@ -307,7 +334,9 @@ function VoteBallsRain() {
         y: -b.size - Math.random() * 30,
         vx: (Math.random() - 0.5) * 80,
         vy: 0,
-        spawnAt: start + entryPos * STAGGER_MS,
+        spawnAt: spawnTimes[entryPos],
+        slowFrames: 0,
+        asleep: false,
       };
     });
 
@@ -322,8 +351,13 @@ function VoteBallsRain() {
       const balls = stateRef.current;
 
       // Integrate each spawned ball, then resolve walls + floor.
+      // Asleep balls skip integration entirely — once latched, they
+      // don't accept new impulses. The cleanup pass below can wake
+      // them via overlap nudges if a fresh ball lands on top of an
+      // already-settled pile, but the steady-state pile holds.
       for (const b of balls) {
         if (t < b.spawnAt) continue;
+        if (b.asleep) continue;
         b.vy += PHYS_GRAVITY * dt;
         b.x += b.vx * dt;
         b.y += b.vy * dt;
@@ -360,6 +394,10 @@ function VoteBallsRain() {
           for (let j = i + 1; j < balls.length; j++) {
             const b = balls[j];
             if (t < b.spawnAt) continue;
+            // Both asleep + on the floor → no contact resolution
+            // needed (they're already in their final positions).
+            // Skipping is what kills the residual-impulse jitter.
+            if (a.asleep && b.asleep) continue;
             const dx = b.x - a.x;
             const dy = b.y - a.y;
             const distSq = dx * dx + dy * dy;
@@ -369,46 +407,72 @@ function VoteBallsRain() {
               const overlap = minD - dist;
               const nx = dx / dist;
               const ny = dy / dist;
-              // Mass-proportional separation (bigger ball = harder to
-              // shove). Approximate mass with area = πr².
               const ma = a.r * a.r;
               const mb = b.r * b.r;
               const total = ma + mb;
-              a.x -= nx * overlap * (mb / total);
-              a.y -= ny * overlap * (mb / total);
-              b.x += nx * overlap * (ma / total);
-              b.y += ny * overlap * (ma / total);
+              // Asleep balls don't move during separation — only the
+              // awake one displaces; sleeper holds. Prevents the
+              // micro-creep that woke sleepers up last round.
+              if (a.asleep) {
+                b.x += nx * overlap;
+                b.y += ny * overlap;
+              } else if (b.asleep) {
+                a.x -= nx * overlap;
+                a.y -= ny * overlap;
+              } else {
+                a.x -= nx * overlap * (mb / total);
+                a.y -= ny * overlap * (mb / total);
+                b.x += nx * overlap * (ma / total);
+                b.y += ny * overlap * (ma / total);
+              }
               const dvx = b.vx - a.vx;
               const dvy = b.vy - a.vy;
               const dotN = dvx * nx + dvy * ny;
               if (dotN < 0) {
                 const impulse = -dotN * (1 + PHYS_RESTITUTION_BALL);
-                const ia = (impulse * mb) / total;
-                const ib = (impulse * ma) / total;
-                a.vx -= ia * nx;
-                a.vy -= ia * ny;
-                b.vx += ib * nx;
-                b.vy += ib * ny;
+                if (a.asleep) {
+                  // Only b takes the full bounce.
+                  b.vx += impulse * nx;
+                  b.vy += impulse * ny;
+                } else if (b.asleep) {
+                  a.vx -= impulse * nx;
+                  a.vy -= impulse * ny;
+                } else {
+                  const ia = (impulse * mb) / total;
+                  const ib = (impulse * ma) / total;
+                  a.vx -= ia * nx;
+                  a.vy -= ia * ny;
+                  b.vx += ib * nx;
+                  b.vy += ib * ny;
+                }
               }
             }
           }
         }
       }
 
-      // Sleep pass: any ball sitting on the floor with a near-zero
-      // speed gets its velocities pinned to 0. Without this, a
-      // settled pile drifts by single px because the residual ball-
-      // collision impulses keep cycling through the cluster. Re-clamp
-      // y to the floor too — collision resolution might have nudged
-      // a ball up by sub-pixel into the air, restarting gravity.
+      // Sleep pass with a frame-counter latch. A ball needs to stay
+      // slow on the floor for PHYS_SLEEP_FRAMES consecutive frames
+      // before sleep latches; this kills the jitter where contact
+      // impulses keep re-animating a near-rest ball just enough to
+      // reset the slow-counter every frame. Once asleep, integration
+      // and collision impulses both skip the ball (see above), so
+      // the pile holds rock-still through the rest of the cycle.
       for (const b of balls) {
         if (t < b.spawnAt) continue;
+        if (b.asleep) continue;
         const onFloor = b.y + b.r >= PHYS_FLOOR - 0.5;
         const speed = Math.hypot(b.vx, b.vy);
         if (onFloor && speed < PHYS_SLEEP_SPEED) {
-          b.vx = 0;
-          b.vy = 0;
-          b.y = PHYS_FLOOR - b.r;
+          b.slowFrames += 1;
+          if (b.slowFrames >= PHYS_SLEEP_FRAMES) {
+            b.asleep = true;
+            b.vx = 0;
+            b.vy = 0;
+            b.y = PHYS_FLOOR - b.r;
+          }
+        } else {
+          b.slowFrames = 0;
         }
       }
 

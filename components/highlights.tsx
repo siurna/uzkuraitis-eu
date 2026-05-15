@@ -154,6 +154,10 @@ export function Highlights() {
           {/* Author row, now small, in the slot the quote used to
               live in. Avatar + name + country chip read as a caption
               under the headline quote. */}
+          {/* Author row + "+N daugiau" share the same baseline so the
+              eye reads "this person said it, and there are N more
+              like this" as one unit. The +N pinned right keeps the
+              card's bottom edge visually balanced. */}
           <div className="flex items-center gap-2">
             <span className="h-7 w-7 shrink-0 rounded-lg overflow-hidden ring-1 ring-white/30 bg-dark-blue-800">
               {topAvatar?.photo ? (
@@ -174,7 +178,7 @@ export function Highlights() {
                 </span>
               )}
             </span>
-            <p className="text-xs text-white/85 truncate leading-tight">
+            <p className="flex-1 min-w-0 text-xs text-white/85 truncate leading-tight">
               <span className="font-display">{top.name}</span>
               {topCountry && (
                 <span className="text-white/65">
@@ -183,19 +187,17 @@ export function Highlights() {
                 </span>
               )}
             </p>
+            {rest > 0 && (
+              <span
+                className="shrink-0 text-[10px] uppercase tracking-[0.18em]
+                           font-display text-white/85 drop-shadow-sm"
+                aria-hidden
+              >
+                +{rest} {t(lang, "highlights_more")}
+              </span>
+            )}
           </div>
         </div>
-        {/* +N daugiau pinned to the centre-right edge of the card,
-            vertically aligned with the headline quote. */}
-        {rest > 0 && (
-          <span
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] uppercase tracking-[0.18em]
-                       font-display text-white/85 drop-shadow-sm"
-            aria-hidden
-          >
-            +{rest} {t(lang, "highlights_more")}
-          </span>
-        )}
       </motion.button>
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title={t(lang, "highlights_title")}>
