@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: `${ICON_BUCKET}/social-cover.png`,
+        url: `${ICON_BUCKET}/social-cover.webp`,
         width: 1200,
         height: 630,
         alt: "Eurovision 2026 - live voting + reactions",
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     title: "Eurovision",
     description:
       "Live voting and reactions for the 70th Eurovision Song Contest.",
-    images: [`${ICON_BUCKET}/social-cover.png`],
+    images: [`${ICON_BUCKET}/social-cover.webp`],
   },
   // Favicon + apple-touch-icon. We point straight at the Supabase
   // bucket instead of the Next metadata-file convention so the
