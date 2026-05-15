@@ -91,8 +91,18 @@ export function AdminTriviaScheduler({
 
   // Shared POST → /api/admin/live/trivia. Both the timer-fire effect
   // below and the immediate resend path call this so the network +
-  // localStorage stamping live in one place.
+  // localStorage stamping live in one place. firingRef guards
+  // SYNCHRONOUSLY: if the timer expires the same tick the admin taps
+  // "Resend now", both call sites can pass the `firing` STATE gate
+  // (state updates are async) but only one wins the ref. We also
+  // clear `target` up-front so a still-armed timer can't fire a
+  // second time after this call resolves.
+  const firingRef = useRef(false);
   const fireCard = useCallback(async (code: string) => {
+    if (firingRef.current) return;
+    firingRef.current = true;
+    setTarget(null);
+    lastScheduled.current = code;
     setFiring(true);
     try {
       await fetch("/api/admin/live/trivia", {
@@ -109,6 +119,7 @@ export function AdminTriviaScheduler({
     } catch {
       /* admin can re-pick / re-resend to retry */
     } finally {
+      firingRef.current = false;
       setFiring(false);
     }
   }, []);

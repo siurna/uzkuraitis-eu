@@ -353,6 +353,16 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   // the cooldown, so a single tap doesn't double-fetch.
   const reactTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reactPending = useRef(false);
+  // In-flight optimistic reaction deltas, keyed `<msgId>:<emoji>`.
+  // The simple "is my mine flag already aligned with the broadcast?"
+  // dedup gets the COMMON case right (single tap → optimistic add →
+  // server broadcasts add → skip) but breaks on a rapid same-emoji
+  // double-tap: optimistic toggles back to mine=false before the
+  // first echo arrives, the guard sees mine=false, applies the add,
+  // and the count comes out off-by-one. Counting in-flight optimistic
+  // operations per (msgId, emoji, direction) and decrementing on
+  // each echo means the rapid toggle path nets to zero too.
+  const pendingReactsRef = useRef<Map<string, { add: number; remove: number }>>(new Map());
   const scheduleReactRefetch = useCallback(() => {
     if (reactTimer.current) {
       // Already in cooldown — note that more events arrived so the
@@ -707,6 +717,29 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         const reactorSession = ev.sessionId as string;
         const reactorName = ev.name as string;
         const isMine = reactorSession === mySession;
+        // Echo-of-our-own dedup. Each optimistic react() bumps a
+        // per-(msgId,emoji,direction) counter in pendingReactsRef;
+        // each matching broadcast for our session decrements it and
+        // skips applying. This handles the rapid same-emoji
+        // double-tap path too (add then remove): both echoes
+        // consume their own pending slot independently, no off-by-
+        // one. Cross-tab updates from OUR session that DIDN'T go
+        // through this client's react() will have no pending entry,
+        // so they fall through and apply normally.
+        if (isMine) {
+          const pkey = `${id}:${emoji}`;
+          const pcur = pendingReactsRef.current.get(pkey);
+          if (pcur && (added ? pcur.add > 0 : pcur.remove > 0)) {
+            if (added) pcur.add -= 1;
+            else pcur.remove -= 1;
+            if (pcur.add === 0 && pcur.remove === 0) {
+              pendingReactsRef.current.delete(pkey);
+            } else {
+              pendingReactsRef.current.set(pkey, pcur);
+            }
+            return;
+          }
+        }
         setMessages((prev) => {
           const idx = prev.findIndex((m) => m.id === id);
           if (idx < 0) return prev;
@@ -719,15 +752,6 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                 mine: nextReactions[emoji].mine,
               }
             : { count: 0, names: [] as string[], mine: false };
-          // Echo-of-our-own dedup. The react() handler does an
-          // optimistic update BEFORE the POST; the server then
-          // broadcasts the same fact back at us. Without this check
-          // we'd apply our own delta twice: count flickers from 0
-          // → 1 (optimistic) → 2 (broadcast). The optimistic update
-          // is the source of truth for `mine` — if `slot.mine`
-          // already reflects the delta's direction, skip.
-          if (isMine && added && slot.mine) return prev;
-          if (isMine && !added && !slot.mine) return prev;
           if (added) {
             slot.count += 1;
             slot.names.push(reactorName);
@@ -1190,6 +1214,15 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         return { ...m, reactions: r };
       }),
     );
+    // Record the optimistic delta so the broadcast echo handler can
+    // skip applying its own copy. Direction is determined by what we
+    // just did to slot.mine (see above): if `added` flipped true we
+    // just added; otherwise we just removed.
+    const pkey = `${msgId}:${emoji}`;
+    const pcur = pendingReactsRef.current.get(pkey) ?? { add: 0, remove: 0 };
+    if (added) pcur.add += 1;
+    else pcur.remove += 1;
+    pendingReactsRef.current.set(pkey, pcur);
     // Adding a reaction is engagement; removing one isn't (it's an
     // un-do, often a mistap). Only the add path bumps the mood ring.
     if (added) bumpVibe("reactionSent");

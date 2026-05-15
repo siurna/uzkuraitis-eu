@@ -268,7 +268,11 @@ export function ChatTriviaCard({
         /* server-side scoring missed — player still sees the reveal */
       }
     },
-    [card, phase, countryCode, roomCode, session, lang],
+    // `phase.kind` (not full `phase`) — the callback only reads the
+    // kind tag at the top guard; pulling the whole phase object in
+    // re-creates submit() on every locked/blinking transition for
+    // no benefit.
+    [card, phase.kind, countryCode, roomCode, session, lang],
   );
 
   if (!card) return null;
