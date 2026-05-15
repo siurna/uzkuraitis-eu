@@ -70,8 +70,12 @@ export function Highlights() {
 
   if (items.length === 0) return null;
 
+  // For text-y highlights only — `body?.trim()` for chat lines,
+  // the bingo emoji for strikes, EMPTY for GIF / image moments
+  // (those render their picture inline; "GIF" placeholder text
+  // sitting next to the actual image read as a duplicate label).
   const preview = (h: Highlight): string =>
-    h.kind === "bingo_strike" ? "🎯 Bingo!" : h.body?.trim() || (h.gifUrl ? "GIF" : "");
+    h.kind === "bingo_strike" ? "🎯 Bingo!" : h.body?.trim() ?? "";
   const top = items[0];
   const topPreview = preview(top);
   const topAvatar = top.avatarId ? getAvatar(top.avatarId) : null;
@@ -208,7 +212,7 @@ export function Highlights() {
       </motion.button>
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title={t(lang, "highlights_title")}>
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-2.5">
           {items.map((h) => {
             const avatar = h.avatarId ? getAvatar(h.avatarId) : null;
             const np = (h.meta as { nowPlaying?: string } | null)?.nowPlaying;
@@ -218,13 +222,39 @@ export function Highlights() {
             return (
               <li
                 key={h.id}
-                className="flex flex-col gap-2 rounded-2xl glass-surface p-3"
+                className="flex flex-col gap-3 rounded-2xl glass-surface p-4"
               >
-                {/* Header row: avatar + name + country chip + heart count.
-                    Reads as a chat-card header so the drawer feels like
-                    a screenshot of the moment, not a stats list. */}
-                <div className="flex items-center gap-3">
-                  <span className="h-9 w-9 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/12 bg-white/[0.06]">
+                {/* THE MOMENT comes first — it's what the row is about.
+                    For text moments: the line in big quote type, left-
+                    aligned against the container edge. For GIF / image
+                    moments: the actual asset (we never render "GIF" as
+                    a label — the picture is the moment, it just loads
+                    inline). For a bingo strike: the 🎯 + bingo line. */}
+                {isMedia ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={h.gifUrl!}
+                    alt=""
+                    className="rounded-xl ring-1 ring-white/10 max-h-64 w-full object-cover"
+                  />
+                ) : h.kind === "bingo_strike" ? (
+                  <p className="font-display text-xl text-white inline-flex items-center gap-2">
+                    <FluentEmoji glyph="🎯" size={20} />
+                    Bingo!
+                  </p>
+                ) : text ? (
+                  <p className="font-display text-[19px] text-white leading-snug text-balance">
+                    {/* Locale-aware quotes — matches the hero card up top. */}
+                    {lang === "lt" ? "„" : "“"}
+                    {text}
+                    {lang === "lt" ? "“" : "”"}
+                  </p>
+                ) : null}
+
+                {/* Author row — smaller now that the quote leads. Avatar,
+                    name, country chip, reaction count all on one line. */}
+                <div className="flex items-center gap-2.5">
+                  <span className="h-8 w-8 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/12 bg-white/[0.06]">
                     {avatar?.photo ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -234,47 +264,25 @@ export function Highlights() {
                         style={{ objectPosition: avatar.focal ? `${avatar.focal.x}% ${avatar.focal.y}%` : "50% 30%" }}
                       />
                     ) : (
-                      <span className="h-full w-full grid place-items-center text-xs font-display text-white/45">
+                      <span className="h-full w-full grid place-items-center text-[11px] font-display text-white/45">
                         {h.name.charAt(0).toUpperCase()}
                       </span>
                     )}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-display text-sm text-white/90 truncate leading-tight">
-                      {h.name}
-                    </p>
+                  <p className="flex-1 min-w-0 text-xs text-white/80 truncate leading-tight">
+                    <span className="font-display text-white/95">{h.name}</span>
                     {country && (
-                      <p className="text-[11px] text-white/55 leading-tight truncate">
+                      <span className="text-white/55">
+                        {" · "}
                         {country.flag} {countryName(country.code, lang)}
-                      </p>
+                      </span>
                     )}
-                  </div>
+                  </p>
                   <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange/15 ring-1 ring-orange/35 px-2 h-6 text-xs text-orange tabular-nums font-display">
                     <FluentEmoji glyph="❤️" size={12} />
                     {h.reactionCount}
                   </span>
                 </div>
-
-                {/* Body — quote or media. For GIF/image the picture IS
-                    the moment, so render it inline instead of an italic
-                    "GIF" placeholder. */}
-                {isMedia ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={h.gifUrl!}
-                    alt=""
-                    className="rounded-xl ring-1 ring-white/10 max-h-44 w-auto self-start"
-                  />
-                ) : h.kind === "bingo_strike" ? (
-                  <p className="text-sm text-white/85 inline-flex items-center gap-1.5">
-                    <FluentEmoji glyph="🎯" size={16} />
-                    Bingo!
-                  </p>
-                ) : text ? (
-                  <p className="text-[15px] text-white leading-snug text-balance pl-12">
-                    {text}
-                  </p>
-                ) : null}
               </li>
             );
           })}

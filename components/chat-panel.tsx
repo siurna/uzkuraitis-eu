@@ -1407,7 +1407,16 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     // focused the header is hidden (see RoomBody), so don't reserve its
     // space (otherwise there's an empty strip up top). Hidden (kept
     // mounted, scroll + state intact) when off the chat tab.
+    // `inert` while inactive: the chat panel stays in the DOM with
+    // display:none, but its <input type="text"> is still discoverable
+    // by iOS Safari's form-input scanner, which then renders the
+    // ‹ › ✓ keyboard accessory bar on UNRELATED inputs elsewhere on
+    // the page (most visibly the onboarding name field, which only
+    // has one input but iOS sees the chat one too and shows the
+    // "navigate between inputs" arrows). `inert` removes the entire
+    // subtree from focus + AX trees, so iOS skips it.
     <main
+      inert={!active}
       className={`fixed inset-x-0 z-10 flex justify-center px-4 ${
         dockHidden
           ? "pt-[env(safe-area-inset-top)]"
