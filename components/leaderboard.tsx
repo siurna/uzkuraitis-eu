@@ -90,16 +90,23 @@ export function Leaderboard({ code }: { code: string }) {
                       crown for #1, silver / bronze for 2 / 3, flamingo
                       pill for the rest. The room-position (10/14)
                       signal moved to the Results tab pill itself so
-                      this row stays clean. */}
+                      this row stays clean. The bg-* base tint stays
+                      the same; a subtle top-down gradient overlay
+                      gives each disc a touch of dimensionality so it
+                      reads like a real coin / chip rather than a flat
+                      filled circle. */}
                   <div
-                    className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center font-display text-base ${
+                    className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center font-display text-base
+                                ring-1 ring-black/10
+                                shadow-[inset_0_1px_0_rgba(255,255,255,0.45),inset_0_-2px_4px_rgba(0,0,0,0.18)]
+                                bg-gradient-to-b ${
                       i === 0
-                        ? "bg-gold text-black"
+                        ? "from-gold/100 to-gold/75 text-black"
                         : i === 1
-                          ? "bg-white/80 text-black"
+                          ? "from-white/95 to-white/65 text-black"
                           : i === 2
-                            ? "bg-orange text-black"
-                            : "bg-flamingo/80 text-white"
+                            ? "from-orange/100 to-orange/70 text-black"
+                            : "from-flamingo/95 to-flamingo/60 text-white"
                     }`}
                   >
                     {i === 0 ? <Crown className="h-5 w-5" /> : rank}
