@@ -11,7 +11,13 @@
  * step, and we want the SW to load instantly without a bundler.
  */
 
-const CACHE = "esc-2026-v4";
+// Bump the version any time this file changes — the `activate` handler
+// wipes every cache whose key doesn't match CACHE, which is also what
+// flushes a viewer's broken-SW state in the wild (a SW that's already
+// installed only updates when the byte-for-byte sw.js changes AND the
+// new SW takes control, which the `clients.claim()` below + a fresh
+// CACHE name together guarantee).
+const CACHE = "esc-2026-v5";
 // Icons live on a Supabase bucket now (see app/manifest.ts), so the
 // precache list only carries first-party static assets. The bucket
 // CDN handles the icon URLs on its own and we don't want a precache
@@ -62,8 +68,28 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/")) return;
   if (url.pathname.startsWith("/admin")) return;
   if (req.mode === "navigate") return;
+  // Next.js App Router fires RSC (React Server Component) fetches to
+  // the SAME page URL with `?_rsc=...` query strings, mode "cors".
+  // Those aren't "navigate" so the rule above doesn't catch them; the
+  // RSC header is the deterministic signal. If we cache/intercept
+  // them and one fails, the page module graph collapses and the
+  // Supabase client never gets a chance to open its websocket. Let
+  // them go straight to the network.
+  if (req.headers.get("RSC") === "1") return;
+  if (url.searchParams.has("_rsc")) return;
+  // Only cache real static assets — anything else (RSC streams, data
+  // fetches, etc) skips the SW entirely. Without this gate a failed
+  // cors fetch would fall into the cache-miss catch below and we'd
+  // hand respondWith an undefined value.
+  const STATIC_EXT = /\.(?:js|css|woff2?|ttf|otf|webp|png|jpe?g|svg|ico|gif|json|mp3|mp4|webm)$/i;
+  if (!STATIC_EXT.test(url.pathname)) return;
 
   // Cache-first for static assets, network fallback that fills cache.
+  // CRITICAL: every branch of this Promise chain MUST resolve to a
+  // valid Response — service workers throw "Failed to convert value
+  // to 'Response'" if respondWith ever sees undefined, and that kills
+  // every fetch the SW is intercepting downstream (including the JS
+  // chunks the app needs to wire up its websocket).
   event.respondWith(
     caches.match(req).then((hit) => {
       if (hit) return hit;
@@ -74,7 +100,7 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE).then((c) => c.put(req, clone)).catch(() => {});
           return res;
         })
-        .catch(() => hit);
+        .catch(() => hit ?? Response.error());
     }),
   );
 });
