@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { CodeInput } from "@/components/code-input";
 import { HeartbeatBackdrop } from "@/components/heartbeat-backdrop";
 import { InstallPwaPrompt } from "@/components/install-pwa-prompt";
+import { isInstalledPwa } from "@/components/notification-toggles";
 import { Logo2026 } from "@/components/logo-2026";
 import { TurnstileWidget } from "@/components/turnstile";
 
@@ -48,6 +49,18 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
   // feels like it caught up. Without this the user types six chars,
   // sees nothing happen for several seconds, and assumes it's broken.
   const armedRef = useRef(false);
+
+  // Track whether the install banner is going to render on this
+  // viewport. The gate's pull-up (pt-[18dvh] + pb-32 on mobile)
+  // ONLY makes sense when there's a CTA at the bottom to balance
+  // against — if the user has already installed the PWA, that
+  // banner is gone and pulling the logo up just stacks the form
+  // awkwardly against the top of the screen. SSR-safe: starts
+  // false, post-mount effect flips it to the real value.
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  useEffect(() => {
+    setShowInstallBanner(!isInstalledPwa());
+  }, []);
 
   // While we're checking a remembered room, we want to show a loading
   // splash instead of flashing the empty input box. Distinct from `pending`
@@ -232,21 +245,25 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
   return (
     <main
       className={`relative min-h-dvh flex flex-col items-center px-4 ${
-        // Two layouts depending on what we're showing:
-        //   - rehydrate state: justify-center INSIDE the safe-area
-        //     insets. On iOS PWA, min-h-dvh covers the full screen
-        //     INCLUDING the notch + home-indicator areas, so a plain
-        //     justify-center pulled the loader slightly low (the
-        //     "visible" middle is above the home indicator). Padding
-        //     each safe-area edge brings the centred axis back to the
-        //     visible viewport's middle.
-        //   - gate state: on mobile, pt-[18dvh] + pb-32 pull the
-        //     logo+form upward so they balance above the install
-        //     CTA sitting near the bottom edge. Desktop stays
-        //     justify-center, no banner to dodge.
+        // Three layout cases:
+        //   1. rehydrate state — justify-center INSIDE the safe-area
+        //      insets. On iOS PWA, min-h-dvh covers the notch + home-
+        //      indicator areas, so a plain justify-center centred
+        //      against geometric middle (slightly low against the
+        //      visible middle). Safe-area padding pulls it back.
+        //   2. gate + install banner showing — mobile pulls logo+form
+        //      up (pt-[18dvh] + pb-32) so they balance ABOVE the
+        //      install CTA that sits near the bottom. Desktop
+        //      ignores the pull (sm:justify-center).
+        //   3. gate + NO install banner (PWA already installed) —
+        //      no banner to balance against, so plain justify-center
+        //      on every viewport. The pull-up would just shove the
+        //      logo into the top of the screen for no reason.
         rehydrating
           ? "justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
-          : "pt-[18dvh] pb-32 sm:justify-center sm:pt-12 sm:pb-12"
+          : showInstallBanner
+            ? "pt-[18dvh] pb-32 sm:justify-center sm:pt-12 sm:pb-12"
+            : "justify-center py-12"
       }`}
     >
       {/* Splash-to-app handoff. The iOS/Android PWA splash is the
