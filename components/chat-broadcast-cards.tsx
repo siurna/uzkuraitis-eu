@@ -772,12 +772,12 @@ function ThanksCard({ lang }: { lang: Language }) {
             eyebrow + title follow. Hidden until placements have
             landed so we never paint a placeholder. */}
         {/* Crown of the card. When placements are entered, this is
-            the winning country's heart-flag. When the host fires
-            the closing card without yet typing official results
-            (often the case during a rehearsal), we still need
-            SOMETHING — fall back to a Fluent 🏆 in the same
-            chip-shape so the layout doesn't collapse and the
-            moment still reads as a celebration. */}
+            the winning country's heart-flag (sized up + a warm
+            outer glow so it reads as the focal moment, not a chip
+            in the margin). When the host fires the closing card
+            without yet typing official results (rehearsals,
+            previews), the fallback is a big Fluent 🏆 in the same
+            slot so the layout never collapses. */}
         <motion.div
           initial={{ opacity: 0, scale: 0.5, y: -10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -787,16 +787,16 @@ function ThanksCard({ lang }: { lang: Language }) {
             damping: 18,
             delay: 0.18,
           }}
-          className="mb-1 inline-flex items-center justify-center rounded-full p-1"
+          className="mb-2 inline-flex items-center justify-center"
           style={{
-            boxShadow:
-              "inset 0 1px 2px rgba(255,255,255,0.22), inset 0 -6px 14px rgba(0,0,0,0.35), 0 0 28px -6px oklch(85% 0.18 80 / 0.55)",
+            filter:
+              "drop-shadow(0 6px 18px oklch(85% 0.18 80 / 0.45)) drop-shadow(0 0 32px oklch(85% 0.2 80 / 0.35))",
           }}
         >
           {winner ? (
-            <HeartFlag code={winner} size="lg" />
+            <Flag code={winner} size="lg" className="h-16 w-auto" />
           ) : (
-            <FluentEmoji glyph="🏆" size={56} ariaLabel="winner" />
+            <FluentEmoji glyph="🏆" size={72} ariaLabel="winner" />
           )}
         </motion.div>
         <p className="text-[10px] uppercase tracking-[0.3em] font-display text-yellow/85">

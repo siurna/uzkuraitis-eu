@@ -209,15 +209,10 @@ export function NotificationToggles() {
           <PrefRow icon={Radio}         label={t(lang, "push_now_playing")}     sub={t(lang, "push_now_playing_sub")}     value={!!state.prefs.nowPlaying}     onChange={(v) => setPref("nowPlaying", v)} />
           <PrefRow icon={Vote}          label={t(lang, "push_voting_state")}    sub={t(lang, "push_voting_state_sub")}    value={!!state.prefs.votingState}    onChange={(v) => setPref("votingState", v)} />
           <PrefRow icon={Trophy}        label={t(lang, "push_results_tallied")} sub={t(lang, "push_results_tallied_sub")} value={!!state.prefs.resultsTallied} onChange={(v) => setPref("resultsTallied", v)} />
-          <button
-            type="button"
-            onClick={disable}
-            disabled={pending}
-            className="self-start text-xs text-white/55 hover:text-white inline-flex items-center gap-1.5 mt-1 px-1"
-          >
-            <BellOff className="h-3.5 w-3.5" />
-            {t(lang, "push_disable")}
-          </button>
+          {/* The "Išjungti" link used to live here as a redundant
+              opt-out. Toggling the master switch above already turns
+              everything off; no need for a second knob below the
+              prefs. */}
         </div>
       )}
     </div>
@@ -467,7 +462,7 @@ export function NotificationsCta() {
         className="pointer-events-none absolute inset-0"
         style={{ background: "linear-gradient(95deg, rgba(8,9,28,0.46) 0%, rgba(8,9,28,0.2) 38%, transparent 64%)" }}
       />
-      <div className="relative flex flex-col justify-center gap-1 pl-5 pr-[34%] py-5 min-h-[6.75rem]">
+      <div className="relative flex flex-col justify-center gap-1 pl-5 pr-[34%] py-6">
         <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/75 flex items-center gap-1.5">
           <Bell className="h-3 w-3" />
           {t(lang, "push_off")}
