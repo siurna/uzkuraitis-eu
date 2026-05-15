@@ -1,17 +1,14 @@
-import { findRoomByCodeWithToken } from "@/lib/rooms";
-import { RoomManage } from "@/components/room-manage";
+import { redirect } from "next/navigation";
 
 type RouteParams = Promise<{ code: string }>;
 type RouteSearch = Promise<{ key?: string | string[] }>;
 
-// Per-room admin page. Anyone with the right ?key= for this room may
-// manage it. No global passkey involved.
-//
-// This page is intentionally minimal — the host running a watch-along
-// only needs two toggles (voting / tally bets). Heavyweight admin
-// (rename, code change, danger zone, per-room results override) lives
-// at /admin/rooms/[code] for the global meta-admin.
-export default async function RoomManagePage({
+// Moved. /r/[code]/manage used to inherit the room shell (NameGate +
+// PresenceBar + tab bar + the lot), which buried the host controls
+// inside the voter UI. The page now lives at /host/[code] with its
+// own minimal admin chrome. This stub just forwards the ?key= along
+// so any bookmarked old URLs keep working.
+export default async function RoomManageRedirectPage({
   params,
   searchParams,
 }: {
@@ -21,44 +18,7 @@ export default async function RoomManagePage({
   const { code } = await params;
   const sp = await searchParams;
   const key = Array.isArray(sp.key) ? sp.key[0] : sp.key;
-
-  if (!key) return <Unauthorized code={code} />;
-  const room = await findRoomByCodeWithToken(code, key);
-  if (!room) return <Unauthorized code={code} />;
-
-  return (
-    <RoomManage
-      adminToken={room.adminToken}
-      room={{
-        code: room.code,
-        name: room.name,
-        votingEnabled: room.votingEnabled,
-        tallyEnabled: room.tallyEnabled,
-        commentatorEnabled: room.commentatorEnabled,
-        nowPlayingCode: room.nowPlayingCode,
-        showStatus: room.showStatus as
-          | "not_started"
-          | "in_progress"
-          | "break"
-          | "ended",
-      }}
-    />
-  );
-}
-
-function Unauthorized({ code }: { code: string }) {
-  return (
-    <main className="min-h-dvh flex items-center justify-center px-4 text-center">
-      <div className="glass-card rounded-2xl p-8 max-w-md flex flex-col gap-3">
-        <p className="font-display text-2xl gradient-text">Not authorised</p>
-        <p className="text-sm text-white/60">
-          This URL needs an admin key for room{" "}
-          <code className="font-mono">{code}</code>. Use the link the room
-          creator was given.
-        </p>
-      </div>
-    </main>
-  );
+  redirect(`/host/${code}${key ? `?key=${encodeURIComponent(key)}` : ""}`);
 }
 
 export const dynamic = "force-dynamic";

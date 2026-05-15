@@ -14,6 +14,9 @@ const PatchSchema = z.object({
   votingEnabled: z.boolean().optional(),
   /** When true, the room's leaderboard becomes visible. */
   tallyEnabled: z.boolean().optional(),
+  /** When true, the global trivia scheduler will drop mid-song
+   *  trivia cards into this room. */
+  triviaEnabled: z.boolean().optional(),
   name: z.string().trim().min(1).max(60).optional(),
   commentatorEnabled: z.boolean().optional(),
   code: z.string().length(6).optional(),

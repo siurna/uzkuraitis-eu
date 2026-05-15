@@ -111,50 +111,37 @@ export function Highlights() {
           aria-hidden
         />
         <div className="relative flex flex-col gap-3 p-5">
-          {/* Eyebrow / title — was a separate section header before. */}
-          <p className="text-[10px] uppercase tracking-[0.3em] text-white/90 font-display leading-tight flex items-center gap-1.5">
-            <Flame className="h-3 w-3" fill="currentColor" />
-            {t(lang, "highlights_title")}
-          </p>
-
-          {/* Author row */}
-          <div className="flex items-center gap-3">
-            <span className="h-11 w-11 shrink-0 rounded-2xl overflow-hidden ring-2 ring-white/30 bg-dark-blue-800">
-              {topAvatar?.photo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={optimizedSrc(topAvatar.photo, 128)}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  style={{ objectPosition: topAvatar.focal ? `${topAvatar.focal.x}% ${topAvatar.focal.y}%` : "50% 30%" }}
-                />
-              ) : (
-                <span className="h-full w-full grid place-items-center font-display text-base text-white bg-white/15">
-                  {top.name.charAt(0).toUpperCase()}
-                </span>
-              )}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-display text-base text-white leading-tight truncate drop-shadow-sm">
-                {top.name}
-              </p>
-              {topCountry && (
-                <p className="text-[11px] text-white/80 leading-tight truncate">
-                  {topCountry.flag} {countryName(topCountry.code, lang)}
-                </p>
-              )}
-            </div>
-            <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/20 ring-1 ring-white/30 px-2.5 h-7 text-sm text-white tabular-nums font-display">
-              <FluentEmoji glyph="❤️" size={14} />
+          {/* Top row — eyebrow + reaction count badge on the same
+              baseline. Icon switched to solid-tinted dark-amber so it
+              reads against the orange-pink wash instead of bleeding
+              into it. */}
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-white/95 font-display leading-tight flex items-center gap-1.5">
+              <Flame
+                className="h-3 w-3"
+                fill="#3a1505"
+                style={{ color: "#3a1505" }}
+              />
+              {t(lang, "highlights_title")}
+            </p>
+            <span
+              className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-full
+                         bg-white/25 ring-1 ring-white/40 px-2.5 h-6
+                         text-xs text-white tabular-nums font-display"
+            >
+              <FluentEmoji glyph="❤️" size={12} />
               {top.reactionCount}
             </span>
           </div>
-          {/* The quote itself */}
+
+          {/* The quote, now hero-sized in the slot that used to hold
+              the author. */}
           {topPreview && (
-            <p className="font-display text-lg text-white leading-snug text-balance drop-shadow-sm line-clamp-3">
+            <p className="font-display text-2xl text-white leading-snug text-balance drop-shadow-sm line-clamp-3 pr-20">
               “{topPreview}”
             </p>
           )}
+
           {top.gifUrl && top.kind !== "bingo_strike" && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -163,13 +150,46 @@ export function Highlights() {
               className="rounded-xl ring-1 ring-white/20 max-h-44 w-auto self-start"
             />
           )}
+
+          {/* Author row, now small, in the slot the quote used to
+              live in. Avatar + name + country chip read as a caption
+              under the headline quote. */}
+          <div className="flex items-center gap-2">
+            <span className="h-7 w-7 shrink-0 rounded-lg overflow-hidden ring-1 ring-white/30 bg-dark-blue-800">
+              {topAvatar?.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={optimizedSrc(topAvatar.photo, 64)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  style={{
+                    objectPosition: topAvatar.focal
+                      ? `${topAvatar.focal.x}% ${topAvatar.focal.y}%`
+                      : "50% 30%",
+                  }}
+                />
+              ) : (
+                <span className="h-full w-full grid place-items-center font-display text-[11px] text-white bg-white/15">
+                  {top.name.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </span>
+            <p className="text-xs text-white/85 truncate leading-tight">
+              <span className="font-display">{top.name}</span>
+              {topCountry && (
+                <span className="text-white/65">
+                  {" · "}
+                  {topCountry.flag} {countryName(topCountry.code, lang)}
+                </span>
+              )}
+            </p>
+          </div>
         </div>
-        {/* +N daugiau pinned bottom-right inside the card. Tap target
-            for the whole card is already the gallery; this label is
-            just the affordance hint. */}
+        {/* +N daugiau pinned to the centre-right edge of the card,
+            vertically aligned with the headline quote. */}
         {rest > 0 && (
           <span
-            className="absolute bottom-3 right-4 text-[10px] uppercase tracking-[0.18em]
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] uppercase tracking-[0.18em]
                        font-display text-white/85 drop-shadow-sm"
             aria-hidden
           >

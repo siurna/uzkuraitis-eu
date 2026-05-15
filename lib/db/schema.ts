@@ -28,6 +28,11 @@ export const rooms = pgTable(
     // results are entered. Lets a watch-along host delay scoring until
     // the show actually ends. Toggled via the magic admin link.
     tallyEnabled: boolean("tally_enabled").notNull().default(false),
+    // Whether the global admin's trivia scheduler should drop a
+    // trivia card into THIS room. Default on so existing rooms keep
+    // receiving them; per-room admin can flip it off if they want a
+    // trivia-free night.
+    triviaEnabled: boolean("trivia_enabled").notNull().default(true),
     // ISO 3166-1 alpha-2 lowercase. Used to ask voters where they think
     // this country will finish, scored separately from the top-10 ballot.
     homeCountryCode: varchar("home_country_code", { length: 2 })

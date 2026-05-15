@@ -27,12 +27,20 @@ import type { Language } from "@/lib/i18n";
 // the question. The server still has the durable answer in
 // trivia_answers; this component is just the surface.
 const LOCAL_KEY = (room: string) => `uzk_trivia_${room}`;
-const SEEN_KEY = (room: string) => `uzk_trivia_seen_${room}`;
 const LETTERS: ["A", "B", "C", "D"] = ["A", "B", "C", "D"];
 const FLASH_MS = 1400;
+// WWTBAM-style reveal beats. Tap → instant LOCK (the chosen plate
+// turns gold). After LOCK_HOLD_MS → BLINK (the gold pulses for
+// suspense). After BLINK_MS → ANSWERED (the chosen turns
+// emerald/red, the correct one always gets the emerald wash + "+2"
+// chip). Total dramatic build ~2.4s.
+const LOCK_HOLD_MS = 900;
+const BLINK_MS = 1500;
 
 type Phase =
   | { kind: "idle" }
+  | { kind: "locked"; choice: TriviaPick; correctIndex: TriviaPick }
+  | { kind: "blinking"; choice: TriviaPick; correctIndex: TriviaPick }
   | { kind: "answered"; choice: TriviaPick; correct: boolean; correctIndex: TriviaPick }
   // "Country left the stage before this player answered." Card stays
   // visible (so the question + correct answer can be read after the
@@ -118,43 +126,29 @@ export function ChatTriviaCard({
     }
   }, [card, countryCode, roomCode]);
 
-  // First-view flash gate. Two suppressors:
-  //   - player already answered (loaded from localStorage above)
-  //   - we've already shown the flash once for this country/room
-  // Otherwise: light up the breaking-news overlay, remember we did,
-  // and auto-dismiss after FLASH_MS. firedRef guards strict-mode
-  // double-invoke: previous version cleared the timeout on cleanup,
-  // so the second invoke saw the localStorage flag, bailed, and the
-  // flash overlay was left up forever with no setFlashing(false).
+  // First-view flash gate. The trivia card is mounted exactly when
+  // <DelayedTrivia/> flips ready=true (i.e. at the message's firesAt
+  // timestamp), so a fresh mount IS a genuine first view — we don't
+  // need localStorage gating, and removing it kills the strict-mode
+  // dev wedge that the previous rounds kept hitting (Mount 1 wrote
+  // SEEN_KEY synchronously, Mount 2 saw the flag and bailed without
+  // ever showing the overlay). One in-component ref guards the
+  // double-invoke per-mount; no cross-mount storage. Player who has
+  // already answered this country sees no flash (loaded from
+  // localStorage in the effect above sets phase=answered, which
+  // makes the flash redundant, so we skip it).
   const flashFiredRef = useRef(false);
   useEffect(() => {
     if (!card) return;
     if (flashFiredRef.current) return;
-    try {
-      const raw = localStorage.getItem(SEEN_KEY(roomCode));
-      const seen = raw ? (JSON.parse(raw) as Record<string, true>) : {};
-      if (seen[countryCode]) return;
-      // Player already has a stored answer → skip the flash and just
-      // mark seen so a future fresh load also lands directly.
-      const ansRaw = localStorage.getItem(LOCAL_KEY(roomCode));
-      const ansMap = ansRaw ? (JSON.parse(ansRaw) as Record<string, TriviaPick>) : {};
-      if (typeof ansMap[countryCode] === "number") {
-        seen[countryCode] = true;
-        localStorage.setItem(SEEN_KEY(roomCode), JSON.stringify(seen));
-        return;
-      }
-      flashFiredRef.current = true;
-      setFlashing(true);
-      seen[countryCode] = true;
-      localStorage.setItem(SEEN_KEY(roomCode), JSON.stringify(seen));
-      // No cleanup on the timeout — setFlashing on unmounted is a
-      // no-op in React 18+, and we'd rather guarantee the false-flip
-      // happens than have strict-mode cleanup nuke it.
-      window.setTimeout(() => setFlashing(false), FLASH_MS);
-    } catch {
-      /* ignore */
-    }
-  }, [card, countryCode, roomCode]);
+    if (phase.kind === "answered") return;
+    flashFiredRef.current = true;
+    setFlashing(true);
+    // No cleanup — setFlashing on unmount is a no-op in React 18+,
+    // and we'd rather guarantee the false-flip than have strict-mode
+    // cleanup cancel it.
+    window.setTimeout(() => setFlashing(false), FLASH_MS);
+  }, [card, phase.kind]);
 
   // Country navigated away while this player was still on the idle
   // buttons view → close the card (reveal answer, disable buttons).
@@ -178,13 +172,24 @@ export function ChatTriviaCard({
       } catch {
         /* ignore */
       }
-      // Optimistic reveal — the correct answer is on the client.
-      setPhase({
-        kind: "answered",
-        choice,
-        correct: choice === card.correctIndex,
-        correctIndex: card.correctIndex,
-      });
+      // WWTBAM dramatic reveal. Three beats:
+      //   1. LOCK (instant): chosen plate turns gold.
+      //   2. BLINK (after LOCK_HOLD_MS): gold flashes for suspense.
+      //   3. ANSWERED (after BLINK_MS): chosen → emerald/red,
+      //      correct → emerald + "+2" chip.
+      // No cleanup on the timeouts — setState on unmount is a no-op.
+      setPhase({ kind: "locked", choice, correctIndex: card.correctIndex });
+      window.setTimeout(() => {
+        setPhase({ kind: "blinking", choice, correctIndex: card.correctIndex });
+      }, LOCK_HOLD_MS);
+      window.setTimeout(() => {
+        setPhase({
+          kind: "answered",
+          choice,
+          correct: choice === card.correctIndex,
+          correctIndex: card.correctIndex,
+        });
+      }, LOCK_HOLD_MS + BLINK_MS);
       bumpVibe("triviaAnswered");
       try {
         await fetch(`/api/rooms/${roomCode}/trivia`, {
@@ -201,8 +206,15 @@ export function ChatTriviaCard({
 
   if (!card) return null;
   const block = card[lang] ?? card.en;
-  const showReveal = phase.kind === "answered" || phase.kind === "closed";
+  const interactive = phase.kind === "idle";
+  const locked = phase.kind === "locked";
+  const blinking = phase.kind === "blinking";
+  const revealed = phase.kind === "answered" || phase.kind === "closed";
   const closed = phase.kind === "closed";
+  const chosenIdx =
+    phase.kind === "locked" || phase.kind === "blinking" || phase.kind === "answered"
+      ? phase.choice
+      : null;
 
   return (
     <div
@@ -249,42 +261,58 @@ export function ChatTriviaCard({
           </p>
         </div>
 
-        {/* Answer plates. WWTBAM uses elongated hexagons with a gold
-            outline and a vertical divider between the letter and the
-            answer text. We fake the hex with strong rounded corners +
-            a gold gradient ring, and the divider is a 1px gold line. */}
+        {/* Answer plates. Locked → blinking → revealed flow:
+            - idle: blue plates with gold rim, tappable
+            - locked: chosen plate flips to gold (instant)
+            - blinking: chosen plate's gold pulses (via .uzk-blink)
+            - revealed: chosen → emerald/red, CORRECT plate always gets
+              the emerald wash + a "+2" chip so the player sees the
+              points even on a wrong guess. The closed branch (country
+              left the stage before answering) keeps the buttons inert
+              and just marks the correct one in muted white. */}
         <ul className="flex flex-col gap-2.5">
           {block.choices.map((c, i) => {
             const idx = i as TriviaPick;
             const isCorrect = idx === card.correctIndex;
-            const isPicked =
-              showReveal && phase.kind === "answered" && phase.choice === idx;
-            const revealTone =
-              showReveal && isCorrect
-                ? closed
+            const isChosen = chosenIdx === idx;
+            // Tone selector. Locked + blinking share the "chosen gold"
+            // styling; blinking adds the pulse class. Revealed splits
+            // into chosen/correct/dim. Idle is the default blue.
+            let revealTone =
+              "from-[#0e1f5e] to-[#0a1444] ring-yellow/45 hover:from-[#13288a] hover:to-[#0c1a5a] hover:ring-yellow/70";
+            if (locked || blinking) {
+              revealTone = isChosen
+                ? "from-yellow/85 to-amber-500/85 ring-yellow text-dark-blue"
+                : "from-[#0a1444]/70 to-[#050a26]/70 ring-white/10";
+            } else if (revealed) {
+              if (isCorrect) {
+                revealTone = closed
                   ? "from-white/[0.10] to-white/[0.04] ring-white/25"
-                  : "from-emerald-500/35 to-emerald-600/25 ring-emerald-300/70"
-                : showReveal && isPicked
-                  ? "from-error/35 to-error/20 ring-error/70"
-                  : showReveal
-                    ? "from-dark-blue-800/60 to-dark-blue-900/60 ring-white/10 text-white/55"
-                    : "from-[#0e1f5e] to-[#0a1444] ring-yellow/45 hover:from-[#13288a] hover:to-[#0c1a5a] hover:ring-yellow/70";
-            const letterTone =
-              showReveal && isCorrect
-                ? "text-emerald-200"
-                : showReveal && isPicked
-                  ? "text-red-200"
+                  : "from-emerald-500/40 to-emerald-700/30 ring-emerald-300/70";
+              } else if (isChosen) {
+                revealTone = "from-error/35 to-error/20 ring-error/70";
+              } else {
+                revealTone = "from-dark-blue-800/60 to-dark-blue-900/60 ring-white/10 text-white/55";
+              }
+            }
+            const letterTone = revealed && isCorrect
+              ? "text-emerald-200"
+              : revealed && isChosen
+                ? "text-red-200"
+                : (locked || blinking) && isChosen
+                  ? "text-dark-blue"
                   : "text-yellow";
             return (
               <li key={i}>
                 <button
                   type="button"
                   onClick={() => submit(idx)}
-                  disabled={showReveal}
+                  disabled={!interactive}
                   className={`group relative w-full flex items-stretch rounded-2xl
                               bg-gradient-to-b ${revealTone}
                               ring-1 transition transform-gpu
-                              ${showReveal ? "" : "active:scale-[0.99]"}
+                              ${interactive ? "active:scale-[0.99]" : ""}
+                              ${blinking && isChosen ? "uzk-trivia-blink" : ""}
                               shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_18px_-12px_rgba(255,196,84,0.5)]`}
                 >
                   {/* Letter cell. Fixed width so the divider stays at
@@ -293,9 +321,9 @@ export function ChatTriviaCard({
                     className={`shrink-0 w-12 grid place-items-center font-display text-base
                                 ${letterTone}`}
                   >
-                    {showReveal && isCorrect ? (
+                    {revealed && isCorrect ? (
                       <Check className="h-5 w-5" strokeWidth={2.5} />
-                    ) : showReveal && isPicked ? (
+                    ) : revealed && isChosen ? (
                       <X className="h-5 w-5" strokeWidth={2.5} />
                     ) : (
                       LETTERS[i]
@@ -310,32 +338,25 @@ export function ChatTriviaCard({
                         "linear-gradient(180deg, transparent 0%, oklch(80% 0.18 85 / 0.6) 50%, transparent 100%)",
                     }}
                   />
-                  <span className="flex-1 text-left text-sm font-display leading-snug text-white py-3 pl-3 pr-4">
+                  <span className={`flex-1 text-left text-sm font-display leading-snug py-3 pl-3 pr-4
+                                    ${(locked || blinking) && isChosen ? "text-dark-blue" : "text-white"}`}>
                     {c}
                   </span>
+                  {/* "+2" points chip — only on the correct answer
+                      once we're in the reveal phase. Sits in the
+                      right gutter, doesn't shift the answer text. */}
+                  {revealed && isCorrect && !closed && (
+                    <span className="self-center mr-3 shrink-0 inline-flex items-center justify-center
+                                     rounded-full bg-emerald-400/95 text-dark-blue font-display text-[11px]
+                                     px-2 h-6">
+                      +2
+                    </span>
+                  )}
                 </button>
               </li>
             );
           })}
         </ul>
-
-        {showReveal && (
-          <motion.p
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`text-xs font-display text-center ${
-              phase.kind === "answered" && phase.correct
-                ? "text-emerald-300"
-                : "text-white/65"
-            }`}
-          >
-            {closed
-              ? t(lang, "trivia_closed")
-              : phase.kind === "answered" && phase.correct
-                ? t(lang, "trivia_answered_correct")
-                : t(lang, "trivia_answered_wrong")}
-          </motion.p>
-        )}
       </div>
 
       {/* Breaking-news flash overlay. Lives on top of the millionaire

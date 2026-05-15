@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { Clock, Mic, Pause, Flag as FlagIcon } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { HeartFlag } from "@/components/flag";
 import { countries } from "@/lib/countries";
 
@@ -43,6 +45,12 @@ export function RoomLiveControls({
   const [status, setStatusState] = useState<ShowStatus>(initialStatus);
   const [nowPlaying, setNowPlaying] = useState<string | null>(initialNowPlaying);
   const [pending, start] = useTransition();
+  // Out-of-order tap confirm. Used to be a window.confirm() popping
+  // a system dialog; the bottom-sheet feels native to the rest of
+  // the app and lets the admin re-read the country in context.
+  const [confirmJump, setConfirmJump] = useState<
+    { code: string; name: string } | null
+  >(null);
 
   const run = (patch: LivePatch) => {
     start(async () => {
@@ -76,27 +84,42 @@ export function RoomLiveControls({
   const nextCountry = countries.find((c) => c.order === curOrder + 1) ?? null;
 
   // Tapping a country other than "the next one" is almost always a fat
-  // finger — confirm before jumping the running order around.
+  // finger — confirm via a bottom-sheet before jumping the running
+  // order around. (Used to be a window.confirm; the native dialog
+  // felt off-brand and didn't let the admin re-read the act.)
   const pickFromList = (c: { code: string; name: string }) => {
     if (c.code === nowPlaying) return;
     if (nextCountry && c.code !== nextCountry.code) {
-      if (!window.confirm(`Put ${c.name} on stage? That's not the next act in the running order.`)) return;
+      setConfirmJump(c);
+      return;
     }
     setNowPlayingDirect(c.code);
   };
 
+  // Bigger "Next up" CTA below the four status pills. Was a thin row
+  // tacked on at the bottom of the list; pulled up here so it's the
+  // FIRST thing the eye lands on after picking a status, and sized
+  // (h-14, font-base) so a finger lands on it confidently.
   const nextUpButton = status === "in_progress" && nextCountry && (
     <button
       type="button"
       disabled={pending}
       onClick={() => setNowPlayingDirect(nextCountry.code)}
-      className="flex items-center gap-2.5 h-11 rounded-xl bg-white text-dark-blue font-display text-sm px-3.5
+      className="flex items-center gap-3 h-14 rounded-2xl bg-white text-dark-blue font-display text-base px-4
+                 shadow-[0_8px_24px_-12px_rgba(255,255,255,0.4)]
                  disabled:opacity-60 active:scale-[0.99] transition"
     >
-      <HeartFlag code={nextCountry.code} size="sm" />
-      <span className="truncate">Next up → {nextCountry.name}</span>
+      <HeartFlag code={nextCountry.code} size="md" />
+      <span className="flex flex-col items-start leading-tight min-w-0">
+        <span className="text-[10px] uppercase tracking-[0.24em] text-dark-blue/60">
+          Next up
+        </span>
+        <span className="truncate">{nextCountry.name}</span>
+      </span>
       {nextCountry.order != null && (
-        <span className="ml-auto text-[11px] tabular-nums text-dark-blue/50">#{nextCountry.order}</span>
+        <span className="ml-auto text-xs tabular-nums text-dark-blue/55">
+          #{nextCountry.order}
+        </span>
       )}
     </button>
   );
@@ -126,6 +149,8 @@ export function RoomLiveControls({
           );
         })}
       </div>
+
+      {nextUpButton}
 
       {status === "in_progress" && (
         <div className="flex flex-col gap-1.5 max-h-[55vh] overflow-y-auto -mx-1 px-1">
@@ -176,8 +201,49 @@ export function RoomLiveControls({
         </div>
       )}
 
-      {/* "Next up" jump — below the list, so it's the natural "advance" tap */}
-      {nextUpButton}
+      <BottomSheet
+        open={!!confirmJump}
+        onClose={() => setConfirmJump(null)}
+        title="Skip ahead?"
+        sub={
+          confirmJump
+            ? `${confirmJump.name} isn't the next act in the running order.`
+            : ""
+        }
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setConfirmJump(null)}
+              className="text-white/70"
+            >
+              Cancel
+            </Button>
+            <div className="flex-1" />
+            <Button
+              type="button"
+              onClick={() => {
+                if (confirmJump) {
+                  setNowPlayingDirect(confirmJump.code);
+                }
+                setConfirmJump(null);
+              }}
+              className="bg-flamingo text-white hover:bg-flamingo/90 rounded-2xl"
+            >
+              {confirmJump
+                ? `Put ${confirmJump.name} on stage`
+                : "Put on stage"}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-white/65 leading-relaxed">
+          You're about to jump the running order. The Next-up button at the
+          top of this panel always picks the actual next act, in case this
+          tap was a fat finger.
+        </p>
+      </BottomSheet>
     </section>
   );
 }

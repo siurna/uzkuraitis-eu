@@ -17,7 +17,8 @@ import { TogglePill } from "@/components/ui/toggle-pill";
 type ToggleField =
   | "votingEnabled"
   | "tallyEnabled"
-  | "commentatorEnabled";
+  | "commentatorEnabled"
+  | "triviaEnabled";
 
 export type AdminRoomBooleanToggleProps = {
   code: string;

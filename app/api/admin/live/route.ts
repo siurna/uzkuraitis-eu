@@ -13,10 +13,8 @@ import {
   postSystemMessage,
   postNowPlayingMessage,
   postCommentatorMessage,
-  postTriviaMessage,
   showStatusAnnouncement,
 } from "@/lib/chat-system";
-import { getTriviaMerged } from "@/lib/trivia-store";
 
 // Global live controller. POST sets show status / now-playing on EVERY
 // room at once and broadcasts the change to each — for running the
@@ -124,14 +122,11 @@ export async function POST(req: Request) {
         if (next) {
           await postNowPlayingMessage(code, id, next);
           await postCommentatorMessage(code, id, next);
-          // Trivia card lands as its own chat message right after the
-          // now-playing banner (when the country has a question in the
-          // merged deck — file default + admin overrides). The card
-          // itself gates UI tap-state on the server's per-(room,
-          // session) answer record.
-          if (await getTriviaMerged(next)) {
-            await postTriviaMessage(code, id, next);
-          }
+          // Trivia is no longer fired here. The admin's live panel
+          // schedules it client-side (random 30s–2:30 after the
+          // country goes live) and POSTs to /admin/live/trivia when
+          // the timeout pops. Server stays cheap; nothing here
+          // holds a long-running timer.
           const c = getCountry(next);
           await pushToRoom(
             id,

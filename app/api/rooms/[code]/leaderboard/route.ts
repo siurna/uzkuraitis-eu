@@ -20,20 +20,25 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     tallyEnabled: room.tallyEnabled,
     highlightThreshold: room.highlightThreshold,
   });
+  // `placements` always rides along, even on the pre-reveal shape:
+  // ThanksCard's winning-country heart pulls placement #1 the moment
+  // the admin enters results, regardless of whether tallyEnabled has
+  // been flipped yet. The leaderboard ROWS themselves still wait on
+  // hasResults downstream (empty list, no per-voter scores leak).
   const body = !result.hasResults
     ? {
         hasResults: false as const,
         tallyEnabled: result.tallyEnabled,
         homeCountryCode: result.homeCountryCode,
+        homeCountryOfficialPlacement: result.homeCountryOfficialPlacement,
+        placements: result.placements,
+        facts: result.facts,
         leaderboard: [],
       }
     : {
         hasResults: true as const,
         homeCountryCode: result.homeCountryCode,
         homeCountryOfficialPlacement: result.homeCountryOfficialPlacement,
-        // Pulling these into the response lets MyResults render the
-        // per-bet "you said / it was" comparison without a separate
-        // /api/admin/results round-trip.
         placements: result.placements,
         facts: result.facts,
         leaderboard: result.leaderboard,

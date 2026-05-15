@@ -15,15 +15,34 @@ const ROOM_STORAGE_KEY = "uzk_admin_broadcast_room";
 // not a global audit trail.
 const FIRED_KEY = (room: string, kind: Kind) => `uzk_broadcast_${room}_${kind}`;
 
-const SHOTS: { kind: Kind; icon: LucideIcon; title: string; desc: string }[] = [
-  { kind: "welcome", icon: MessageCircle, title: "Hello folks", desc: "Drops the housekeeping notes you wrote into chat." },
-  { kind: "notifications", icon: Bell, title: "Turn on notifications", desc: "Nudge the room to enable push." },
-  { kind: "vote", icon: Vote, title: "Lines are open", desc: "Tell everyone to lock their TOP 10." },
-  { kind: "bet", icon: Dices, title: "Don't forget bonus bets", desc: "Reminder that bets are free points." },
-  { kind: "selfie", icon: Camera, title: "Selfie time", desc: "Prompts everyone to drop a selfie in chat." },
-  { kind: "drunk_poll", icon: BarChart3, title: "How drunk are you?", desc: "Vibe-check poll with a live tally bar." },
-  { kind: "top3", icon: Medal, title: "Room top 3 right now", desc: "Posts the live fan aggregate leaders." },
-  { kind: "final", icon: Sparkles, title: "Final results", desc: "Drops the scored leaderboard podium." },
+// Broadcasts grouped by where in the show they belong. Ordered
+// within each group by the natural sequence the admin would fire
+// them on the night.
+type ShotGroup = "beginning" | "during" | "closers";
+const GROUP_LABELS: Record<ShotGroup, string> = {
+  beginning: "Beginning",
+  during: "During the show",
+  closers: "Closers",
+};
+
+const SHOTS: {
+  kind: Kind;
+  group: ShotGroup;
+  icon: LucideIcon;
+  title: string;
+  desc: string;
+}[] = [
+  // ── Beginning: doors, housekeeping, opt-ins, voting open ──
+  { kind: "welcome", group: "beginning", icon: MessageCircle, title: "Hello folks", desc: "Drops the housekeeping notes you wrote into chat." },
+  { kind: "notifications", group: "beginning", icon: Bell, title: "Turn on notifications", desc: "Nudge the room to enable push." },
+  { kind: "bet", group: "beginning", icon: Dices, title: "Don't forget bonus bets", desc: "Reminder that bets are free points." },
+  { kind: "vote", group: "beginning", icon: Vote, title: "Lines are open", desc: "Tell everyone to lock their TOP 10." },
+  // ── During the show: vibe checks, mid-show drama ──
+  { kind: "selfie", group: "during", icon: Camera, title: "Selfie time", desc: "Prompts everyone to drop a selfie in chat." },
+  { kind: "drunk_poll", group: "during", icon: BarChart3, title: "How drunk are you?", desc: "Vibe-check poll with a live tally bar." },
+  { kind: "top3", group: "during", icon: Medal, title: "Room top 3 right now", desc: "Posts the live fan aggregate leaders." },
+  // ── Closers: results + curtain ──
+  { kind: "final", group: "closers", icon: Sparkles, title: "Final results", desc: "Drops the scored leaderboard podium." },
 ];
 
 // Admin › Live: one-tap chat announcements fired into a chosen room.
@@ -156,44 +175,59 @@ export function AdminBroadcasts({
         </label>
       )}
 
-      <div className="flex flex-col gap-4">
-        {SHOTS.map(({ kind, icon: Icon, title, desc }) => {
-          const last = lastFired[kind];
-          const sending = busy === kind;
+      <div className="flex flex-col gap-6">
+        {(Object.keys(GROUP_LABELS) as ShotGroup[]).map((group) => {
+          const groupShots = SHOTS.filter((s) => s.group === group);
+          if (groupShots.length === 0) return null;
           return (
-            <div
-              key={kind}
-              className="flex items-center gap-3 rounded-xl bg-white/[0.03] ring-1 ring-white/8 p-3"
-            >
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.06] ring-1 ring-white/10 text-white/60">
-                <Icon className="h-4 w-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="font-display text-sm text-white/90">{title}</p>
-                <p className="text-[13px] text-white/45 leading-snug mt-0.5 text-balance">{desc}</p>
-                <p className="text-[11px] text-white/40 mt-0.5 inline-flex items-center gap-1.5">
-                  {sending ? (
-                    <>
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Posting…
-                    </>
-                  ) : last ? (
-                    <>Last fired {timeAgo(last)}</>
-                  ) : (
-                    <>Not fired yet</>
-                  )}
-                </p>
+            <div key={group} className="flex flex-col gap-3">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-display px-1">
+                {GROUP_LABELS[group]}
+              </p>
+              <div className="flex flex-col gap-3">
+                {groupShots.map(({ kind, icon: Icon, title, desc }) => {
+                  const last = lastFired[kind];
+                  const sending = busy === kind;
+                  return (
+                    <div
+                      key={kind}
+                      className="flex items-center gap-3 rounded-xl bg-white/[0.03] ring-1 ring-white/8 p-3"
+                    >
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.06] ring-1 ring-white/10 text-white/60">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-display text-sm text-white/90">{title}</p>
+                        <p className="text-[13px] text-white/45 leading-snug mt-0.5 text-balance">{desc}</p>
+                        {/* Status line: keep the "Last fired X ago"
+                            text mounted regardless of the post state,
+                            and append a Posting… badge separately when
+                            sending. Used to swap the whole line which
+                            shifted the row height on every click. */}
+                        <p className="text-[11px] text-white/40 mt-0.5 inline-flex items-center gap-1.5">
+                          {last ? <>Last fired {timeAgo(last)}</> : <>Not fired yet</>}
+                          {sending && (
+                            <span className="inline-flex items-center gap-1 text-flamingo/85">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Posting…
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => fire(kind)}
+                        disabled={busy !== null || !room}
+                        className="shrink-0 self-center w-[64px]"
+                      >
+                        {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post"}
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={() => fire(kind)}
-                disabled={busy !== null || !room}
-                className="shrink-0 self-center"
-              >
-                {sending ? "…" : "Post"}
-              </Button>
             </div>
           );
         })}

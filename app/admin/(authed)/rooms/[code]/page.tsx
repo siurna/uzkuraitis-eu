@@ -18,6 +18,7 @@ import { AdminRoomCode } from "@/components/admin-room-code";
 import { AdminRoomManageLink } from "@/components/admin-room-manage-link";
 import { AdminRoomCommentatorToggle } from "@/components/admin-room-commentator-toggle";
 import { AdminRoomTallyToggle } from "@/components/admin-room-tally-toggle";
+import { AdminRoomTriviaToggle } from "@/components/admin-room-trivia-toggle";
 import { AdminRoomTriviaThreshold } from "@/components/admin-room-trivia-threshold";
 import { AdminRoomHighlightThreshold } from "@/components/admin-room-highlight-threshold";
 import { AdminSeed } from "@/components/admin-seed";
@@ -461,6 +462,10 @@ export default async function AdminRoomDetailPage({
               <AdminRoomCommentatorToggle
                 code={room.code}
                 initialEnabled={room.commentatorEnabled}
+              />
+              <AdminRoomTriviaToggle
+                code={room.code}
+                initialEnabled={room.triviaEnabled}
               />
               <AdminRoomTriviaThreshold
                 code={room.code}

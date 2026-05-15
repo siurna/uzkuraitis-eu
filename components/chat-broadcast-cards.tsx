@@ -846,6 +846,25 @@ function PodiumChip({
   );
 }
 
+// Paparazzi flash positions. Six localized bright spots staggered
+// around the viewport — top-left, top-right, mid-right, bottom-left,
+// bottom-right, centre-ish — each firing on a different delay so the
+// effect reads as a swarm of cameras flashing from different
+// angles. Sizes vary slightly so the closer cameras feel brighter.
+const PAPARAZZI_FLASHES: ReadonlyArray<{
+  top: string;
+  left: string;
+  size: string;
+  delay: number;
+}> = [
+  { top: "18%", left: "20%", size: "70vmin", delay: 0 },
+  { top: "12%", left: "78%", size: "60vmin", delay: 0.14 },
+  { top: "55%", left: "92%", size: "55vmin", delay: 0.28 },
+  { top: "82%", left: "22%", size: "65vmin", delay: 0.42 },
+  { top: "78%", left: "75%", size: "60vmin", delay: 0.56 },
+  { top: "45%", left: "48%", size: "85vmin", delay: 0.70 },
+];
+
 // "Selfie time" — opens the device camera directly via a hidden
 // <input type="file" capture="user"> so the OS jumps straight to the
 // front-facing camera (a regular file picker is the fallback when
@@ -968,46 +987,50 @@ function SelfieCard({ lang, messageId }: { lang: Language; messageId: string }) 
           the card) instead of covering the viewport. Same gotcha
           CLAUDE.md flags for PageTransition. pointer-events-none so
           the user can keep tapping the polaroid through it.
-          Four-flash burst with sharp peaks, quick decays, and
-          slightly different intensities — reads like a real
-          paparazzi flurry instead of a soft sine wave. linear ease
-          keeps each transition sharp-edged. */}
+          Multi-photographer flurry: six localized flashes positioned
+          around the viewport (top-left / top-right / mid-right /
+          bottom-left / bottom-right / centre-ish), each a radial
+          white-to-transparent burst staggered ~120-150ms apart. Reads
+          like a small swarm of cameras firing at different angles
+          rather than a single full-frame blast. */}
       {typeof document !== "undefined" &&
         createPortal(
           <AnimatePresence>
             {flash && (
               <motion.div
                 key="paparazzi"
-                initial={{ opacity: 0 }}
-                animate={{
-                  opacity: [
-                    0,    // t=0:    dark
-                    1,    // t=0.04: FLASH 1 peak
-                    0.85, // t=0.10: decay
-                    0.08, // t=0.20: between
-                    0.95, // t=0.24: FLASH 2 peak
-                    0.7,  // t=0.30: decay
-                    0.05, // t=0.42: between
-                    0.9,  // t=0.46: FLASH 3 peak
-                    0.55, // t=0.54: decay
-                    0.1,  // t=0.66: between
-                    0.75, // t=0.70: FLASH 4 peak (last, dimmer)
-                    0.25, // t=0.82: decay
-                    0,    // t=1:    out
-                  ],
-                }}
+                initial={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{
-                  duration: 1.3,
-                  times: [
-                    0, 0.04, 0.10, 0.20, 0.24, 0.30, 0.42, 0.46,
-                    0.54, 0.66, 0.70, 0.82, 1,
-                  ],
-                  ease: "linear",
-                }}
-                className="fixed inset-0 z-[80] pointer-events-none bg-white"
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="fixed inset-0 z-[80] pointer-events-none"
                 aria-hidden
-              />
+              >
+                {PAPARAZZI_FLASHES.map((spot, i) => (
+                  <motion.span
+                    key={i}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 1, 0.6, 0] }}
+                    transition={{
+                      duration: 0.42,
+                      delay: spot.delay,
+                      times: [0, 0.08, 0.25, 1],
+                      ease: "linear",
+                    }}
+                    style={{
+                      position: "absolute",
+                      top: spot.top,
+                      left: spot.left,
+                      width: spot.size,
+                      height: spot.size,
+                      transform: "translate(-50%, -50%)",
+                      background:
+                        "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.85) 22%, rgba(255,255,255,0.3) 55%, rgba(255,255,255,0) 78%)",
+                      filter: "blur(6px)",
+                      mixBlendMode: "screen",
+                    }}
+                  />
+                ))}
+              </motion.div>
             )}
           </AnimatePresence>,
           document.body,

@@ -116,35 +116,70 @@ function Banner({
 // pile rather than landing on hand-tuned grid coordinates. Driven
 // directly via refs + rAF (no React re-render per frame) so it stays
 // cheap. Cycle: ~5.5s settle + hold, then fade and reshuffle.
+// Ball tint variants. The headline 12 is golden; 10 and 8 get their
+// own subtle tints (silver-bronze) so the eye reads "the medal-tier
+// values are special" — top three at a glance even before the
+// number registers. The rest are the regular cool-white spheres.
+type BallTint = "gold" | "silver" | "bronze" | "white";
+
 const VOTE_BALLS: ReadonlyArray<{
   v: string;
   size: number;
-  gold?: boolean;
+  tint: BallTint;
 }> = [
-  // Sizes scale roughly with the point value so the eye reads the
-  // pile as a hierarchy (12 = headline ball, 1 = pebble). The golden
-  // 12 leads everything by a wide margin. Sized for the banner's
-  // ~140px-tall artwork slot — 12 alone fills ~⅓ of the column.
-  { v: "12", size: 54, gold: true },
-  { v: "10", size: 46 },
-  { v: "8",  size: 40 },
-  { v: "7",  size: 36 },
-  { v: "6",  size: 33 },
-  { v: "5",  size: 30 },
-  { v: "4",  size: 28 },
-  { v: "3",  size: 26 },
-  { v: "2",  size: 24 },
-  { v: "1",  size: 22 },
+  // Bigger across the board — the banner artwork slot can take it,
+  // and the user wants the pile to feel substantial. 12 leads at
+  // 66px, smallest (1) at 26px. Roughly 2.5× the old equalizer
+  // proportions.
+  { v: "12", size: 66, tint: "gold" },
+  { v: "10", size: 56, tint: "silver" },
+  { v: "8",  size: 50, tint: "bronze" },
+  { v: "7",  size: 44, tint: "white" },
+  { v: "6",  size: 40, tint: "white" },
+  { v: "5",  size: 36, tint: "white" },
+  { v: "4",  size: 33, tint: "white" },
+  { v: "3",  size: 30, tint: "white" },
+  { v: "2",  size: 28, tint: "white" },
+  { v: "1",  size: 26, tint: "white" },
 ];
 
-function PointsBallSvg({ value, gold }: { value: string; gold?: boolean }) {
+// Per-tint colour stops for the radial gradient + the rim + the
+// numeral fill. Kept inline so it's all in one place.
+const BALL_TINTS: Record<
+  BallTint,
+  { stops: [string, string, string, string]; rim: string; text: string }
+> = {
+  gold: {
+    stops: ["#fff7d4", "#ffd166", "#c08418", "#8a5a0e"],
+    rim: "rgba(110, 60, 0, 0.55)",
+    text: "#3a1d00",
+  },
+  silver: {
+    stops: ["#fbfdff", "#d8e0ee", "#8794ad", "#525d75"],
+    rim: "rgba(40, 50, 70, 0.55)",
+    text: "#1a2030",
+  },
+  bronze: {
+    stops: ["#ffe2c8", "#d99362", "#8d4d24", "#5a2c10"],
+    rim: "rgba(80, 38, 14, 0.55)",
+    text: "#2d1206",
+  },
+  white: {
+    stops: ["#ffffff", "#eaeefc", "#a7afd2", "#8a93c4"],
+    rim: "rgba(40, 40, 80, 0.45)",
+    text: "#15163d",
+  },
+};
+
+function PointsBallSvg({ value, tint }: { value: string; tint: BallTint }) {
   // viewBox is 100×100; circle centred at (50, 50) with r=46 leaves a
   // 4-unit edge for the soft outer shadow inside the svg bounds.
   // The numeral sits dead-centre via dominant-baseline. Specular
   // highlight is a pale ellipse over the top-left — same trick the
   // real Eurovision points balls use on the broadcast.
-  const fillId = gold ? "uzk-ball-gold" : "uzk-ball-white";
-  const shadowId = gold ? "uzk-ball-shadow-gold" : "uzk-ball-shadow-white";
+  const fillId = `uzk-ball-${tint}`;
+  const shadowId = `uzk-ball-shadow-${tint}`;
+  const t = BALL_TINTS[tint];
   return (
     <svg
       viewBox="0 0 100 100"
@@ -155,50 +190,28 @@ function PointsBallSvg({ value, gold }: { value: string; gold?: boolean }) {
     >
       <defs>
         <radialGradient id={fillId} cx="35%" cy="28%" r="78%">
-          {gold ? (
-            <>
-              <stop offset="0%" stopColor="#fff7d4" />
-              <stop offset="40%" stopColor="#ffd166" />
-              <stop offset="80%" stopColor="#c08418" />
-              <stop offset="100%" stopColor="#8a5a0e" />
-            </>
-          ) : (
-            <>
-              <stop offset="0%" stopColor="#ffffff" />
-              <stop offset="55%" stopColor="#eaeefc" />
-              <stop offset="100%" stopColor="#8a93c4" />
-            </>
-          )}
+          <stop offset="0%" stopColor={t.stops[0]} />
+          <stop offset="40%" stopColor={t.stops[1]} />
+          <stop offset="80%" stopColor={t.stops[2]} />
+          <stop offset="100%" stopColor={t.stops[3]} />
         </radialGradient>
         <radialGradient id={shadowId} cx="50%" cy="100%" r="55%">
           <stop offset="0%" stopColor="rgba(0,0,0,0.55)" />
           <stop offset="100%" stopColor="rgba(0,0,0,0)" />
         </radialGradient>
       </defs>
-      {/* Soft drop shadow under the ball. */}
       <ellipse cx="50" cy="94" rx="36" ry="6" fill={`url(#${shadowId})`} />
-      {/* Sphere. */}
       <circle cx="50" cy="50" r="46" fill={`url(#${fillId})`} />
-      {/* Outer rim hairline for definition against bright banner fills. */}
       <circle
         cx="50"
         cy="50"
         r="46"
         fill="none"
-        stroke={gold ? "rgba(110, 60, 0, 0.55)" : "rgba(40, 40, 80, 0.45)"}
+        stroke={t.rim}
         strokeWidth="1.5"
       />
-      {/* Specular highlight — soft ellipse top-left. */}
-      <ellipse
-        cx="36"
-        cy="30"
-        rx="20"
-        ry="13"
-        fill="rgba(255,255,255,0.55)"
-      />
+      <ellipse cx="36" cy="30" rx="20" ry="13" fill="rgba(255,255,255,0.55)" />
       <ellipse cx="32" cy="26" rx="8" ry="5" fill="rgba(255,255,255,0.85)" />
-      {/* Numeral. text-anchor=middle + dominant-baseline=central
-          centres the digits regardless of count (1 vs 12). */}
       <text
         x="50"
         y="54"
@@ -207,7 +220,7 @@ function PointsBallSvg({ value, gold }: { value: string; gold?: boolean }) {
         fontFamily="var(--font-display), system-ui, sans-serif"
         fontWeight="900"
         fontSize={value.length > 1 ? 46 : 54}
-        fill={gold ? "#3a1d00" : "#15163d"}
+        fill={t.text}
         style={{
           fontVariantNumeric: "tabular-nums",
           paintOrder: "stroke",
@@ -235,7 +248,16 @@ const PHYS_GRAVITY = 1100; // px / s²
 const PHYS_RESTITUTION_WALL = 0.42;
 const PHYS_RESTITUTION_BALL = 0.36;
 const PHYS_HORIZONTAL_FRICTION = 0.985;
-const PHYS_REST_THRESHOLD = 18; // |vy| under this on the floor → settle
+// |vy| under this on the floor → snap to 0. Bumped from 18 → 55 to
+// kill the jitter that used to set in once a ball got pinched between
+// two neighbours and the contact-resolution impulse kept
+// reanimating it just enough to fight gravity in convolution.
+const PHYS_REST_THRESHOLD = 55;
+// After collision resolution, any ball whose total speed is below
+// this AND is sitting on the floor gets its velocity pinned to 0.
+// Stops the slow drift / shimmy you'd otherwise see in a settled
+// pile when one ball passes a tiny impulse through three neighbours.
+const PHYS_SLEEP_SPEED = 22;
 const CYCLE_MS = 6500;
 const FADE_MS = 700;
 const STAGGER_MS = 130;
@@ -243,7 +265,7 @@ const STAGGER_MS = 130;
 type BallSim = {
   v: string;
   size: number;
-  gold?: boolean;
+  tint: BallTint;
   r: number;
   x: number;
   y: number;
@@ -276,7 +298,7 @@ function VoteBallsRain() {
       return {
         v: b.v,
         size: b.size,
-        gold: b.gold,
+        tint: b.tint,
         r: b.size / 2,
         // Random initial x within the container (keeping at least r
         // away from each wall) + a small horizontal nudge so balls
@@ -328,9 +350,10 @@ function VoteBallsRain() {
 
       // Circle-on-circle: resolve overlap by displacing both halves
       // along the contact normal, then exchange the normal component
-      // of velocity for a soft elastic-ish bounce. Two passes so a
-      // ball wedged between two others doesn't poke through.
-      for (let pass = 0; pass < 2; pass++) {
+      // of velocity for a soft elastic-ish bounce. Three passes so a
+      // ball wedged between two others doesn't poke through — and so
+      // a settling pile has enough time to converge.
+      for (let pass = 0; pass < 3; pass++) {
         for (let i = 0; i < balls.length; i++) {
           const a = balls[i];
           if (t < a.spawnAt) continue;
@@ -369,6 +392,23 @@ function VoteBallsRain() {
               }
             }
           }
+        }
+      }
+
+      // Sleep pass: any ball sitting on the floor with a near-zero
+      // speed gets its velocities pinned to 0. Without this, a
+      // settled pile drifts by single px because the residual ball-
+      // collision impulses keep cycling through the cluster. Re-clamp
+      // y to the floor too — collision resolution might have nudged
+      // a ball up by sub-pixel into the air, restarting gravity.
+      for (const b of balls) {
+        if (t < b.spawnAt) continue;
+        const onFloor = b.y + b.r >= PHYS_FLOOR - 0.5;
+        const speed = Math.hypot(b.vx, b.vy);
+        if (onFloor && speed < PHYS_SLEEP_SPEED) {
+          b.vx = 0;
+          b.vy = 0;
+          b.y = PHYS_FLOOR - b.r;
         }
       }
 
@@ -421,7 +461,7 @@ function VoteBallsRain() {
             willChange: "transform, opacity",
           }}
         >
-          <PointsBallSvg value={ball.v} gold={ball.gold} />
+          <PointsBallSvg value={ball.v} tint={ball.tint} />
         </span>
       ))}
     </span>

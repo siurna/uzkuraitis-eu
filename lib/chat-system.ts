@@ -82,25 +82,19 @@ export async function postSystemMessage(
   }
 }
 
-// Inline trivia card posted as a chat message when the on-stage
-// country has a trivia entry. We snapshot the full question payload
-// into `meta` so the card survives admin deck edits in flight: the
-// client always renders the question that was live when the card was
-// posted. Quiet on purpose — trivia firing shouldn't bump the
-// chat-unread badge; the card is its own attention signal.
+// Inline trivia card posted as a chat message. Snapshots the full
+// question payload into `meta` so the card survives admin deck edits
+// in flight: the client always renders the question that was live
+// when the card was posted. Quiet on purpose — trivia firing
+// shouldn't bump the chat-unread badge; the card is its own
+// attention signal.
 //
-// `meta.firesAt` is a random ISO timestamp between 30s and 3:30 from
-// now. The message is INSERTED + BROADCAST immediately, but the chat
-// row component (<DelayedTrivia/>) renders nothing until firesAt
-// lands. This lets us keep the durable record + the existing chat
-// fan-out plumbing while still surprising viewers with a "breaking
-// news" trivia card mid-song instead of dropping it on the same
-// frame as the now-playing banner. Vercel function timeouts (max 60s
-// hobby, 60s default Pro) make a server-side setTimeout for up to
-// 210s impractical; the client-clock approach has zero infra cost.
-const TRIVIA_MIN_DELAY_MS = 30 * 1000;
-const TRIVIA_MAX_DELAY_MS = 3 * 60 * 1000 + 30 * 1000; // 3:30
-
+// CALLED from the admin's browser, NOT from the now-playing flip.
+// The admin live panel runs its own setTimeout (30s–2:30 after a
+// country takes the stage) and POSTs to /api/admin/live/trivia,
+// which calls into here. Keeps the dramatic mid-song reveal without
+// a Vercel function ever holding a long-running timer — the
+// admin's tab is the scheduler.
 export async function postTriviaMessage(
   roomCode: string,
   roomId: string,
@@ -109,10 +103,6 @@ export async function postTriviaMessage(
   try {
     const card = await getTriviaMerged(countryCode);
     if (!card) return;
-    const delay =
-      TRIVIA_MIN_DELAY_MS +
-      Math.floor(Math.random() * (TRIVIA_MAX_DELAY_MS - TRIVIA_MIN_DELAY_MS));
-    const firesAt = new Date(Date.now() + delay).toISOString();
     const [row] = await db
       .insert(chatMessages)
       .values({
@@ -123,7 +113,6 @@ export async function postTriviaMessage(
         body: null,
         meta: {
           countryCode,
-          firesAt,
           correctIndex: card.correctIndex,
           en: { question: card.en.question, choices: [...card.en.choices] },
           lt: { question: card.lt.question, choices: [...card.lt.choices] },
