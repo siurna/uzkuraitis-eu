@@ -85,7 +85,7 @@ const Item = zv4.object({
   text: zv4
     .string()
     .describe(
-      "When explain=true, a short (≤200 chars) explanation in the target language. When explain=false, empty string.",
+      "When explain=true, an explanation in the target language (≤500 chars, but use whatever's needed to render the whole gloss — don't truncate mid-sentence). When explain=false, empty string.",
     ),
 });
 const Batch = zv4.object({
@@ -352,7 +352,7 @@ async function _handlePost(req: Request) {
               placed.add(idx);
               const hit: CachedHit = {
                 explain: !!r.explain,
-                text: r.explain ? (r.text ?? "").slice(0, 240) : "",
+                text: r.explain ? (r.text ?? "").slice(0, 600) : "",
               };
               memSet(keyOf(missingKeys[idx]), hit);
               results[missingIdx[idx]] = hit;

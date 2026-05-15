@@ -619,6 +619,44 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       // the payload fall back to the refetch.
       if (ev.message) {
         const m = ev.message;
+        // Commentator (bot) messages carry `meta.firesAt` — the
+        // server holds them off-screen until the now-playing
+        // takeover finishes (~5.5s). Schedule the append for that
+        // moment instead of landing immediately, so the bot's line
+        // doesn't fight the takeover for attention. Late arrivals
+        // (firesAt already in the past, e.g. after a reload) fall
+        // through and append now.
+        const firesAt = (m.meta as { firesAt?: string } | null)?.firesAt;
+        if (firesAt) {
+          const delay = Date.parse(firesAt) - Date.now();
+          if (delay > 0) {
+            window.setTimeout(() => {
+              // Re-dispatch as a synthetic chat:new at fires-at time.
+              // No coupling to the broadcast pipeline — we just want
+              // this branch to run again with the delay passed, so
+              // we open-code an append here mirroring the path below.
+              setMessages((prev) => {
+                if (prev.some((x) => x.id === m.id)) return prev;
+                const appended: Message = {
+                  id: m.id,
+                  sessionId: m.sessionId,
+                  name: m.name,
+                  avatarId: m.avatarId,
+                  kind: m.kind as MessageKind,
+                  body: m.body,
+                  gifUrl: m.gifUrl,
+                  replyTo: m.replyTo,
+                  meta: (m.meta ?? null) as Record<string, unknown> | null,
+                  createdAt: m.createdAt,
+                  reactions: {},
+                };
+                const cap = RENDER_CAP + loadedHistoryRef.current;
+                return [...prev, appended].slice(-cap);
+              });
+            }, delay);
+            return;
+          }
+        }
         setMessages((prev) => {
           // 1) Already in the list (echo for someone else's POST that
           //    we GET-loaded, or duplicate broadcast) — skip.

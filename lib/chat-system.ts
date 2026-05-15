@@ -279,6 +279,15 @@ export async function postCommentatorMessage(
     const line = byKey.get(countryCode)?.trim();
     if (!name || !line) return false; // bot not set up, or nothing to say for this country
     const photo = byKey.get(COMMENTATOR_PHOTO_KEY)?.trim() || null;
+    // Hold the commentator line off-screen until the now-playing
+    // takeover finishes (~5.2s hold + ~0.5s fade out in
+    // components/now-playing-takeover.tsx). Without this, the bot's
+    // chat row pops into the thread while the takeover is still
+    // washing across the screen — two attention-grabs at once. The
+    // chat-row's DelayedTrivia-style gate watches `meta.firesAt`
+    // and renders nothing until the timestamp passes.
+    const TAKEOVER_HOLD_MS = 5500;
+    const firesAt = new Date(Date.now() + TAKEOVER_HOLD_MS).toISOString();
     const [row] = await db
       .insert(chatMessages)
       .values({
@@ -287,7 +296,12 @@ export async function postCommentatorMessage(
         name,
         kind: "text",
         body: line,
-        meta: { commentator: true, commentatorPhoto: photo, nowPlaying: countryCode },
+        meta: {
+          commentator: true,
+          commentatorPhoto: photo,
+          nowPlaying: countryCode,
+          firesAt,
+        },
       })
       .returning();
     await broadcastToRoom(roomCode, {

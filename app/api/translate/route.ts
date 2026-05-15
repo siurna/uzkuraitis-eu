@@ -46,7 +46,7 @@ const Item = zv4.object({
   text: zv4
     .string()
     .describe(
-      "When translate=true, a concise English rendering (≤200 chars). When translate=false, empty string.",
+      "When translate=true, a concise English rendering (≤500 chars, but use whatever's needed to render the whole meaning — don't truncate mid-sentence). When translate=false, empty string.",
     ),
 });
 const Batch = zv4.object({
@@ -174,7 +174,7 @@ async function _handlePost(req: Request) {
               placed.add(idx);
               const hit: CachedHit = {
                 translate: !!r.translate,
-                text: r.translate ? (r.text ?? "").slice(0, 240) : "",
+                text: r.translate ? (r.text ?? "").slice(0, 600) : "",
               };
               cacheSet(missingText[idx], hit);
               results[missingIdx[idx]] = hit;
