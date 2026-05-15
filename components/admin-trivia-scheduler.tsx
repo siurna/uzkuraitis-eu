@@ -7,103 +7,55 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { countryName } from "@/lib/countries";
 
-// Admin-side trivia scheduler. The global live panel is the source of
-// truth for "country on stage right now" — when that flips, this
-// component starts a random 30s–2:30 timer. When it fires, we POST
-// to /api/admin/live/trivia which fans the trivia card out to every
-// room that has triviaEnabled=true.
-//
-// Dedup: the last country we successfully fired for is stamped in
-// localStorage (LAST_FIRED_KEY). If the admin advances back to the
-// same country (e.g. a rehearsal loop, an accidental re-tap), the
-// scheduler refuses to re-arm and surfaces a "send again anyway"
-// button. Bypassing the dedup pops a quick confirm drawer; tapping
-// "Resend now" fires the trivia IMMEDIATELY — no fresh timer. "Again"
-// is for glitch recovery (first card didn't land), so making the
-// admin wait another 30s+ for a redo is the wrong default.
-//
-// beforeunload warning: while a timer is pending we wire a
-// beforeunload handler so closing the tab pops the browser's "are
-// you sure" dialog — losing the scheduler mid-song would mean no
-// trivia for whoever's on stage.
+// Admin-side trivia scheduler. When a country goes on stage a random
+// 30s–2:30 timer arms; when it pops we POST to /api/admin/live/trivia
+// and the server fans the card to every room that has that country
+// on stage + triviaEnabled. localStorage dedup so re-advancing to the
+// same country doesn't auto-refire — the admin must explicitly resend
+// (immediate, no fresh timer). beforeunload prompt while a timer is
+// pending so the scheduler can't disappear mid-song.
 
-const TRIVIA_MIN_MS = 30 * 1000;       // :30
-const TRIVIA_MAX_MS = 2 * 60_000 + 30_000; // 2:30
+const MIN_MS = 30_000;
+const MAX_MS = 150_000;
 const TICK_MS = 1000;
-const LAST_FIRED_KEY = "uzk_admin_trivia_last";
+const KEY = "uzk_admin_trivia_last";
 
 export function AdminTriviaScheduler({
   nowPlayingCode,
 }: {
   nowPlayingCode: string | null;
 }) {
-  const [target, setTarget] = useState<{
-    code: string;
-    firesAt: number;
-  } | null>(null);
+  const [target, setTarget] = useState<{ code: string; firesAt: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [firing, setFiring] = useState(false);
-  // lastFired starts as null on both server + client so the first
-  // render is hydration-stable; the localStorage read runs in an
-  // effect below and the nowPlayingCode effect re-evaluates whenever
-  // lastFired changes so a late-loading dedup hit still cancels the
-  // armed timer (see the effect below for the late-cancel branch).
+  const [confirmResend, setConfirmResend] = useState(false);
+  // null on SSR + first client paint (hydration-stable); loaded below.
   const [lastFired, setLastFired] = useState<string | null>(null);
+  // The code we've already handled this mount (armed, fired, or
+  // cancelled). Keeps the arm-effect idempotent so a late-arriving
+  // lastFired re-run, a cancel, or a fire all settle into a stable
+  // state without re-arming the timer.
+  const handledRef = useRef<string | null>(null);
+  // Sync mutex on the network call — prevents the timer-fire path
+  // and a same-tick resend tap from double-posting.
+  const firingRef = useRef(false);
+
   useEffect(() => {
     try {
-      const v = localStorage.getItem(LAST_FIRED_KEY);
-      if (v) setLastFired(v);
+      setLastFired(localStorage.getItem(KEY));
     } catch {
-      /* localStorage blocked / private mode */
+      /* private mode */
     }
   }, []);
-  const [confirmResend, setConfirmResend] = useState(false);
-  const lastScheduled = useRef<string | null>(null);
 
-  // Arm a timer when nowPlayingCode changes, UNLESS the new country
-  // matches the last successfully-fired one. lastFired loads from
-  // localStorage in a post-mount effect (above) for SSR-stability, so
-  // this effect can run BEFORE the dedup data has arrived; we re-run
-  // on every lastFired change to cover the late-arrival case.
-  useEffect(() => {
-    if (!nowPlayingCode) {
-      setTarget(null);
-      lastScheduled.current = null;
-      return;
-    }
-    // Dedup re-check on every render (incl. the one right after
-    // lastFired hydrates from localStorage). Cancels any armed
-    // timer if it turns out the dedup hit applies.
-    if (nowPlayingCode === lastFired) {
-      setTarget(null);
-      lastScheduled.current = nowPlayingCode;
-      return;
-    }
-    if (lastScheduled.current === nowPlayingCode) return;
-    lastScheduled.current = nowPlayingCode;
-    armFresh(nowPlayingCode);
-  }, [nowPlayingCode, lastFired]);
-
-  const armFresh = (code: string) => {
-    const delay =
-      TRIVIA_MIN_MS + Math.floor(Math.random() * (TRIVIA_MAX_MS - TRIVIA_MIN_MS));
-    setTarget({ code, firesAt: Date.now() + delay });
-  };
-
-  // Shared POST → /api/admin/live/trivia. Both the timer-fire effect
-  // below and the immediate resend path call this so the network +
-  // localStorage stamping live in one place. firingRef guards
-  // SYNCHRONOUSLY: if the timer expires the same tick the admin taps
-  // "Resend now", both call sites can pass the `firing` STATE gate
-  // (state updates are async) but only one wins the ref. We also
-  // clear `target` up-front so a still-armed timer can't fire a
-  // second time after this call resolves.
-  const firingRef = useRef(false);
+  // POST → /api/admin/live/trivia. Used by both the timer-fire effect
+  // and the immediate resend path. Surfaces the fan-out count so a
+  // silent 0-room fire (country off-stage / trivia disabled / no deck
+  // entry) is visible to the admin instead of looking like a no-op.
   const fireCard = useCallback(async (code: string) => {
     if (firingRef.current) return;
     firingRef.current = true;
     setTarget(null);
-    lastScheduled.current = code;
     setFiring(true);
     try {
       const res = await fetch("/api/admin/live/trivia", {
@@ -111,27 +63,22 @@ export function AdminTriviaScheduler({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ countryCode: code }),
       });
-      // Surface the fan-out result so a silent zero-room fire (no
-      // room has BOTH this country on stage AND triviaEnabled, or
-      // the country lacks a question in the deck) is debuggable.
-      // The endpoint returns `{ fired: N }` on success.
-      if (res.ok) {
-        const data = (await res.json().catch(() => null)) as
-          | { fired?: number }
-          | null;
-        const fired = data?.fired ?? 0;
-        if (fired > 0) {
-          toast.success(`Trivia fanned out to ${fired} room${fired === 1 ? "" : "s"}.`);
-        } else {
-          toast.warning("Trivia fired but no rooms received it. Check that trivia is enabled and the country is on stage.");
-        }
-      } else {
+      if (!res.ok) {
         toast.error(`Trivia fire failed (${res.status}).`);
+        return;
+      }
+      const { fired = 0 } = (await res.json().catch(() => ({}))) as { fired?: number };
+      if (fired > 0) {
+        toast.success(`Trivia fanned out to ${fired} room${fired === 1 ? "" : "s"}.`);
+      } else {
+        toast.warning(
+          "Trivia fired but no rooms received it. Check trivia is on + the country is still on stage.",
+        );
       }
       try {
-        localStorage.setItem(LAST_FIRED_KEY, code);
+        localStorage.setItem(KEY, code);
       } catch {
-        /* private mode / quota */
+        /* private mode */
       }
       setLastFired(code);
     } catch {
@@ -142,7 +89,28 @@ export function AdminTriviaScheduler({
     }
   }, []);
 
-  // Countdown clock — 1s tick, only running while there's a target.
+  // Arm when a new country goes on stage. Skip if we already fired for
+  // it (lastFired matches) or we've already handled it this mount
+  // (handledRef matches — covers the late-arriving lastFired re-run +
+  // a cancelled timer that would otherwise immediately re-arm).
+  useEffect(() => {
+    if (!nowPlayingCode) {
+      setTarget(null);
+      handledRef.current = null;
+      return;
+    }
+    if (nowPlayingCode === lastFired) {
+      setTarget(null);
+      handledRef.current = nowPlayingCode;
+      return;
+    }
+    if (handledRef.current === nowPlayingCode) return;
+    handledRef.current = nowPlayingCode;
+    const delay = MIN_MS + Math.floor(Math.random() * (MAX_MS - MIN_MS));
+    setTarget({ code: nowPlayingCode, firesAt: Date.now() + delay });
+  }, [nowPlayingCode, lastFired]);
+
+  // Countdown clock — runs only while a target is pending.
   useEffect(() => {
     if (!target) return;
     const id = window.setInterval(() => setNow(Date.now()), TICK_MS);
@@ -151,56 +119,31 @@ export function AdminTriviaScheduler({
 
   // Fire when target time arrives.
   useEffect(() => {
-    if (!target || firing) return;
+    if (!target) return;
     if (now < target.firesAt) return;
-    const code = target.code;
-    setTarget(null);
-    fireCard(code);
-  }, [target, now, firing, fireCard]);
+    fireCard(target.code);
+  }, [target, now, fireCard]);
 
-  // beforeunload guard while a timer is pending.
+  // beforeunload while a timer is pending.
   useEffect(() => {
     if (!target) return;
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+    const onUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener("beforeunload", onUnload);
+    return () => window.removeEventListener("beforeunload", onUnload);
   }, [target]);
 
   const remaining = target ? Math.max(0, target.firesAt - now) : 0;
-  const mm = Math.floor(remaining / 60_000)
-    .toString()
-    .padStart(2, "0");
-  const ss = Math.floor((remaining % 60_000) / 1000)
-    .toString()
-    .padStart(2, "0");
+  const mm = Math.floor(remaining / 60_000).toString().padStart(2, "0");
+  const ss = Math.floor((remaining % 60_000) / 1000).toString().padStart(2, "0");
 
-  const cancel = () => {
-    setTarget(null);
-    lastScheduled.current = null;
-  };
-
-  // Resend NOW. Triggered from the confirm drawer. The dedup banner
-  // exists for glitch recovery — the first card didn't land in chat,
-  // the admin needs to retry. Making them sit through another 30s+
-  // random timer would defeat the point, so this fires immediately.
-  // Doesn't clear lastFired (so the NEXT distinct country change
-  // still runs through the normal armed-timer path).
+  const dedup = !!nowPlayingCode && nowPlayingCode === lastFired && !target && !firing;
   const resendNow = () => {
     setConfirmResend(false);
-    if (!nowPlayingCode) return;
-    fireCard(nowPlayingCode);
+    if (nowPlayingCode) fireCard(nowPlayingCode);
   };
-
-  // Three render states, in priority order:
-  //   1. Pending timer (target set)          → countdown + cancel X
-  //   2. Same-country dedup, no timer        → "already fired" + resend
-  //   3. Firing                              → spinner
-  //   4. Idle                                → muted hint
-  const dedupedSameCountry =
-    !!nowPlayingCode && nowPlayingCode === lastFired && !target && !firing;
 
   return (
     <>
@@ -223,7 +166,7 @@ export function AdminTriviaScheduler({
               <Loader2 className="h-3 w-3 animate-spin" />
               Firing now.
             </p>
-          ) : dedupedSameCountry ? (
+          ) : dedup ? (
             <p className="text-[11px] text-white/55 leading-snug">
               Fired for{" "}
               <span className="font-display text-yellow">
@@ -240,14 +183,14 @@ export function AdminTriviaScheduler({
         {target && (
           <button
             type="button"
-            onClick={cancel}
+            onClick={() => setTarget(null)}
             className="shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-lg bg-white/[0.04] ring-1 ring-white/10 text-white/65 hover:bg-white/[0.08]"
             aria-label="Cancel pending trivia"
           >
             <X className="h-3.5 w-3.5" />
           </button>
         )}
-        {dedupedSameCountry && (
+        {dedup && (
           <button
             type="button"
             onClick={() => setConfirmResend(true)}
