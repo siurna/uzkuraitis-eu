@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, X } from "lucide-react";
 import { getTrivia, type TriviaPick } from "@/lib/trivia";
@@ -78,33 +78,40 @@ export function ChatTriviaCard({
 }) {
   const { sessionId: getSession } = useIdentity();
   const session = getSession();
-  // Prefer the snapshot baked into the chat message; fall back to the
-  // file-default deck for legacy messages that pre-date the snapshot.
-  const fallback = getTrivia(countryCode);
-  const card = snapshot
-    ? {
-        country: countryCode,
-        correctIndex: snapshot.correctIndex as TriviaPick,
-        en: {
-          question: snapshot.en.question,
-          choices: [
-            snapshot.en.choices[0] ?? "",
-            snapshot.en.choices[1] ?? "",
-            snapshot.en.choices[2] ?? "",
-            snapshot.en.choices[3] ?? "",
-          ] as [string, string, string, string],
-        },
-        lt: {
-          question: snapshot.lt.question,
-          choices: [
-            snapshot.lt.choices[0] ?? "",
-            snapshot.lt.choices[1] ?? "",
-            snapshot.lt.choices[2] ?? "",
-            snapshot.lt.choices[3] ?? "",
-          ] as [string, string, string, string],
-        },
-      }
-    : fallback;
+  // MEMOISED. Previous version rebuilt `card` on every render, which
+  // made its identity unstable. The restore-from-localStorage effect
+  // below has `card` in its deps — without memo, that effect re-ran
+  // every render, read the just-written answer right after submit(),
+  // and overwrote the in-flight `locked` phase with `answered`,
+  // skipping the entire WWTBAM lock → blink → reveal sequence. Now
+  // the object identity only changes when the snapshot itself
+  // changes (essentially never within one card's lifetime).
+  const fallback = useMemo(() => getTrivia(countryCode), [countryCode]);
+  const card = useMemo(() => {
+    if (!snapshot) return fallback;
+    return {
+      country: countryCode,
+      correctIndex: snapshot.correctIndex as TriviaPick,
+      en: {
+        question: snapshot.en.question,
+        choices: [
+          snapshot.en.choices[0] ?? "",
+          snapshot.en.choices[1] ?? "",
+          snapshot.en.choices[2] ?? "",
+          snapshot.en.choices[3] ?? "",
+        ] as [string, string, string, string],
+      },
+      lt: {
+        question: snapshot.lt.question,
+        choices: [
+          snapshot.lt.choices[0] ?? "",
+          snapshot.lt.choices[1] ?? "",
+          snapshot.lt.choices[2] ?? "",
+          snapshot.lt.choices[3] ?? "",
+        ] as [string, string, string, string],
+      },
+    };
+  }, [snapshot, countryCode, fallback]);
 
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   // `flashing` controls the breaking-news overlay. Default `false` so
@@ -113,10 +120,17 @@ export function ChatTriviaCard({
   const [flashing, setFlashing] = useState(false);
 
   // Restore "I already answered this country" from localStorage on
-  // mount — the player gets the reveal view instantly instead of
-  // momentarily seeing the buttons again on tab re-open.
+  // mount — the player gets the reveal view instantly on tab re-
+  // open. Gated by a ref so it ONLY fires the first time card is
+  // available; otherwise the upstream `snapshot` prop being rebuilt
+  // on every chat-row render (new object identity) made this effect
+  // re-fire AFTER submit() and overwrite the in-flight `locked`
+  // phase with `answered`, skipping the entire WWTBAM animation.
+  const restoredRef = useRef(false);
   useEffect(() => {
+    if (restoredRef.current) return;
     if (!card) return;
+    restoredRef.current = true;
     try {
       const raw = localStorage.getItem(LOCAL_KEY(roomCode));
       const map = raw ? (JSON.parse(raw) as Record<string, TriviaPick>) : {};
@@ -349,6 +363,7 @@ export function ChatTriviaCard({
                               bg-gradient-to-b ${revealTone}
                               ring-1 transition transform-gpu
                               ${interactive ? "active:scale-[0.99]" : ""}
+                              ${locked && isChosen ? "uzk-trivia-lock" : ""}
                               ${blinking && isChosen ? "uzk-trivia-blink" : ""}
                               shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_18px_-12px_rgba(255,196,84,0.5)]`}
                 >

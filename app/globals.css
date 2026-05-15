@@ -647,32 +647,47 @@
   animation: uzk-msg-fade 0.2s ease-out;
 }
 
+/* Trivia "locked" phase. Plate just turned gold. Single scale-bump
+   on entry so the click reads as a SLAM, not a colour swap. */
+@keyframes uzk-trivia-lock {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0 oklch(95% 0.19 109 / 0); }
+  35%  { transform: scale(1.04); box-shadow: 0 0 0 6px oklch(95% 0.19 109 / 0.45); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0 oklch(95% 0.19 109 / 0); }
+}
+.uzk-trivia-lock {
+  animation: uzk-trivia-lock 0.4s ease-out;
+}
+
 /* Trivia "blinking" phase, WWTBAM-style. The locked-in (chosen) plate
-   pulses between full brightness + a slightly dimmer state so the
-   suspense reads as "is that your final answer?" while the host
-   pauses for effect. Faster cadence (300ms / cycle) than the heart
-   so it doesn't blend with the room's heartbeat motion. */
+   pulses between full brightness + a brighter peak with a yellow glow
+   ring so the suspense reads loud and clear. Was too subtle before
+   (brightness 1.35 only) — bumped to a real strobe. */
 @keyframes uzk-trivia-blink {
-  0%, 100% { filter: brightness(1)    saturate(1);   }
-  50%      { filter: brightness(1.35) saturate(1.2); }
+  0%, 100% {
+    filter: brightness(1) saturate(1);
+    box-shadow: 0 0 0 0 oklch(95% 0.19 109 / 0);
+  }
+  50% {
+    filter: brightness(1.55) saturate(1.3);
+    box-shadow: 0 0 18px 2px oklch(95% 0.19 109 / 0.7);
+  }
 }
 .uzk-trivia-blink {
-  animation: uzk-trivia-blink 0.3s ease-in-out infinite;
+  animation: uzk-trivia-blink 0.45s ease-in-out infinite;
 }
 
 /* Trivia reveal flash — fires ONCE on the correct plate when the
-   phase flips to answered. Bright white wash over the plate that
-   fades out over ~700ms, leaving the emerald-green answered state
-   underneath. The keyframe is `forwards` so the plate ends at
-   opacity 0 (i.e., reveals the underlying emerald colour). */
+   phase flips to answered. Bigger + brighter than the previous
+   version: scale-up overshoot + a longer hot peak so the moment
+   reads. */
 @keyframes uzk-trivia-reveal-flash {
-  0%   { opacity: 0;    transform: scale(0.6); }
-  25%  { opacity: 0.85; transform: scale(1);   }
-  60%  { opacity: 0.4;  transform: scale(1);   }
-  100% { opacity: 0;    transform: scale(1);   }
+  0%   { opacity: 0;   transform: scale(0.4); }
+  15%  { opacity: 1;   transform: scale(1.08); }
+  45%  { opacity: 0.7; transform: scale(1);   }
+  100% { opacity: 0;   transform: scale(1);   }
 }
 .uzk-trivia-reveal-flash {
-  animation: uzk-trivia-reveal-flash 0.7s ease-out forwards;
+  animation: uzk-trivia-reveal-flash 0.9s ease-out forwards;
 }
 
 input, button, textarea, select {

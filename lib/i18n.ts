@@ -163,10 +163,10 @@ const S = {
 
   // ── Home banners (context-aware shortcuts) ───────────────────────
   home_vote_open:      { en: "Voting is open, cast your TOP 10", lt: "Balsavimas atidarytas, paskelbk savo TOP 10" },
-  home_vote_open_sub:  { en: "Lines won't be open forever, get it in.", lt: "Linijos neilgai bus atviros, nežiopsok." },
+  home_vote_open_sub:  { en: "Lines close soon, get it in.", lt: "Linijos užsidaro, nežiopsok." },
   home_vote_done:      { en: "Your vote's in, reorder it anytime", lt: "Tavo balsas užfiksuotas" },
   home_vote_done_eyebrow: { en: "Voted", lt: "Balsuota" },
-  home_vote_done_sub:  { en: "Place bets, share your TOP 10, or tweak.", lt: "Dalyvauk spėlionėje, pasidalink TOP 10." },
+  home_vote_done_sub:  { en: "Place bets or tweak your TOP 10.", lt: "Spėliok arba pakeisk TOP 10." },
   home_bonus_placed:   { en: (n: number) => `${n} side ${n === 1 ? "bet" : "bets"} placed`, lt: (n: number) => `pastatyta ${n}` },
   home_bonus_none:     { en: "Place your side bets", lt: "Sudaryk savo statymus" },
   home_bonus_sub:      { en: "Wooden spoon, jury winner, nul points… each pays out only if you call it.", lt: "Paskutinė vieta, žiuri nugalėtojas, nulis taškų… užskaitoma tik pataikius." },

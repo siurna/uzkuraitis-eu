@@ -60,7 +60,12 @@ export function NowPlayingTakeover() {
       {country && active && (
         <motion.div
           key={active.id}
-          className="fixed inset-0 z-[88] flex flex-col items-center justify-center px-6 pb-[12vh] sm:pb-0 text-center pointer-events-none overflow-hidden"
+          className="fixed inset-0 z-[88] flex flex-col items-center justify-center
+                     px-8 sm:px-12
+                     pt-[max(env(safe-area-inset-top),1rem)]
+                     pb-[calc(12vh+max(env(safe-area-inset-bottom),0px))]
+                     sm:pb-12 sm:pt-12
+                     text-center pointer-events-none overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -130,7 +135,7 @@ export function NowPlayingTakeover() {
               ease: [0.18, 0.9, 0.25, 1],
             }}
             className="relative font-display uppercase leading-[1.12] tracking-tight
-                       max-w-[94vw] text-balance px-[0.06em] py-[0.12em]
+                       max-w-full text-balance px-[0.06em] py-[0.12em]
                        drop-shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
             style={{ fontSize: `clamp(2rem, ${nameVw}vw, 11rem)` }}
           >

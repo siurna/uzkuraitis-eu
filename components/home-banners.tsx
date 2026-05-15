@@ -81,7 +81,7 @@ function Banner({
           to evenly-balanced lines instead of stretching into the
           artwork's wash. `text-balance` on the sub gets us the even
           last-line shape. */}
-      <div className={`relative flex flex-col justify-center gap-1 pl-5 pr-[38%] py-5 ${SIZE_MIN_H[size]}`}>
+      <div className={`relative flex flex-col justify-center gap-1 pl-5 pr-[44%] py-5 ${SIZE_MIN_H[size]}`}>
         <p className="text-[10px] uppercase tracking-[0.3em] font-display leading-tight text-white/75 flex items-center gap-1.5">
           {eyebrow}
         </p>
@@ -146,35 +146,34 @@ const VOTE_BALLS: ReadonlyArray<{
 ];
 
 // Per-tint colour stops for the radial gradient + the rim + the
-// numeral fill. Eurovision brand palette: flamingo / electric blue /
-// violet for the medal tier, cool white for the rest.
+// numeral fill. Eurovision brand palette on the medal tier. Stops
+// SOFTENED — the previous values landed each ball's bottom half on
+// a near-black 4th stop, which read as a harsh painted shadow.
+// Now the gradient stays in the mid-tones of the hue and lets the
+// shape itself imply roundness instead of leaning on contrast. Rim
+// alpha dropped from 0.6 → 0.30 for the same reason.
 const BALL_TINTS: Record<
   BallTint,
   { stops: [string, string, string, string]; rim: string; text: string }
 > = {
-  // 12 = flamingo pink (brand's loudest). White core highlight, deep
-  // magenta toward the equator, near-black at the rim for contrast.
   flamingo: {
-    stops: ["#ffe1ee", "#ff6ab1", "#c01b6e", "#5a0a35"],
-    rim: "rgba(80, 8, 50, 0.6)",
+    stops: ["#ffe8f2", "#ff8ec5", "#e04994", "#a82a6e"],
+    rim: "rgba(80, 12, 55, 0.30)",
     text: "#3a0220",
   },
-  // 10 = electric blue.
   blue: {
-    stops: ["#dceeff", "#5fa6ff", "#1c52cf", "#0a1f6a"],
-    rim: "rgba(8, 24, 80, 0.6)",
+    stops: ["#e4f0ff", "#7fbaff", "#3f74dc", "#1a3a8e"],
+    rim: "rgba(12, 30, 90, 0.30)",
     text: "#031040",
   },
-  // 8 = violet (the bridge between flamingo and blue on the brand
-  // gradient).
   violet: {
-    stops: ["#efe2ff", "#b072ff", "#6f24cf", "#2e0d70"],
-    rim: "rgba(30, 8, 70, 0.6)",
+    stops: ["#f1e6ff", "#bf85ff", "#834cd6", "#4d22a0"],
+    rim: "rgba(32, 12, 80, 0.30)",
     text: "#170346",
   },
   white: {
-    stops: ["#ffffff", "#eaeefc", "#a7afd2", "#8a93c4"],
-    rim: "rgba(40, 40, 80, 0.45)",
+    stops: ["#ffffff", "#f0f2fc", "#bcc1de", "#9aa1c8"],
+    rim: "rgba(40, 40, 80, 0.25)",
     text: "#15163d",
   },
 };
@@ -204,11 +203,14 @@ function PointsBallSvg({ value, tint }: { value: string; tint: BallTint }) {
           <stop offset="100%" stopColor={t.stops[3]} />
         </radialGradient>
         <radialGradient id={shadowId} cx="50%" cy="100%" r="55%">
-          <stop offset="0%" stopColor="rgba(0,0,0,0.55)" />
+          <stop offset="0%" stopColor="rgba(0,0,0,0.22)" />
+          <stop offset="60%" stopColor="rgba(0,0,0,0.08)" />
           <stop offset="100%" stopColor="rgba(0,0,0,0)" />
         </radialGradient>
       </defs>
-      <ellipse cx="50" cy="94" rx="36" ry="6" fill={`url(#${shadowId})`} />
+      {/* Contact shadow — soft + low-alpha so it suggests the ball is
+          resting on something without painting a hard puddle. */}
+      <ellipse cx="50" cy="95" rx="34" ry="4.5" fill={`url(#${shadowId})`} />
       <circle cx="50" cy="50" r="46" fill={`url(#${fillId})`} />
       <circle
         cx="50"
@@ -249,7 +251,7 @@ function PointsBallSvg({ value, tint }: { value: string; tint: BallTint }) {
 // container sits flush against the banner's right edge and no ball
 // is clipped at the rounded corner. PHYS_H matches the lg banner
 // height so the pile fills the whole vertical column.
-const PHYS_W = 168;
+const PHYS_W = 192;
 const PHYS_H = 140;
 const PHYS_FLOOR = PHYS_H - 2;
 const PHYS_GRAVITY = 1050; // px / s²
