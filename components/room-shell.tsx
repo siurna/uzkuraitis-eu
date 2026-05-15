@@ -347,6 +347,35 @@ function RoomBody({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // visualViewport-based keyboard heuristic. The dock-hide used to
+  // ride ONLY on the chat-panel's custom `uzk:compose-focus` event,
+  // but if that event ever fails to fire (input mounted late, focus
+  // landed on a child not the input, iOS quirk on re-mount) the tab
+  // bar stays visible AND ends up sandwiched between the chat
+  // composer and the keyboard — leaving the composer invisible and
+  // the chat unusable. Detecting "is the keyboard up?" directly via
+  // visualViewport gives us a redundant signal that's independent
+  // of which input got focus.
+  const [keyboardUp, setKeyboardUp] = useState(false);
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+    const onResize = () => {
+      // Keyboard takes ~250-350px on phones; a 120px delta between
+      // layout viewport and visual viewport is well past any
+      // browser-chrome shrink and a solid "keyboard is up" call.
+      setKeyboardUp(window.innerHeight - vv.height > 120);
+    };
+    onResize();
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
+  }, []);
+  // Effective "hide the dock" signal: either the chat composer fired
+  // its focus event OR we detect a keyboard via the viewport delta.
+  // OR-ing keeps the existing happy path intact AND survives the
+  // event-not-firing failure mode.
+  const dockHidden = composing || keyboardUp;
+
   return (
     <RoomTabContext.Provider value={{ tab, setTab }}>
       {/* The header is `fixed`, so pad the flow content down past it
@@ -361,7 +390,7 @@ function RoomBody({ children }: { children: React.ReactNode }) {
             devices — keeps the keyboarded-up chat panel from leaving an
             empty strip up top. On desktop there's no keyboard inset, so
             the header stays put. */}
-        <div className={composing ? "max-md:hidden" : ""}>
+        <div className={dockHidden ? "max-md:hidden" : ""}>
           <PresenceBar />
         </div>
         {/* <TabSync> + anything the route segment renders (no UI). */}
@@ -383,7 +412,7 @@ function RoomBody({ children }: { children: React.ReactNode }) {
         {/* Chat is `position:fixed` — it manages its own visibility. */}
         {visited.has("chat") && <ChatPanel active={isChat} />}
 
-        <div className={composing ? "max-md:hidden" : ""}>
+        <div className={dockHidden ? "max-md:hidden" : ""}>
           <RoomTabBar chatUnread={unread} />
         </div>
       </div>

@@ -148,10 +148,20 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
-  // The dock + header are CSS-hidden when both: composer is focused
-  // AND we're on mobile. That's the only state where the chat panel
-  // gets to consume the full viewport height.
-  const dockHidden = composerFocused && !isDesktop;
+  // The dock + header are CSS-hidden in two scenarios:
+  //   1. composerFocused (chat input has focus, custom event fired)
+  //   2. visualViewport delta says a keyboard is up regardless of
+  //      which input has focus.
+  // We OR both because the focus event is occasionally lost (input
+  // mounted late, focus landed on a child not the input, iOS quirk
+  // on re-mount), and a missing signal here means the chat-panel
+  // reserves 4.75rem of dock space the dock isn't actually using.
+  // The viewport state below is already tracked for height; we
+  // derive `keyboardUp` from the same delta.
+  const keyboardUp = !!viewport && typeof window !== "undefined"
+    ? window.innerHeight - viewport.h > 120
+    : false;
+  const dockHidden = (composerFocused || keyboardUp) && !isDesktop;
   const dragDepth = useRef(0);
 
   const listRef = useRef<HTMLDivElement | null>(null);
