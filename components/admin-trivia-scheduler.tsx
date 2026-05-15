@@ -40,25 +40,30 @@ export function AdminTriviaScheduler({
   } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [firing, setFiring] = useState(false);
-  // The last country we fired for in this admin's localStorage. When
-  // nowPlayingCode === lastFired, we DON'T arm a new timer; the UI
-  // surfaces a "send again anyway" button instead.
-  const [lastFired, setLastFired] = useState<string | null>(null);
+  // Read lastFired SYNCHRONOUSLY on first render. The previous version
+  // populated this in a post-mount useEffect, so on first mount the
+  // dedup check (in the nowPlayingCode effect below) saw lastFired
+  // as null and ALWAYS armed the timer regardless of whether the
+  // same country had already been fired in this browser. By the time
+  // the localStorage read landed and triggered a re-run, the
+  // lastScheduled ref had already latched, blocking the re-evaluation.
+  // Lazy initialiser fixes the race once and for all.
+  const [lastFired, setLastFired] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return localStorage.getItem(LAST_FIRED_KEY);
+    } catch {
+      return null;
+    }
+  });
   const [confirmResend, setConfirmResend] = useState(false);
   const lastScheduled = useRef<string | null>(null);
 
-  // Restore lastFired on mount.
-  useEffect(() => {
-    try {
-      setLastFired(localStorage.getItem(LAST_FIRED_KEY));
-    } catch {
-      /* private mode — dedup falls back to in-memory only */
-    }
-  }, []);
-
   // Arm a timer when nowPlayingCode changes, UNLESS the new country
-  // is the same as the last successfully-fired one. In that case we
-  // skip the timer and let the admin opt into a re-send.
+  // matches the last successfully-fired one. The lastScheduled ref
+  // dedupes RE-runs of this effect for the SAME country (e.g. when
+  // lastFired changes, the deps re-fire). The localStorage check is
+  // already correct from first render (lazy initialiser above).
   useEffect(() => {
     if (!nowPlayingCode) {
       setTarget(null);
@@ -68,7 +73,7 @@ export function AdminTriviaScheduler({
     if (lastScheduled.current === nowPlayingCode) return;
     lastScheduled.current = nowPlayingCode;
     if (nowPlayingCode === lastFired) {
-      // Dedup hit. Don't arm; the UI now shows the resend affordance.
+      // Dedup hit. Don't arm; UI shows the resend affordance.
       setTarget(null);
       return;
     }

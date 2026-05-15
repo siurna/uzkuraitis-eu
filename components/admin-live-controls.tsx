@@ -348,15 +348,17 @@ export function AdminLiveControls({
                           <span className="shrink-0 grid place-items-center h-9 w-9 rounded-lg bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
                             <Icon className="h-4 w-4" />
                           </span>
-                          <span className="flex-1 min-w-0">
-                            <span className="block font-display text-sm text-white truncate">{title}</span>
-                            <span className="block text-[11px] text-white/50 leading-snug text-balance">{desc}</span>
+                          <span className="flex-1 min-w-0 flex flex-col">
+                            <span className="font-display text-sm text-white truncate leading-tight">{title}</span>
+                            <span className="text-[11px] text-white/50 leading-tight text-balance">{desc}</span>
                             {/* Status line: keep the "fired X ago" text
                                 mounted regardless of post state, append a
                                 Posting… badge when sending. Used to swap
                                 the whole line which shifted the row
-                                height on every click. */}
-                            <span className="block text-[10px] text-white/35 inline-flex items-center gap-1.5">
+                                height on every click. Tight leading +
+                                flex-col on the parent keep the three
+                                lines visually attached. */}
+                            <span className="text-[10px] text-white/35 leading-tight inline-flex items-center gap-1.5">
                               {last ? <>fired {timeAgo(last)}</> : <>not fired yet</>}
                               {sending && (
                                 <span className="inline-flex items-center gap-1 text-flamingo/85">
