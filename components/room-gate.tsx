@@ -383,15 +383,23 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
                   through to `retryTurnstile` when we're in the error
                   branch so the keyboard path doesn't dead-end. */}
               {tsError ? (
+                // Auto-height button (was forced h-12 which clipped the
+                // copy at large fonts on iPhone + made long
+                // translations wrap unevenly). Icon nests INLINE with
+                // the text so the centring stays clean across wrap
+                // counts; the text uses leading-snug + text-balance to
+                // settle into even lines, no oversized vertical gap.
                 <button
                   type="button"
                   onClick={retryTurnstile}
-                  className="w-full h-12 rounded-2xl inline-flex items-center justify-center gap-2
+                  className="w-full rounded-2xl flex items-center justify-center gap-2.5
+                             px-4 py-3
                              bg-error/12 ring-1 ring-error/35 text-error/95
-                             font-display text-base active:scale-[0.98] transition"
+                             font-display text-[15px] leading-snug text-balance
+                             active:scale-[0.98] transition"
                 >
-                  <ShieldAlert className="h-4 w-4" />
-                  {t(lang, "ts_error")}
+                  <ShieldAlert className="h-4 w-4 shrink-0" />
+                  <span>{t(lang, "ts_error")}</span>
                 </button>
               ) : (
                 <button
