@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Bell, Dices, ListChecks, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { HeartFlag } from "@/components/flag";
+import { Flag, HeartFlag } from "@/components/flag";
 import { WelcomeMarkdown } from "@/components/welcome-banner";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { FluentEmoji } from "@/components/fluent-emoji";

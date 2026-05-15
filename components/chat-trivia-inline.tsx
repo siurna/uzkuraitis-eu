@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { motion } from "motion/react";
-import { Check, X, Lightbulb } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { Check, X } from "lucide-react";
 import { HeartFlag } from "@/components/flag";
 import { getCountry, countryName } from "@/lib/countries";
 import { getTrivia, type TriviaPick } from "@/lib/trivia";
@@ -11,18 +11,27 @@ import { bumpVibe } from "@/lib/use-vibe-tracker";
 import { t } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
 
-// Inline trivia card rendered as a chat-row message. Replaces the
-// floating overlay version — the server posts a `kind: "trivia"`
-// message when a country with trivia data takes the stage, and this
-// component handles render + answer flow inline in the thread.
+// Inline trivia card rendered as a chat-row message. Two beats:
 //
-// State model is intentionally local + per-room (localStorage):
-// players can refresh the tab and the "I already answered" state
-// survives, but it's NOT cross-device (server has the durable answer
-// in trivia_answers; this is just cosmetic so the same message in
-// chat doesn't suddenly re-show the buttons after a reload).
+//   1. Breaking-news flash (~1.4s on first view): a red bar slams in
+//      across the card with "QUICK QUESTION!" in bold display caps,
+//      a pulsing LIVE dot, and the country chip. Sets the moment as
+//      a Thing — the chat thread is already busy, the trivia card
+//      can't be just another row, it has to land.
+//   2. Crossfade to a Who-Wants-To-Be-A-Millionaire-style panel:
+//      deep blue gradient with a faint spotlight glow, the question
+//      typeset large, and four diamond-shaped answer plates with
+//      gold A/B/C/D badges and a vertical divider. Reveal state
+//      tints the chosen + correct plates emerald / red.
+//
+// "First view" is tracked per-room-per-country in localStorage so
+// scroll-backs or tab reopens skip the flash and land directly on
+// the question. The server still has the durable answer in
+// trivia_answers; this component is just the surface.
 const LOCAL_KEY = (room: string) => `uzk_trivia_${room}`;
+const SEEN_KEY = (room: string) => `uzk_trivia_seen_${room}`;
 const LETTERS: ["A", "B", "C", "D"] = ["A", "B", "C", "D"];
+const FLASH_MS = 1400;
 
 type Phase =
   | { kind: "idle" }
@@ -84,6 +93,10 @@ export function ChatTriviaCard({
     : fallback;
 
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
+  // `flashing` controls the breaking-news overlay. Default `false` so
+  // we don't briefly paint it before checking localStorage — the
+  // post-mount effect flips it on for genuine first views.
+  const [flashing, setFlashing] = useState(false);
 
   // Restore "I already answered this country" from localStorage on
   // mount — the player gets the reveal view instantly instead of
@@ -104,6 +117,36 @@ export function ChatTriviaCard({
       }
     } catch {
       /* ignore corrupt local state */
+    }
+  }, [card, countryCode, roomCode]);
+
+  // First-view flash gate. Two suppressors:
+  //   - player already answered (loaded from localStorage above)
+  //   - we've already shown the flash once for this country/room
+  // Otherwise: light up the breaking-news overlay, remember we did,
+  // and auto-dismiss after FLASH_MS.
+  useEffect(() => {
+    if (!card) return;
+    try {
+      const raw = localStorage.getItem(SEEN_KEY(roomCode));
+      const seen = raw ? (JSON.parse(raw) as Record<string, true>) : {};
+      if (seen[countryCode]) return;
+      // Player already has a stored answer → skip the flash and just
+      // mark seen so a future fresh load also lands directly.
+      const ansRaw = localStorage.getItem(LOCAL_KEY(roomCode));
+      const ansMap = ansRaw ? (JSON.parse(ansRaw) as Record<string, TriviaPick>) : {};
+      if (typeof ansMap[countryCode] === "number") {
+        seen[countryCode] = true;
+        localStorage.setItem(SEEN_KEY(roomCode), JSON.stringify(seen));
+        return;
+      }
+      setFlashing(true);
+      seen[countryCode] = true;
+      localStorage.setItem(SEEN_KEY(roomCode), JSON.stringify(seen));
+      const handle = window.setTimeout(() => setFlashing(false), FLASH_MS);
+      return () => window.clearTimeout(handle);
+    } catch {
+      /* ignore */
     }
   }, [card, countryCode, roomCode]);
 
@@ -157,17 +200,33 @@ export function ChatTriviaCard({
   const closed = phase.kind === "closed";
 
   return (
-    <div className="rounded-3xl ring-1 ring-yellow/45 shadow-[0_18px_44px_-18px_oklch(72%_0.18_85_/_0.5)] overflow-hidden">
+    <div
+      className="relative rounded-3xl ring-1 ring-yellow/45 overflow-hidden
+                 shadow-[0_24px_56px_-22px_oklch(72%_0.18_85_/_0.55)]"
+    >
+      {/* WWTBAM stage. Deep blue radial spotlight from the top, gold
+          highlight band along the very top edge, and a faint vertical
+          vignette so the answer plates feel lit from above. */}
       <div
-        className="relative overflow-hidden p-5 flex flex-col gap-4"
-        style={{ background: "linear-gradient(160deg, #0c1b53 0%, #19308a 50%, #2c1a72 100%)" }}
+        className="relative p-5 flex flex-col gap-4"
+        style={{
+          background:
+            "radial-gradient(120% 80% at 50% -10%, rgba(255, 196, 84, 0.18) 0%, rgba(28, 50, 138, 0.95) 38%, #0a1444 75%, #050a26 100%)",
+        }}
       >
+        {/* Gold rim along the top — small but it's the WWTBAM signature. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-px"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, oklch(80% 0.18 85 / 0.85) 50%, transparent 100%)",
+          }}
+        />
+
         <header className="flex items-center gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-yellow/20 ring-1 ring-yellow/40 text-yellow">
-            <Lightbulb className="h-5 w-5" fill="currentColor" />
-          </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-yellow/90 font-display leading-tight">
+            <p className="text-[10px] uppercase tracking-[0.32em] text-yellow/90 font-display leading-tight">
               {t(lang, "trivia_eyebrow")}
             </p>
             {country && (
@@ -179,47 +238,78 @@ export function ChatTriviaCard({
           </div>
         </header>
 
-        <p className="font-display text-base sm:text-lg text-white leading-snug text-balance">
-          {block.question}
-        </p>
+        {/* Question. Slight gold underline glow to echo the WWTBAM
+            "question podium". */}
+        <div className="relative">
+          <p className="font-display text-base sm:text-lg text-white leading-snug text-balance text-center px-2">
+            {block.question}
+          </p>
+        </div>
 
-        <ul className="flex flex-col gap-2">
+        {/* Answer plates. WWTBAM uses elongated hexagons with a gold
+            outline and a vertical divider between the letter and the
+            answer text. We fake the hex with strong rounded corners +
+            a gold gradient ring, and the divider is a 1px gold line. */}
+        <ul className="flex flex-col gap-2.5">
           {block.choices.map((c, i) => {
             const idx = i as TriviaPick;
             const isCorrect = idx === card.correctIndex;
             const isPicked =
               showReveal && phase.kind === "answered" && phase.choice === idx;
-            const tone = !showReveal
-              ? "bg-white/[0.08] ring-1 ring-white/15 hover:bg-white/[0.14]"
-              : isCorrect
+            const revealTone =
+              showReveal && isCorrect
                 ? closed
-                  ? "bg-white/[0.10] ring-1 ring-white/20 text-white/85"
-                  : "bg-emerald-500/25 ring-1 ring-emerald-400/55 text-white"
-                : isPicked
-                  ? "bg-error/25 ring-1 ring-error/55 text-white"
-                  : "bg-white/[0.04] ring-1 ring-white/10 text-white/55";
+                  ? "from-white/[0.10] to-white/[0.04] ring-white/25"
+                  : "from-emerald-500/35 to-emerald-600/25 ring-emerald-300/70"
+                : showReveal && isPicked
+                  ? "from-error/35 to-error/20 ring-error/70"
+                  : showReveal
+                    ? "from-dark-blue-800/60 to-dark-blue-900/60 ring-white/10 text-white/55"
+                    : "from-[#0e1f5e] to-[#0a1444] ring-yellow/45 hover:from-[#13288a] hover:to-[#0c1a5a] hover:ring-yellow/70";
+            const letterTone =
+              showReveal && isCorrect
+                ? "text-emerald-200"
+                : showReveal && isPicked
+                  ? "text-red-200"
+                  : "text-yellow";
             return (
               <li key={i}>
                 <button
                   type="button"
                   onClick={() => submit(idx)}
                   disabled={showReveal}
-                  className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition transform-gpu
-                              ${tone} ${showReveal ? "" : "active:scale-[0.99]"}`}
+                  className={`group relative w-full flex items-stretch rounded-2xl
+                              bg-gradient-to-b ${revealTone}
+                              ring-1 transition transform-gpu
+                              ${showReveal ? "" : "active:scale-[0.99]"}
+                              shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_18px_-12px_rgba(255,196,84,0.5)]`}
                 >
+                  {/* Letter cell. Fixed width so the divider stays at
+                      the same x across plates. */}
                   <span
-                    className={`shrink-0 h-7 w-7 grid place-items-center rounded-full text-xs font-display
-                                ${showReveal && isCorrect ? "bg-emerald-400 text-dark-blue" : showReveal && isPicked ? "bg-error text-white" : "bg-white/15 text-white/80"}`}
+                    className={`shrink-0 w-12 grid place-items-center font-display text-base
+                                ${letterTone}`}
                   >
                     {showReveal && isCorrect ? (
-                      <Check className="h-4 w-4" />
+                      <Check className="h-5 w-5" strokeWidth={2.5} />
                     ) : showReveal && isPicked ? (
-                      <X className="h-4 w-4" />
+                      <X className="h-5 w-5" strokeWidth={2.5} />
                     ) : (
                       LETTERS[i]
                     )}
                   </span>
-                  <span className="text-sm font-display leading-tight">{c}</span>
+                  {/* Gold vertical divider — the WWTBAM tell. */}
+                  <span
+                    aria-hidden
+                    className="w-px self-stretch my-1.5"
+                    style={{
+                      background:
+                        "linear-gradient(180deg, transparent 0%, oklch(80% 0.18 85 / 0.6) 50%, transparent 100%)",
+                    }}
+                  />
+                  <span className="flex-1 text-left text-sm font-display leading-snug text-white py-3 pl-3 pr-4">
+                    {c}
+                  </span>
                 </button>
               </li>
             );
@@ -244,6 +334,81 @@ export function ChatTriviaCard({
           </motion.p>
         )}
       </div>
+
+      {/* Breaking-news flash overlay. Lives on top of the millionaire
+          stage and crossfades out after FLASH_MS. AnimatePresence
+          handles the fade-out cleanup so the overlay unmounts cleanly
+          once the question is the only thing left. */}
+      <AnimatePresence>
+        {flashing && (
+          <motion.div
+            key="flash"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+            className="absolute inset-0 z-10 overflow-hidden pointer-events-none"
+            aria-hidden
+          >
+            {/* Solid black plate behind the bar — guarantees we're not
+                bleeding the millionaire view during the flash. */}
+            <div className="absolute inset-0 bg-[#080820]" />
+
+            {/* Diagonal red sweep — the bar. Slides in from the left,
+                stops mid-card. */}
+            <motion.div
+              initial={{ x: "-110%" }}
+              animate={{ x: "0%" }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-y-0 left-0 right-[-6%] flex items-center px-5"
+              style={{
+                background:
+                  "linear-gradient(95deg, #b9001a 0%, #d10a25 55%, #a4001a 100%)",
+                clipPath: "polygon(0 0, 100% 0, 96% 100%, 0 100%)",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.35), 0 12px 28px -10px rgba(185, 0, 26, 0.65)",
+              }}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                {/* LIVE dot — slow heartbeat, mirrors the rest of the app. */}
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                  <span className="absolute inset-0 rounded-full bg-white/60 animate-ping" />
+                  <span className="relative h-2.5 w-2.5 rounded-full bg-white" />
+                </span>
+
+                <motion.div
+                  initial={{ opacity: 0, x: 14 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.28, duration: 0.4, ease: "easeOut" }}
+                  className="min-w-0"
+                >
+                  <p className="text-[9px] uppercase tracking-[0.34em] text-white/85 font-display leading-tight">
+                    {t(lang, "trivia_breaking_kicker")}
+                  </p>
+                  <p className="font-display text-white text-lg sm:text-xl leading-tight uppercase tracking-wide truncate">
+                    {t(lang, "trivia_breaking")}
+                  </p>
+                </motion.div>
+              </div>
+            </motion.div>
+
+            {/* Country chip in the bottom-right of the flash plate so
+                the player already knows what's coming. */}
+            {country && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.32 }}
+                className="absolute bottom-3 right-4 flex items-center gap-1.5
+                           text-[10px] uppercase tracking-[0.26em] text-white/80
+                           font-display"
+              >
+                <HeartFlag code={country.code} size="sm" />
+                <span>{countryName(country.code, lang)}</span>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

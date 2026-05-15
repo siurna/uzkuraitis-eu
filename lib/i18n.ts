@@ -507,6 +507,8 @@ const S = {
   trivia_eyebrow:            { en: "Trivia", lt: "Smulkmenos" },
   trivia_answered_correct:   { en: "Spot on, +2 points!", lt: "Pataikei! +2 taškai." },
   trivia_answered_wrong:     { en: "Not this time.", lt: "Šįkart pro šalį." },
+  trivia_breaking:           { en: "Quick question!", lt: "Greitas klausimas!" },
+  trivia_breaking_kicker:    { en: "Trivia break", lt: "Klausimas iš salės" },
 
   // ── Reactions / honeycomb ────────────────────────────────────────
 };
