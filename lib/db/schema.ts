@@ -116,6 +116,16 @@ export const voters = pgTable(
     // Scored on closeness, not exact match (shape: exact +10, off-by-5
     // +7, off-by-15 +5, off-by-30 +3, beyond +0). Optional bet.
     betLtTotalPoints: integer("bet_lt_total_points"),
+    // Presence-as-REST fields. These used to ride on Supabase Realtime
+    // presence (channel.track payload) which capped at ~1 update/sec
+    // per client and got us kicked off the channel during busy moments.
+    // Now the room shell POSTs to /api/rooms/[code]/heartbeat every
+    // 60s with the current snapshot and WhosHere polls
+    // /api/rooms/[code]/participants every 20s. Nullable: an empty
+    // presence is just "they were in the room at some point".
+    avatarId: varchar("avatar_id", { length: 40 }),
+    vibe: integer("vibe").default(0),
+    seenAt: timestamp("seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
