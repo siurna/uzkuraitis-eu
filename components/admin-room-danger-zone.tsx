@@ -48,7 +48,7 @@ export function AdminRoomDangerZone({ code }: { code: string }) {
   return (
     <>
       <div className="rounded-2xl bg-error/5 ring-1 ring-error/25 px-4 py-3 flex items-center gap-3">
-        <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-error/15 ring-1 ring-error/35 text-error">
+        <span className="shrink-0 grid place-items-center h-10 w-10 uzk-icon-squircle bg-error/15 ring-1 ring-error/35 text-error">
           <Eraser className="h-5 w-5" />
         </span>
         <span className="flex-1 min-w-0">
@@ -79,7 +79,7 @@ export function AdminRoomDangerZone({ code }: { code: string }) {
       </div>
 
       <div className="rounded-2xl bg-error/5 ring-1 ring-error/25 px-4 py-3 flex items-center gap-3">
-        <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-error/15 ring-1 ring-error/35 text-error">
+        <span className="shrink-0 grid place-items-center h-10 w-10 uzk-icon-squircle bg-error/15 ring-1 ring-error/35 text-error">
           <Trash2 className="h-5 w-5" />
         </span>
         <span className="flex-1 min-w-0">

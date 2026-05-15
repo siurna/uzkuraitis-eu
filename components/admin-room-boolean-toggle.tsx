@@ -76,7 +76,7 @@ export function AdminRoomBooleanToggle({
                  glass-surface hover:bg-white/[0.07] transition text-left
                  disabled:opacity-60"
     >
-      <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/65">
+      <span className="shrink-0 grid place-items-center h-10 w-10 uzk-icon-squircle bg-white/[0.06] ring-1 ring-white/12 text-white/65">
         {icon}
       </span>
       <span className="flex-1 min-w-0">

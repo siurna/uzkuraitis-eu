@@ -300,7 +300,7 @@ export function AdminLiveControls({
       >
         <span className="block w-full rounded-[10px] bg-gradient-to-br from-dark-blue-800 to-dark-blue-900
                          px-3 py-2.5 flex items-center gap-3 text-left">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo">
+          <span className="grid h-8 w-8 shrink-0 place-items-center uzk-icon-squircle bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo">
             <Megaphone className="h-4 w-4" />
           </span>
           <span className="flex-1 font-display text-sm text-white">
@@ -345,7 +345,7 @@ export function AdminLiveControls({
                                      bg-white/[0.03] ring-1 ring-white/8 hover:bg-white/[0.06] transition text-left
                                      disabled:opacity-60"
                         >
-                          <span className="shrink-0 grid place-items-center h-9 w-9 rounded-lg bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+                          <span className="shrink-0 grid place-items-center h-9 w-9 uzk-icon-squircle bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
                             <Icon className="h-4 w-4" />
                           </span>
                           <span className="flex-1 min-w-0 flex flex-col">
@@ -417,7 +417,7 @@ function DrawerSwitch({
           two different controls — colour-only is the cleaner
           status signal. */}
       <span
-        className={`shrink-0 grid place-items-center h-8 w-8 rounded-lg transition
+        className={`shrink-0 grid place-items-center h-8 w-8 uzk-icon-squircle transition
                     ${on ? "bg-success/20 ring-1 ring-success/40 text-success" : "bg-white/[0.06] ring-1 ring-white/12 text-white/55"}`}
       >
         {icon}

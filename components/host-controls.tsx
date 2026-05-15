@@ -261,7 +261,7 @@ export function HostControls({
             it doesn't belong in the same UI as the public room link). */}
         <div className="rounded-2xl glass-surface px-4 py-3 flex flex-col gap-3">
           <div className="flex items-center gap-3">
-            <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/65">
+            <span className="shrink-0 grid place-items-center h-10 w-10 uzk-icon-squircle bg-white/[0.06] ring-1 ring-white/12 text-white/65">
               <Share2 className="h-5 w-5" />
             </span>
             <span className="flex-1 min-w-0">
@@ -292,7 +292,7 @@ export function HostControls({
         {/* Join code editor — same tile shape. */}
         <div className="rounded-2xl glass-surface px-4 py-3 flex flex-col gap-3">
           <div className="flex items-center gap-3">
-            <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/65">
+            <span className="shrink-0 grid place-items-center h-10 w-10 uzk-icon-squircle bg-white/[0.06] ring-1 ring-white/12 text-white/65">
               <Hash className="h-5 w-5" />
             </span>
             <span className="flex-1 min-w-0">
@@ -411,7 +411,7 @@ function ToggleRow({
                  disabled:opacity-60"
     >
       <span
-        className={`shrink-0 grid place-items-center h-10 w-10 rounded-xl transition
+        className={`shrink-0 grid place-items-center h-10 w-10 uzk-icon-squircle transition
                     ${
                       on
                         ? "bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo"

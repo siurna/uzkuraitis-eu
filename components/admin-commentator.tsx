@@ -244,7 +244,7 @@ function AutogrowTextarea({
             small so the modal feels like a quick eyeball, not a
             second editor. */}
         <div className="flex items-start gap-2.5">
-          <span className="h-9 w-9 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/12 bg-white/[0.04] grid place-items-center">
+          <span className="h-9 w-9 shrink-0 uzk-icon-squircle overflow-hidden ring-1 ring-white/12 bg-white/[0.04] grid place-items-center">
             {previewPhoto ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img

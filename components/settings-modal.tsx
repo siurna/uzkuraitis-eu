@@ -419,7 +419,7 @@ function PrefRow({
                  bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition text-left"
     >
       <span
-        className={`shrink-0 grid place-items-center h-10 w-10 rounded-xl transition
+        className={`shrink-0 grid place-items-center h-10 w-10 uzk-icon-squircle transition
                     ${value
                       ? "bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo"
                       : "bg-white/8 ring-1 ring-white/12 text-white/65"}`}

@@ -117,7 +117,7 @@ export function AdminLiveRoomColumn({ rooms: initialRooms }: { rooms: RoomLite[]
   return (
     <div className="flex flex-col gap-4">
       <header className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+        <span className="grid h-10 w-10 shrink-0 place-items-center uzk-icon-squircle bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
           <Radio className="h-5 w-5" />
         </span>
         <div className="flex-1 min-w-0">

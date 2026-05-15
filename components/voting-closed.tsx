@@ -26,7 +26,7 @@ export function VotingClosed() {
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         className="flex flex-col items-center gap-4"
       >
-        <span className="grid place-items-center h-16 w-16 rounded-2xl
+        <span className="grid place-items-center h-16 w-16 uzk-icon-squircle
                          bg-white/[0.06] ring-1 ring-white/12">
           <Lock className="h-7 w-7 text-dark-blue-200" />
         </span>

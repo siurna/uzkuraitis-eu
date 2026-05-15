@@ -351,7 +351,7 @@ function ProfileSheet({
           {view.topHighlight && (
             <div className="rounded-2xl bg-orange/[0.07] ring-1 ring-orange/20 p-3 flex flex-col gap-2">
               <div className="flex items-center gap-3">
-                <span className="h-9 w-9 shrink-0 rounded-xl bg-orange/15 ring-1 ring-orange/35 grid place-items-center text-orange">
+                <span className="h-9 w-9 shrink-0 uzk-icon-squircle bg-orange/15 ring-1 ring-orange/35 grid place-items-center text-orange">
                   <Flame className="h-4 w-4" fill="currentColor" />
                 </span>
                 <p className="flex-1 text-[10px] uppercase tracking-[0.2em] text-orange/90 font-display">

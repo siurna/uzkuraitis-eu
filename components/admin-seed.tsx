@@ -82,7 +82,7 @@ export function AdminSeed({
     <section className={shellClass}>
       {!embeddedRoom && (
         <header className="flex items-center gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+          <span className="grid h-10 w-10 shrink-0 place-items-center uzk-icon-squircle bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
             <FlaskConical className="h-5 w-5" />
           </span>
           <div className="flex-1 min-w-0">
@@ -163,7 +163,7 @@ function SeedCard({
 }) {
   return (
     <div className="flex items-start gap-3 rounded-xl bg-white/[0.03] ring-1 ring-white/8 p-3.5">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.06] ring-1 ring-white/10 text-white/60">
+      <span className="grid h-8 w-8 shrink-0 place-items-center uzk-icon-squircle bg-white/[0.06] ring-1 ring-white/10 text-white/60">
         {icon}
       </span>
       <div className="min-w-0 flex-1">

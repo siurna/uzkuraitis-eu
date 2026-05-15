@@ -158,7 +158,7 @@ function NotificationsCard({ lang }: { lang: Language }) {
         className="rounded-[14px] px-5 py-5 flex items-center gap-4
                    bg-gradient-to-br from-dark-blue-800/95 to-dark-blue-900/95"
       >
-        <span className="shrink-0 grid place-items-center h-12 w-12 rounded-2xl bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo">
+        <span className="shrink-0 grid place-items-center h-12 w-12 uzk-icon-squircle bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo">
           <Bell className="h-6 w-6" fill="currentColor" />
         </span>
         <div className="min-w-0 flex-1">
@@ -363,7 +363,7 @@ function BonusBetCard({ lang }: { lang: Language }) {
             ].map((c, i) => (
               <span
                 key={`a${i}`}
-                className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"
+                className="mr-2 grid h-9 w-9 shrink-0 place-items-center uzk-icon-squircle bg-white/15 ring-1 ring-white/20 shadow-md"
               >
                 <FluentEmoji glyph={c} size={22} />
               </span>
@@ -379,7 +379,7 @@ function BonusBetCard({ lang }: { lang: Language }) {
             ].map((c, i) => (
               <span
                 key={`b${i}`}
-                className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"
+                className="mr-2 grid h-9 w-9 shrink-0 place-items-center uzk-icon-squircle bg-white/15 ring-1 ring-white/20 shadow-md"
               >
                 <FluentEmoji glyph={c} size={22} />
               </span>

@@ -72,7 +72,7 @@ export function WelcomeBanner() {
               <FluentEmoji> wrapper below: the whole rectangle
               waving was distracting; only the hand should move. */}
           <span
-            className="shrink-0 grid place-items-center h-12 w-12 rounded-2xl
+            className="shrink-0 grid place-items-center h-12 w-12 uzk-icon-squircle
                        bg-white/12 ring-1 ring-white/20"
             aria-hidden
           >

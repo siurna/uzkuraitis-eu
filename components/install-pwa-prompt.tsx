@@ -278,7 +278,7 @@ function Step({
         iconBare ? (
           <span className="shrink-0 inline-block">{icon}</span>
         ) : (
-          <span className="shrink-0 grid place-items-center h-8 w-8 rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+          <span className="shrink-0 grid place-items-center h-8 w-8 uzk-icon-squircle bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
             {icon}
           </span>
         )

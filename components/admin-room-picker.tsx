@@ -94,7 +94,7 @@ export function AdminRoomPicker({
                                 : "glass-surface hover:bg-white/[0.08]"}`}
                 >
                   <span
-                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl
+                    className={`grid h-9 w-9 shrink-0 place-items-center uzk-icon-squircle
                                 ${isActive ? "bg-flamingo/25 ring-1 ring-flamingo/45 text-flamingo" : "bg-white/[0.06] ring-1 ring-white/12 text-white/55"}`}
                   >
                     <Vote className="h-4 w-4" />

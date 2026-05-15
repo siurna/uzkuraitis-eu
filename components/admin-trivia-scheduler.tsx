@@ -167,7 +167,7 @@ export function AdminTriviaScheduler({
   return (
     <>
       <div className="flex items-center gap-3 rounded-2xl bg-white/[0.03] ring-1 ring-white/8 px-3 py-2.5">
-        <span className="shrink-0 grid place-items-center h-9 w-9 rounded-lg bg-yellow/15 ring-1 ring-yellow/30 text-yellow">
+        <span className="shrink-0 grid place-items-center h-9 w-9 uzk-icon-squircle bg-yellow/15 ring-1 ring-yellow/30 text-yellow">
           <Lightbulb className="h-4 w-4" fill="currentColor" />
         </span>
         <div className="flex-1 min-w-0">

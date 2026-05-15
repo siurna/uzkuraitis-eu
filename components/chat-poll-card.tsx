@@ -226,7 +226,7 @@ export function ChatPollCard({
                   />
                   <span className="relative flex items-center gap-3">
                     <motion.span
-                      className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-black/35 ring-1 ring-white/15"
+                      className="grid h-10 w-10 shrink-0 place-items-center uzk-icon-squircle bg-black/35 ring-1 ring-white/15"
                       animate={mine ? { rotate: [0, -8, 6, 0] } : {}}
                       transition={{ duration: 0.45, ease: "easeOut" }}
                     >

@@ -52,8 +52,8 @@ export function AdminRoomHighlightThreshold({
       }`}
     >
       <span
-        className={`shrink-0 grid place-items-center transition
-                    ${isComfy ? "h-10 w-10 rounded-xl" : "h-8 w-8 rounded-lg"}
+        className={`shrink-0 grid place-items-center transition uzk-icon-squircle
+                    ${isComfy ? "h-10 w-10" : "h-8 w-8"}
                     ${accented ? "bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo" : "bg-white/[0.06] ring-1 ring-white/12 text-white/55"}`}
       >
         <Flame className={isComfy ? "h-5 w-5" : "h-4 w-4"} fill="currentColor" />

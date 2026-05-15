@@ -59,8 +59,8 @@ export function AdminRoomTriviaThreshold({
       }`}
     >
       <span
-        className={`shrink-0 grid place-items-center transition
-                    ${isComfy ? "h-10 w-10 rounded-xl" : "h-8 w-8 rounded-lg"}
+        className={`shrink-0 grid place-items-center transition uzk-icon-squircle
+                    ${isComfy ? "h-10 w-10" : "h-8 w-8"}
                     ${active ? "bg-yellow/20 ring-1 ring-yellow/40 text-yellow" : "bg-white/[0.06] ring-1 ring-white/12 text-white/55"}`}
       >
         <Lightbulb className={isComfy ? "h-5 w-5" : "h-4 w-4"} fill="currentColor" />

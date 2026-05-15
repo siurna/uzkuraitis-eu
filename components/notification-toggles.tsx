@@ -352,7 +352,7 @@ function PrefRow({
           Mirrors the settings-modal helper rows so the entire
           notifications drawer reads as one visual family. */}
       <span
-        className={`shrink-0 grid place-items-center h-9 w-9 rounded-xl transition
+        className={`shrink-0 grid place-items-center h-9 w-9 uzk-icon-squircle transition
                     ${value
                       ? "bg-success/20 ring-1 ring-success/45 text-success"
                       : "bg-white/8 ring-1 ring-white/12 text-white/55"}`}

@@ -316,6 +316,24 @@
   border-bottom-right-radius: 40px;
 }
 
+/* Apple-style squircle for the app's icon-tiles. `corner-shape:
+   squircle` paints a continuous superellipse curve (the same one iOS
+   uses for app icons) instead of a quarter-circle, so the corners
+   read smoother and more "iconic" than a regular `border-radius`.
+   The big 100px radius is the magic — on a 40px tile it clamps to a
+   full pill/circle; combined with `corner-shape: squircle` the shape
+   becomes a soft Apple-icon blob rather than a hard circle.
+   Browsers without `corner-shape` support (most of them today) simply
+   ignore the property and use the border-radius alone, so the icons
+   still look round, just without the squircle smoothing. */
+.uzk-icon-squircle {
+  border-radius: 100px;
+  corner-shape: squircle;
+  /* Vendor prefix for Safari TP / WebKit-flagged builds where the
+     property landed first under -webkit-. */
+  -webkit-corner-shape: squircle;
+}
+
 /* Poll-card backdrop shine. Slow conic gradient rotation that
    keeps the card feeling alive between vote events. GPU-cheap +
    reduce-motion respects the user's preference. */

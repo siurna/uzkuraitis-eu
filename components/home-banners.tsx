@@ -838,7 +838,7 @@ export function HomeBanners() {
                   return (
                     <span
                       key={i}
-                      className="relative h-9 w-9 grid place-items-center text-lg leading-none rounded-lg bg-white/12 ring-1 ring-white/15"
+                      className="relative h-9 w-9 grid place-items-center text-lg leading-none uzk-icon-squircle bg-white/12 ring-1 ring-white/15"
                     >
                       <span className={x ? "opacity-30 grayscale" : ""}>
                         <FluentEmoji glyph={tropeEmoji(idx)} size={22} />
@@ -894,7 +894,7 @@ export function HomeBanners() {
                     {[...BET_CHIPS, ...BET_CHIPS].map((c, i) => (
                       <span
                         key={`top-${i}`}
-                        className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"
+                        className="mr-2 grid h-10 w-10 shrink-0 place-items-center uzk-icon-squircle bg-white/15 ring-1 ring-white/20 shadow-md"
                       >
                         <FluentEmoji glyph={c} size={22} />
                       </span>
@@ -907,7 +907,7 @@ export function HomeBanners() {
                     {[...BET_CHIPS_REV, ...BET_CHIPS_REV].map((c, i) => (
                       <span
                         key={`bot-${i}`}
-                        className="mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20 shadow-md"
+                        className="mr-2 grid h-10 w-10 shrink-0 place-items-center uzk-icon-squircle bg-white/15 ring-1 ring-white/20 shadow-md"
                       >
                         <FluentEmoji glyph={c} size={22} />
                       </span>
