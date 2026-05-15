@@ -59,7 +59,7 @@ export function MyResults() {
           style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.20), transparent)" }}
           aria-hidden
         />
-        <div className="relative flex flex-col gap-2 p-5">
+        <div className="relative flex flex-col p-5">
           {/* Eyebrow + name */}
           <header className="flex items-center justify-between gap-3">
             <div className="min-w-0">

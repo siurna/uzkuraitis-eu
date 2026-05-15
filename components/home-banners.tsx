@@ -156,24 +156,29 @@ const BALL_TINTS: Record<
   BallTint,
   { stops: [string, string, string, string]; rim: string; text: string }
 > = {
+  // 4th stop bumped UP across the board (less of a "shadow" on the
+  // sphere's bottom-right) and rim alpha cut to 0.18. The previous
+  // version still landed dark enough that the medal-tier balls
+  // read as 3D-modelled marbles; now they're closer to airy, lit
+  // spheres with the gradient doing all the implied roundness.
   flamingo: {
-    stops: ["#ffe8f2", "#ff8ec5", "#e04994", "#a82a6e"],
-    rim: "rgba(80, 12, 55, 0.30)",
+    stops: ["#ffeaf3", "#ffa1d0", "#ef74b1", "#c44b8c"],
+    rim: "rgba(80, 12, 55, 0.18)",
     text: "#3a0220",
   },
   blue: {
-    stops: ["#e4f0ff", "#7fbaff", "#3f74dc", "#1a3a8e"],
-    rim: "rgba(12, 30, 90, 0.30)",
+    stops: ["#e8f2ff", "#9fcdff", "#5f8eea", "#3a5cb4"],
+    rim: "rgba(12, 30, 90, 0.18)",
     text: "#031040",
   },
   violet: {
-    stops: ["#f1e6ff", "#bf85ff", "#834cd6", "#4d22a0"],
-    rim: "rgba(32, 12, 80, 0.30)",
+    stops: ["#f3e9ff", "#cc99ff", "#9d6eea", "#6c43c4"],
+    rim: "rgba(32, 12, 80, 0.18)",
     text: "#170346",
   },
   white: {
-    stops: ["#ffffff", "#f0f2fc", "#bcc1de", "#9aa1c8"],
-    rim: "rgba(40, 40, 80, 0.25)",
+    stops: ["#ffffff", "#f4f5fc", "#cdd2e6", "#aab1d4"],
+    rim: "rgba(40, 40, 80, 0.16)",
     text: "#15163d",
   },
 };
@@ -203,14 +208,14 @@ function PointsBallSvg({ value, tint }: { value: string; tint: BallTint }) {
           <stop offset="100%" stopColor={t.stops[3]} />
         </radialGradient>
         <radialGradient id={shadowId} cx="50%" cy="100%" r="55%">
-          <stop offset="0%" stopColor="rgba(0,0,0,0.22)" />
-          <stop offset="60%" stopColor="rgba(0,0,0,0.08)" />
+          <stop offset="0%" stopColor="rgba(0,0,0,0.14)" />
+          <stop offset="55%" stopColor="rgba(0,0,0,0.05)" />
           <stop offset="100%" stopColor="rgba(0,0,0,0)" />
         </radialGradient>
       </defs>
-      {/* Contact shadow — soft + low-alpha so it suggests the ball is
-          resting on something without painting a hard puddle. */}
-      <ellipse cx="50" cy="95" rx="34" ry="4.5" fill={`url(#${shadowId})`} />
+      {/* Contact shadow — wisp, not puddle. Just enough to hint that
+          the ball is resting on something. */}
+      <ellipse cx="50" cy="96" rx="32" ry="3.5" fill={`url(#${shadowId})`} />
       <circle cx="50" cy="50" r="46" fill={`url(#${fillId})`} />
       <circle
         cx="50"

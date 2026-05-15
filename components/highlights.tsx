@@ -138,7 +138,14 @@ export function Highlights() {
               the author. */}
           {topPreview && (
             <p className="font-display text-2xl text-white leading-snug text-balance drop-shadow-sm line-clamp-3 pr-20">
-              “{topPreview}”
+              {/* Locale-aware quotes: Lithuanian uses „low-9 + left
+                  open“ (U+201E + U+201C), English uses the curly
+                  pair “…” (U+201C + U+201D). The card's text body is
+                  the user's own quote, but the punctuation around
+                  it should follow the reader's language. */}
+              {lang === "lt" ? "„" : "“"}
+              {topPreview}
+              {lang === "lt" ? "“" : "”"}
             </p>
           )}
 

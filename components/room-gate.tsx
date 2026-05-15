@@ -244,7 +244,7 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
 
   return (
     <main
-      className={`relative min-h-dvh flex flex-col items-center px-4 ${
+      className={`relative h-dvh overflow-hidden flex flex-col items-center px-4 ${
         // Three layout cases:
         //   1. rehydrate state — justify-center INSIDE the safe-area
         //      insets. On iOS PWA, min-h-dvh covers the notch + home-
