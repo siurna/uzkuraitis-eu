@@ -1,4 +1,4 @@
-import { desc, sql } from "drizzle-orm";
+import { desc, gt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { rooms, voters } from "@/lib/db/schema";
 import { AdminLivePanel } from "@/components/admin-live-panel";
@@ -7,16 +7,16 @@ import { AdminPageTitle } from "@/components/admin-page-title";
 
 // Global live controller. The admin runs the real broadcast from here:
 // flip the show status / pick who's on stage and it fans out to every
-// room. The per-room magic-link page can still override individual rooms
-// after the fact. The running-order position is derived server-side from
-// the country's startlist order — no separate control.
+// room.
 export default async function AdminLivePage() {
-  // Per-room participant headcount used by the picker badge. Total
-  // joiners (no time filter) — the earlier "updated in last 2 min"
-  // window only counted voters who had just hit save, so a room of
-  // passive watchers showed zero and the badge silently disappeared.
-  // Polling at 15s on the client keeps the value fresh as new
-  // people join.
+  // Per-room ACTIVE-NOW count for the picker badge. "Active" =
+  // session pinged the heartbeat endpoint within the last 120s
+  // (room-shell pings every 60s + on visibilitychange, so a 120s
+  // window covers one missed beat without false-positive-ing a
+  // closed tab). The lifetime COUNT() version this replaced over-
+  // counted hard: anyone who ever joined still showed up forever.
+  const ACTIVE_WINDOW_MS = 120_000;
+  const cutoff = new Date(Date.now() - ACTIVE_WINDOW_MS);
   const [rows, activeRows] = await Promise.all([
     db
       .select({
@@ -39,6 +39,7 @@ export default async function AdminLivePage() {
         n: sql<number>`COUNT(*)::int`,
       })
       .from(voters)
+      .where(gt(voters.updatedAt, cutoff))
       .groupBy(voters.roomId),
   ]);
   const activeByRoom = new Map(activeRows.map((r) => [r.roomId, r.n]));

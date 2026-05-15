@@ -22,6 +22,7 @@ import { VotingAnnouncement } from "@/components/voting-announcement";
 import { NowPlayingTakeover } from "@/components/now-playing-takeover";
 import { LeaderboardProvider } from "@/components/leaderboard-provider";
 import { useVibeTracker } from "@/lib/use-vibe-tracker";
+import { ensureSessionId } from "@/lib/use-identity";
 
 // Tiny no-op render — just wires the vibe tracker hook into the
 // React tree so it's inside RoomProvider's presence context. Kept
@@ -165,6 +166,41 @@ export function RoomShell({
 // bar can badge it.
 function RoomBody({ children }: { children: React.ReactNode }) {
   const { code } = useRoomLive();
+  // Active-presence heartbeat. Pings the room's heartbeat endpoint
+  // on mount, every 60s, and whenever the tab returns to visible.
+  // Server bumps voters.updatedAt so the admin Live page can count
+  // "active in the last 90s" instead of falling back to a lifetime
+  // joined count that over-reports everyone who ever opened the
+  // room. Cheap: single-row UPDATE by an indexed (roomId, sessionId).
+  useEffect(() => {
+    if (!code) return;
+    let cancelled = false;
+    const beat = () => {
+      const sid = ensureSessionId();
+      if (!sid) return;
+      void fetch(`/api/rooms/${code}/heartbeat`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ session: sid }),
+        keepalive: true,
+      }).catch(() => {
+        /* heartbeat is best-effort */
+      });
+    };
+    beat();
+    const id = setInterval(beat, 60_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") beat();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+      void cancelled; // silence unused-var when the closure is GC'd
+    };
+  }, [code]);
+
   const [tab, setTabState] = useState<RoomTab>("home");
   const [visited, setVisited] = useState<ReadonlySet<RoomTab>>(
     () => new Set<RoomTab>(["home"]),
