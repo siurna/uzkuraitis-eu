@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { and, desc, eq, inArray, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { chatMessages, chatReactions, type ChatMessageKind } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
@@ -10,6 +10,28 @@ import { guardSession } from "@/lib/server-session";
 import { checkAndIncrement } from "@/lib/rate-limit";
 import { toChatPayload } from "@/lib/chat-system";
 import { t } from "@/lib/i18n";
+
+// Grapheme-safe truncation for push notification bodies. JS string
+// `slice` cuts by 16-bit code unit, which can split a flag (two
+// surrogate pairs), a skin-toned emoji (5+ codepoints), or a ZWJ
+// family glyph into a U+FFFD replacement char. `Intl.Segmenter` —
+// available everywhere Next 16 runs — splits on graphemes so the
+// last visible glyph stays intact. Falls back to char-slice for
+// the (impossible) case where Segmenter isn't shipped.
+function truncateForPush(body: string, max = 120): string {
+  if (body.length <= max) return body;
+  try {
+    const seg = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+    let out = "";
+    for (const { segment } of seg.segment(body)) {
+      if (out.length + segment.length > max) break;
+      out += segment;
+    }
+    return out;
+  } catch {
+    return body.slice(0, max);
+  }
+}
 
 // Per-room chat. GET returns a window of messages with their reactions
 // folded in; POST inserts a new message and fans-out chat:new +
@@ -51,24 +73,44 @@ export async function GET(req: Request, { params }: RouteCtx) {
 
   const url = new URL(req.url);
   const beforeIso = url.searchParams.get("before");
+  // Optional id cursor companion to the timestamp cursor. Together
+  // they form a (createdAt, id) tuple cursor so two messages with
+  // an identical millisecond (system + user posted in the same
+  // transaction, e.g.) page cleanly — without this, the second of
+  // the tied pair was silently dropped on the next "load earlier".
+  const beforeId = url.searchParams.get("beforeId");
   const limit = Math.min(
     PAGE_SIZE,
     Number(url.searchParams.get("limit") ?? PAGE_SIZE),
   );
 
-  // Fetch most-recent first then reverse — keeps the index seek cheap.
+  // Fetch most-recent first then reverse — keeps the index seek
+  // cheap. Cursor is (createdAt DESC, id DESC) when both sides are
+  // present, falling back to plain createdAt < ? when only the
+  // timestamp is provided (older clients).
   const whereClause = beforeIso
-    ? and(
-        eq(chatMessages.roomId, room.id),
-        lt(chatMessages.createdAt, new Date(beforeIso)),
-      )
+    ? beforeId
+      ? and(
+          eq(chatMessages.roomId, room.id),
+          or(
+            lt(chatMessages.createdAt, new Date(beforeIso)),
+            and(
+              eq(chatMessages.createdAt, new Date(beforeIso)),
+              lt(chatMessages.id, beforeId),
+            ),
+          ),
+        )
+      : and(
+          eq(chatMessages.roomId, room.id),
+          lt(chatMessages.createdAt, new Date(beforeIso)),
+        )
     : eq(chatMessages.roomId, room.id);
 
   const msgs = await db
     .select()
     .from(chatMessages)
     .where(whereClause)
-    .orderBy(desc(chatMessages.createdAt))
+    .orderBy(desc(chatMessages.createdAt), desc(chatMessages.id))
     .limit(limit);
 
   const ids = msgs.map((m) => m.id);
@@ -225,7 +267,7 @@ export async function POST(req: Request, { params }: RouteCtx) {
     (lang) => ({
       title: data.name,
       body: data.body
-        ? data.body.slice(0, 120)
+        ? truncateForPush(data.body)
         : data.kind === "image"
           ? t(lang, "push_chat_photo")
           : data.kind === "gif"
@@ -251,7 +293,7 @@ export async function POST(req: Request, { params }: RouteCtx) {
       },
       (lang) => ({
         title: t(lang, "push_chat_mention_title", data.name),
-        body: data.body?.slice(0, 120) ?? t(lang, "push_chat_mention_body"),
+        body: (data.body ? truncateForPush(data.body) : undefined) ?? t(lang, "push_chat_mention_body"),
         url: `/r/${code}/chat`,
         tag: `chat-mention:${code}`,
       }),
@@ -270,7 +312,7 @@ export async function POST(req: Request, { params }: RouteCtx) {
         !!prefs.chatReplies && !prefs.chatAll && sub.sessionId === replyTargetSession,
       (lang) => ({
         title: t(lang, "push_chat_reply_title", data.name),
-        body: data.body?.slice(0, 120) ?? t(lang, "push_chat_reply_body"),
+        body: (data.body ? truncateForPush(data.body) : undefined) ?? t(lang, "push_chat_reply_body"),
         url: `/r/${code}/chat`,
         tag: `chat-reply:${data.replyTo}`,
       }),

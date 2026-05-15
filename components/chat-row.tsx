@@ -376,9 +376,23 @@ export function ChatRow({
   // the highlight glow on top — it'd compete with the bar fill.
   const isHighlight = !isSystem && !isNowPlaying && !isResults && !isPoll && reactionTotal >= 5;
   const isEdited = (m.meta as { edited?: boolean } | null)?.edited === true;
+  // Edit window: server enforces, but we ALSO tick a clock here so
+  // the local Edit button disappears the moment the window closes
+  // — without the ticker, an idle tab kept the affordance visible
+  // until the next state change. 10-second cadence keeps the
+  // re-render cost negligible while still expiring the button at
+  // worst 10s late.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!mine || m.kind !== "text") return;
+    const age = Date.now() - new Date(m.createdAt).getTime();
+    if (age >= EDIT_WINDOW_MS) return;
+    const id = setInterval(() => setNow(Date.now()), 10_000);
+    return () => clearInterval(id);
+  }, [mine, m.kind, m.createdAt]);
   const canEdit =
     mine && m.kind === "text" &&
-    Date.now() - new Date(m.createdAt).getTime() < EDIT_WINDOW_MS;
+    now - new Date(m.createdAt).getTime() < EDIT_WINDOW_MS;
 
   const deepDive = useCountryDeepDive();
   const profile = useProfile();
@@ -859,13 +873,11 @@ export function ChatRow({
             <span className="text-[11px] text-white/35 tabular-nums self-end">{time}</span>
           )}
 
-          {parent && (
+          {m.replyTo && (
             // Quoted-message chip — reads as part of the bubble below.
-            // On your own side it picks up the bubble's white wash with
-            // dark text + a flamingo edge so the quote + bubble look
-            // tied together (the old dim-grey-on-right-of-white-bubble
-            // treatment read as disjointed). On others' messages it's
-            // the same quiet glass chip as before.
+            // Falls back to a "(deleted)" italic when the parent has
+            // been removed or scrolled out of the rendered window so
+            // the reply doesn't silently lose its context cue.
             <div
               className={`text-[11px] px-3 py-1.5 rounded-xl truncate max-w-[min(100%,18rem)] ${
                 mine ? "self-end" : "self-start"
@@ -876,11 +888,17 @@ export function ChatRow({
               }`}
             >
               <Reply className="h-3 w-3 inline-block mr-1 text-flamingo" />
-              <span className={`font-display ${mine ? "text-dark-blue" : "text-white/85"}`}>
-                {parent.name}
-              </span>
-              {": "}
-              {parent.body ?? (parent.gifUrl ? "GIF" : t(lang, "chat_card"))}
+              {parent ? (
+                <>
+                  <span className={`font-display ${mine ? "text-dark-blue" : "text-white/85"}`}>
+                    {parent.name}
+                  </span>
+                  {": "}
+                  {parent.body ?? (parent.gifUrl ? "GIF" : t(lang, "chat_card"))}
+                </>
+              ) : (
+                <span className="italic opacity-70">{t(lang, "chat_reply_deleted")}</span>
+              )}
             </div>
           )}
 

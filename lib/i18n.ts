@@ -216,6 +216,9 @@ const S = {
   chat_typing_many:  { en: "Several people are typing…", lt: "Keli žmonės rašo…" },
   chat_seen_by:      { en: (n: number) => `Seen by ${n}`, lt: (n: number) => `Matė ${n}` },
   chat_reply:        { en: "Reply", lt: "Atsakyti" },
+  // Shown inside the reply chip when the parent message is gone
+  // (author deleted it OR it scrolled out of the rendered window).
+  chat_reply_deleted: { en: "(message removed)", lt: "(žinutė pašalinta)" },
   chat_delete:       { en: "Delete", lt: "Ištrinti" },
   chat_card:         { en: "card", lt: "kortelė" },
   chat_who_reacted:  { en: "Who reacted?", lt: "Kas reagavo?" },

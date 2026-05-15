@@ -106,7 +106,12 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const [pendingImage, setPendingImage] = useState<{ file: File; url: string } | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [newCount, setNewCount] = useState(0);
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  // Lightbox tracks BOTH the rendered URL and the underlying
+  // message id. When the author deletes their own image while a
+  // viewer has the lightbox open, the message disappears from the
+  // list — we close the lightbox in the same tick instead of
+  // leaving the (still-valid) Supabase URL hanging.
+  const [lightbox, setLightbox] = useState<{ url: string; messageId: string | null } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   // The current visual viewport (the bit of the page that's actually
   const [viewport, setViewport] = useState<{ h: number; top: number } | null>(null);
@@ -339,9 +344,13 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     } catch {
       /* private mode / corrupt */
     }
-    // Reset pagination growth on room change so a freshly opened
-    // room doesn't inherit the previous room's expanded cap.
+    // Reset pagination growth + the "rows prepended on the latest
+    // loadEarlier" counter on room change. Without the prepend
+    // reset, the first scroll-locking layout effect on the new
+    // room could mis-attribute its initial growth as paginated
+    // history and skip the bottom-of-room auto-scroll.
     loadedHistoryRef.current = 0;
+    prependedRef.current = 0;
     fetchMessages(true);
     return () => {
       if (fetchTimer.current) clearTimeout(fetchTimer.current);
@@ -352,6 +361,17 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
+
+  // Auto-close the lightbox if its underlying message leaves the
+  // visible window (author deleted, scrolled out of RENDER_CAP).
+  // The Supabase URL would still load otherwise, leaving a stale
+  // image hanging over an in-flight conversation.
+  useEffect(() => {
+    if (!lightbox?.messageId) return;
+    if (!messages.some((m) => m.id === lightbox.messageId)) {
+      setLightbox(null);
+    }
+  }, [messages, lightbox]);
 
   // Keep the cache warm for the next tab switch. Debounced 500ms so
   // a reaction storm doesn't fire stringify+setItem on every tick;
@@ -404,8 +424,13 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     try {
       const oldest = messages.find((m) => !m.pending);
       if (!oldest) return;
+      // Tuple cursor: pass both the timestamp AND the id so two
+      // messages sharing an exact millisecond (system + user
+      // landing in the same transaction) page cleanly. Older
+      // backends without `beforeId` support just ignore the
+      // second param.
       const res = await fetch(
-        `/api/rooms/${code}/chat?before=${encodeURIComponent(oldest.createdAt)}&limit=50`,
+        `/api/rooms/${code}/chat?before=${encodeURIComponent(oldest.createdAt)}&beforeId=${encodeURIComponent(oldest.id)}&limit=50`,
         { cache: "no-store" },
       );
       if (!res.ok) return;
@@ -514,8 +539,12 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
             // hard gate; the temporal window is the tiebreaker.
             const arrived = Date.parse(m.createdAt);
             const TEMPORAL_MATCH_MS = 1_500;
+            // Defensive: text-kind dedup REQUIRES both sides to
+            // have a real body. Two null-body rows of any
+            // unrelated origin (impossible today, but cheap to
+            // guard) wouldn't pair on `null === null`.
             const sameBody = (a: string | null, b: string | null) =>
-              (a ?? "").trim() === (b ?? "").trim();
+              a != null && b != null && a.trim() === b.trim();
             const tmpIdx = prev.findIndex(
               (x) =>
                 x.pending &&
@@ -1196,7 +1225,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                       onEdit={() => startEdit(m)}
                       onCopy={() => copyBody(m)}
                       onDelete={() => remove(m)}
-                      onOpenImage={(url) => setLightbox(url)}
+                      onOpenImage={(url) => setLightbox({ url, messageId: m.id })}
                       lang={lang}
                       nowPlayingCode={nowPlayingCode}
                       roomCode={code}
@@ -1476,7 +1505,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         onPick={(url) => sendGif(url)}
         nowPlayingCode={nowPlayingCode}
       />
-      <Lightbox url={lightbox} onClose={() => setLightbox(null)} closeLabel={t(lang, "close")} />
+      <Lightbox url={lightbox?.url ?? null} onClose={() => setLightbox(null)} closeLabel={t(lang, "close")} />
     </main>
   );
 }
