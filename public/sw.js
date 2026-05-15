@@ -17,7 +17,7 @@
 // installed only updates when the byte-for-byte sw.js changes AND the
 // new SW takes control, which the `clients.claim()` below + a fresh
 // CACHE name together guarantee).
-const CACHE = "esc-2026-v5";
+const CACHE = "esc-2026-v6";
 // Icons live on a Supabase bucket now (see app/manifest.ts), so the
 // precache list only carries first-party static assets. The bucket
 // CDN handles the icon URLs on its own and we don't want a precache
