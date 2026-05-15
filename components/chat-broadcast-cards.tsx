@@ -50,9 +50,15 @@ type SysMeta = {
 export function ChatBroadcastCard({
   meta,
   lang,
+  messageId,
 }: {
   meta: SysMeta | null;
   lang: Language;
+  /** Chat message id — lets per-card surfaces (SelfieCard's paparazzi
+   *  flash) key their "fire once" state per selfie post, instead of
+   *  per-room (which means only the FIRST selfie of the night ever
+   *  triggers the flash). */
+  messageId: string;
 }) {
   const key = meta?.sysKey;
   if (!key) return null;
@@ -64,7 +70,7 @@ export function ChatBroadcastCard({
     case "sys_cta_bet":
       return <BonusBetCard lang={lang} />;
     case "sys_cta_selfie":
-      return <SelfieCard lang={lang} />;
+      return <SelfieCard lang={lang} messageId={messageId} />;
     case "sys_cta_welcome":
       return <WelcomeChatCard lang={lang} />;
     case "sys_cta_thanks":
@@ -767,17 +773,14 @@ function ThanksCard({ lang }: { lang: Language }) {
       }}
     >
       <div className="relative px-5 py-8 flex flex-col items-center text-center gap-3">
-        {/* Winning country's heart sits ABOVE the eyebrow now — the
-            heart anchors the moment ("they won, here's who"), the
-            eyebrow + title follow. Hidden until placements have
-            landed so we never paint a placeholder. */}
         {/* Crown of the card. When placements are entered, this is
-            the winning country's heart-flag (sized up + a warm
-            outer glow so it reads as the focal moment, not a chip
-            in the margin). When the host fires the closing card
-            without yet typing official results (rehearsals,
-            previews), the fallback is a big Fluent 🏆 in the same
-            slot so the layout never collapses. */}
+            the winning country's heart-flag (sized up + a warm outer
+            glow so it reads as the focal moment, not a chip in the
+            margin). When the host fires the closing card without yet
+            typing official results (rehearsals, previews), the
+            fallback is the 70-heart brand mark in the same slot — a
+            trophy felt like a generic award; the brand heart is the
+            actual closing image of every Eurovision broadcast. */}
         <motion.div
           initial={{ opacity: 0, scale: 0.5, y: -10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -796,7 +799,15 @@ function ThanksCard({ lang }: { lang: Language }) {
           {winner ? (
             <Flag code={winner} size="lg" className="h-16 w-auto" />
           ) : (
-            <FluentEmoji glyph="🏆" size={72} ariaLabel="winner" />
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/images/70-heart.webp"
+              alt=""
+              width={80}
+              height={80}
+              className="h-20 w-auto object-contain heartbeat-loop"
+              aria-hidden
+            />
           )}
         </motion.div>
         <p className="text-[10px] uppercase tracking-[0.3em] font-display text-yellow/85">
@@ -841,33 +852,47 @@ function PodiumChip({
 // `capture` isn't honoured). The card itself drives the existing
 // chat upload + send flow so we don't have to weave a callback all
 // the way back through chat-panel.
-function SelfieCard({ lang }: { lang: Language }) {
+function SelfieCard({ lang, messageId }: { lang: Language; messageId: string }) {
   const { code } = useRoomLive();
   const { sessionId: getSession, name, avatarId } = useIdentity();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  // Paparazzi flash: a full-viewport white pulse that fires ONCE
-  // per room the very first time this card mounts. Keyed in
-  // sessionStorage so scrolling back to the message later doesn't
-  // re-fire, and so reloading the tab doesn't flash again. The
-  // card lives inside chat-row, so its mount = the viewer is
-  // looking at chat in this exact moment.
+  // Paparazzi flash: a full-viewport white pulse that fires the first
+  // time this specific selfie message lands in chat. Keyed in
+  // sessionStorage per ROOM+MESSAGE so:
+  //   - the SAME selfie post never re-flashes (scroll back, re-open
+  //     the tab in the same session, etc),
+  //   - but a NEW selfie post fires a fresh flash (the host can fire
+  //     multiple selfie prompts during the show; each gets its own
+  //     paparazzi moment).
+  // A ref guards strict-mode double-invoke in dev: the first run
+  // sets it, the second run sees it and bails before the cleanup
+  // would have cancelled the timeout.
   const [flash, setFlash] = useState(false);
+  const firedRef = useRef(false);
   useEffect(() => {
-    if (!code) return;
-    const key = `uzk_selfie_paparazzi_${code}`;
+    if (!code || !messageId) return;
+    if (firedRef.current) return;
+    const key = `uzk_selfie_flash_${code}_${messageId}`;
     try {
       if (sessionStorage.getItem(key) === "1") return;
       sessionStorage.setItem(key, "1");
     } catch {
-      /* private mode */
+      /* private mode — fall through and flash once per mount */
     }
-    setFlash(true);
-    const t = setTimeout(() => setFlash(false), 600);
-    return () => clearTimeout(t);
-  }, [code]);
+    firedRef.current = true;
+    // rAF before flipping flash so the row is fully painted; otherwise
+    // on slow first-paint the overlay can land before the chat scroll
+    // has settled and the user misses the bottom of the white wash.
+    const raf = requestAnimationFrame(() => setFlash(true));
+    // Timeout is intentionally NOT cleared on unmount. setFlash on an
+    // unmounted component is a no-op in React 18+; we'd rather guarantee
+    // the false-flip happens than cancel it from strict-mode cleanup.
+    window.setTimeout(() => setFlash(false), 1000);
+    return () => cancelAnimationFrame(raf);
+  }, [code, messageId]);
 
   // Revoke object URLs we hold so we don't leak when the user picks
   // a new shot or the card unmounts.
@@ -926,7 +951,10 @@ function SelfieCard({ lang }: { lang: Language }) {
       animate={{ opacity: 1, scale: 1, rotate: -1.5 }}
       whileTap={{ scale: 0.99 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-      className="relative mx-auto max-w-[21rem]"
+      // my-6 = extra vertical breathing room in the chat thread so
+      // the polaroid is set apart from the rows above and below. The
+      // polaroid itself reverts to its original snug padding.
+      className="relative mx-auto max-w-[19rem] my-6"
     >
       {/* Paparazzi flash overlay — fires once per room when the card
           first lands in chat. Portalled to document.body because the
@@ -976,7 +1004,7 @@ function SelfieCard({ lang }: { lang: Language }) {
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={busy}
-        className="relative block w-full text-left p-7 pb-6 rounded-sm
+        className="relative block w-full text-left p-6 pb-5 rounded-sm
                    bg-[#f5efe2]
                    shadow-[0_18px_44px_-18px_rgba(0,0,0,0.55),0_2px_6px_-2px_rgba(0,0,0,0.4)]
                    active:scale-[0.99] transition transform-gpu disabled:opacity-70"
@@ -1021,7 +1049,7 @@ function SelfieCard({ lang }: { lang: Language }) {
             </span>
           )}
         </span>
-        <span className="block px-1 pt-4 pb-2 text-center">
+        <span className="block px-1 pt-3 pb-2 text-center">
           <span
             className="block font-display text-[10px] uppercase tracking-[0.32em] text-[#8a614a]"
           >

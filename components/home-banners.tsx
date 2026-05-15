@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
 import { MessageCircle, ChevronRight } from "lucide-react";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
@@ -102,40 +102,35 @@ function Banner({
 }
 
 // Vote artwork: the Eurovision points spread (1, 2, 3, 4, 5, 6, 7, 8,
-// 10, 12) falling from the top in random order, settling into a tight
-// pyramid pile at the bottom, holding for a beat, then fading out and
-// restarting on a loop. Reads as "this is where points happen" with
-// the live-stage drama of the actual scoreboard reveal. Bigger value
-// → bigger ball. 12 is the golden one (douze points).
+// 10, 12) raining into a small physics sandbox and piling up at the
+// bottom. Bigger value → bigger ball. 12 is the golden one (douze
+// points). Each ball is a real SVG (gradient sphere + specular
+// highlight + numeral) so it renders crisp at any pixel density and
+// matches the vector vocabulary of the flag SVGs in /public/flags/.
 //
-// Each ball is a real SVG (gradient circle + specular highlight +
-// numeral) so it renders crisp at any pixel density, matches the
-// vector vocabulary of the flag SVGs in /public/flags/, and the
-// numeral lives in the same <svg> as the sphere so they scale + drop
-// together. Motion shape: spring drop with stiffness 240 / damping 13
-// for a tiny bounce on landing. Per-cycle the entry order reshuffles.
-// AnimatePresence handles the synchronous fade-out between cycles.
+// The simulation is a tiny circle-on-circle rigid-body sandbox: balls
+// spawn above the container with a small horizontal nudge, gravity
+// pulls them down, the floor + side walls bounce them with low
+// restitution, and ball-on-ball contact resolves overlap and swaps
+// normal-velocity components so they jostle each other into a real
+// pile rather than landing on hand-tuned grid coordinates. Driven
+// directly via refs + rAF (no React re-render per frame) so it stays
+// cheap. Cycle: ~5.5s settle + hold, then fade and reshuffle.
 const VOTE_BALLS: ReadonlyArray<{
   v: string;
-  x: number;
-  y: number;
   size: number;
   gold?: boolean;
 }> = [
-  // Bottom row — the heavy hitters.
-  { v: "12", x: 30, y: 14, size: 32, gold: true },
-  { v: "10", x: 60, y: 18, size: 28 },
-  { v: "8",  x: 88, y: 18, size: 26 },
-  { v: "7",  x: 112, y: 18, size: 24 },
-  // Row two.
-  { v: "6", x: 44, y: 40, size: 22 },
-  { v: "5", x: 74, y: 42, size: 22 },
-  { v: "4", x: 100, y: 42, size: 22 },
-  // Row three.
-  { v: "3", x: 54, y: 62, size: 20 },
-  { v: "2", x: 84, y: 62, size: 20 },
-  // Top dot.
-  { v: "1", x: 68, y: 82, size: 18 },
+  { v: "12", size: 34, gold: true },
+  { v: "10", size: 30 },
+  { v: "8",  size: 27 },
+  { v: "7",  size: 25 },
+  { v: "6",  size: 23 },
+  { v: "5",  size: 22 },
+  { v: "4",  size: 21 },
+  { v: "3",  size: 20 },
+  { v: "2",  size: 19 },
+  { v: "1",  size: 18 },
 ];
 
 function PointsBallSvg({ value, gold }: { value: string; gold?: boolean }) {
@@ -220,29 +215,39 @@ function PointsBallSvg({ value, gold }: { value: string; gold?: boolean }) {
   );
 }
 
+// Container dimensions and physics constants live outside the
+// component so the rAF loop closure picks them up without React deps.
+const PHYS_W = 144;
+const PHYS_H = 128;
+const PHYS_FLOOR = PHYS_H - 2;
+const PHYS_GRAVITY = 1100; // px / s²
+const PHYS_RESTITUTION_WALL = 0.42;
+const PHYS_RESTITUTION_BALL = 0.36;
+const PHYS_HORIZONTAL_FRICTION = 0.985;
+const PHYS_REST_THRESHOLD = 18; // |vy| under this on the floor → settle
+const CYCLE_MS = 6500;
+const FADE_MS = 700;
+const STAGGER_MS = 130;
+
+type BallSim = {
+  v: string;
+  size: number;
+  gold?: boolean;
+  r: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  spawnAt: number; // performance.now() when this ball starts integrating
+};
+
 function VoteBallsRain() {
   const [cycle, setCycle] = useState(0);
-  const [visible, setVisible] = useState(true);
+  const ballRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const stateRef = useRef<BallSim[]>([]);
 
-  // Cycle clock. Show: 4.5s pile. Hide: ~0.5s fade. Hold a beat, bump
-  // the cycle (fresh shuffle, fresh drops). Total cadence ~5.6s.
-  useEffect(() => {
-    let cancelled = false;
-    setVisible(true);
-    const hide = window.setTimeout(() => {
-      if (!cancelled) setVisible(false);
-    }, 4500);
-    const next = window.setTimeout(() => {
-      if (!cancelled) setCycle((c) => c + 1);
-    }, 5500);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(hide);
-      window.clearTimeout(next);
-    };
-  }, [cycle]);
-
-  // Shuffle the entry order so the same ball doesn't always drop first.
+  // Reshuffled entry order each cycle so the same ball doesn't always
+  // drop first.
   const order = useMemo(() => {
     const idx = VOTE_BALLS.map((_, i) => i);
     for (let i = idx.length - 1; i > 0; i--) {
@@ -250,48 +255,164 @@ function VoteBallsRain() {
       [idx[i], idx[j]] = [idx[j], idx[i]];
     }
     return idx;
-    // Reshuffle each cycle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cycle]);
 
+  useEffect(() => {
+    const start = performance.now();
+    stateRef.current = VOTE_BALLS.map((b, i) => {
+      const entryPos = order.indexOf(i);
+      return {
+        v: b.v,
+        size: b.size,
+        gold: b.gold,
+        r: b.size / 2,
+        // Random initial x within the container (keeping at least r
+        // away from each wall) + a small horizontal nudge so balls
+        // don't all stack into a single column.
+        x: b.size / 2 + Math.random() * (PHYS_W - b.size),
+        y: -b.size - Math.random() * 30,
+        vx: (Math.random() - 0.5) * 80,
+        vy: 0,
+        spawnAt: start + entryPos * STAGGER_MS,
+      };
+    });
+
+    let raf = 0;
+    let lastT = start;
+    const cycleEnd = start + CYCLE_MS;
+
+    const step = (t: number) => {
+      const dt = Math.min((t - lastT) / 1000, 0.033);
+      lastT = t;
+
+      const balls = stateRef.current;
+
+      // Integrate each spawned ball, then resolve walls + floor.
+      for (const b of balls) {
+        if (t < b.spawnAt) continue;
+        b.vy += PHYS_GRAVITY * dt;
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        // Floor bounce — settle when bouncing is below threshold.
+        if (b.y + b.r > PHYS_FLOOR) {
+          b.y = PHYS_FLOOR - b.r;
+          if (Math.abs(b.vy) > PHYS_REST_THRESHOLD) {
+            b.vy = -b.vy * PHYS_RESTITUTION_WALL;
+          } else {
+            b.vy = 0;
+          }
+          b.vx *= PHYS_HORIZONTAL_FRICTION;
+          if (Math.abs(b.vx) < 4) b.vx = 0;
+        }
+        // Walls.
+        if (b.x - b.r < 0) {
+          b.x = b.r;
+          b.vx = -b.vx * PHYS_RESTITUTION_WALL;
+        } else if (b.x + b.r > PHYS_W) {
+          b.x = PHYS_W - b.r;
+          b.vx = -b.vx * PHYS_RESTITUTION_WALL;
+        }
+      }
+
+      // Circle-on-circle: resolve overlap by displacing both halves
+      // along the contact normal, then exchange the normal component
+      // of velocity for a soft elastic-ish bounce. Two passes so a
+      // ball wedged between two others doesn't poke through.
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = 0; i < balls.length; i++) {
+          const a = balls[i];
+          if (t < a.spawnAt) continue;
+          for (let j = i + 1; j < balls.length; j++) {
+            const b = balls[j];
+            if (t < b.spawnAt) continue;
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const distSq = dx * dx + dy * dy;
+            const minD = a.r + b.r;
+            if (distSq < minD * minD && distSq > 0.0001) {
+              const dist = Math.sqrt(distSq);
+              const overlap = minD - dist;
+              const nx = dx / dist;
+              const ny = dy / dist;
+              // Mass-proportional separation (bigger ball = harder to
+              // shove). Approximate mass with area = πr².
+              const ma = a.r * a.r;
+              const mb = b.r * b.r;
+              const total = ma + mb;
+              a.x -= nx * overlap * (mb / total);
+              a.y -= ny * overlap * (mb / total);
+              b.x += nx * overlap * (ma / total);
+              b.y += ny * overlap * (ma / total);
+              const dvx = b.vx - a.vx;
+              const dvy = b.vy - a.vy;
+              const dotN = dvx * nx + dvy * ny;
+              if (dotN < 0) {
+                const impulse = -dotN * (1 + PHYS_RESTITUTION_BALL);
+                const ia = (impulse * mb) / total;
+                const ib = (impulse * ma) / total;
+                a.vx -= ia * nx;
+                a.vy -= ia * ny;
+                b.vx += ib * nx;
+                b.vy += ib * ny;
+              }
+            }
+          }
+        }
+      }
+
+      // Write to DOM directly — no React render per frame.
+      const timeUntilEnd = cycleEnd - t;
+      const fadeAlpha =
+        timeUntilEnd < FADE_MS ? Math.max(0, timeUntilEnd / FADE_MS) : 1;
+      for (let i = 0; i < balls.length; i++) {
+        const el = ballRefs.current[i];
+        if (!el) continue;
+        const b = balls[i];
+        if (t < b.spawnAt) {
+          el.style.opacity = "0";
+        } else {
+          el.style.opacity = String(fadeAlpha);
+          el.style.transform = `translate(${b.x - b.r}px, ${b.y - b.r}px)`;
+        }
+      }
+
+      if (t < cycleEnd) {
+        raf = requestAnimationFrame(step);
+      } else {
+        setCycle((c) => c + 1);
+      }
+    };
+
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [cycle, order]);
+
   return (
     <span
-      className="relative block w-36 h-32 mr-2 opacity-95"
+      className="relative block opacity-95 mr-2"
+      style={{ width: PHYS_W, height: PHYS_H }}
       aria-hidden
     >
-      <AnimatePresence>
-        {visible &&
-          VOTE_BALLS.map((ball, i) => {
-            const entryPos = order.indexOf(i);
-            const delay = entryPos * 0.11;
-            return (
-              <motion.span
-                key={`${cycle}-${ball.v}`}
-                initial={{ y: -120, opacity: 0, rotate: -14 }}
-                animate={{ y: 0, opacity: 1, rotate: 0 }}
-                exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.4 } }}
-                transition={{
-                  delay,
-                  type: "spring",
-                  stiffness: 240,
-                  damping: 13,
-                  mass: 0.9,
-                  opacity: { delay, duration: 0.12 },
-                }}
-                style={{
-                  position: "absolute",
-                  bottom: ball.y,
-                  left: ball.x,
-                  width: ball.size,
-                  height: ball.size,
-                }}
-                className="block"
-              >
-                <PointsBallSvg value={ball.v} gold={ball.gold} />
-              </motion.span>
-            );
-          })}
-      </AnimatePresence>
+      {VOTE_BALLS.map((ball, i) => (
+        <span
+          key={`${cycle}-${i}`}
+          ref={(el) => {
+            ballRefs.current[i] = el;
+          }}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: ball.size,
+            height: ball.size,
+            opacity: 0,
+            willChange: "transform, opacity",
+          }}
+        >
+          <PointsBallSvg value={ball.v} gold={ball.gold} />
+        </span>
+      ))}
     </span>
   );
 }

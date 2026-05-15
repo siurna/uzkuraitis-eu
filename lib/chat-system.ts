@@ -88,6 +88,19 @@ export async function postSystemMessage(
 // client always renders the question that was live when the card was
 // posted. Quiet on purpose — trivia firing shouldn't bump the
 // chat-unread badge; the card is its own attention signal.
+//
+// `meta.firesAt` is a random ISO timestamp between 30s and 3:30 from
+// now. The message is INSERTED + BROADCAST immediately, but the chat
+// row component (<DelayedTrivia/>) renders nothing until firesAt
+// lands. This lets us keep the durable record + the existing chat
+// fan-out plumbing while still surprising viewers with a "breaking
+// news" trivia card mid-song instead of dropping it on the same
+// frame as the now-playing banner. Vercel function timeouts (max 60s
+// hobby, 60s default Pro) make a server-side setTimeout for up to
+// 210s impractical; the client-clock approach has zero infra cost.
+const TRIVIA_MIN_DELAY_MS = 30 * 1000;
+const TRIVIA_MAX_DELAY_MS = 3 * 60 * 1000 + 30 * 1000; // 3:30
+
 export async function postTriviaMessage(
   roomCode: string,
   roomId: string,
@@ -96,6 +109,10 @@ export async function postTriviaMessage(
   try {
     const card = await getTriviaMerged(countryCode);
     if (!card) return;
+    const delay =
+      TRIVIA_MIN_DELAY_MS +
+      Math.floor(Math.random() * (TRIVIA_MAX_DELAY_MS - TRIVIA_MIN_DELAY_MS));
+    const firesAt = new Date(Date.now() + delay).toISOString();
     const [row] = await db
       .insert(chatMessages)
       .values({
@@ -106,6 +123,7 @@ export async function postTriviaMessage(
         body: null,
         meta: {
           countryCode,
+          firesAt,
           correctIndex: card.correctIndex,
           en: { question: card.en.question, choices: [...card.en.choices] },
           lt: { question: card.lt.question, choices: [...card.lt.choices] },

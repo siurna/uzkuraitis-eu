@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { flushSync } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useParticipants } from "@/lib/use-participants";
@@ -19,7 +18,7 @@ import {
 } from "@/components/notification-toggles";
 import { getState, subscribe, isSupported } from "@/lib/push-client";
 import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
-import { readLang, withLangTransition, writeLang } from "@/lib/i18n-client";
+import { readLang, writeLang } from "@/lib/i18n-client";
 
 const NAME_KEY = "uzk_name";
 const AVATAR_KEY = "uzk_avatar";
@@ -64,10 +63,6 @@ export function NameGate({
   const [draftName, setDraftName] = useState("");
   const [draftAvatar, setDraftAvatar] = useState<string | null>(null);
   const [lang, setLang] = useState<Language>("lt");
-  // Pill-side mirror of `lang` — committed synchronously via
-  // flushSync BEFORE the view-transition snapshot opens so the
-  // toggle pops to the new side instead of riding the root crossfade.
-  const [pillSide, setPillSide] = useState<Language>("lt");
   const [pushOnboardComplete, setPushOnboardComplete] = useState(false);
   const participants = useParticipants(roomCode);
   const platform = useMemo(() => detectPlatform(), []);
@@ -97,7 +92,6 @@ export function NameGate({
       setDraftAvatar(storedAvatar);
     }
     setLang(readLang());
-    setPillSide(readLang());
     if (storedName && !storedAvatar) setStep(2);
     setHydrated(true);
   }, []);
@@ -333,37 +327,30 @@ export function NameGate({
                 </p>
               )}
             </div>
-            {/* Language pill — separate from `lang` via `pillSide`
-                state. flushSync forces the pill move to commit to
-                the DOM BEFORE startViewTransition snapshots, so the
-                snapshot captures the pill already at the new side
-                and the crossfade only animates the surrounding
-                strings (welcome heading, name input placeholder,
-                etc). Without flushSync React batches both state
-                changes into one commit, the snapshot grabs the
-                OLD pill, and the root crossfade drags it along. */}
+            {/* Language pill — `lang` drives the pill position
+                directly. No view-transition: changing the language
+                re-renders every translated string in place and the
+                pill snaps to its new side on the same commit. */}
             <div className="relative flex items-center justify-center gap-1 rounded-full bg-black/30 p-1 self-center">
               <span
                 aria-hidden
-                className="absolute top-1 bottom-1 rounded-full bg-white pointer-events-none transition-[left] duration-0"
+                className="absolute top-1 bottom-1 rounded-full bg-white pointer-events-none"
                 style={{
                   width: "calc(50% - 0.25rem)",
-                  left: pillSide === LANGUAGES[0] ? "0.25rem" : "50%",
+                  left: lang === LANGUAGES[0] ? "0.25rem" : "50%",
                 }}
               />
               {LANGUAGES.map((code) => {
-                const active = pillSide === code;
+                const active = lang === code;
                 return (
                   <button
                     key={code}
                     type="button"
                     onClick={() => {
-                      flushSync(() => {
-                        setPillSide(code);
-                      });
-                      withLangTransition(() => setLang(code));
+                      setLang(code);
+                      writeLang(code);
                     }}
-                    className={`relative z-10 px-5 py-2 rounded-full text-sm font-display transition-colors ${
+                    className={`relative z-10 px-5 py-2 rounded-full text-sm font-display ${
                       active ? "text-dark-blue" : "text-white/60 hover:text-white"
                     }`}
                   >

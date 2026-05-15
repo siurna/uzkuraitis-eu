@@ -617,27 +617,23 @@
   100% { transform: translateX(30%); }
 }
 
-/* Language toggle pill + button labels: the SettingsModal commits
-   the pill move on a frame before the view-transition opens (see
-   `pillSide` state). Without help, the document-wide root crossfade
-   still drags a ghost of the OLD pill over the new one for ~250ms,
-   so we lift the pill (and its two labels) out of the root snapshot
-   with their own view-transition-name, then KILL their per-name
-   animations so they snap into place the moment React commits.
-   Effect: every string around the language toggle crossfades through
-   the root snapshot; the pill + LT/EN labels stay rock-still. */
-::view-transition-group(uzk-lang-pill),
-::view-transition-group(uzk-lang-label-lt),
-::view-transition-group(uzk-lang-label-en) {
-  animation-duration: 0s;
+/* Language toggle: no view-transition involved. Setting `lang`
+   simply re-renders every translated string in place and the pill
+   snaps to its new side on the same React commit. The earlier
+   crossfade attempts fought a losing battle with the root snapshot
+   ghosting the pill — straight state-update is calmer + reliable. */
+
+/* Chat row entry fade. Used in place of motion.li so the row's
+   ancestor chain never carries a transform — iOS Safari refuses to
+   render backdrop-filter on a descendant of any element with a
+   transform, which kills the long-press menu's .glass-card surface.
+   Opacity-only keyframe stays out of the transform graph entirely. */
+@keyframes uzk-msg-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
-::view-transition-old(uzk-lang-pill),
-::view-transition-new(uzk-lang-pill),
-::view-transition-old(uzk-lang-label-lt),
-::view-transition-new(uzk-lang-label-lt),
-::view-transition-old(uzk-lang-label-en),
-::view-transition-new(uzk-lang-label-en) {
-  animation: none;
+.uzk-msg-fade {
+  animation: uzk-msg-fade 0.2s ease-out;
 }
 
 input, button, textarea, select {

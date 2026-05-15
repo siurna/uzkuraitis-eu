@@ -1,10 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, X } from "lucide-react";
-import { HeartFlag } from "@/components/flag";
-import { getCountry, countryName } from "@/lib/countries";
 import { getTrivia, type TriviaPick } from "@/lib/trivia";
 import { useIdentity } from "@/lib/use-identity";
 import { bumpVibe } from "@/lib/use-vibe-tracker";
@@ -124,9 +122,14 @@ export function ChatTriviaCard({
   //   - player already answered (loaded from localStorage above)
   //   - we've already shown the flash once for this country/room
   // Otherwise: light up the breaking-news overlay, remember we did,
-  // and auto-dismiss after FLASH_MS.
+  // and auto-dismiss after FLASH_MS. firedRef guards strict-mode
+  // double-invoke: previous version cleared the timeout on cleanup,
+  // so the second invoke saw the localStorage flag, bailed, and the
+  // flash overlay was left up forever with no setFlashing(false).
+  const flashFiredRef = useRef(false);
   useEffect(() => {
     if (!card) return;
+    if (flashFiredRef.current) return;
     try {
       const raw = localStorage.getItem(SEEN_KEY(roomCode));
       const seen = raw ? (JSON.parse(raw) as Record<string, true>) : {};
@@ -140,11 +143,14 @@ export function ChatTriviaCard({
         localStorage.setItem(SEEN_KEY(roomCode), JSON.stringify(seen));
         return;
       }
+      flashFiredRef.current = true;
       setFlashing(true);
       seen[countryCode] = true;
       localStorage.setItem(SEEN_KEY(roomCode), JSON.stringify(seen));
-      const handle = window.setTimeout(() => setFlashing(false), FLASH_MS);
-      return () => window.clearTimeout(handle);
+      // No cleanup on the timeout — setFlashing on unmounted is a
+      // no-op in React 18+, and we'd rather guarantee the false-flip
+      // happens than have strict-mode cleanup nuke it.
+      window.setTimeout(() => setFlashing(false), FLASH_MS);
     } catch {
       /* ignore */
     }
@@ -194,7 +200,6 @@ export function ChatTriviaCard({
   );
 
   if (!card) return null;
-  const country = getCountry(countryCode);
   const block = card[lang] ?? card.en;
   const showReveal = phase.kind === "answered" || phase.kind === "closed";
   const closed = phase.kind === "closed";
@@ -373,37 +378,16 @@ export function ChatTriviaCard({
                   <span className="relative h-2.5 w-2.5 rounded-full bg-white" />
                 </span>
 
-                <motion.div
+                <motion.p
                   initial={{ opacity: 0, x: 14 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.28, duration: 0.4, ease: "easeOut" }}
-                  className="min-w-0"
+                  transition={{ delay: 0.22, duration: 0.4, ease: "easeOut" }}
+                  className="font-display text-white text-xl sm:text-2xl leading-tight uppercase tracking-wide truncate"
                 >
-                  <p className="text-[9px] uppercase tracking-[0.34em] text-white/85 font-display leading-tight">
-                    {t(lang, "trivia_breaking_kicker")}
-                  </p>
-                  <p className="font-display text-white text-lg sm:text-xl leading-tight uppercase tracking-wide truncate">
-                    {t(lang, "trivia_breaking")}
-                  </p>
-                </motion.div>
+                  {t(lang, "trivia_breaking")}
+                </motion.p>
               </div>
             </motion.div>
-
-            {/* Country chip in the bottom-right of the flash plate so
-                the player already knows what's coming. */}
-            {country && (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.32 }}
-                className="absolute bottom-3 right-4 flex items-center gap-1.5
-                           text-[10px] uppercase tracking-[0.26em] text-white/80
-                           font-display"
-              >
-                <HeartFlag code={country.code} size="sm" />
-                <span>{countryName(country.code, lang)}</span>
-              </motion.div>
-            )}
           </motion.div>
         )}
       </AnimatePresence>

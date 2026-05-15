@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import { Share2, Check, LogOut, ChevronRight, Bell, Languages, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -10,11 +9,10 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { SelectedAvatarCard } from "@/components/selected-avatar-card";
 import { NotificationToggles } from "@/components/notification-toggles";
-import { FluentEmoji } from "@/components/fluent-emoji";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
-import { readLang, withLangTransition, writeLang } from "@/lib/i18n-client";
+import { readLang, writeLang } from "@/lib/i18n-client";
 import { readBeginner, writeBeginner } from "@/lib/beginner-client";
 import { readTranslate, writeTranslate } from "@/lib/translate-client";
 
@@ -40,15 +38,6 @@ export function SettingsModal({
   const lastGoodName = useRef("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [lang, setLang] = useState<Language>("lt");
-  // Separate state for the pill's `left` so we can commit the pill
-  // move BEFORE we open the view-transition that crossfades the
-  // strings. The view-transition snapshots a frame where the pill
-  // is already on its new side; the snapshot crossfade only animates
-  // the surrounding labels. This is the only way to get "items
-  // crossfade AND pill snaps" both true at once — the View
-  // Transitions API itself can't be told to skip an element
-  // reliably across browsers.
-  const [pillSide, setPillSide] = useState<Language>("lt");
   const [beginner, setBeginner] = useState(false);
   const [translate, setTranslate] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -65,7 +54,6 @@ export function SettingsModal({
     lastGoodName.current = initial;
     setAvatar(localStorage.getItem(AVATAR_KEY) ?? null);
     setLang(readLang());
-    setPillSide(readLang());
     setCopied(false);
   }, [open]);
 
@@ -94,20 +82,14 @@ export function SettingsModal({
   };
 
   const setLanguage = (next: Language) => {
-    // `flushSync` forces the pill state to render + commit to the
-    // DOM synchronously, BEFORE `startViewTransition` opens the
-    // snapshot. The earlier rAF version landed in the same animation
-    // frame as React's commit so the snapshot still caught the OLD
-    // pill position and the root crossfade dragged it along. With
-    // flushSync the pill is GUARANTEED at its new left when the
-    // capture happens, so only the surrounding strings crossfade.
-    flushSync(() => {
-      setPillSide(next);
-    });
-    withLangTransition(() => {
-      setLang(next);
-      writeLang(next);
-    });
+    // No view-transition crossfade. We spent four rounds trying to
+    // get "labels crossfade + pill snaps" working across browsers,
+    // and the snapshot capture kept dragging a ghost pill over the
+    // new one. Plain setLang + writeLang: every translated string
+    // re-renders in place, the pill jumps to its new side instantly,
+    // life moves on. Way calmer than the half-broken animation.
+    setLang(next);
+    writeLang(next);
   };
 
   const share = async () => {
@@ -159,47 +141,28 @@ export function SettingsModal({
 
           <Section label={t(lang, "language")}>
             <div className="relative grid grid-cols-2 gap-1 rounded-2xl bg-black/30 ring-1 ring-white/10 p-1">
-              {/* Active-pill bg, driven by `pillSide` (NOT `lang`) so
-                  the pill commits its new position on the frame BEFORE
-                  the lang view-transition opens. Two defences combined:
-                    1. `view-transition-name: uzk-lang-pill` lifts the
-                       pill OUT of the root snapshot — the document-wide
-                       crossfade no longer fades over it.
-                    2. `::view-transition-group(uzk-lang-pill) {
-                       animation-duration: 0s }` in globals.css kills
-                       the pill's own snapshot animation, so it just
-                       stays at the new position the moment flushSync
-                       commits.
-                  Result: labels around it crossfade through the root,
-                  the pill snaps. */}
+              {/* Pill position is bound to `lang` directly — no
+                  view-transition shenanigans. The pill snaps to its
+                  new side the instant React commits, and every
+                  translated string in the drawer re-renders in the
+                  same tick. */}
               <span
                 aria-hidden
                 className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-xl bg-white pointer-events-none"
                 style={{
-                  left: pillSide === LANGUAGES[0] ? "0.25rem" : "50%",
-                  viewTransitionName: "uzk-lang-pill",
+                  left: lang === LANGUAGES[0] ? "0.25rem" : "50%",
                 }}
               />
               {LANGUAGES.map((code) => {
-                // Text colour tracks `pillSide` too so it flips
-                // instantly when the user taps; the LANGUAGE_NAMES
-                // labels themselves are language-agnostic (LT/EN)
-                // and don't need to crossfade.
-                const active = pillSide === code;
+                const active = lang === code;
                 return (
                   <button
                     key={code}
                     type="button"
                     onClick={() => setLanguage(code)}
-                    className={`relative z-10 h-11 rounded-xl font-display text-base transition-colors ${
+                    className={`relative z-10 h-11 rounded-xl font-display text-base ${
                       active ? "text-dark-blue" : "text-white/65"
                     }`}
-                    // Each label gets its own view-transition-name too
-                    // so it's lifted out of the root crossfade and
-                    // doesn't double-render through the snapshot.
-                    style={{
-                      viewTransitionName: `uzk-lang-label-${code}`,
-                    }}
                   >
                     <span>{LANGUAGE_NAMES[code]}</span>
                   </button>
@@ -381,18 +344,6 @@ export function SettingsModal({
         onClose={() => setNotifSheetOpen(false)}
         title={t(lang, "notifications")}
         sub={t(lang, "push_cta_sub")}
-        footer={
-          <>
-            <div className="flex-1" />
-            <Button
-              type="button"
-              onClick={() => setNotifSheetOpen(false)}
-              className="font-display rounded-2xl bg-white text-dark-blue hover:bg-dark-blue-50"
-            >
-              {t(lang, "done")}
-            </Button>
-          </>
-        }
       >
         <NotificationToggles />
       </BottomSheet>

@@ -567,14 +567,19 @@ export function ChatRow({
     const triviaMeta = m.meta as {
       countryCode?: string;
       correctIndex?: number;
+      firesAt?: string;
       en?: { question: string; choices: string[] };
       lt?: { question: string; choices: string[] };
     } | null;
     const cc = triviaMeta?.countryCode;
     if (!cc) return null;
-    // If the server snapshotted the question into meta (current shape),
-    // pass it down so the card survives admin deck edits in flight.
-    // Older messages without a snapshot fall back to the file deck.
+    // The server now posts the trivia message AS SOON AS the country
+    // goes live, but stamps `meta.firesAt` with a random ISO timestamp
+    // 30s–3:30 in the future. Until that timestamp lands the row is
+    // invisible (no motion.li, no card, no scroll-jump space taken).
+    // <DelayedTrivia/> below schedules its own re-render at firesAt and
+    // then renders the card. The chat-row index is preserved by id, so
+    // when it appears it slots in at its original chat position.
     const snapshot =
       triviaMeta.correctIndex != null && triviaMeta.en && triviaMeta.lt
         ? {
@@ -584,23 +589,25 @@ export function ChatRow({
           }
         : null;
     return (
-      <motion.li
-        initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className="my-1 px-1"
-      >
-        <ChatTriviaCard
-          countryCode={cc}
-          snapshot={snapshot}
-          roomCode={roomCode}
-          lang={lang}
-          // When admin advances past this country, freeze the card —
-          // players shouldn't be able to answer trivia about whoever
-          // was on stage 5 minutes ago.
-          isOnStage={cc === nowPlayingCode}
-        />
-      </motion.li>
+      <DelayedTrivia firesAt={triviaMeta.firesAt ?? null}>
+        <motion.li
+          initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          className="my-1 px-1"
+        >
+          <ChatTriviaCard
+            countryCode={cc}
+            snapshot={snapshot}
+            roomCode={roomCode}
+            lang={lang}
+            // When admin advances past this country, freeze the card —
+            // players shouldn't be able to answer trivia about whoever
+            // was on stage 5 minutes ago.
+            isOnStage={cc === nowPlayingCode}
+          />
+        </motion.li>
+      </DelayedTrivia>
     );
   }
 
@@ -840,7 +847,7 @@ export function ChatRow({
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className="px-1"
         >
-          <ChatBroadcastCard meta={sys} lang={lang} />
+          <ChatBroadcastCard meta={sys} lang={lang} messageId={m.id} />
         </motion.li>
       );
     }
@@ -855,18 +862,15 @@ export function ChatRow({
   }
 
   return (
-    // No `y` in animate: motion otherwise sets `transform: translate(0,
-    // 0)` on the li forever, and iOS Safari refuses to render
-    // backdrop-filter on a descendant of any element with a transform
-    // (the long-press menu's .glass-card surface goes flat in that
-    // case). Pending messages still get an opacity-fade entry; the
-    // earlier ~8px slide-up is gone but no real entrance polish lost.
-    <motion.li
+    // Plain <li>, NOT motion.li. The long-press menu's .glass-card
+    // surface fails on iOS Safari any time an ancestor has a
+    // transform — and motion injects `transform: translate(0, 0)` on
+    // any element with a motion property even at rest. Pending
+    // messages get a fade-in via the .uzk-msg-fade CSS keyframe,
+    // which is opacity-only and never touches transform.
+    <li
       data-msg-id={m.id}
-      initial={m.pending ? { opacity: 0 } : false}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
-      className={`flex ${mine ? "justify-end" : "justify-start"}`}
+      className={`flex ${mine ? "justify-end" : "justify-start"} ${m.pending ? "uzk-msg-fade" : ""}`}
     >
       <div className={`relative max-w-[82%] sm:max-w-[68%] flex gap-2 ${mine ? "flex-row-reverse" : "flex-row"}`}>
         {!mine && (
@@ -1254,8 +1258,35 @@ export function ChatRow({
           )}
         </div>
       </div>
-    </motion.li>
+    </li>
   );
+}
+
+// Trivia firesAt gate. The server stamps each trivia message with a
+// random firesAt 30s–3:30 after the country goes live; this wrapper
+// renders nothing until that timestamp arrives, then mounts its
+// children. Pure timer + state — no broadcast involvement.
+function DelayedTrivia({
+  firesAt,
+  children,
+}: {
+  firesAt: string | null;
+  children: React.ReactNode;
+}) {
+  const target = firesAt ? Date.parse(firesAt) : 0;
+  const [ready, setReady] = useState(() => !target || target <= Date.now());
+  useEffect(() => {
+    if (ready) return;
+    const delay = target - Date.now();
+    if (delay <= 0) {
+      setReady(true);
+      return;
+    }
+    const id = window.setTimeout(() => setReady(true), delay);
+    return () => window.clearTimeout(id);
+  }, [target, ready]);
+  if (!ready) return null;
+  return <>{children}</>;
 }
 
 function MenuAction({
