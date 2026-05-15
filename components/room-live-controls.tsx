@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Clock, Mic, Pause, Flag as FlagIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,13 @@ export function RoomLiveControls({
   const [status, setStatusState] = useState<ShowStatus>(initialStatus);
   const [nowPlaying, setNowPlaying] = useState<string | null>(initialNowPlaying);
   const [pending, start] = useTransition();
+  // The currently-live country row. We auto-scroll the list so this
+  // row is centred whenever the list renders — initial mount (incl.
+  // page reload mid-show), and any time `nowPlaying` flips. With ~37
+  // acts in the running order the active row easily slips off-screen,
+  // and the admin shouldn't have to hunt for it after every change.
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const activeRowRef = useRef<HTMLButtonElement | null>(null);
   // Out-of-order tap confirm. Used to be a window.confirm() popping
   // a system dialog; the bottom-sheet feels native to the rest of
   // the app and lets the admin re-read the country in context.
@@ -77,6 +84,30 @@ export function RoomLiveControls({
     setNowPlaying(code);
     run({ nowPlayingCode: code }); // the server derives the running-order position from the country's startlist order
   };
+
+  // Keep the active country centred in the scroll list. Runs on every
+  // (re)mount and any `nowPlaying` change. Uses scrollIntoView with
+  // block: "center" so the row sits in the middle of the viewport;
+  // when the row's already visible the browser is a no-op. We scope
+  // the scroll to the list container itself (closest ancestor with
+  // its own scroller) rather than the page — otherwise scrolling
+  // the in-panel list would also scroll the whole admin page.
+  useEffect(() => {
+    // Only relevant while the list is rendered (in_progress status).
+    if (status !== "in_progress") return;
+    const row = activeRowRef.current;
+    const list = listRef.current;
+    if (!row || !list) return;
+    // Compute the scroll offset manually so we only scroll the list,
+    // not any ancestor — scrollIntoView with block:"center" walks UP
+    // through every scrollable ancestor and scrolls each, which on
+    // mobile yanks the whole page.
+    const target = row.offsetTop + row.offsetHeight / 2 - list.clientHeight / 2;
+    list.scrollTo({
+      top: Math.max(0, target),
+      behavior: "smooth",
+    });
+  }, [nowPlaying, status]);
 
   // "Next" = the act right after whoever's on stage (or the first act if
   // nobody is yet).
@@ -161,7 +192,7 @@ export function RoomLiveControls({
       {nextUpButton}
 
       {status === "in_progress" && (
-        <div className="flex flex-col gap-1.5 max-h-[55vh] overflow-y-auto -mx-1 px-1">
+        <div ref={listRef} className="flex flex-col gap-1.5 max-h-[55vh] overflow-y-auto -mx-1 px-1">
           <p className="text-[10px] uppercase tracking-widest text-white/45 font-display px-1 pt-1 pb-1">
             Tap to put on stage
           </p>
@@ -170,6 +201,7 @@ export function RoomLiveControls({
             return (
               <button
                 key={c.code}
+                ref={isActive ? activeRowRef : undefined}
                 type="button"
                 disabled={pending}
                 onClick={() => pickFromList(c)}
