@@ -205,18 +205,26 @@ export function SettingsModal({
               themselves are back — they're the only way for a
               viewer to flip these features on. */}
           <div className="flex flex-col gap-2">
+            {/* Auto-translate only makes sense when the viewer is
+                reading the app in English — they'd want the LT chat
+                glossed into EN. A Lithuanian-reading viewer doesn't
+                need the gloss (the messages are already in their
+                language); the toggle just adds noise to the drawer
+                for them. So we render it only when lang === "en". */}
+            {lang === "en" && (
+              <PrefRow
+                icon={<Languages className="h-5 w-5" />}
+                title={t(lang, "settings_translate_h")}
+                sub={t(lang, "settings_translate_sub")}
+                value={translate}
+                onChange={(next) => {
+                  setTranslate(next);
+                  writeTranslate(next);
+                }}
+              />
+            )}
             <PrefRow
-              icon={<Languages className="h-5 w-5" />}
-              title={t(lang, "settings_translate_h")}
-              sub={t(lang, "settings_translate_sub")}
-              value={translate}
-              onChange={(next) => {
-                setTranslate(next);
-                writeTranslate(next);
-              }}
-            />
-            <PrefRow
-              icon={<Sparkles className="h-5 w-5" fill="currentColor" />}
+              icon={<Sparkles className="h-5 w-5" />}
               title={t(lang, "settings_beginner_h")}
               sub={t(lang, "settings_beginner_sub")}
               value={beginner}
@@ -440,9 +448,11 @@ function PrefRow({
         {icon}
       </span>
       <span className="flex-1 min-w-0">
-        <span className="block font-display text-sm text-white truncate">{title}</span>
+        <span className="block font-display text-sm text-white text-balance">{title}</span>
         {sub && (
-          <span className="block text-[11px] text-white/55 leading-snug">{sub}</span>
+          <span className="block text-[11px] text-white/55 leading-snug text-balance">
+            {sub}
+          </span>
         )}
       </span>
       <span

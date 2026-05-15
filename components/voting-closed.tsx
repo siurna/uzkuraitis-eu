@@ -31,8 +31,8 @@ export function VotingClosed() {
           <Lock className="h-7 w-7 text-dark-blue-200" />
         </span>
         <div className="flex flex-col items-center gap-1.5">
-          <p className="font-display text-2xl gradient-text">{t(lang, "voting_closed")}</p>
-          <p className="text-sm text-white/55 leading-snug max-w-[20rem]">{sub}</p>
+          <p className="font-display text-2xl gradient-text text-balance">{t(lang, "voting_closed")}</p>
+          <p className="text-sm text-white/55 leading-snug max-w-[20rem] text-balance">{sub}</p>
         </div>
       </motion.div>
     </main>

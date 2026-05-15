@@ -80,8 +80,8 @@ export function SharePicks() {
       <div className="relative flex items-center gap-3 px-5 py-5 min-h-[7rem]">
         <div className="min-w-0 flex-1">
           <p className="text-[10px] uppercase tracking-[0.3em] text-white/75 font-display leading-tight mb-1">{t(lang, "share_eyebrow")}</p>
-          <p className="font-display text-xl text-white leading-tight drop-shadow-sm">{sharing ? t(lang, "share_preparing") : t(lang, "share_picks")}</p>
-          <p className="text-sm text-white/70 leading-snug mt-0.5 pr-24">{t(lang, "share_picks_sub")}</p>
+          <p className="font-display text-xl text-white leading-tight drop-shadow-sm text-balance">{sharing ? t(lang, "share_preparing") : t(lang, "share_picks")}</p>
+          <p className="text-sm text-white/70 leading-snug mt-0.5 pr-24 text-balance">{t(lang, "share_picks_sub")}</p>
         </div>
       </div>
     </button>

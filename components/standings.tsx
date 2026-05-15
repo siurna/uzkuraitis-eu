@@ -242,8 +242,8 @@ function NoVotesYet({
             className="h-20 w-20 object-contain drop-shadow-[0_0_24px_rgba(255,46,222,0.35)]"
           />
         </motion.div>
-        <h3 className="font-display text-2xl text-white/90">{t(lang, "no_votes_yet")}</h3>
-        <p className="text-sm text-white/50 max-w-xs">{t(lang, "no_votes_sub")}</p>
+        <h3 className="font-display text-2xl text-white/90 text-balance">{t(lang, "no_votes_yet")}</h3>
+        <p className="text-sm text-white/50 max-w-xs text-balance">{t(lang, "no_votes_sub")}</p>
       </div>
 
       <ul className="flex flex-col gap-2">

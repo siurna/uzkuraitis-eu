@@ -2,11 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ImagePlus, X, Check, Loader2 } from "lucide-react";
+import { ImagePlus, X, Check, Loader2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FluentEmoji } from "@/components/fluent-emoji";
 import { AdminPageTitle } from "@/components/admin-page-title";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { renderBanter } from "@/components/chat-row";
+import { optimizedSrc } from "@/lib/img";
 import { countries } from "@/lib/countries";
 
 const NAME_KEY = "__name__";
@@ -163,6 +166,9 @@ export function AdminCommentator({ initial }: { initial: Record<string, string> 
             <AutogrowTextarea
               value={lines[c.code] ?? ""}
               onChange={(v) => set(c.code, v)}
+              previewName={lines[NAME_KEY] ?? "Banter"}
+              previewPhoto={lines[PHOTO_KEY] ?? null}
+              previewCountry={c.name}
             />
           </label>
         ))}
@@ -176,14 +182,28 @@ export function AdminCommentator({ initial }: { initial: Record<string, string> 
 // height of a mirror div instead of a measured-then-set-height
 // dance because lines are short enough that recomputing on each
 // keystroke is fine.
+//
+// Preview slot: an absolute Eye button in the top-right of the
+// textarea opens a BottomSheet that renders the line exactly as
+// it would appear in chat — same `renderBanter` (with #/## MD
+// hierarchy) inside a stand-in chat row carrying the bot's name +
+// photo. Lets the host eyeball their markdown without firing a
+// broadcast to a real room.
 function AutogrowTextarea({
   value,
   onChange,
+  previewName,
+  previewPhoto,
+  previewCountry,
 }: {
   value: string;
   onChange: (next: string) => void;
+  previewName: string;
+  previewPhoto: string | null;
+  previewCountry: string;
 }) {
   const ref = useRef<HTMLTextAreaElement | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -191,15 +211,62 @@ function AutogrowTextarea({
     el.style.height = `${el.scrollHeight}px`;
   }, [value]);
   return (
-    <textarea
-      ref={ref}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      rows={2}
-      className="flex-1 min-w-0 rounded-lg bg-black/30 border border-white/15 px-3 py-2
-                 text-sm leading-snug text-white resize-none overflow-hidden
-                 focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 transition"
-    />
+    <div className="relative flex-1 min-w-0">
+      <textarea
+        ref={ref}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={2}
+        className="block w-full rounded-lg bg-black/30 border border-white/15 pl-3 pr-10 py-2
+                   text-sm leading-snug text-white resize-none overflow-hidden
+                   focus:border-flamingo focus:outline-none focus:ring-2 focus:ring-flamingo/40 transition"
+      />
+      <button
+        type="button"
+        onClick={() => setPreviewOpen(true)}
+        disabled={!value.trim()}
+        aria-label="Preview message"
+        className="absolute top-1.5 right-1.5 inline-flex items-center justify-center
+                   h-7 w-7 rounded-md text-white/45 hover:text-white hover:bg-white/10
+                   transition disabled:opacity-25 disabled:hover:bg-transparent"
+      >
+        <Eye className="h-4 w-4" />
+      </button>
+      <BottomSheet
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title={`Preview · ${previewCountry}`}
+        sub="Exactly how it'll look in chat."
+      >
+        {/* Stand-in chat row. Matches chat-row's commentator branch:
+            small square avatar with the bot's photo + a chat bubble
+            with the rendered banter body inside. Keeps the surface
+            small so the modal feels like a quick eyeball, not a
+            second editor. */}
+        <div className="flex items-start gap-2.5">
+          <span className="h-9 w-9 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/12 bg-white/[0.04] grid place-items-center">
+            {previewPhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={optimizedSrc(previewPhoto, 128)}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <FluentEmoji glyph="🎙️" size={20} />
+            )}
+          </span>
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className="text-[11px] font-display text-white/55">
+              {previewName}
+            </span>
+            <span className="rounded-2xl bg-white/[0.06] ring-1 ring-white/10 px-3 py-2 text-[15px] leading-snug text-white whitespace-pre-wrap break-words">
+              {renderBanter(value)}
+            </span>
+          </div>
+        </div>
+      </BottomSheet>
+    </div>
   );
 }
 

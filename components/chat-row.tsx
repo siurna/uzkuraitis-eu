@@ -288,6 +288,57 @@ function renderBody(text: string, names: string[]): React.ReactNode {
   return out;
 }
 
+// Commentator (banter) renderer. Supports two leading-hash markdown
+// flavours so the admin can structure each line as
+//   "# Country" + newline + "## Artist" + newline + the line itself
+// — they read as headers above body copy without dominating the
+// bubble. Sized slightly larger than body, not huge — a banter line
+// is still a chat message, not a poster.
+//
+// Single-pass parse: split on newlines, prefix-match `# ` / `## `,
+// fall through to renderInline for plain lines. Returns a column of
+// children with row gaps so the spacing matches when the admin
+// chooses to use headings + when they don't.
+function renderBanter(text: string): React.ReactNode {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  return (
+    <span className="flex flex-col gap-0.5">
+      {lines.map((raw, i) => {
+        const line = raw.trimEnd();
+        if (/^# (.+)$/.test(line)) {
+          const body = line.slice(2);
+          return (
+            <span key={i} className="block font-display text-[15px] leading-tight">
+              {renderInline(body)}
+            </span>
+          );
+        }
+        if (/^## (.+)$/.test(line)) {
+          const body = line.slice(3);
+          return (
+            <span
+              key={i}
+              className="block font-display text-[11px] uppercase tracking-[0.18em] text-white/65 leading-tight"
+            >
+              {renderInline(body)}
+            </span>
+          );
+        }
+        if (line === "") {
+          return <span key={i} className="block h-1" aria-hidden />;
+        }
+        return (
+          <span key={i} className="block">
+            {renderInline(line)}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+export { renderBanter };
+
 // ─────────────────────────────────────────────────────────────────────
 // Single message row. Handles all kinds: now-playing banner, system
 // pill, bingo card, GIF/image, and plain text — plus swipe-to-reply,
@@ -1016,7 +1067,14 @@ export function ChatRow({
                       isJumbo ? `${jumboSize} leading-none tracking-wide` : ""
                     }`}
                   >
-                    {renderBody(m.body ?? "", participantNames)}
+                    {/* Commentator bodies route through the banter
+                        renderer so the admin's `# Country` /
+                        `## Artist` hierarchy reads as light headers
+                        above the line. Regular chat stays on the
+                        mention-aware renderer. */}
+                    {isCommentator
+                      ? renderBanter(m.body ?? "")
+                      : renderBody(m.body ?? "", participantNames)}
                   </span>
                   {isEdited && (
                     <span className="text-[10px] opacity-50 ml-1.5">({t(lang, "chat_edited")})</span>

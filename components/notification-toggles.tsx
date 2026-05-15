@@ -362,11 +362,17 @@ function PrefRow({
                       ? "bg-success/20 ring-1 ring-success/45 text-success"
                       : "bg-white/8 ring-1 ring-white/12 text-white/55"}`}
       >
-        <Icon className="h-4 w-4" fill="currentColor" />
+        {/* Outline lucide — matches the broadcasts-drawer rows;
+            filled variants read as solid blobs against the tint. */}
+        <Icon className="h-4 w-4" />
       </span>
       <span className="flex-1 min-w-0">
-        <span className="block font-display text-sm text-white">{label}</span>
-        {sub && <span className="block text-xs text-white/55 leading-snug mt-0.5">{sub}</span>}
+        <span className="block font-display text-sm text-white text-balance">{label}</span>
+        {sub && (
+          <span className="block text-xs text-white/55 leading-snug mt-0.5 text-balance">
+            {sub}
+          </span>
+        )}
       </span>
       <TogglePill on={value} />
     </button>

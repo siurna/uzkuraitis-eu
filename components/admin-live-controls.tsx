@@ -291,7 +291,10 @@ export function AdminLiveControls({
                              disabled:opacity-60"
                 >
                   <span className="shrink-0 grid place-items-center h-9 w-9 rounded-lg bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
-                    <Icon className="h-4 w-4" fill="currentColor" />
+                    {/* Outline lucide variant — fills looked muddy
+                        against the flamingo tile (icons blob into
+                        one shape). The default stroke reads clean. */}
+                    <Icon className="h-4 w-4" />
                   </span>
                   <span className="flex-1 min-w-0">
                     <span className="block font-display text-sm text-white truncate">{title}</span>

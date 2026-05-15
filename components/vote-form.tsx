@@ -363,7 +363,7 @@ export function VoteForm({
           >
             {tab === "ballot" && (
               <section className="flex flex-col gap-3">
-                <h2 className="font-display text-xl gradient-text px-1">{t(lang, "your_top_10")}</h2>
+                <h2 className="font-display text-xl gradient-text px-1 text-balance">{t(lang, "your_top_10")}</h2>
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                   <SortableContext items={slots.map((s) => `slot-${s.points}`)} strategy={verticalListSortingStrategy}>
                     <ul className="flex flex-col gap-2">
@@ -398,7 +398,7 @@ export function VoteForm({
                     <div className="flex items-center gap-3">
                       <Flag code={homeCountry.code} size="lg" />
                       <div className="flex-1 min-w-0">
-                        <h2 className="font-display text-xl gradient-text">
+                        <h2 className="font-display text-xl gradient-text text-balance">
                           {fmt(t(lang, "bet_lt_placement"), { home: countryName(homeCountry.code, lang) })}
                         </h2>
                         <p className="text-xs text-white/50">
