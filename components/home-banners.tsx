@@ -300,8 +300,27 @@ type BallSim = {
 
 function VoteBallsRain() {
   const [cycle, setCycle] = useState(0);
+  const containerRef = useRef<HTMLSpanElement | null>(null);
   const ballRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const stateRef = useRef<BallSim[]>([]);
+  // Pause the rAF loop when the balls aren't on screen. The Home tab
+  // keeps this component MOUNTED when the user switches to Chat /
+  // Bingo / Vote (TabPane uses display:contents/none, not unmount),
+  // so without this gate the physics simulation + DOM mutations
+  // keep churning forever in the background. IntersectionObserver
+  // returns ratio 0 for display:none AND for scrolled-off-screen,
+  // so the same hook covers both cases.
+  const [onScreen, setOnScreen] = useState(true);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([entry]) => setOnScreen(entry.isIntersecting),
+      { threshold: 0.01 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   // Reshuffled entry order each cycle so the same ball doesn't always
   // drop first.
@@ -316,6 +335,7 @@ function VoteBallsRain() {
   }, [cycle]);
 
   useEffect(() => {
+    if (!onScreen) return;
     const start = performance.now();
     // Build the spawn schedule by accumulating randomised gaps in
     // entry-order — each ball's gap from the previous is a random
@@ -523,10 +543,11 @@ function VoteBallsRain() {
 
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [cycle, order]);
+  }, [cycle, order, onScreen]);
 
   return (
     <span
+      ref={containerRef}
       className="relative block opacity-95"
       style={{ width: PHYS_W, height: PHYS_H, marginRight: 24 }}
       aria-hidden

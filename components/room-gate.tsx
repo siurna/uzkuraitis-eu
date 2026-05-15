@@ -415,7 +415,7 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
                 >
                   <span
                     className="block w-full h-12 rounded-[14px] grid place-items-center gap-2
-                               bg-white text-dark-blue font-display text-[19px] leading-none"
+                               bg-white text-dark-blue font-display text-[19px] leading-none pt-[3px]"
                   >
                     {pending ? (
                       <span className="inline-flex items-center gap-2 leading-none">
