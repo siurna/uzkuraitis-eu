@@ -872,7 +872,12 @@ function ChatRowInner({
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className="px-1"
         >
-          <ChatBroadcastCard meta={sys} lang={lang} messageId={m.id} />
+          <ChatBroadcastCard
+            meta={sys}
+            lang={lang}
+            messageId={m.id}
+            messageCreatedAt={m.createdAt}
+          />
         </motion.li>
       );
     }

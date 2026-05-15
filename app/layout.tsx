@@ -45,7 +45,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#10142a",
+  // Tuned to sit inside the brand bloom (a deep violet that matches
+  // the top of the html::before backdrop after fade-in). The earlier
+  // #10142a was the manifest's flat splash colour, which left a hard
+  // dark band behind the iOS status bar fighting the purple page.
+  themeColor: "#1a1334",
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,

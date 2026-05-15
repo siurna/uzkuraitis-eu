@@ -240,12 +240,25 @@
     inset: 0;
     z-index: -2;
     pointer-events: none;
+    /* Top + bottom blooms intensified + a third gradient that bleeds
+       a deep violet from the very edge of the viewport downward.
+       Without it, iOS rendered the safe-area-inset-top region as
+       near-black (only the dark-blue-900 base) while the rest of
+       the page glowed purple-pink around the heart — the status
+       bar area read as a separate slab. The new top bloom carries
+       the same hue family down through the notch so the top
+       matches the heart's bloom instead of fighting it. */
     background:
-      radial-gradient(ellipse at top, oklch(28% 0.12 290 / 0.32), transparent 65%),
-      radial-gradient(ellipse at bottom, oklch(40% 0.18 336 / 0.22), transparent 70%),
+      linear-gradient(180deg,
+        oklch(20% 0.10 290 / 0.55) 0%,
+        oklch(18% 0.08 285 / 0.30) 12%,
+        transparent 28%
+      ),
+      radial-gradient(ellipse 80% 60% at 50% 0%, oklch(32% 0.16 290 / 0.55), transparent 70%),
+      radial-gradient(ellipse at bottom, oklch(40% 0.18 336 / 0.28), transparent 70%),
       url("/images/participant-backdrop@2x.webp") center/cover no-repeat,
       var(--color-dark-blue-900);
-    background-blend-mode: screen, screen, soft-light;
+    background-blend-mode: screen, screen, screen, soft-light;
   }
 
   h1, h2, h3, .font-display {

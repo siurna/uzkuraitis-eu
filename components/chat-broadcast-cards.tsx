@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Bell, Dices, ListChecks, ChevronRight, Loader2 } from "lucide-react";
@@ -14,6 +14,7 @@ import { isSupported as pushIsSupported } from "@/lib/push-client";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { useLeaderboard } from "@/components/leaderboard-provider";
 import { useIdentity } from "@/lib/use-identity";
+import { useFireOnceWhen } from "@/lib/use-fire-once-when";
 import { fmt, t, tDyn, type MessageKey } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
 import { HOST_COUNTRY } from "@/lib/scoring";
@@ -51,14 +52,21 @@ export function ChatBroadcastCard({
   meta,
   lang,
   messageId,
+  messageCreatedAt,
 }: {
   meta: SysMeta | null;
   lang: Language;
   /** Chat message id — lets per-card surfaces (SelfieCard's paparazzi
-   *  flash) key their "fire once" state per selfie post, instead of
-   *  per-room (which means only the FIRST selfie of the night ever
-   *  triggers the flash). */
+   *  flash, ThanksCard's confetti) key their "fire once" state per
+   *  broadcast instance, instead of per-room (which means only the
+   *  FIRST selfie / first thanks of the night ever triggers the
+   *  animation). */
   messageId: string;
+  /** ISO timestamp the message was posted. Used to gate animations
+   *  on RECENCY — re-entering a chat that has an hour-old confetti
+   *  message shouldn't re-fire the confetti, even if the
+   *  sessionStorage stamp from the original fire was cleared. */
+  messageCreatedAt: string;
 }) {
   const key = meta?.sysKey;
   if (!key) return null;
@@ -70,11 +78,23 @@ export function ChatBroadcastCard({
     case "sys_cta_bet":
       return <BonusBetCard lang={lang} />;
     case "sys_cta_selfie":
-      return <SelfieCard lang={lang} messageId={messageId} />;
+      return (
+        <SelfieCard
+          lang={lang}
+          messageId={messageId}
+          messageCreatedAt={messageCreatedAt}
+        />
+      );
     case "sys_cta_welcome":
       return <WelcomeChatCard lang={lang} />;
     case "sys_cta_thanks":
-      return <ThanksCard lang={lang} />;
+      return (
+        <ThanksCard
+          lang={lang}
+          messageId={messageId}
+          messageCreatedAt={messageCreatedAt}
+        />
+      );
     case "sys_cta_top3":
       return <Top3PodiumCard codes={meta?.codes ?? null} fallback={meta?.sysArg ?? null} lang={lang} />;
     case "sys_cta_top3_empty":
@@ -678,17 +698,36 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
   );
 }
 
-// Closing-credits card. Fires once when mounted: a screen-wide
-// confetti shower + the gold gradient. Reads as "the show is done,
-// thanks for being here". The winning country's heart-flag crowns
-// the card (pulled from the leaderboard provider once results
-// land). Server posts this via the `thanks` admin broadcast kind;
-// the message persists in chat, but the confetti only fires for
-// whoever's actively viewing the moment it lands (subsequent
-// re-renders / scroll-backs see the card without fresh particles).
-function ThanksCard({ lang }: { lang: Language }) {
+// Window for the confetti to count as "fresh enough to fire". A
+// brand-new ThanksCard arriving via chat:new broadcast is well
+// within this; a scroll-back through chat history to an
+// hours-old close-of-show card is way past it and the confetti
+// stays put. The same window covers SelfieCard's paparazzi flash
+// (defined as ANIMATION_FRESH_MS below for both).
+const ANIMATION_FRESH_MS = 10 * 60 * 1000; // 10 minutes
+
+// Closing-credits card. Confetti fires ONCE per browser per
+// message — gated on:
+//   1. The viewer is currently on the chat tab (no surprise
+//      confetti during a bingo round).
+//   2. The message is RECENT (< 10 min old, so re-entering the
+//      chat tab on day 2 doesn't get fresh particles).
+//   3. sessionStorage hasn't already stamped this message id
+//      (covers the "user switched tabs and came back" case).
+// If the user is on bingo/vote when the broadcast lands, the
+// effect re-checks every time `tab` changes; the moment they
+// switch to chat, conditions are met and confetti fires.
+function ThanksCard({
+  lang,
+  messageId,
+  messageCreatedAt,
+}: {
+  lang: Language;
+  messageId: string;
+  messageCreatedAt: string;
+}) {
   const { payload } = useLeaderboard();
-  const fired = useRef(false);
+  const { tab } = useRoomTab();
 
   // Winner country: derived from the official placements payload
   // (placement === 1). Null until the host has entered results.
@@ -698,18 +737,10 @@ function ThanksCard({ lang }: { lang: Language }) {
     return entry?.[0] ?? null;
   }, [payload]);
 
-  useEffect(() => {
-    if (fired.current) return;
-    fired.current = true;
-    // Real confetti via `canvas-confetti`: spawns physical paper
-    // particles on a full-screen canvas instead of the brand emoji
-    // shower. Three staggered shots from both sides of the viewport
-    // arc into the middle so the whole screen sees confetti, not
-    // just whichever side the card sits on. Brand palette — gold,
-    // flamingo, white — picks up the gold ring of the card itself.
-    let cancelled = false;
+  const fresh = Date.now() - Date.parse(messageCreatedAt) < ANIMATION_FRESH_MS;
+
+  const fireConfetti = useCallback(() => {
     void import("canvas-confetti").then(({ default: confetti }) => {
-      if (cancelled) return;
       const colors = ["#f7b801", "#ff2ede", "#ffffff", "#ff7d3a"];
       const shoot = (origin: { x: number; y: number }, angle: number) => {
         confetti({
@@ -744,10 +775,13 @@ function ThanksCard({ lang }: { lang: Language }) {
         });
       }, 780);
     });
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useFireOnceWhen({
+    storageKey: `uzk_thanks_confetti_${messageId}`,
+    when: tab === "chat" && fresh,
+    onFire: fireConfetti,
+  });
 
   // {next} substitution: drop the next year's number into the
   // closing line. `fmt` does the placeholder swap because the i18n
@@ -871,50 +905,49 @@ const PAPARAZZI_FLASHES: ReadonlyArray<{
 // `capture` isn't honoured). The card itself drives the existing
 // chat upload + send flow so we don't have to weave a callback all
 // the way back through chat-panel.
-function SelfieCard({ lang, messageId }: { lang: Language; messageId: string }) {
+function SelfieCard({
+  lang,
+  messageId,
+  messageCreatedAt,
+}: {
+  lang: Language;
+  messageId: string;
+  messageCreatedAt: string;
+}) {
   const { code } = useRoomLive();
+  const { tab } = useRoomTab();
   const { sessionId: getSession, name, avatarId } = useIdentity();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  // Paparazzi flash: a full-viewport white pulse that fires the first
-  // time this specific selfie message lands in chat. Keyed in
-  // sessionStorage per ROOM+MESSAGE so:
-  //   - the SAME selfie post never re-flashes (scroll back, re-open
-  //     the tab in the same session, etc),
-  //   - but a NEW selfie post fires a fresh flash (the host can fire
-  //     multiple selfie prompts during the show; each gets its own
-  //     paparazzi moment).
-  // A ref guards strict-mode double-invoke in dev: the first run
-  // sets it, the second run sees it and bails before the cleanup
-  // would have cancelled the timeout.
+  // Paparazzi flash: a multi-photographer flurry that fires ONCE per
+  // (browser × selfie message), gated on the same three conditions
+  // as ThanksCard's confetti — chat tab is active, message is
+  // recent, sessionStorage hasn't already stamped this id. Switching
+  // to a different tab while a selfie broadcast lands keeps the
+  // animation queued; the moment the user returns to chat, the
+  // useFireOnceWhen below resolves true and the flash plays.
   const [flash, setFlash] = useState(false);
-  const firedRef = useRef(false);
-  useEffect(() => {
-    if (!code || !messageId) return;
-    if (firedRef.current) return;
-    const key = `uzk_selfie_flash_${code}_${messageId}`;
-    try {
-      if (sessionStorage.getItem(key) === "1") return;
-      sessionStorage.setItem(key, "1");
-    } catch {
-      /* private mode — fall through and flash once per mount */
-    }
-    firedRef.current = true;
-    // rAF before flipping flash so the row is fully painted; otherwise
-    // on slow first-paint the overlay can land before the chat scroll
-    // has settled and the user misses the bottom of the white wash.
-    const raf = requestAnimationFrame(() => setFlash(true));
-    // Timeout is intentionally NOT cleared on unmount. setFlash on an
-    // unmounted component is a no-op in React 18+; we'd rather guarantee
-    // the false-flip happens than cancel it from strict-mode cleanup.
-    // 1400ms ≥ the 1.3s keyframe duration so AnimatePresence sees
-    // flash flip false AFTER the four-flash burst finishes its
-    // animate cycle, not in the middle of it.
+  const fresh = Date.now() - Date.parse(messageCreatedAt) < ANIMATION_FRESH_MS;
+
+  const fireFlash = useCallback(() => {
+    // rAF so the row is painted before we flip flash on — otherwise
+    // on slow first-paint the overlay can land before the chat
+    // scroll has settled and the user misses the bottom of the
+    // burst.
+    requestAnimationFrame(() => setFlash(true));
+    // No cleanup on the false-flip; setFlash on unmount is a no-op
+    // in React 18+ and we'd rather guarantee the toggle than have
+    // strict-mode cancel it.
     window.setTimeout(() => setFlash(false), 1400);
-    return () => cancelAnimationFrame(raf);
-  }, [code, messageId]);
+  }, []);
+
+  useFireOnceWhen({
+    storageKey: `uzk_selfie_flash_${code}_${messageId}`,
+    when: !!code && !!messageId && tab === "chat" && fresh,
+    onFire: fireFlash,
+  });
 
   // Revoke object URLs we hold so we don't leak when the user picks
   // a new shot or the card unmounts.

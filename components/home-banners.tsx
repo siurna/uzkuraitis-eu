@@ -260,12 +260,18 @@ const PHYS_HORIZONTAL_FRICTION = 0.97;
 const PHYS_REST_THRESHOLD = 90;
 // Stop-stayed-on-floor speed: any ball under this threshold for
 // more than PHYS_SLEEP_FRAMES consecutive frames gets pinned to
-// rest (vx=vy=0, y clamped to floor). Frame-counter approach
-// instead of single-frame check kills the jitter where contact
-// impulses keep re-animating a near-rest ball: a ball needs to
-// stay slow for ~250ms before sleep latches.
-const PHYS_SLEEP_SPEED = 35;
-const PHYS_SLEEP_FRAMES = 15; // ~250ms at 60fps
+// rest. Bumped both numbers up — at the old 35/15 settings, contact
+// impulses bouncing through the pile kept resetting the counter
+// every other frame and balls would never latch.
+const PHYS_SLEEP_SPEED = 60;
+const PHYS_SLEEP_FRAMES = 10;
+// Hard ceiling on how long the simulation runs before we just FORCE
+// every ball asleep. The drop + settle finishes in ~1.8s in practice;
+// 2.6s gives plenty of buffer, then anything still bouncing gets
+// pinned. Kills the long-tail jitter where two awake balls keep
+// trading micro-impulses without either ever crossing the sleep
+// speed threshold.
+const PHYS_FORCE_SLEEP_AT_MS = 2600;
 // Longer + more sporadic. CYCLE_MS bumped 6.5s → 9s so the pile
 // gets to settle and breathe before the fade. FADE_MS doubled so
 // the crossfade between cycles is gentler. Stagger is now a min/max
@@ -451,16 +457,30 @@ function VoteBallsRain() {
         }
       }
 
-      // Sleep pass with a frame-counter latch. A ball needs to stay
-      // slow on the floor for PHYS_SLEEP_FRAMES consecutive frames
-      // before sleep latches; this kills the jitter where contact
-      // impulses keep re-animating a near-rest ball just enough to
-      // reset the slow-counter every frame. Once asleep, integration
-      // and collision impulses both skip the ball (see above), so
-      // the pile holds rock-still through the rest of the cycle.
+      // Sleep pass — two paths to rest:
+      //   1. Natural settle: ball on the floor with speed under the
+      //      sleep threshold for N consecutive frames. The decrement
+      //      (slowFrames -= 2 on a fast frame) is gentler than a
+      //      hard-reset to 0, so a single brief impulse spike doesn't
+      //      undo a near-settled latch.
+      //   2. Force-sleep: once we're past PHYS_FORCE_SLEEP_AT_MS into
+      //      the cycle, any still-awake ball gets pinned outright,
+      //      its position clamped to the floor. The drop usually
+      //      settles in ~1.8s; this catches the long-tail edge case
+      //      where two awake balls keep trading micro-impulses
+      //      without either crossing the speed threshold.
+      const elapsed = t - start;
+      const forceSleep = elapsed >= PHYS_FORCE_SLEEP_AT_MS;
       for (const b of balls) {
         if (t < b.spawnAt) continue;
         if (b.asleep) continue;
+        if (forceSleep) {
+          b.asleep = true;
+          b.vx = 0;
+          b.vy = 0;
+          if (b.y + b.r > PHYS_FLOOR) b.y = PHYS_FLOOR - b.r;
+          continue;
+        }
         const onFloor = b.y + b.r >= PHYS_FLOOR - 0.5;
         const speed = Math.hypot(b.vx, b.vy);
         if (onFloor && speed < PHYS_SLEEP_SPEED) {
@@ -472,7 +492,7 @@ function VoteBallsRain() {
             b.y = PHYS_FLOOR - b.r;
           }
         } else {
-          b.slowFrames = 0;
+          b.slowFrames = Math.max(0, b.slowFrames - 2);
         }
       }
 
