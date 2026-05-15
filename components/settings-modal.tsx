@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Share2, Check, LogOut, ChevronRight, Bell, Languages, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useUpdateMyPresence } from "@/lib/realtime";
@@ -94,17 +95,19 @@ export function SettingsModal({
   };
 
   const setLanguage = (next: Language) => {
-    // Commit the pill move on this frame WITHOUT view-transitions so
-    // it snaps. Defer the actual lang change to the next animation
-    // frame so React renders the pill-only update first, THEN the
-    // view-transition starts and only the lang strings get captured
-    // in the crossfade.
-    setPillSide(next);
-    requestAnimationFrame(() => {
-      withLangTransition(() => {
-        setLang(next);
-        writeLang(next);
-      });
+    // `flushSync` forces the pill state to render + commit to the
+    // DOM synchronously, BEFORE `startViewTransition` opens the
+    // snapshot. The earlier rAF version landed in the same animation
+    // frame as React's commit so the snapshot still caught the OLD
+    // pill position and the root crossfade dragged it along. With
+    // flushSync the pill is GUARANTEED at its new left when the
+    // capture happens, so only the surrounding strings crossfade.
+    flushSync(() => {
+      setPillSide(next);
+    });
+    withLangTransition(() => {
+      setLang(next);
+      writeLang(next);
     });
   };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Bell, Dices, ListChecks, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -770,32 +771,34 @@ function ThanksCard({ lang }: { lang: Language }) {
             heart anchors the moment ("they won, here's who"), the
             eyebrow + title follow. Hidden until placements have
             landed so we never paint a placeholder. */}
-        {winner && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.5, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{
-              type: "spring",
-              stiffness: 220,
-              damping: 18,
-              delay: 0.18,
-            }}
-            className="mb-1 inline-flex rounded-full p-1"
-            style={{
-              // Subtle inset shadow — the heart looks pressed INTO the
-              // card surface instead of floating flat on top. Two
-              // layers: a warm inner ring (warm-amber against the
-              // gold radial) + a darker bottom-inner shadow so the
-              // heart catches "light from above". Plus a soft outer
-              // glow that ties the heart to the gold radial bloom
-              // behind it.
-              boxShadow:
-                "inset 0 1px 2px rgba(255,255,255,0.22), inset 0 -6px 14px rgba(0,0,0,0.35), 0 0 28px -6px oklch(85% 0.18 80 / 0.55)",
-            }}
-          >
+        {/* Crown of the card. When placements are entered, this is
+            the winning country's heart-flag. When the host fires
+            the closing card without yet typing official results
+            (often the case during a rehearsal), we still need
+            SOMETHING — fall back to a Fluent 🏆 in the same
+            chip-shape so the layout doesn't collapse and the
+            moment still reads as a celebration. */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.5, y: -10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{
+            type: "spring",
+            stiffness: 220,
+            damping: 18,
+            delay: 0.18,
+          }}
+          className="mb-1 inline-flex items-center justify-center rounded-full p-1"
+          style={{
+            boxShadow:
+              "inset 0 1px 2px rgba(255,255,255,0.22), inset 0 -6px 14px rgba(0,0,0,0.35), 0 0 28px -6px oklch(85% 0.18 80 / 0.55)",
+          }}
+        >
+          {winner ? (
             <HeartFlag code={winner} size="lg" />
-          </motion.div>
-        )}
+          ) : (
+            <FluentEmoji glyph="🏆" size={56} ariaLabel="winner" />
+          )}
+        </motion.div>
         <p className="text-[10px] uppercase tracking-[0.3em] font-display text-yellow/85">
           {t(lang, "sys_cta_thanks_eyebrow")}
         </p>
@@ -926,23 +929,31 @@ function SelfieCard({ lang }: { lang: Language }) {
       className="relative mx-auto max-w-[19rem]"
     >
       {/* Paparazzi flash overlay — fires once per room when the card
-          first lands in chat. Fixed full-viewport white pulse, very
-          short (~500ms) so it reads as a camera-flash blip and not
-          a layout glitch. pointer-events-none so the user can keep
-          tapping the polaroid through it. */}
-      <AnimatePresence>
-        {flash && (
-          <motion.div
-            key="paparazzi"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.95, 0] }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.55, times: [0, 0.18, 1], ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 z-[80] pointer-events-none bg-white"
-            aria-hidden
-          />
+          first lands in chat. Portalled to document.body because the
+          parent motion.div has a `rotate` transform, which establishes
+          a containing block for `position: fixed`. Without the
+          portal the white pulse would clip to the polaroid's own
+          ~19rem bounding box (rendered as a tiny white square inside
+          the card) instead of covering the viewport. Same gotcha
+          CLAUDE.md flags for PageTransition. pointer-events-none so
+          the user can keep tapping the polaroid through it. */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {flash && (
+              <motion.div
+                key="paparazzi"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 0.95, 0] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.55, times: [0, 0.18, 1], ease: [0.22, 1, 0.36, 1] }}
+                className="fixed inset-0 z-[80] pointer-events-none bg-white"
+                aria-hidden
+              />
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
       <input
         ref={inputRef}
         type="file"

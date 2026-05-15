@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useOthers, useUpdateMyPresence } from "@/lib/realtime";
@@ -63,6 +64,10 @@ export function NameGate({
   const [draftName, setDraftName] = useState("");
   const [draftAvatar, setDraftAvatar] = useState<string | null>(null);
   const [lang, setLang] = useState<Language>("lt");
+  // Pill-side mirror of `lang` — committed synchronously via
+  // flushSync BEFORE the view-transition snapshot opens so the
+  // toggle pops to the new side instead of riding the root crossfade.
+  const [pillSide, setPillSide] = useState<Language>("lt");
   const [pushOnboardComplete, setPushOnboardComplete] = useState(false);
   const updatePresence = useUpdateMyPresence();
   const others = useOthers();
@@ -90,6 +95,7 @@ export function NameGate({
       setDraftAvatar(storedAvatar);
     }
     setLang(readLang());
+    setPillSide(readLang());
     if (storedName && !storedAvatar) setStep(2);
     setHydrated(true);
   }, []);
@@ -323,21 +329,44 @@ export function NameGate({
                 </p>
               )}
             </div>
-            <div className="flex items-center justify-center gap-1 rounded-full bg-black/30 p-1 self-center">
-              {LANGUAGES.map((code) => (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => withLangTransition(() => setLang(code))}
-                  className={`px-5 py-2 rounded-full text-sm font-display transition ${
-                    lang === code
-                      ? "bg-white text-dark-blue"
-                      : "text-white/60 hover:text-white"
-                  }`}
-                >
-                  {LANGUAGE_NAMES[code]}
-                </button>
-              ))}
+            {/* Language pill — separate from `lang` via `pillSide`
+                state. flushSync forces the pill move to commit to
+                the DOM BEFORE startViewTransition snapshots, so the
+                snapshot captures the pill already at the new side
+                and the crossfade only animates the surrounding
+                strings (welcome heading, name input placeholder,
+                etc). Without flushSync React batches both state
+                changes into one commit, the snapshot grabs the
+                OLD pill, and the root crossfade drags it along. */}
+            <div className="relative flex items-center justify-center gap-1 rounded-full bg-black/30 p-1 self-center">
+              <span
+                aria-hidden
+                className="absolute top-1 bottom-1 rounded-full bg-white pointer-events-none transition-[left] duration-0"
+                style={{
+                  width: "calc(50% - 0.25rem)",
+                  left: pillSide === LANGUAGES[0] ? "0.25rem" : "50%",
+                }}
+              />
+              {LANGUAGES.map((code) => {
+                const active = pillSide === code;
+                return (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => {
+                      flushSync(() => {
+                        setPillSide(code);
+                      });
+                      withLangTransition(() => setLang(code));
+                    }}
+                    className={`relative z-10 px-5 py-2 rounded-full text-sm font-display transition-colors ${
+                      active ? "text-dark-blue" : "text-white/60 hover:text-white"
+                    }`}
+                  >
+                    {LANGUAGE_NAMES[code]}
+                  </button>
+                );
+              })}
             </div>
           </motion.form>
         ) : step === 2 ? (

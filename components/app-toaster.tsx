@@ -55,6 +55,16 @@ export function AppToaster() {
           fontFamily: "var(--font-display)",
           fontSize: "15px",
           lineHeight: "1.35",
+          // Sonner's [data-icon] wrapper is forced to 16×16 with a
+          // tight `--toast-icon-margin-end: 4px`. The 26px Fluent
+          // PNG inside overflows the wrapper, so the wrapper's
+          // 4px right-margin lands BEHIND the visible glyph and the
+          // toast body kisses the icon. Bumping the CSS variable
+          // here moves the body text out the full 12px past the
+          // icon's RIGHT edge — visually that's the 5-7px breathing
+          // gap, taking the overflow into account.
+          // @ts-expect-error custom CSS variable on inline style
+          "--toast-icon-margin-end": "12px",
         },
         classNames: {
           title: "font-display",

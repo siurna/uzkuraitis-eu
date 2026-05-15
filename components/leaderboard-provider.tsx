@@ -97,9 +97,15 @@ export function LeaderboardProvider({ children }: { children: ReactNode }) {
     inflight.current = p;
   }, [code]);
 
+  // Fetch on mount regardless of `tallyEnabled` so consumers that
+  // only care about the OFFICIAL placements (the ThanksCard heart
+  // for the winning country, the bonus-bet result chips, etc) get
+  // their data even before the room's leaderboard reveal is on.
+  // The leaderboard ROWS only render when the room's `tallyEnabled`
+  // is true downstream — placements alone leak no per-voter info.
   useEffect(() => {
-    if (tallyEnabled) refresh();
-  }, [tallyEnabled, refresh]);
+    refresh();
+  }, [refresh]);
 
   useEventListener(({ event }) => {
     // `leaderboard:updated` (admin entered results, edited placements,
