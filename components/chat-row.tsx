@@ -291,36 +291,51 @@ function renderBody(text: string, names: string[]): React.ReactNode {
 // Commentator (banter) renderer. Supports two leading-hash markdown
 // flavours so the admin can structure each line as
 //   "# Country" + newline + "## Artist" + newline + the line itself
-// — they read as headers above body copy without dominating the
-// bubble. Sized slightly larger than body, not huge — a banter line
-// is still a chat message, not a poster.
+// — they read as a small typographic hierarchy above the body line.
 //
-// Single-pass parse: split on newlines, prefix-match `# ` / `## `,
-// fall through to renderInline for plain lines. Returns a column of
-// children with row gaps so the spacing matches when the admin
-// chooses to use headings + when they don't.
+// Size hierarchy (bigger → smaller):
+//   #  → text-xl  (the country / headline)
+//   ## → text-base (the artist / subhead)
+//   body → text-sm (inherited from the bubble)
+//
+// The LAST header in the leading block gets a chunkier margin-bottom
+// so the body line has breathing room and the title block reads as
+// "this is the setup". A header is "last" if every subsequent
+// non-empty line is a body line (i.e., not another `# ` / `## `).
+//
+// Single-pass parse: split on newlines, prefix-match the hash flavours,
+// fall through to renderInline for plain lines. The last-header
+// detection is a separate forward scan; cheap, banter lines are short.
 function renderBanter(text: string): React.ReactNode {
   const lines = text.replace(/\r\n/g, "\n").split("\n");
+  // Find the last index that is a header line. Anything after it is
+  // body / blanks; that header gets the bigger margin-bottom.
+  let lastHeaderIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^#{1,2} /.test(lines[i].trimEnd())) lastHeaderIdx = i;
+  }
   return (
     <span className="flex flex-col gap-0.5">
       {lines.map((raw, i) => {
         const line = raw.trimEnd();
+        const headerTail = i === lastHeaderIdx ? "mb-2" : "";
         if (/^# (.+)$/.test(line)) {
-          const body = line.slice(2);
           return (
-            <span key={i} className="block font-display text-[15px] leading-tight">
-              {renderInline(body)}
+            <span
+              key={i}
+              className={`block font-display text-xl leading-tight ${headerTail}`}
+            >
+              {renderInline(line.slice(2))}
             </span>
           );
         }
         if (/^## (.+)$/.test(line)) {
-          const body = line.slice(3);
           return (
             <span
               key={i}
-              className="block font-display text-[11px] uppercase tracking-[0.18em] text-white/65 leading-tight"
+              className={`block font-display text-base leading-tight text-white/85 ${headerTail}`}
             >
-              {renderInline(body)}
+              {renderInline(line.slice(3))}
             </span>
           );
         }
