@@ -185,24 +185,34 @@ export function SettingsModal({
               themselves are back — they're the only way for a
               viewer to flip these features on. */}
           <div className="flex flex-col gap-2">
-            {/* Auto-translate only makes sense when the viewer is
-                reading the app in English — they'd want the LT chat
-                glossed into EN. A Lithuanian-reading viewer doesn't
-                need the gloss (the messages are already in their
-                language); the toggle just adds noise to the drawer
-                for them. So we render it only when lang === "en". */}
-            {lang === "en" && (
-              <PrefRow
-                icon={<Languages className="h-5 w-5" />}
-                title={t(lang, "settings_translate_h")}
-                sub={t(lang, "settings_translate_sub")}
-                value={translate}
-                onChange={(next) => {
-                  setTranslate(next);
-                  writeTranslate(next);
-                }}
-              />
-            )}
+            {/* Auto-translate only makes sense in English mode (LT
+                viewers don't need a gloss of LT chat). When the user
+                flips lang LT→EN inside this drawer, the row should
+                EASE in instead of pop; vice-versa for EN→LT. Wrap in
+                AnimatePresence with height + opacity easing. */}
+            <AnimatePresence initial={false}>
+              {lang === "en" && (
+                <motion.div
+                  key="auto-translate"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                  style={{ overflow: "hidden" }}
+                >
+                  <PrefRow
+                    icon={<Languages className="h-5 w-5" />}
+                    title={t(lang, "settings_translate_h")}
+                    sub={t(lang, "settings_translate_sub")}
+                    value={translate}
+                    onChange={(next) => {
+                      setTranslate(next);
+                      writeTranslate(next);
+                    }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
             <PrefRow
               icon={<Sparkles className="h-5 w-5" />}
               title={t(lang, "settings_beginner_h")}

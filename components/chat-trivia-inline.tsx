@@ -27,8 +27,16 @@ import type { Language } from "@/lib/i18n";
 // the question. The server still has the durable answer in
 // trivia_answers; this component is just the surface.
 const LOCAL_KEY = (room: string) => `uzk_trivia_${room}`;
+// Per-room cache of "I've already SEEN this country's trivia card
+// land in chat (i.e. the breaking-news flash already played for this
+// session)". Survives reloads; that's the point — refreshing the
+// page shouldn't re-fire the flash for trivia that was already
+// posted minutes ago. localStorage instead of sessionStorage so it
+// survives across PWA cold-starts (sessionStorage clears on PWA
+// re-launch).
+const SEEN_KEY = (room: string) => `uzk_trivia_seen_${room}`;
 const LETTERS: ["A", "B", "C", "D"] = ["A", "B", "C", "D"];
-const FLASH_MS = 1400;
+const FLASH_MS = 1900;
 // WWTBAM-style reveal beats. Tap → instant LOCK (the chosen plate
 // turns gold). After LOCK_HOLD_MS → BLINK (the gold pulses for
 // suspense). After BLINK_MS → ANSWERED (the chosen turns
@@ -126,29 +134,58 @@ export function ChatTriviaCard({
     }
   }, [card, countryCode, roomCode]);
 
-  // First-view flash gate. The trivia card is mounted exactly when
-  // <DelayedTrivia/> flips ready=true (i.e. at the message's firesAt
-  // timestamp), so a fresh mount IS a genuine first view — we don't
-  // need localStorage gating, and removing it kills the strict-mode
-  // dev wedge that the previous rounds kept hitting (Mount 1 wrote
-  // SEEN_KEY synchronously, Mount 2 saw the flag and bailed without
-  // ever showing the overlay). One in-component ref guards the
-  // double-invoke per-mount; no cross-mount storage. Player who has
-  // already answered this country sees no flash (loaded from
-  // localStorage in the effect above sets phase=answered, which
-  // makes the flash redundant, so we skip it).
+  // First-view flash gate.
+  //
+  // Two suppressors:
+  //   1. Already answered → phase loaded as "answered" from
+  //      localStorage above; flash is redundant, skip.
+  //   2. Already SEEN → SEEN_KEY in localStorage records that the
+  //      flash already played for this country in this room. Without
+  //      this, refreshing the page after the trivia message landed
+  //      would replay the breaking-news bar every reload.
+  //
+  // Strict-mode safety: the SEEN_KEY write is DEFERRED to AFTER the
+  // flash starts (rAF + 60ms) so React's dev double-mount doesn't
+  // cause Mount 1 to write the flag synchronously and Mount 2 to
+  // bail before painting. Mount 1's deferred write is harmless if
+  // it runs (Mount 2's check sees the flag too); the user-visible
+  // mount is Mount 2, and it gets its own setFlashing(true) before
+  // the flag is set.
   const flashFiredRef = useRef(false);
   useEffect(() => {
     if (!card) return;
     if (flashFiredRef.current) return;
     if (phase.kind === "answered") return;
+    try {
+      const raw = localStorage.getItem(SEEN_KEY(roomCode));
+      const seen = raw ? (JSON.parse(raw) as Record<string, true>) : {};
+      if (seen[countryCode]) return;
+    } catch {
+      /* ignore — fall through and play the flash */
+    }
     flashFiredRef.current = true;
     setFlashing(true);
-    // No cleanup — setFlashing on unmount is a no-op in React 18+,
-    // and we'd rather guarantee the false-flip than have strict-mode
-    // cleanup cancel it.
+    // Stamp SEEN after the flash starts (next rAF + a small buffer)
+    // so a strict-mode double-invoke doesn't mark seen before the
+    // visible mount renders.
+    requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        try {
+          const raw = localStorage.getItem(SEEN_KEY(roomCode));
+          const seen = raw ? (JSON.parse(raw) as Record<string, true>) : {};
+          if (!seen[countryCode]) {
+            seen[countryCode] = true;
+            localStorage.setItem(SEEN_KEY(roomCode), JSON.stringify(seen));
+          }
+        } catch {
+          /* private mode / quota exceeded — flash still played */
+        }
+      }, 60);
+    });
+    // setFlashing(false) timeout intentionally has no cleanup;
+    // setFlashing on unmount is a no-op in React 18+.
     window.setTimeout(() => setFlashing(false), FLASH_MS);
-  }, [card, phase.kind]);
+  }, [card, phase.kind, countryCode, roomCode]);
 
   // Country navigated away while this player was still on the idle
   // buttons view → close the card (reveal answer, disable buttons).
@@ -376,56 +413,126 @@ export function ChatTriviaCard({
         )}
       </div>
 
-      {/* Breaking-news flash overlay. Lives on top of the millionaire
-          stage and crossfades out after FLASH_MS. AnimatePresence
-          handles the fade-out cleanup so the overlay unmounts cleanly
-          once the question is the only thing left. */}
+      {/* Breaking-news overlay, redesigned. Three beats:
+            1. (0–0.3s) Black plate slams down + a thin red bar
+               carves across the bottom edge.
+            2. (0.3–0.7s) "QUICK QUESTION!" headline drops in with
+               per-character stagger, white drop-shadow lift.
+            3. (0.7–1.4s) The headline shimmers (radial sweep), then
+               the whole overlay crossfades out revealing the WWTBAM
+               stage underneath. */}
       <AnimatePresence>
         {flashing && (
           <motion.div
             key="flash"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.45, ease: "easeOut" }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
             className="absolute inset-0 z-10 overflow-hidden pointer-events-none"
             aria-hidden
           >
-            {/* Solid black plate behind the bar — guarantees we're not
-                bleeding the millionaire view during the flash. */}
-            <div className="absolute inset-0 bg-[#080820]" />
-
-            {/* Diagonal red sweep — the bar. Slides in from the left,
-                stops mid-card. */}
+            {/* Plate. Sweeps in from black → deep red gradient at the
+                bottom edge so the headline reads as a "live broadcast
+                cut-in" instead of a flat banner. */}
             <motion.div
-              initial={{ x: "-110%" }}
-              animate={{ x: "0%" }}
-              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute inset-y-0 left-0 right-[-6%] flex items-center px-5"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="absolute inset-0"
               style={{
                 background:
-                  "linear-gradient(95deg, #b9001a 0%, #d10a25 55%, #a4001a 100%)",
-                clipPath: "polygon(0 0, 100% 0, 96% 100%, 0 100%)",
-                boxShadow:
-                  "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.35), 0 12px 28px -10px rgba(185, 0, 26, 0.65)",
+                  "radial-gradient(120% 80% at 50% 50%, #181029 0%, #0a0613 70%, #050208 100%)",
               }}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                {/* LIVE dot — slow heartbeat, mirrors the rest of the app. */}
-                <span className="relative flex h-2.5 w-2.5 shrink-0">
-                  <span className="absolute inset-0 rounded-full bg-white/60 animate-ping" />
-                  <span className="relative h-2.5 w-2.5 rounded-full bg-white" />
-                </span>
+            />
 
-                <motion.p
-                  initial={{ opacity: 0, x: 14 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.22, duration: 0.4, ease: "easeOut" }}
-                  className="font-display text-white text-xl sm:text-2xl leading-tight uppercase tracking-wide truncate"
-                >
-                  {t(lang, "trivia_breaking")}
-                </motion.p>
-              </div>
-            </motion.div>
+            {/* Two thin red rails: top + bottom. Slide in from
+                opposite sides on a hard cubic-bezier so they snap
+                closed like a TV news lower-third. */}
+            <motion.div
+              initial={{ scaleX: 0, transformOrigin: "left" }}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-x-0 top-0 h-[3px]"
+              style={{
+                background:
+                  "linear-gradient(90deg, transparent 0%, #d10a25 12%, #ff3050 50%, #d10a25 88%, transparent 100%)",
+              }}
+            />
+            <motion.div
+              initial={{ scaleX: 0, transformOrigin: "right" }}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-x-0 bottom-0 h-[3px]"
+              style={{
+                background:
+                  "linear-gradient(90deg, transparent 0%, #d10a25 12%, #ff3050 50%, #d10a25 88%, transparent 100%)",
+              }}
+            />
+
+            {/* Headline block. Per-character drop-in with a tight
+                stagger, then a slow shimmer sweep. */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6">
+              {/* LIVE dot eyebrow — pulses once it lands. */}
+              <motion.span
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.22, duration: 0.32, ease: "easeOut" }}
+                className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.36em] font-display text-flamingo"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inset-0 rounded-full bg-flamingo/70 animate-ping" />
+                  <span className="relative h-2 w-2 rounded-full bg-flamingo" />
+                </span>
+                Live
+              </motion.span>
+
+              {/* Per-character headline. Each glyph drops in 18ms
+                  apart so the line reads as TYPED, not pasted. */}
+              <h2
+                className="font-display text-white text-3xl sm:text-4xl leading-tight uppercase tracking-tight text-center"
+                style={{
+                  textShadow:
+                    "0 2px 18px rgba(255, 48, 80, 0.55), 0 0 6px rgba(0,0,0,0.6)",
+                }}
+              >
+                {Array.from(t(lang, "trivia_breaking")).map((ch, i) => (
+                  <motion.span
+                    key={i}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      delay: 0.32 + i * 0.018,
+                      duration: 0.28,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    className="inline-block"
+                  >
+                    {ch === " " ? " " : ch}
+                  </motion.span>
+                ))}
+              </h2>
+
+              {/* Shimmer sweep — a thin gold beam cuts across the
+                  headline area at the back end of the flash. */}
+              <motion.span
+                aria-hidden
+                initial={{ x: "-120%", opacity: 0 }}
+                animate={{ x: "120%", opacity: [0, 0.9, 0] }}
+                transition={{
+                  delay: 0.85,
+                  duration: 0.6,
+                  ease: "easeInOut",
+                  times: [0, 0.5, 1],
+                }}
+                className="pointer-events-none absolute left-0 right-0 top-1/2 h-16 -translate-y-1/2"
+                style={{
+                  background:
+                    "linear-gradient(95deg, transparent 30%, rgba(255, 209, 102, 0.55) 48%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 209, 102, 0.55) 52%, transparent 70%)",
+                  filter: "blur(8px)",
+                  mixBlendMode: "screen",
+                }}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

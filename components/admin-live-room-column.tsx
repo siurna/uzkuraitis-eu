@@ -16,6 +16,7 @@ export type RoomLite = {
   name: string;
   votingEnabled: boolean;
   tallyEnabled: boolean;
+  triviaEnabled: boolean;
   triviaMaxAnswerers: number | null;
   highlightThreshold: number | null;
   /** Recently active voter count (within the last ~2 minutes). Shown
@@ -139,6 +140,7 @@ export function AdminLiveRoomColumn({ rooms: initialRooms }: { rooms: RoomLite[]
         room={selected?.code ?? ""}
         initialVoting={selected?.votingEnabled ?? false}
         initialTally={selected?.tallyEnabled ?? false}
+        initialTrivia={selected?.triviaEnabled ?? true}
         initialTriviaCap={selected?.triviaMaxAnswerers ?? null}
         initialHighlightThreshold={selected?.highlightThreshold ?? null}
       />

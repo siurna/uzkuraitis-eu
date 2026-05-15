@@ -16,6 +16,7 @@ import {
   Wine,
   Medal,
   Flag,
+  Lightbulb,
   PartyPopper,
   type LucideIcon,
 } from "lucide-react";
@@ -83,6 +84,7 @@ export function AdminLiveControls({
   room,
   initialVoting,
   initialTally,
+  initialTrivia,
   initialTriviaCap,
   initialHighlightThreshold,
 }: {
@@ -90,12 +92,14 @@ export function AdminLiveControls({
   room: string;
   initialVoting: boolean;
   initialTally: boolean;
+  initialTrivia: boolean;
   initialTriviaCap: number | null;
   initialHighlightThreshold: number | null;
 }) {
   const [open, setOpen] = useState(false);
   const [voting, setVoting] = useState(initialVoting);
   const [tally, setTally] = useState(initialTally);
+  const [trivia, setTrivia] = useState(initialTrivia);
   const [pending, start] = useTransition();
   const [busyShot, setBusyShot] = useState<BroadcastKind | null>(null);
   const [lastFired, setLastFired] = useState<Partial<Record<BroadcastKind, string>>>({});
@@ -116,11 +120,13 @@ export function AdminLiveControls({
   }, [room]);
 
   // Keep state in sync when the room changes underneath us (the
-  // parent column passes the new room's voting/tally flags down).
+  // parent column passes the new room's voting/tally/trivia flags
+  // down).
   useEffect(() => {
     setVoting(initialVoting);
     setTally(initialTally);
-  }, [initialVoting, initialTally]);
+    setTrivia(initialTrivia);
+  }, [initialVoting, initialTally, initialTrivia]);
 
   const fireBroadcast = async (kind: BroadcastKind) => {
     if (!room) {
@@ -205,6 +211,24 @@ export function AdminLiveControls({
     });
   };
 
+  const flipTrivia = () => {
+    if (!room) return;
+    start(async () => {
+      const next = !trivia;
+      const res = await fetch(`/api/admin/rooms/${room}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ triviaEnabled: next }),
+      });
+      if (!res.ok) {
+        toast.error("Couldn't update the room.");
+        return;
+      }
+      setTrivia(next);
+      toast.success(next ? "Trivia on for this room" : "Trivia off for this room");
+    });
+  };
+
   const noRoom = rooms.length === 0 || !room;
 
   return (
@@ -227,6 +251,13 @@ export function AdminLiveControls({
           on={tally}
           disabled={pending || noRoom}
           onChange={flipTally}
+        />
+        <DrawerSwitch
+          icon={<Lightbulb className="h-4 w-4" />}
+          label="Trivia in chat"
+          on={trivia}
+          disabled={pending || noRoom}
+          onChange={flipTrivia}
         />
         {/* Trivia + highlight caps live on the page too, under the
             voting/results switches. They're the same per-room knobs
