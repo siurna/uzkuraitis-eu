@@ -401,7 +401,15 @@ function RoomBody({ children }: { children: React.ReactNode }) {
 // when hidden → fully out of layout but still mounted (effects, live
 // subscriptions and scroll position survive).
 function TabPane({ show, children }: { show: boolean; children: React.ReactNode }) {
-  return <div style={{ display: show ? "contents" : "none" }}>{children}</div>;
+  // `inert` while hidden — same trick the chat panel uses. Tabs are
+  // kept mounted (display:none) for instant switching, but their
+  // <input> elements (bonus-bets form on Vote, etc.) stay
+  // discoverable by iOS Safari's form-input scanner, which then
+  // renders the ‹ › ✓ multi-input accessory bar on top of OTHER
+  // single-input screens (chat composer, name gate). Inert removes
+  // the whole subtree from focus + AX trees, so iOS only counts the
+  // active tab's inputs and renders the keyboard cleanly.
+  return <div inert={!show} style={{ display: show ? "contents" : "none" }}>{children}</div>;
 }
 
 function RoomLiveProvider({
