@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { voters } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
 import { guardSession } from "@/lib/server-session";
+import { checkAndIncrement } from "@/lib/rate-limit";
 
 // Presence-as-REST heartbeat. The room shell pings this every 60s
 // (and on visibilitychange when the tab returns) carrying the full
@@ -51,6 +52,21 @@ export async function POST(req: Request, { params }: RouteCtx) {
 
   const guard = await guardSession(session);
   if (guard) return guard;
+
+  // Rate-limit at 4 heartbeats per minute per (room, session). The
+  // client pings every 60s + on visibilitychange, so the steady-state
+  // is 1/min; 4 leaves headroom for tab-focus thrash without letting
+  // a misbehaving client (or a 200-viewer room) hammer the voters
+  // upsert. Leave beacons skip the gate so a normal tab close still
+  // lands its updatedAt back-date.
+  if (!leaving) {
+    const limited = await checkAndIncrement(
+      `hb:${room.id}:${session}`,
+      4,
+      60_000,
+    );
+    if (!limited.ok) return NextResponse.json({ ok: true });
+  }
 
   // Leave beacon: back-date updatedAt past the 90s active window so
   // WhosHere + admin active-count drop this session on their next

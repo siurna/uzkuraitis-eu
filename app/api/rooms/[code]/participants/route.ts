@@ -58,13 +58,15 @@ export async function GET(_req: Request, { params }: RouteCtx) {
       updatedAt: r.updatedAt.toISOString(),
     })),
   });
-  // Tiny private cache so a tab that hops between rooms / refocuses
-  // doesn't pay an extra round trip if the previous fetch is <3s old.
-  // The WhosHere poller targets a 20s cadence anyway, so this only
-  // helps the rare "two consumers within the same window" case.
+  // Browser cache up to 15s + CDN cache 15s + stale-while-revalidate
+  // 30s. The WhosHere poller targets ~20s, so most polls in a
+  // sustained-traffic room will short-circuit at the CDN before the
+  // request ever reaches Postgres. Was max-age=3 — too short to
+  // catch the steady-state poll cadence with 100+ viewers all
+  // hitting the endpoint within the same 20s window.
   res.headers.set(
     "Cache-Control",
-    "private, max-age=3, stale-while-revalidate=10",
+    "private, max-age=15, s-maxage=15, stale-while-revalidate=30",
   );
   return res;
 }

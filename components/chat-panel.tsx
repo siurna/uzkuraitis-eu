@@ -60,9 +60,9 @@ const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 // - `STALE_MS`: listener-side TTL — entries older than this since
 //   their last `typing:start` are auto-cleared. Higher than
 //   KEEPALIVE_MS so one missed keepalive doesn't drop the indicator.
-const TYPING_KEEPALIVE_MS = 4000;
-const TYPING_STOP_AFTER_MS = 8000;
-const TYPING_STALE_MS = 6000;
+const TYPING_KEEPALIVE_MS = 7000;
+const TYPING_STOP_AFTER_MS = 10_000;
+const TYPING_STALE_MS = 10_000;
 
 // ---------------------------------------------------------------------
 // Helpers
@@ -1000,13 +1000,15 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   // Typing rides on broadcasts now (NOT presence — presence is rate-
   // limited at ~1/sec and got the channel kicked when the typing
   // flag bumped on every keystroke). We send `typing:start` the
-  // first time the composer goes non-empty, resend every 4s as a
-  // keepalive while the user keeps typing, and fire `typing:stop`
-  // on clear, on send, or after 8s of inactivity-with-text. Cheap:
-  // one broadcast every few seconds while typing, zero otherwise.
+  // first time the composer goes non-empty, then a keepalive every
+  // KEEPALIVE_MS but ONLY if there's been a real keystroke since
+  // the last tick — sitting idle on a non-empty composer no longer
+  // burns realtime traffic. `typing:stop` fires on clear, on send,
+  // or after STOP_AFTER_MS of zero-keystroke idle.
   const typingActive = useRef(false);
   const typingKeepalive = useRef<ReturnType<typeof setInterval> | null>(null);
   const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingLastKeystrokeAt = useRef(0);
   // Use `name` (the live composer-name state) directly here; the
   // `senderName` const further down isn't in scope yet at this
   // point in the component, and refs are fine for a value that
@@ -1025,7 +1027,17 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     if (typingActive.current) return;
     typingActive.current = true;
     sendTypingStart();
-    typingKeepalive.current = setInterval(sendTypingStart, TYPING_KEEPALIVE_MS);
+    typingKeepalive.current = setInterval(() => {
+      // Skip the broadcast when the user hasn't typed in the last
+      // keepalive window. Their typing:start is already past its
+      // own TTL on receivers' side so the indicator clears naturally
+      // — no need to spend a broadcast keeping it alive while they
+      // sit idle with text still in the box.
+      const since = Date.now() - typingLastKeystrokeAt.current;
+      if (since < TYPING_KEEPALIVE_MS) {
+        sendTypingStart();
+      }
+    }, TYPING_KEEPALIVE_MS);
   }, [sendTypingStart]);
   const endTyping = useCallback(() => {
     if (!typingActive.current) return;
@@ -1049,6 +1061,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const onComposerChange = (v: string) => {
     setBody(v.slice(0, 2000));
     if (v.trim().length > 0) {
+      typingLastKeystrokeAt.current = Date.now();
       beginTyping();
       if (typingStopTimer.current) clearTimeout(typingStopTimer.current);
       typingStopTimer.current = setTimeout(endTyping, TYPING_STOP_AFTER_MS);

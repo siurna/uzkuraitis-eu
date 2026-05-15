@@ -115,13 +115,24 @@ export function LeaderboardProvider({ children }: { children: ReactNode }) {
 
   useEventListener(({ event }) => {
     // `leaderboard:updated` (admin entered results, edited placements,
-    // etc.) is a deliberate signal — refresh immediately so the room
-    // sees the reveal land. `scores:updated` (a ballot was tweaked)
-    // only matters once tally is on; before that, it's a vote-storm
-    // event with no payload to invalidate, so we'd be GETting a
+    // etc.) is a deliberate signal — refresh on a leading-edge
+    // throttle so 200 viewers don't all stampede `computeRoomLeaderboard`
+    // (4 parallel SQL reads) on the same tick. Jitter the firing
+    // window by up to 1.5s so even within the throttle window the
+    // viewer-side fetches spread across Postgres rather than landing
+    // simultaneously. `scores:updated` (a ballot was tweaked) only
+    // matters once tally is on; before that it's a vote-storm event
+    // with no payload to invalidate, so we'd be GETting a
     // "hasResults:false" reply on every keystroke for nothing.
     if (event.type === "leaderboard:updated") {
-      refresh();
+      if (refetchTimer.current) return;
+      refetchTimer.current = setTimeout(
+        () => {
+          refetchTimer.current = null;
+          refresh();
+        },
+        Math.floor(Math.random() * 1500),
+      );
       return;
     }
     if (event.type === "scores:updated" && tallyEnabled) {
