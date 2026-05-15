@@ -68,9 +68,12 @@ const SHOTS: { kind: BroadcastKind; group: ShotGroup; title: string; desc: strin
   // ── Beginning: doors, housekeeping, opt-ins, voting open ──
   { kind: "welcome",       group: "beginning", title: "Hello folks",          desc: "Drops your housekeeping notes.", icon: Hand },
   { kind: "notifications", group: "beginning", title: "Turn on notifications", desc: "Nudge to enable push.",          icon: Bell },
-  { kind: "bet",           group: "beginning", title: "Don't forget bonus bets", desc: "Free points if you call them.", icon: Coins },
   { kind: "vote",          group: "beginning", title: "Lines are open",       desc: "Lock in your TOP 10.",            icon: Vote },
-  // ── During the show: vibe checks, mid-show drama ──
+  // ── During the show: vibe checks, mid-show drama. Bets sits here
+  //    too — the reminder lands BETTER mid-show (a few songs in, when
+  //    folks remember they haven't locked in their bonus picks) than
+  //    in the opening housekeeping flurry. ──
+  { kind: "bet",           group: "during",    title: "Don't forget bonus bets", desc: "Free points if you call them.", icon: Coins },
   { kind: "selfie",        group: "during",    title: "Selfie time",          desc: "Polaroid prompt into chat.",      icon: Camera },
   { kind: "drunk_poll",    group: "during",    title: "How drunk are you?",   desc: "Vibe-check tally bar.",            icon: Wine },
   { kind: "top3",          group: "during",    title: "Top 3 right now",      desc: "Live fan-aggregate podium.",       icon: Medal },
@@ -353,7 +356,7 @@ export function AdminLiveControls({
                                 Posting… badge when sending. Used to swap
                                 the whole line which shifted the row
                                 height on every click. */}
-                            <span className="block text-[10px] text-white/35 mt-0.5 inline-flex items-center gap-1.5">
+                            <span className="block text-[10px] text-white/35 inline-flex items-center gap-1.5">
                               {last ? <>fired {timeAgo(last)}</> : <>not fired yet</>}
                               {sending && (
                                 <span className="inline-flex items-center gap-1 text-flamingo/85">

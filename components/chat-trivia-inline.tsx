@@ -379,6 +379,21 @@ export function ChatTriviaCard({
                                     ${(locked || blinking) && isChosen ? "text-dark-blue" : "text-white"}`}>
                     {c}
                   </span>
+                  {/* WWTBAM reveal flash — a one-shot white burst
+                      that washes over the correct plate the instant
+                      we hit the answered phase, then fades to reveal
+                      the emerald wash underneath. Pointer-events-none
+                      so it doesn't intercept taps. */}
+                  {phase.kind === "answered" && isCorrect && !closed && (
+                    <span
+                      aria-hidden
+                      className="uzk-trivia-reveal-flash pointer-events-none absolute inset-0 rounded-2xl"
+                      style={{
+                        background:
+                          "radial-gradient(80% 100% at 50% 50%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.5) 40%, transparent 80%)",
+                      }}
+                    />
+                  )}
                   {/* "+2" points chip — only on the correct answer
                       once we're in the reveal phase. Sits in the
                       right gutter, doesn't shift the answer text. */}

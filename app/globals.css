@@ -636,6 +636,34 @@
   animation: uzk-msg-fade 0.2s ease-out;
 }
 
+/* Trivia "blinking" phase, WWTBAM-style. The locked-in (chosen) plate
+   pulses between full brightness + a slightly dimmer state so the
+   suspense reads as "is that your final answer?" while the host
+   pauses for effect. Faster cadence (300ms / cycle) than the heart
+   so it doesn't blend with the room's heartbeat motion. */
+@keyframes uzk-trivia-blink {
+  0%, 100% { filter: brightness(1)    saturate(1);   }
+  50%      { filter: brightness(1.35) saturate(1.2); }
+}
+.uzk-trivia-blink {
+  animation: uzk-trivia-blink 0.3s ease-in-out infinite;
+}
+
+/* Trivia reveal flash — fires ONCE on the correct plate when the
+   phase flips to answered. Bright white wash over the plate that
+   fades out over ~700ms, leaving the emerald-green answered state
+   underneath. The keyframe is `forwards` so the plate ends at
+   opacity 0 (i.e., reveals the underlying emerald colour). */
+@keyframes uzk-trivia-reveal-flash {
+  0%   { opacity: 0;    transform: scale(0.6); }
+  25%  { opacity: 0.85; transform: scale(1);   }
+  60%  { opacity: 0.4;  transform: scale(1);   }
+  100% { opacity: 0;    transform: scale(1);   }
+}
+.uzk-trivia-reveal-flash {
+  animation: uzk-trivia-reveal-flash 0.7s ease-out forwards;
+}
+
 input, button, textarea, select {
   -webkit-appearance: none;
   appearance: none;

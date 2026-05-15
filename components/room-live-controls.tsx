@@ -109,7 +109,15 @@ export function RoomLiveControls({
                  shadow-[0_8px_24px_-12px_rgba(255,255,255,0.4)]
                  disabled:opacity-60 active:scale-[0.99] transition"
     >
-      <HeartFlag code={nextCountry.code} size="md" />
+      {/* The HeartFlag SVG carries a white outline frame; on a
+          white button background that frame disappears entirely and
+          the heart reads as a floating cutout. A soft dark drop-
+          shadow pulls it back off the surface. */}
+      <HeartFlag
+        code={nextCountry.code}
+        size="md"
+        className="drop-shadow-[0_2px_6px_rgba(10,12,40,0.35)]"
+      />
       <span className="flex flex-col items-start leading-tight min-w-0">
         <span className="text-[10px] uppercase tracking-[0.24em] text-dark-blue/60">
           Next up

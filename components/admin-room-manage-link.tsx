@@ -136,10 +136,13 @@ export function AdminRoomManageLink({
       {/* Host magic-link — gates the /host/[code] surface where the
           host runs the show from (toggles + identity, no live panel
           since that's a global thing). Token in the URL is the only
-          auth; rotating the join code doesn't touch the token. */}
+          auth; rotating the join code doesn't touch the token.
+          Same neutral icon tile as the room link above so the two
+          tiles read as a pair — the flamingo accent was making the
+          host link feel like an alert. */}
       <div className="rounded-2xl glass-surface px-4 py-3 flex flex-col gap-3">
         <div className="flex items-center gap-3">
-          <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+          <span className="shrink-0 grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] ring-1 ring-white/12 text-white/65">
             <KeyRound className="h-5 w-5" />
           </span>
           <span className="flex-1 min-w-0">

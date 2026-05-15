@@ -2,11 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Download, MoreVertical, Plus, Puzzle, Share } from "lucide-react";
+import { Download, MoreVertical, Plus, Share } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { isInstalledPwa, detectPlatform } from "@/components/notification-toggles";
 import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
 import { readLang, writeLang } from "@/lib/i18n-client";
+
+// Chrome / Edge / Brave fire `beforeinstallprompt` when the PWA
+// meets installability criteria — capture the event so we can call
+// `.prompt()` later from our own button (way more discoverable than
+// hunting for the address-bar monitor icon).
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
 
 // Sticky bottom prompt on the room-gate that nudges visitors to install
 // the app as a PWA. Visible only when we're NOT already running in
@@ -23,11 +33,37 @@ export function InstallPwaPrompt() {
   const [open, setOpen] = useState(false);
   const [drawerLang, setDrawerLang] = useState<Language>("lt");
   const [ctaLang, setCtaLang] = useState<Language>("lt");
+  // The captured beforeinstallprompt event. When set, the desktop /
+  // Android branch shows a direct "Install" CTA that calls .prompt()
+  // — no address-bar hunting.
+  const [installPromptEvent, setInstallPromptEvent] =
+    useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
     setMounted(true);
     setInstalled(isInstalledPwa());
     setDrawerLang(readLang());
+  }, []);
+
+  // Capture Chromium's installability event so we can pop the native
+  // install prompt from our own button instead of relying on the
+  // browser's address-bar icon. Event ONLY fires once per page load,
+  // so the listener is wired immediately on mount.
+  useEffect(() => {
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPromptEvent(e as BeforeInstallPromptEvent);
+    };
+    const onInstalled = () => {
+      setInstalled(true);
+      setInstallPromptEvent(null);
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt as EventListener);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt as EventListener);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
   }, []);
 
   useEffect(() => {
@@ -43,6 +79,22 @@ export function InstallPwaPrompt() {
   const setLang = (code: Language) => {
     setDrawerLang(code);
     writeLang(code);
+  };
+
+  const triggerNativeInstall = async () => {
+    if (!installPromptEvent) return;
+    try {
+      await installPromptEvent.prompt();
+      const result = await installPromptEvent.userChoice;
+      if (result.outcome === "accepted") {
+        setInstalled(true);
+      }
+      // Event can only be used once — drop the reference either way.
+      setInstallPromptEvent(null);
+      setOpen(false);
+    } catch {
+      /* user dismissed — keep the drawer open so they can read steps */
+    }
   };
 
   return (
@@ -121,37 +173,49 @@ export function InstallPwaPrompt() {
             })}
           </div>
 
+          {/* When the browser fires beforeinstallprompt we get a
+              direct programmatic install path — way more discoverable
+              than the address-bar monitor icon. Show ONE big install
+              button at the top of the drawer in that case; keep the
+              platform instructions below as a fallback for users
+              whose browser hasn't fired the event yet. */}
+          {installPromptEvent && (
+            <Button
+              type="button"
+              onClick={triggerNativeInstall}
+              className="bg-flamingo text-white hover:bg-flamingo/90 rounded-2xl h-12 font-display text-base"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {t(drawerLang, "install_drawer_title")}
+            </Button>
+          )}
+
           {platform === "ios-safari" && (
             <Steps title={t(drawerLang, "push_help_ios_title")}>
               <Step icon={<Share className="h-4 w-4" />}>{t(drawerLang, "push_help_ios_1")}</Step>
               <Step icon={<Plus className="h-4 w-4" />}>{t(drawerLang, "push_help_ios_2")}</Step>
-              <Step icon={<AppIcon />}>{t(drawerLang, "push_help_ios_3")}</Step>
+              <Step icon={<AppIcon />} iconBare>{t(drawerLang, "push_help_ios_3")}</Step>
             </Steps>
           )}
           {platform === "android" && (
             <Steps title={t(drawerLang, "push_help_android_title")}>
               <Step icon={<MoreVertical className="h-4 w-4" />}>{t(drawerLang, "push_help_android_1")}</Step>
               <Step icon={<Download className="h-4 w-4" />}>{t(drawerLang, "push_help_android_2")}</Step>
-              <Step icon={<AppIcon />}>{t(drawerLang, "push_help_android_3")}</Step>
+              <Step icon={<AppIcon />} iconBare>{t(drawerLang, "push_help_android_3")}</Step>
             </Steps>
           )}
           {platform === "desktop" && (
             <Steps title={t(drawerLang, "push_help_desktop_title")}>
-              {/* Desktop Chrome / Edge: the install affordance is a
-                  computer-monitor icon at the RIGHT edge of the
-                  address bar (omnibox), not in the ⋮ menu by default.
-                  Calling that out explicitly because users hunt for it
-                  in the menu first. */}
-              <Step icon={<Puzzle className="h-4 w-4" />}>{t(drawerLang, "install_desktop_1")}</Step>
+              <Step icon={<Download className="h-4 w-4" />}>{t(drawerLang, "install_desktop_1")}</Step>
               <Step icon={<Download className="h-4 w-4" />}>{t(drawerLang, "install_desktop_2")}</Step>
-              <Step icon={<AppIcon />}>{t(drawerLang, "install_desktop_3")}</Step>
+              <Step icon={<AppIcon />} iconBare>{t(drawerLang, "install_desktop_3")}</Step>
             </Steps>
           )}
           {platform === "other" && (
             <Steps title={t(drawerLang, "push_help_other_title")}>
               <Step icon={<Share className="h-4 w-4" />}>{t(drawerLang, "push_help_ios_1")}</Step>
               <Step icon={<Plus className="h-4 w-4" />}>{t(drawerLang, "push_help_ios_2")}</Step>
-              <Step icon={<AppIcon />}>{t(drawerLang, "push_help_ios_3")}</Step>
+              <Step icon={<AppIcon />} iconBare>{t(drawerLang, "push_help_ios_3")}</Step>
             </Steps>
           )}
         </div>
@@ -161,18 +225,20 @@ export function InstallPwaPrompt() {
 }
 
 // The webapp's own icon, used as the "now open the installed app"
-// indicator in step 3 of each platform guide. Reading the actual
-// installed-icon graphic next to "tap this icon on your home screen"
-// is way more legible than a generic AppWindow lucide stroke.
+// indicator on the final step of each platform guide. Sized to FILL
+// the 32px step container (with `iconBare` on <Step/> the surrounding
+// flamingo-tinted padding is dropped so the icon meets the tile
+// edges flush — that's the install-launcher feel: a real app icon
+// in a real square, not a graphic floating inside a tinted box).
 function AppIcon() {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={APP_ICON_URL}
       alt=""
-      width={20}
-      height={20}
-      className="h-5 w-5 rounded-md object-cover"
+      width={32}
+      height={32}
+      className="h-8 w-8 rounded-xl object-cover"
     />
   );
 }
@@ -196,17 +262,26 @@ function Steps({
 
 function Step({
   icon,
+  iconBare = false,
   children,
 }: {
   icon?: React.ReactNode;
+  /** When true, the icon is rendered RAW with no flamingo-tinted
+   *  tile around it — used for the AppIcon step so the webapp icon
+   *  meets the 32px tile edges flush. */
+  iconBare?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <li className="flex items-start gap-3 rounded-2xl glass-surface px-4 py-3">
       {icon && (
-        <span className="shrink-0 grid place-items-center h-8 w-8 rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
-          {icon}
-        </span>
+        iconBare ? (
+          <span className="shrink-0 inline-block">{icon}</span>
+        ) : (
+          <span className="shrink-0 grid place-items-center h-8 w-8 rounded-xl bg-flamingo/15 ring-1 ring-flamingo/30 text-flamingo">
+            {icon}
+          </span>
+        )
       )}
       <p className="flex-1 text-sm text-white/85 leading-relaxed text-balance">
         {children}

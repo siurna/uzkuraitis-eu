@@ -135,6 +135,16 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
     if (isLeaving) localStorage.removeItem(LAST_ROOM_KEY);
   }, [isLeaving]);
 
+  // Register the service worker from the LOGIN page (not just inside
+  // a room). Chrome's PWA installability heuristic only shows the
+  // address-bar install icon when a SW with a fetch handler is
+  // registered AND has handled a navigation request — without this,
+  // first-time visitors on /  saw the manifest but no install icon.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }, []);
+
   const submit = useCallback(
     (next: string) => {
       const normalized = normalizeRoomCode(next);
@@ -199,6 +209,25 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
     setTsToken(null);
     setTsResetKey((k) => k + 1);
   };
+
+  // Soft-timeout fallback for Turnstile. The widget's own onError
+  // fires for script load failure + the 8s "didn't initialise"
+  // case, but if the challenge ITSELF stalls (script loaded, widget
+  // mounted, Cloudflare just never returns a token), we'd otherwise
+  // sit on "Tikrinama, ar žmogus…" forever. After 12s with no
+  // token AND no prior error, treat as a hard failure so the user
+  // sees the retry chip and isn't trapped.
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY) return;
+    if (tsToken || tsError) return;
+    const id = window.setTimeout(() => {
+      if (!tsToken) {
+        setTsError(true);
+        armedRef.current = false;
+      }
+    }, 12_000);
+    return () => window.clearTimeout(id);
+  }, [tsToken, tsError, tsResetKey]);
 
   return (
     <main
