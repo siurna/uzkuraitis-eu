@@ -53,7 +53,7 @@ export function AdminRoomRename({
         </span>
         <span className="flex-1 min-w-0">
           <span className="block font-display text-base">Room name</span>
-          <span className="block text-xs text-white/50 leading-snug">
+          <span className="block text-xs text-white/50 leading-snug text-balance">
             Shown on the join screen + every header. 60 char max.
           </span>
         </span>

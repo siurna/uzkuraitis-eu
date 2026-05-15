@@ -855,10 +855,16 @@ export function ChatRow({
   }
 
   return (
+    // No `y` in animate: motion otherwise sets `transform: translate(0,
+    // 0)` on the li forever, and iOS Safari refuses to render
+    // backdrop-filter on a descendant of any element with a transform
+    // (the long-press menu's .glass-card surface goes flat in that
+    // case). Pending messages still get an opacity-fade entry; the
+    // earlier ~8px slide-up is gone but no real entrance polish lost.
     <motion.li
       data-msg-id={m.id}
-      initial={m.pending ? { opacity: 0, y: 8 } : false}
-      animate={{ opacity: 1, y: 0 }}
+      initial={m.pending ? { opacity: 0 } : false}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.2 }}
       className={`flex ${mine ? "justify-end" : "justify-start"}`}
     >
@@ -1200,14 +1206,14 @@ export function ChatRow({
                   type="button"
                   onClick={(e) => (info.mine ? onReact(emoji) : reactWithRain(e, emoji))}
                   title={info.names.join(", ")}
-                  className={`px-2 h-6 rounded-full text-xs font-display inline-flex items-center gap-1 transition
+                  className={`pl-1.5 pr-2 h-6 rounded-full text-xs font-display inline-flex items-center gap-1 transition
                               ${
                                 info.mine
                                   ? "bg-flamingo/25 ring-1 ring-flamingo/45 text-white"
                                   : "bg-white/[0.06] ring-1 ring-white/10 text-white/80 hover:bg-white/[0.10]"
                               }`}
                 >
-                  <span className="leading-none">{emoji}</span>
+                  <FluentEmoji glyph={emoji} size={16} />
                   <span className="tabular-nums">{info.count}</span>
                 </button>
               ))}
@@ -1228,7 +1234,7 @@ export function ChatRow({
                   {/* Emoji + its count stack — count sits directly under
                       the glyph so the "how many" reads at a glance. */}
                   <div className="flex flex-col items-center shrink-0">
-                    <span className="text-2xl leading-none">{emoji}</span>
+                    <FluentEmoji glyph={emoji} size={28} />
                     <span className="text-[11px] font-display text-white/55 tabular-nums mt-0.5">
                       {info.count}
                     </span>

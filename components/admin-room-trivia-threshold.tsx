@@ -70,7 +70,7 @@ export function AdminRoomTriviaThreshold({
           Trivia answer cap
         </span>
         {isComfy && (
-          <span className="block text-xs text-white/50 leading-snug">
+          <span className="block text-xs text-white/50 leading-snug text-balance">
             {active
               ? `Capped at ${value} answers per question.`
               : "No cap, anyone can lock an answer."}

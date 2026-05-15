@@ -71,7 +71,7 @@ export function AdminPasskeysPanel({
         </span>
         <div className="flex-1 min-w-0">
           <h2 className="font-display text-xl leading-tight">Passkeys</h2>
-          <p className="text-sm text-white/45 leading-snug mt-0.5">
+          <p className="text-sm text-white/45 leading-snug mt-0.5 text-balance">
             Devices allowed to sign in to the backstage. Lose one? Add a fresh
             one here, then revoke the old.
           </p>

@@ -72,7 +72,7 @@ export function AdminRoomManageLink({
           </span>
           <span className="flex-1 min-w-0">
             <span className="block font-display text-base">Host link</span>
-            <span className="block text-xs text-white/50 leading-snug">
+            <span className="block text-xs text-white/50 leading-snug text-balance">
               The magic link the host runs the room from. Two toggles, no passkey.
             </span>
           </span>
@@ -108,7 +108,7 @@ export function AdminRoomManageLink({
           </span>
           <span className="flex-1 min-w-0">
             <span className="block font-display text-base">Join link</span>
-            <span className="block text-xs text-white/50 leading-snug">
+            <span className="block text-xs text-white/50 leading-snug text-balance">
               Share with voters. Regen rotates the 6-char code — old links 404.
             </span>
           </span>

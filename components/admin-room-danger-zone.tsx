@@ -53,7 +53,7 @@ export function AdminRoomDangerZone({ code }: { code: string }) {
         </span>
         <span className="flex-1 min-w-0">
           <span className="block font-display text-base">Reset all votes</span>
-          <span className="block text-xs text-white/55 leading-snug">
+          <span className="block text-xs text-white/55 leading-snug text-balance">
             Wipes every voter + ballot in this room. The room itself stays.
           </span>
         </span>
@@ -84,7 +84,7 @@ export function AdminRoomDangerZone({ code }: { code: string }) {
         </span>
         <span className="flex-1 min-w-0">
           <span className="block font-display text-base">Delete this room</span>
-          <span className="block text-xs text-white/55 leading-snug">
+          <span className="block text-xs text-white/55 leading-snug text-balance">
             Room, code, voters, ballots, reactions, chat. All gone, no undo.
           </span>
         </span>

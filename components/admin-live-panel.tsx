@@ -41,7 +41,7 @@ export function AdminLivePanel({
         </span>
         <div>
           <h2 className="font-display text-xl leading-tight">Show controls</h2>
-          <p className="text-sm text-white/45 leading-snug mt-0.5">
+          <p className="text-sm text-white/45 leading-snug mt-0.5 text-balance">
             Flip the show state and put a country on stage.
           </p>
         </div>

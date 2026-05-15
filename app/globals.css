@@ -617,13 +617,28 @@
   100% { transform: translateX(30%); }
 }
 
-/* Language toggle pill: the SettingsModal commits the pill move on
-   a frame before the view-transition opens (see `pillSide` state),
-   so the snapshot capture already has the pill at its new position
-   and no per-name opt-out CSS is needed. Earlier rounds tried to
-   override the view-transition pseudo-elements here — kept the
-   approach commented for the next time a similar shared-element
-   snap behaviour is needed. */
+/* Language toggle pill + button labels: the SettingsModal commits
+   the pill move on a frame before the view-transition opens (see
+   `pillSide` state). Without help, the document-wide root crossfade
+   still drags a ghost of the OLD pill over the new one for ~250ms,
+   so we lift the pill (and its two labels) out of the root snapshot
+   with their own view-transition-name, then KILL their per-name
+   animations so they snap into place the moment React commits.
+   Effect: every string around the language toggle crossfades through
+   the root snapshot; the pill + LT/EN labels stay rock-still. */
+::view-transition-group(uzk-lang-pill),
+::view-transition-group(uzk-lang-label-lt),
+::view-transition-group(uzk-lang-label-en) {
+  animation-duration: 0s;
+}
+::view-transition-old(uzk-lang-pill),
+::view-transition-new(uzk-lang-pill),
+::view-transition-old(uzk-lang-label-lt),
+::view-transition-new(uzk-lang-label-lt),
+::view-transition-old(uzk-lang-label-en),
+::view-transition-new(uzk-lang-label-en) {
+  animation: none;
+}
 
 input, button, textarea, select {
   -webkit-appearance: none;

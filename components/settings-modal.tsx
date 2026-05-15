@@ -159,18 +159,25 @@ export function SettingsModal({
 
           <Section label={t(lang, "language")}>
             <div className="relative grid grid-cols-2 gap-1 rounded-2xl bg-black/30 ring-1 ring-white/10 p-1">
-              {/* Active-pill bg, driven by `pillSide` (NOT `lang`)
-                  so the pill commits its new position on the frame
-                  BEFORE the lang view-transition opens. No
-                  view-transition-name needed — the pill is already
-                  at its target left when the snapshot is taken, so
-                  the snapshot crossfade has nothing to interpolate
-                  for the pill. */}
+              {/* Active-pill bg, driven by `pillSide` (NOT `lang`) so
+                  the pill commits its new position on the frame BEFORE
+                  the lang view-transition opens. Two defences combined:
+                    1. `view-transition-name: uzk-lang-pill` lifts the
+                       pill OUT of the root snapshot — the document-wide
+                       crossfade no longer fades over it.
+                    2. `::view-transition-group(uzk-lang-pill) {
+                       animation-duration: 0s }` in globals.css kills
+                       the pill's own snapshot animation, so it just
+                       stays at the new position the moment flushSync
+                       commits.
+                  Result: labels around it crossfade through the root,
+                  the pill snaps. */}
               <span
                 aria-hidden
                 className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-xl bg-white pointer-events-none"
                 style={{
                   left: pillSide === LANGUAGES[0] ? "0.25rem" : "50%",
+                  viewTransitionName: "uzk-lang-pill",
                 }}
               />
               {LANGUAGES.map((code) => {
@@ -187,6 +194,12 @@ export function SettingsModal({
                     className={`relative z-10 h-11 rounded-xl font-display text-base transition-colors ${
                       active ? "text-dark-blue" : "text-white/65"
                     }`}
+                    // Each label gets its own view-transition-name too
+                    // so it's lifted out of the root crossfade and
+                    // doesn't double-render through the snapshot.
+                    style={{
+                      viewTransitionName: `uzk-lang-label-${code}`,
+                    }}
                   >
                     <span>{LANGUAGE_NAMES[code]}</span>
                   </button>

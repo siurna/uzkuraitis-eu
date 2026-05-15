@@ -298,7 +298,7 @@ export function AdminLiveControls({
                   </span>
                   <span className="flex-1 min-w-0">
                     <span className="block font-display text-sm text-white truncate">{title}</span>
-                    <span className="block text-[11px] text-white/50 leading-snug">{desc}</span>
+                    <span className="block text-[11px] text-white/50 leading-snug text-balance">{desc}</span>
                     {last && !sending && (
                       <span className="block text-[10px] text-white/35 mt-0.5">
                         fired {timeAgo(last)}

@@ -63,7 +63,7 @@ export function AdminRoomHighlightThreshold({
           Highlight threshold
         </span>
         {isComfy && (
-          <span className="block text-xs text-white/50 leading-snug">
+          <span className="block text-xs text-white/50 leading-snug text-balance">
             {Number(value) === 5
               ? "Five reactions to highlight a message (default)."
               : `${value} reactions to highlight a message.`}

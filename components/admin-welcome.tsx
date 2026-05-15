@@ -46,7 +46,7 @@ export function AdminWelcome({
         </span>
         <div className="flex-1 min-w-0">
           <h2 className="font-display text-xl leading-tight">Welcome</h2>
-          <p className="text-sm text-white/45 leading-snug mt-0.5">
+          <p className="text-sm text-white/45 leading-snug mt-0.5 text-balance">
             Closing widget on every room home. Leave a language blank to hide
             it.
           </p>

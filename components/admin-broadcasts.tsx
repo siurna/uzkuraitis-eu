@@ -126,7 +126,7 @@ export function AdminBroadcasts({
         </span>
         <div>
           <h2 className="font-display text-xl leading-tight">Broadcasts</h2>
-          <p className="text-sm text-white/45 leading-snug mt-0.5">
+          <p className="text-sm text-white/45 leading-snug mt-0.5 text-balance">
             One-tap chat announcements into a room.
           </p>
         </div>
@@ -170,7 +170,7 @@ export function AdminBroadcasts({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-display text-sm text-white/90">{title}</p>
-                <p className="text-[13px] text-white/45 leading-snug mt-0.5">{desc}</p>
+                <p className="text-[13px] text-white/45 leading-snug mt-0.5 text-balance">{desc}</p>
                 <p className="text-[11px] text-white/40 mt-0.5 inline-flex items-center gap-1.5">
                   {sending ? (
                     <>

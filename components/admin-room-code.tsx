@@ -52,7 +52,7 @@ export function AdminRoomCode({ code }: { code: string }) {
         </span>
         <span className="flex-1 min-w-0">
           <span className="block font-display text-base">Join code</span>
-          <span className="block text-xs text-white/50 leading-snug">
+          <span className="block text-xs text-white/50 leading-snug text-balance">
             The 6 chars voters type at /. Changing breaks old links + QRs.
           </span>
         </span>

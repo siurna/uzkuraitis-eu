@@ -87,7 +87,7 @@ export function AdminSeed({
           </span>
           <div className="flex-1 min-w-0">
             <h2 className="font-display text-xl leading-tight">Seed data</h2>
-            <p className="text-sm text-white/45 leading-snug mt-0.5">Dev only. Fills a room (or the whole show) with throwaway data. There's no undo.</p>
+            <p className="text-sm text-white/45 leading-snug mt-0.5 text-balance">Dev only. Fills a room (or the whole show) with throwaway data. There's no undo.</p>
           </div>
           {/* Room scope picker sits in the title row on the right — no
               "Room" label, the picker chip's own subscript already
