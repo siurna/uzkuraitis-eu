@@ -35,6 +35,20 @@ export function getBrowserSupabase(): SupabaseClient {
 // with the service-role key. That's stateless, fits Lambda, and the
 // service-role bypasses RLS (we don't gate the broadcast channel at
 // row level anyway — hints are non-sensitive).
+//
+// Retries: on a retryable status (429 rate-limit, or 5xx server
+// error) or a network throw we wait ~1s and try again, up to 3
+// attempts total. Non-retryable failures (400/401/403/404) fail
+// fast — those are bugs, not transient hiccups, and 3s of dead
+// waiting hurts the route handler's response time for nothing.
+// Broadcasts are best-effort hints so the final outcome is
+// swallowed regardless; the retry is here so a momentary 429 from
+// Supabase's per-project cap (~200 msgs/sec) doesn't silently drop
+// a chat-new echo at climax.
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const BROADCAST_RETRIES = 3;
+const BROADCAST_RETRY_DELAY_MS = 1_000;
+
 export async function serverBroadcast(
   channel: string,
   event: string,
@@ -49,28 +63,52 @@ export async function serverBroadcast(
     }
     return;
   }
-  try {
-    const res = await fetch(`${URL}/realtime/v1/api/broadcast`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: serviceRole,
-        Authorization: `Bearer ${serviceRole}`,
-      },
-      body: JSON.stringify({
-        messages: [{ topic: channel, event, payload }],
-      }),
-    });
-    if (!res.ok && process.env.NODE_ENV !== "production") {
-      console.warn(
-        `[supabase] broadcast ${event} → ${res.status}: ${await res.text()}`,
-      );
+
+  const body = JSON.stringify({
+    messages: [{ topic: channel, event, payload }],
+  });
+
+  for (let attempt = 1; attempt <= BROADCAST_RETRIES; attempt++) {
+    try {
+      const res = await fetch(`${URL}/realtime/v1/api/broadcast`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: serviceRole,
+          Authorization: `Bearer ${serviceRole}`,
+        },
+        body,
+      });
+      if (res.ok) return;
+      // 4xx (other than 429) means we sent a bad payload / auth is
+      // wrong — retrying won't help, log and bail.
+      if (!RETRYABLE_STATUSES.has(res.status)) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn(
+            `[supabase] broadcast ${event} → ${res.status} (non-retryable): ${await res.text()}`,
+          );
+        }
+        return;
+      }
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          `[supabase] broadcast ${event} → ${res.status} on attempt ${attempt}/${BROADCAST_RETRIES}`,
+        );
+      }
+    } catch (err) {
+      // Network throw — treat as retryable.
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          `[supabase] broadcast ${event} network error on attempt ${attempt}/${BROADCAST_RETRIES}`,
+          err,
+        );
+      }
     }
-  } catch (err) {
-    // Swallow — broadcasts are best-effort hints; the durable write
-    // already committed and clients can poll/refresh on their own.
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("[supabase] broadcast failed", err);
+    if (attempt < BROADCAST_RETRIES) {
+      await new Promise((r) => setTimeout(r, BROADCAST_RETRY_DELAY_MS));
     }
   }
+  // All attempts exhausted — swallow. The durable write already
+  // committed, and clients have reconnect-driven catch-up that will
+  // pick up the missed event on the next refetch trigger.
 }
