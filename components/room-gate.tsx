@@ -231,8 +231,23 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
 
   return (
     <main
-      className="relative min-h-dvh flex flex-col items-center px-4
-                 pt-[18dvh] pb-32 sm:justify-center sm:pt-12 sm:pb-12"
+      className={`relative min-h-dvh flex flex-col items-center px-4 ${
+        // Two layouts depending on what we're showing:
+        //   - rehydrate state: justify-center INSIDE the safe-area
+        //     insets. On iOS PWA, min-h-dvh covers the full screen
+        //     INCLUDING the notch + home-indicator areas, so a plain
+        //     justify-center pulled the loader slightly low (the
+        //     "visible" middle is above the home indicator). Padding
+        //     each safe-area edge brings the centred axis back to the
+        //     visible viewport's middle.
+        //   - gate state: on mobile, pt-[18dvh] + pb-32 pull the
+        //     logo+form upward so they balance above the install
+        //     CTA sitting near the bottom edge. Desktop stays
+        //     justify-center, no banner to dodge.
+        rehydrating
+          ? "justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+          : "pt-[18dvh] pb-32 sm:justify-center sm:pt-12 sm:pb-12"
+      }`}
     >
       {/* Splash-to-app handoff. The iOS/Android PWA splash is the
           manifest's solid `#10142a`; first paint of the gate paints
@@ -255,8 +270,10 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
       />
       <HeartbeatBackdrop />
       {/* Install-this-app prompt. Self-hides when running in PWA
-          standalone mode. */}
-      <InstallPwaPrompt />
+          standalone mode. Also suppressed during the reconnecting
+          loader — we're about to redirect into a room, no reason
+          to surface "install the app" mid-transition. */}
+      {!rehydrating && <InstallPwaPrompt />}
       <AnimatePresence mode="wait">
         {rehydrating ? (
           <motion.div
@@ -264,15 +281,15 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            // Fixed-centered: the <main> uses pt-[18dvh] to pull the
-            // gate's logo+form up so it balances above the install
-            // banner, but the loader should stay PERFECTLY centred
-            // regardless of that offset. Lifting it out of the main
-            // flow with `fixed inset-0` keeps it dead-centre on any
-            // viewport.
-            className="fixed inset-0 grid place-items-center text-white/50 pointer-events-none"
+            // Plain flex item inside the centered main — when
+            // `rehydrating` is true the parent <main> drops its top/
+            // bottom padding and switches to justify-center, so the
+            // loader naturally sits dead-centre on the viewport
+            // without needing a `fixed inset-0` overlay (which was
+            // covering the install banner + reading as a "container
+            // extended to full screen height").
+            className="flex flex-col items-center gap-4 text-white/50"
           >
-            <div className="flex flex-col items-center gap-4">
             {/* The 70-heart pulses while we check for a remembered
                 room. Plain `<img>` instead of `next/image`: iOS
                 Safari computes `drop-shadow` against the wrapper
@@ -293,7 +310,6 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
             <p className="text-xs uppercase tracking-[0.3em] font-display">
               {t(lang, "reconnecting")}
             </p>
-            </div>
           </motion.div>
         ) : (
           <motion.div

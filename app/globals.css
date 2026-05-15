@@ -240,25 +240,12 @@
     inset: 0;
     z-index: -2;
     pointer-events: none;
-    /* Full-height vertical wash through the brand-bloom hue family —
-       deep violet at the very top (matches the iOS notch fill), a
-       darker mid plateau around where the heart sits, and a soft
-       flamingo-tinted lift toward the bottom that doesn't cut off
-       at any band. Layered above the texture + dark-blue-900 base
-       with screen blend-mode so the texture still reads as a
-       subtle grain underneath. No radial gradients = no hard
-       edges where one bloom's outer ring meets the base. */
     background:
-      linear-gradient(180deg,
-        oklch(22% 0.14 290) 0%,
-        oklch(18% 0.11 285) 22%,
-        oklch(14% 0.09 280) 48%,
-        oklch(15% 0.10 310) 72%,
-        oklch(20% 0.13 336) 100%
-      ),
+      radial-gradient(ellipse at top, oklch(28% 0.12 290 / 0.32), transparent 65%),
+      radial-gradient(ellipse at bottom, oklch(40% 0.18 336 / 0.22), transparent 70%),
       url("/images/participant-backdrop@2x.webp") center/cover no-repeat,
       var(--color-dark-blue-900);
-    background-blend-mode: normal, soft-light, normal;
+    background-blend-mode: screen, screen, soft-light;
   }
 
   h1, h2, h3, .font-display {
