@@ -1417,7 +1417,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     // subtree from focus + AX trees, so iOS skips it.
     <main
       inert={!active}
-      className={`fixed inset-x-0 z-10 flex justify-center px-4 ${
+      className={`fixed inset-x-0 z-10 flex justify-center ${
         dockHidden
           ? "pt-[env(safe-area-inset-top)]"
           : "pt-[calc(env(safe-area-inset-top)+3.5rem)]"
@@ -1458,7 +1458,14 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         if (f) queueImage(f);
       }}
     >
-      <div className="relative flex flex-col w-full max-w-3xl min-h-0">
+      {/* Inner column: same `max-w-3xl + px-4` shape every home widget
+          uses (see components/highlights.tsx, my-results.tsx, etc.).
+          Previously the px-4 sat on the outer <main>, which made the
+          chat's effective content area `max-w-3xl` (768px), 32px
+          WIDER than the home widgets' (`max-w-3xl - px-4` = 736px).
+          Moving it onto the inner div lines the two layouts up
+          exactly — same left + right edge as the home cards. */}
+      <div className="relative flex flex-col w-full max-w-3xl min-h-0 px-4">
         <AnimatePresence>
           {dragOver && (
             <motion.div
@@ -1482,19 +1489,14 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           // We deliberately don't dismiss the keyboard on touch-move:
           // every modern chat lets you keep typing while scrolling the
           // history. Tap the bubble or the composer Done key to close.
-          // `justify-end` so messages stack at the BOTTOM of the
-          // scroll container when there are too few to fill it. The
-          // panel's height is now `viewport - dock - safe-bottom`
-          // (the dock is portaled out and its space is reserved
-          // here), which means with two messages in the room the
-          // list expands to ~80vh and the last message floats up
-          // near the top with a giant purple void between it and
-          // the composer. With `justify-end`, the list still scrolls
-          // when content overflows (justify-content has no effect on
-          // overflowing content) but underflowing content pins to
-          // the bottom edge — latest row sits flush above the
-          // composer pill, no void.
-          className="flex-1 min-h-0 overflow-y-auto py-4 flex flex-col justify-end gap-3 fade-scroll-y"
+          // Plain flex-col (no justify-end — that breaks iOS Safari's
+          // scrollTop when content overflows the container). The
+          // "stack at the bottom when underfilling" trick lives on
+          // the UL child via `mt-auto`: an auto top-margin expands
+          // to push the UL to the bottom of the messages-list when
+          // there's extra space, and collapses to zero when content
+          // overflows so scroll behaves normally.
+          className="flex-1 min-h-0 overflow-y-auto py-4 flex flex-col gap-3 fade-scroll-y"
           onClick={() => menuFor && setMenuFor(null)}
         >
           {loading ? (
@@ -1509,7 +1511,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
               <p className="text-sm">{t(lang, "chat_empty")}</p>
             </div>
           ) : (
-            <ul className="flex flex-col gap-3">
+            <ul className="mt-auto flex flex-col gap-3">
               {hasMore && (
                 <li className="flex justify-center">
                   <button
