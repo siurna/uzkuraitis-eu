@@ -258,28 +258,24 @@ export function RoomProvider({
 
     channelRef.current = channel;
 
-    // Defensive re-track: Supabase Realtime presence is supposed to
-    // sync symmetrically, but a missed initial sync event or a
-    // dropped websocket can leave one window with a stale presence
-    // map (the "I have two browser windows in the same room, only
-    // one of them sees the other" symptom). Re-pushing our track
-    // every 30s + on `visibilitychange` makes a desynced peer heal
-    // itself within a window cycle: as soon as they receive the
-    // next sync event, they see us again. No-op when the channel
-    // isn't subscribed yet (track resolves silently).
-    const retrack = () => {
-      void channel.track({ info: myInfo, presence: presenceRef.current });
-    };
-    const retrackTimer = setInterval(retrack, 30_000);
+    // Defensive re-track on tab return only. The earlier revision
+    // also ran a 30s interval that kept re-pushing `channel.track`,
+    // which was suspected of interacting badly with the supabase-js
+    // reconnect cycle ("chat doesn't update without a refresh"
+    // symptom). Visibility-return is cheap, narrowly scoped, and
+    // covers the only common case the original interval was
+    // designed for: a tab that was backgrounded came back and
+    // needs to tell peers it's here.
     const onVisibility = () => {
-      if (document.visibilityState === "visible") retrack();
+      if (document.visibilityState === "visible") {
+        void channel.track({ info: myInfo, presence: presenceRef.current });
+      }
     };
     if (typeof document !== "undefined") {
       document.addEventListener("visibilitychange", onVisibility);
     }
 
     return () => {
-      clearInterval(retrackTimer);
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", onVisibility);
       }
