@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
 import { Settings as SettingsIcon } from "lucide-react";
-import { useUpdateMyPresence } from "@/lib/realtime";
 import { useIdentity } from "@/lib/use-identity";
 import { useRoomLive } from "@/components/room-shell";
 import { SettingsModal } from "@/components/settings-modal";
@@ -54,7 +53,6 @@ export function PresenceBar() {
       window.removeEventListener("uzk:open-notifications-only", onOpenNotifsOnly);
     };
   }, []);
-  const updatePresence = useUpdateMyPresence();
   const shareUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/?room=${code}`

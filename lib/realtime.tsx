@@ -172,12 +172,7 @@ type Listener = (e: { event: RoomEvent }) => void;
 
 type Ctx = {
   roomCode: string;
-  myKey: ConnectionId;
-  myInfo: UserInfo;
-  myPresence: Presence;
-  others: Other[];
   status: ConnectionStatus;
-  updateMyPresence: (patch: Partial<Presence>) => void;
   broadcast: (event: RoomEvent) => void;
   subscribe: (cb: Listener) => () => void;
 };
@@ -202,38 +197,34 @@ export function RoomProvider({
   children: ReactNode;
 }) {
   const supabase = useMemo(() => getBrowserSupabase(), []);
-  const myKey = useMemo(
-    () =>
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2),
-    [],
-  );
-  const myInfo = useMemo<UserInfo>(
-    () => userInfo ?? { name: "", color: "#ffffff" },
-    // userInfo is read once at provider mount — same lifecycle as
-    // Liveblocks' initialPresence.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
+  // `initialPresence` and `userInfo` props are retained on the
+  // public RoomProvider API for backwards compat (RoomShell still
+  // passes them) but no longer wired anywhere — presence moved off
+  // Supabase Realtime entirely. Reads-only as far as the channel
+  // is concerned.
+  void initialPresence;
+  void userInfo;
 
-  const [myPresence, setMyPresence] = useState<Presence>(initialPresence);
-  const [others, setOthers] = useState<Other[]>([]);
   const [status, setStatus] = useState<ConnectionStatus>("initial");
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const presenceRef = useRef<Presence>(initialPresence);
   const listenersRef = useRef<Set<Listener>>(new Set());
 
-  // Mount the channel once per room id. Re-subscribes on hot reload
-  // because supabase-js dedupes by topic + ref, not by component
-  // instance — we cleanup explicitly.
+  // Mount the channel once per room id. BROADCASTS ONLY: presence
+  // moved off this channel after one too many "Client presence rate
+  // limit exceeded" → phx_close kicks (free-tier presence caps at
+  // ~1/sec/client, and the watch-party UI fan-out blew past it).
+  // "Who's in the room right now" is now a REST poll against
+  // /api/rooms/[code]/participants, fed by every viewer's heartbeat
+  // upsert into the voters table. Broadcasts (chat:new, chat:react,
+  // chat:edit, chat:delete, typing:start, typing:stop, score hints)
+  // stay on this channel — their ceiling is 200/sec project-wide,
+  // we run at ~3/sec at climax.
   useEffect(() => {
     if (!id) return;
     setStatus("connecting");
 
     const channel = supabase.channel(`room:${id}`, {
       config: {
-        presence: { key: myKey },
         broadcast: { self: false, ack: false },
       },
     });
@@ -253,28 +244,9 @@ export function RoomProvider({
           }
         }
       })
-      .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState() as Record<
-          string,
-          Array<{ info?: UserInfo; presence?: Presence }>
-        >;
-        const next: Other[] = [];
-        for (const [key, metas] of Object.entries(state)) {
-          if (key === myKey) continue;
-          const meta = metas[0];
-          if (!meta) continue;
-          next.push({
-            connectionId: key,
-            info: meta.info ?? { name: "", color: "#ffffff" },
-            presence: { ...EMPTY_PRESENCE, ...(meta.presence ?? {}) },
-          });
-        }
-        setOthers(next);
-      })
-      .subscribe(async (s) => {
+      .subscribe((s) => {
         if (s === "SUBSCRIBED") {
           setStatus("connected");
-          await channel.track({ info: myInfo, presence: presenceRef.current });
         } else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") {
           setStatus("reconnecting");
         } else if (s === "CLOSED") {
@@ -284,74 +256,11 @@ export function RoomProvider({
 
     channelRef.current = channel;
 
-    // Coarse presence heartbeat. Fires `channel.track()` at a fixed
-    // 30s cadence with the LATEST presence snapshot — peers see
-    // up-to-date name/avatar/typing/vibe/seenAt within one cycle.
-    // No tight-loop track-on-patch, so we can't blow the Supabase
-    // presence rate limit and get kicked off the channel
-    // (the previous symptom). Plus an immediate fire on
-    // visibilitychange-return: a tab coming back from background
-    // should announce itself fresh, not wait up to 30s.
-    //
-    // The initial track is wired in the subscribe callback above
-    // (fires once the channel is SUBSCRIBED), so the very first
-    // "I joined" lands within ~1s of mount independent of the
-    // 30s tick.
-    const heartbeat = setInterval(() => {
-      const ch = channelRef.current;
-      if (ch) void ch.track({ info: myInfo, presence: presenceRef.current });
-    }, 30_000);
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        const ch = channelRef.current;
-        if (ch) void ch.track({ info: myInfo, presence: presenceRef.current });
-      }
-    };
-    if (typeof document !== "undefined") {
-      document.addEventListener("visibilitychange", onVisibility);
-    }
-
     return () => {
-      clearInterval(heartbeat);
-      if (typeof document !== "undefined") {
-        document.removeEventListener("visibilitychange", onVisibility);
-      }
       channelRef.current = null;
       supabase.removeChannel(channel);
     };
-  }, [id, myKey, supabase, myInfo]);
-
-  // Coarse presence: local state updates fire synchronously on every
-  // patch (UI stays reactive), but the network `channel.track()` runs
-  // on a 30s heartbeat regardless of how many local patches landed
-  // in that window. Plus one immediate track on initial SUBSCRIBED
-  // (wired in the subscribe callback above) and one on
-  // visibilitychange-return (wired below).
-  //
-  // Why: Supabase enforces a per-client presence rate limit and the
-  // fine-grained "track on every patch" pattern blew past it the
-  // moment seenAt/vibe/typing started overlapping. WhosHere doesn't
-  // need second-by-second precision; "who's in the room right now"
-  // is fine at a ~30s cadence. Typing indicator + vibe ring become
-  // coarse to match — acceptable trade for never getting kicked off
-  // the channel mid-show.
-  //
-  // No-op skip: if the patch doesn't actually change any current
-  // field, return early so we don't even trigger a re-render.
-  const updateMyPresence = useCallback((patch: Partial<Presence>) => {
-    const current = presenceRef.current;
-    let changed = false;
-    for (const k of Object.keys(patch) as (keyof Presence)[]) {
-      if (current[k] !== patch[k]) {
-        changed = true;
-        break;
-      }
-    }
-    if (!changed) return;
-    const next = { ...current, ...patch };
-    presenceRef.current = next;
-    setMyPresence(next);
-  }, []);
+  }, [id, supabase]);
 
   const broadcast = useCallback((event: RoomEvent) => {
     const ch = channelRef.current;
@@ -369,26 +278,11 @@ export function RoomProvider({
   const value: Ctx = useMemo(
     () => ({
       roomCode: id,
-      myKey,
-      myInfo,
-      myPresence,
-      others,
       status,
-      updateMyPresence,
       broadcast,
       subscribe,
     }),
-    [
-      id,
-      myKey,
-      myInfo,
-      myPresence,
-      others,
-      status,
-      updateMyPresence,
-      broadcast,
-      subscribe,
-    ],
+    [id, status, broadcast, subscribe],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
@@ -400,41 +294,6 @@ function useCtx(): Ctx {
     throw new Error("Realtime hook used outside <RoomProvider>");
   }
   return ctx;
-}
-
-export function useMyPresence(): [Presence, (patch: Partial<Presence>) => void] {
-  const { myPresence, updateMyPresence } = useCtx();
-  return [myPresence, updateMyPresence];
-}
-
-export function useUpdateMyPresence(): (patch: Partial<Presence>) => void {
-  return useCtx().updateMyPresence;
-}
-
-export function useOthers(): Other[];
-export function useOthers<T>(selector: (others: Other[]) => T): T;
-export function useOthers<T>(selector?: (others: Other[]) => T): Other[] | T {
-  const { others } = useCtx();
-  return selector ? selector(others) : others;
-}
-
-export function useOthersConnectionIds(): ConnectionId[] {
-  const { others } = useCtx();
-  return useMemo(() => others.map((o) => o.connectionId), [others]);
-}
-
-export function useOther<T>(
-  connectionId: ConnectionId,
-  selector: (other: Other) => T,
-): T | null {
-  const { others } = useCtx();
-  const found = others.find((o) => o.connectionId === connectionId);
-  return found ? selector(found) : null;
-}
-
-export function useSelf(): { connectionId: ConnectionId; info: UserInfo; presence: Presence } {
-  const { myKey, myInfo, myPresence } = useCtx();
-  return { connectionId: myKey, info: myInfo, presence: myPresence };
 }
 
 export function useBroadcastEvent(): (event: RoomEvent) => void {

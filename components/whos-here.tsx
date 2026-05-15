@@ -2,10 +2,10 @@
 
 import { useMemo } from "react";
 import { motion } from "motion/react";
-import { useOthers, useSelf } from "@/lib/realtime";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
 import { ensureSessionId } from "@/lib/use-identity";
+import { useParticipants } from "@/lib/use-participants";
 import { useProfile, prefetchProfile } from "@/components/profile-sheet";
 import { useRoomLive } from "@/components/room-shell";
 import { t } from "@/lib/i18n";
@@ -70,37 +70,24 @@ function hueFrom(s: string): number {
 
 export function WhosHere() {
   const lang = useLang();
-  const self = useSelf();
-  const others = useOthers();
   const { open: openProfile } = useProfile();
   const { code: roomCode } = useRoomLive();
   const mySession = ensureSessionId();
+  // Participants from the REST poll (driven by every viewer's
+  // heartbeat). Source of truth for who's here — replaced the
+  // Supabase Realtime presence flow that kept getting rate-limited.
+  const participants = useParticipants(roomCode);
 
   const people = useMemo<Person[]>(() => {
-    const list: Person[] = [];
-    if (self?.presence.name) {
-      list.push({
-        key: "self",
-        name: self.presence.name,
-        avatarId: self.presence.avatar ?? null,
-        isSelf: true,
-        sessionId: self.presence.sessionId ?? ensureSessionId(),
-        vibe: self.presence.vibe ?? 0,
-      });
-    }
-    for (const o of others) {
-      if (!o.presence.name) continue; // still on the name gate
-      list.push({
-        key: `c${o.connectionId}`,
-        name: o.presence.name,
-        avatarId: o.presence.avatar ?? null,
-        isSelf: false,
-        sessionId: o.presence.sessionId ?? null,
-        vibe: o.presence.vibe ?? 0,
-      });
-    }
-    return list;
-  }, [self, others]);
+    return participants.map((p) => ({
+      key: p.sessionId,
+      name: p.name,
+      avatarId: p.avatarId,
+      isSelf: p.sessionId === mySession,
+      sessionId: p.sessionId,
+      vibe: p.vibe ?? 0,
+    }));
+  }, [participants, mySession]);
 
   if (people.length === 0) return null;
 

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useOthers, useUpdateMyPresence } from "@/lib/realtime";
+import { useParticipants } from "@/lib/use-participants";
 import { ensureSessionId, SESSION_KEY } from "@/lib/use-identity";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -69,18 +69,20 @@ export function NameGate({
   // toggle pops to the new side instead of riding the root crossfade.
   const [pillSide, setPillSide] = useState<Language>("lt");
   const [pushOnboardComplete, setPushOnboardComplete] = useState(false);
-  const updatePresence = useUpdateMyPresence();
-  const others = useOthers();
+  const participants = useParticipants(roomCode);
   const platform = useMemo(() => detectPlatform(), []);
 
   // Cheeky heads-up if someone in the room already goes by this name —
-  // we don't block it, just nudge them to disambiguate.
+  // we don't block it, just nudge them to disambiguate. Reads from
+  // the REST participants list (driven by every viewer's heartbeat
+  // upsert into the voters table); ~20s latency is fine here, the
+  // user is mid-name-entry anyway and a second-tick freshness on
+  // the name-collision hint isn't load-bearing.
   const nameTaken =
     draftName.trim().length > 0 &&
-    others.some(
-      (o) =>
-        (o.presence?.name ?? "").trim().toLowerCase() ===
-        draftName.trim().toLowerCase(),
+    participants.some(
+      (p) =>
+        p.name.trim().toLowerCase() === draftName.trim().toLowerCase(),
     );
 
   useEffect(() => {
@@ -100,9 +102,11 @@ export function NameGate({
     setHydrated(true);
   }, []);
 
-  useEffect(() => {
-    if (name) updatePresence({ name, avatar, sessionId: ensureSessionId() });
-  }, [name, avatar, updatePresence]);
+  // Identity used to fan out via Supabase presence here. Now name +
+  // avatar persist to localStorage (set by `finish()` below) and the
+  // room-shell heartbeat reads from there on every tick — so the
+  // first heartbeat AFTER the name gate puts the viewer in the
+  // participants list.
 
   const advance = (e?: React.FormEvent) => {
     e?.preventDefault();

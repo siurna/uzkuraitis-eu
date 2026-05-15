@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Share2, Check, LogOut, ChevronRight, Bell, Languages, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useUpdateMyPresence } from "@/lib/realtime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -36,7 +35,6 @@ export function SettingsModal({
   onClose: () => void;
   shareUrl: string;
 }) {
-  const updatePresence = useUpdateMyPresence();
   const router = useRouter();
   const [name, setName] = useState("");
   const lastGoodName = useRef("");
@@ -91,7 +89,8 @@ export function SettingsModal({
     if (clean === lastGoodName.current) return;
     lastGoodName.current = clean;
     localStorage.setItem(NAME_KEY, clean);
-    updatePresence({ name: clean });
+    // The next heartbeat (≤30s) ships the new name to the server;
+    // WhosHere picks it up on its next poll.
   };
 
   const setLanguage = (next: Language) => {
@@ -342,7 +341,8 @@ export function SettingsModal({
                 onClick={() => {
                   if (avatar) {
                     localStorage.setItem(AVATAR_KEY, avatar);
-                    updatePresence({ avatar });
+                    // Heartbeat will fan the new avatar out to peers
+                    // on its next 30s tick via WhosHere's REST poll.
                     window.dispatchEvent(new Event("uzk:avatar-change"));
                   }
                   setPickerOpen(false);

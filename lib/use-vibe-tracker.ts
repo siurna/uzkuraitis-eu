@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useEventListener, useUpdateMyPresence } from "@/lib/realtime";
+import { useEventListener } from "@/lib/realtime";
 import { ensureSessionId } from "@/lib/use-identity";
 
 // Per-action weights for the avatar mood ring. Tuned so a moderately
@@ -44,27 +44,20 @@ function save(code: string, value: number): void {
 }
 
 // Watches the same realtime events the rest of the room sees and bumps
-// the local viewer's `vibe` score in Liveblocks presence so every
-// other client can read it and tint the avatar bubble. Bumps fire
-// only for events the local user authored (chat:new with my session
-// id, chat:react likewise, bingo strikes posted by me) plus the
-// in-process actions that DON'T fan out as broadcasts (vote cast,
-// bets saved, trivia answered) which dispatch their own custom
-// window events from the call sites.
+// the local viewer's `vibe` score. The score persists to localStorage
+// and the room-shell heartbeat reads it on every tick — peers see
+// the new value in WhosHere via the REST participants poll. Bumps
+// fire for events the local user authored (chat:new with my session
+// id, etc) plus in-process actions that don't fan out as broadcasts
+// (vote cast, bets saved, trivia answered) which dispatch their own
+// custom window events from the call sites.
 export function useVibeTracker({ code }: { code: string }) {
-  const updatePresence = useUpdateMyPresence();
   const vibeRef = useRef(load(code));
   const session = useRef(ensureSessionId());
-
-  // Sync initial value into presence on mount.
-  useEffect(() => {
-    updatePresence({ vibe: vibeRef.current });
-  }, [updatePresence]);
 
   const bump = (delta: number) => {
     vibeRef.current = Math.max(0, vibeRef.current + delta);
     save(code, vibeRef.current);
-    updatePresence({ vibe: vibeRef.current });
   };
 
   // Realtime side: chat:new (mine), chat:react (mine, plus on my own

@@ -25,11 +25,10 @@ import { toast } from "sonner";
 import {
   useBroadcastEvent,
   useEventListener,
-  useOthers,
   useStatus,
-  useUpdateMyPresence,
   type ChatMessagePayload,
 } from "@/lib/realtime";
+import { useParticipants } from "@/lib/use-participants";
 import { useRoomLive } from "@/components/room-shell";
 import { useIdentity } from "@/lib/use-identity";
 import { bumpVibe } from "@/lib/use-vibe-tracker";
@@ -97,8 +96,9 @@ function dayLabel(iso: string, lang: "en" | "lt"): string {
 export function ChatPanel({ active = true }: { active?: boolean }) {
   const { code, nowPlayingCode } = useRoomLive();
   const lang = useLang();
-  const others = useOthers();
-  const updatePresence = useUpdateMyPresence();
+  // Roster from the REST participants poll. Replaces useOthers() —
+  // drives the @-mention autocomplete + the "seen by N" tally below.
+  const participants = useParticipants(code);
   const realtimeStatus = useStatus();
   const broadcastEvent = useBroadcastEvent();
   const { name, avatarId, sessionId } = useIdentity();
@@ -222,17 +222,16 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     [mySession, name, avatarId, replyTo],
   );
 
-  // Known participant names (presence + me) for @-mention autocomplete
-  // and highlighting. Deduped, alpha-sorted.
+  // Known participant names (REST roster + me) for @-mention
+  // autocomplete and highlighting. Deduped, alpha-sorted.
   const participantNames = useMemo(() => {
     const set = new Set<string>();
     if (name) set.add(name);
-    for (const o of others) {
-      const n = o.presence?.name;
-      if (n) set.add(n);
+    for (const p of participants) {
+      if (p.name) set.add(p.name);
     }
     return [...set].sort((a, b) => a.localeCompare(b));
-  }, [others, name]);
+  }, [participants, name]);
 
   // Typing indicator dropped: at the 30s presence cadence the
   // "X is typing…" caption was always stale by the time the
@@ -526,18 +525,18 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     setNewCount(0);
   };
 
-  // ----- "seen" beacon: when I'm parked at the bottom and the tab is
-  // visible, the newest message's timestamp goes into my presence so
-  // others can show "seen by N". Throttled to ≥10s between updates
-  // (and only when the timestamp actually moved forward) — without
-  // this it fired on every new chat message, which during a busy
-  // climax cluttered presence with no UX gain. The 30s presence
-  // heartbeat picks up the latest seenAt regardless.
+  // ----- "seen" beacon: persisted to localStorage under
+  // `uzk_seen_${code}` so the room-shell heartbeat ships it to the
+  // server on its next 30s tick, and the participants REST endpoint
+  // hands it back to every viewer for the "seen by N" tally.
+  // Throttled to ≥10s between writes (and only when the timestamp
+  // actually moves forward) so a chat burst doesn't churn the
+  // localStorage write path.
   const newestIso = messages.length ? messages[messages.length - 1].createdAt : null;
   const lastSeenSent = useRef<string | null>(null);
   const lastSeenSentAt = useRef(0);
   useEffect(() => {
-    if (!newestIso || !active) return;
+    if (!newestIso || !active || !code) return;
     if (!atBottom) return;
     if (typeof document !== "undefined" && document.hidden) return;
     if (newestIso === lastSeenSent.current) return;
@@ -545,8 +544,12 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     if (now - lastSeenSentAt.current < 10_000) return;
     lastSeenSent.current = newestIso;
     lastSeenSentAt.current = now;
-    updatePresence({ seenAt: newestIso });
-  }, [newestIso, atBottom, active, updatePresence]);
+    try {
+      localStorage.setItem(`uzk_seen_${code}`, newestIso);
+    } catch {
+      /* private mode — heartbeat just won't see a seenAt this tick */
+    }
+  }, [newestIso, atBottom, active, code]);
 
   // Tab-bar unread badge clear — only while the chat tab is actually
   // showing (the panel stays mounted on other tabs). Deps are
@@ -1260,12 +1263,13 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     if (!lastOwnIso) return 0;
     const t0 = new Date(lastOwnIso.iso).getTime();
     let n = 0;
-    for (const o of others) {
-      const s = o.presence?.seenAt;
+    for (const p of participants) {
+      if (p.sessionId === mySession) continue;
+      const s = p.seenAt;
       if (s && new Date(s).getTime() >= t0) n++;
     }
     return n;
-  }, [lastOwnIso, others]);
+  }, [lastOwnIso, participants, mySession]);
 
   return (
     // Sized to the visual viewport: `top` = its offset, `height` = its
