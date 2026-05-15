@@ -77,11 +77,20 @@ export async function POST(req: Request, { params }: RouteCtx) {
         .then((rows) => rows[0]),
     ]);
     if (!existingRow && (countRow?.n ?? 0) >= room.triviaMaxAnswerers) {
+      // Surface the correctIndex AND the cap. The client uses the
+      // index to render the reveal (correct plate emerald, even
+      // though no points landed) and the cap to populate the "first
+      // N faster people" toast.
       return NextResponse.json(
         {
           ok: false,
           tooLate: true,
           correctIndex: card.correctIndex,
+          cap: room.triviaMaxAnswerers,
+          // Recompute correctness so the client can decide whether
+          // to show "right but too slow" toast vs the regular wrong
+          // path.
+          correct: choiceIndex === card.correctIndex,
         },
         { status: 409 },
       );

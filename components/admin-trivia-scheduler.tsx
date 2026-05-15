@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Lightbulb, Loader2, RotateCcw, X } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,10 @@ import { countryName } from "@/lib/countries";
 // localStorage (LAST_FIRED_KEY). If the admin advances back to the
 // same country (e.g. a rehearsal loop, an accidental re-tap), the
 // scheduler refuses to re-arm and surfaces a "send again anyway"
-// button that opens a confirm drawer. Bypassing the dedup requires
-// a deliberate confirm tap; nobody double-fires by accident.
+// button. Bypassing the dedup pops a quick confirm drawer; tapping
+// "Resend now" fires the trivia IMMEDIATELY — no fresh timer. "Again"
+// is for glitch recovery (first card didn't land), so making the
+// admin wait another 30s+ for a redo is the wrong default.
 //
 // beforeunload warning: while a timer is pending we wire a
 // beforeunload handler so closing the tab pops the browser's "are
@@ -87,6 +89,30 @@ export function AdminTriviaScheduler({
     setTarget({ code, firesAt: Date.now() + delay });
   };
 
+  // Shared POST → /api/admin/live/trivia. Both the timer-fire effect
+  // below and the immediate resend path call this so the network +
+  // localStorage stamping live in one place.
+  const fireCard = useCallback(async (code: string) => {
+    setFiring(true);
+    try {
+      await fetch("/api/admin/live/trivia", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ countryCode: code }),
+      });
+      try {
+        localStorage.setItem(LAST_FIRED_KEY, code);
+      } catch {
+        /* private mode / quota */
+      }
+      setLastFired(code);
+    } catch {
+      /* admin can re-pick / re-resend to retry */
+    } finally {
+      setFiring(false);
+    }
+  }, []);
+
   // Countdown clock — 1s tick, only running while there's a target.
   useEffect(() => {
     if (!target) return;
@@ -98,31 +124,10 @@ export function AdminTriviaScheduler({
   useEffect(() => {
     if (!target || firing) return;
     if (now < target.firesAt) return;
-    setFiring(true);
     const code = target.code;
     setTarget(null);
-    (async () => {
-      try {
-        await fetch("/api/admin/live/trivia", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ countryCode: code }),
-        });
-        // Stamp the country as last-fired so a re-arm on the same
-        // country doesn't fire-and-forget another card.
-        try {
-          localStorage.setItem(LAST_FIRED_KEY, code);
-        } catch {
-          /* ignore */
-        }
-        setLastFired(code);
-      } catch {
-        /* admin can re-pick the country to retry */
-      } finally {
-        setFiring(false);
-      }
-    })();
-  }, [target, now, firing]);
+    fireCard(code);
+  }, [target, now, firing, fireCard]);
 
   // beforeunload guard while a timer is pending.
   useEffect(() => {
@@ -148,13 +153,16 @@ export function AdminTriviaScheduler({
     lastScheduled.current = null;
   };
 
-  // Send again anyway: triggered from the confirm drawer. Skips the
-  // dedup check + arms a fresh timer. Doesn't clear lastFired so the
-  // dedup still works on the NEXT distinct country change.
-  const resendAnyway = () => {
+  // Resend NOW. Triggered from the confirm drawer. The dedup banner
+  // exists for glitch recovery — the first card didn't land in chat,
+  // the admin needs to retry. Making them sit through another 30s+
+  // random timer would defeat the point, so this fires immediately.
+  // Doesn't clear lastFired (so the NEXT distinct country change
+  // still runs through the normal armed-timer path).
+  const resendNow = () => {
     setConfirmResend(false);
     if (!nowPlayingCode) return;
-    armFresh(nowPlayingCode);
+    fireCard(nowPlayingCode);
   };
 
   // Three render states, in priority order:
@@ -188,11 +196,11 @@ export function AdminTriviaScheduler({
             </p>
           ) : dedupedSameCountry ? (
             <p className="text-[11px] text-white/55 leading-snug">
-              Already fired for{" "}
+              Fired for{" "}
               <span className="font-display text-yellow">
                 {countryName(nowPlayingCode!, "en") ?? nowPlayingCode}
               </span>
-              . Send again anyway?
+              . Card didn't land? Resend.
             </p>
           ) : (
             <p className="text-[11px] text-white/45 leading-snug">
@@ -226,11 +234,11 @@ export function AdminTriviaScheduler({
       <BottomSheet
         open={confirmResend}
         onClose={() => setConfirmResend(false)}
-        title="Send trivia again?"
+        title="Resend trivia card?"
         sub={
           nowPlayingCode
-            ? `${countryName(nowPlayingCode, "en") ?? nowPlayingCode} already got a trivia card this round. Two cards back-to-back can read as a bug to viewers.`
-            : ""
+            ? `Use this if the first ${countryName(nowPlayingCode, "en") ?? nowPlayingCode} trivia card didn't actually land in chat (glitch / network blip).`
+            : "Use this if the first card didn't actually land in chat."
         }
         footer={
           <>
@@ -245,18 +253,18 @@ export function AdminTriviaScheduler({
             <div className="flex-1" />
             <Button
               type="button"
-              onClick={resendAnyway}
+              onClick={resendNow}
               className="bg-flamingo text-white hover:bg-flamingo/90 rounded-2xl"
             >
-              Send again anyway
+              Resend now
             </Button>
           </>
         }
       >
         <p className="text-sm text-white/65 leading-relaxed">
-          A fresh 30s–2:30 timer arms the moment you confirm. The viewers
-          will see a second trivia card drop in chat for the same
-          country.
+          Fires immediately, no fresh timer. If the original card did land
+          and players already answered, viewers will see a second card
+          drop right under the first one.
         </p>
       </BottomSheet>
     </>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, X } from "lucide-react";
+import { toast } from "sonner";
 import { getTrivia, type TriviaPick } from "@/lib/trivia";
 import { useIdentity } from "@/lib/use-identity";
 import { bumpVibe } from "@/lib/use-vibe-tracker";
@@ -243,16 +244,31 @@ export function ChatTriviaCard({
       }, LOCK_HOLD_MS + BLINK_MS);
       bumpVibe("triviaAnswered");
       try {
-        await fetch(`/api/rooms/${roomCode}/trivia`, {
+        const res = await fetch(`/api/rooms/${roomCode}/trivia`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ sessionId: session, countryCode, choiceIndex: choice }),
         });
+        // 409 + tooLate + correct: the player got the right answer
+        // but the per-room cap was already hit. The plate still
+        // flips emerald (the answer IS right), but there are no
+        // points and we owe the player an explanation — otherwise
+        // they see "Check + green plate, no +2 chip" and assume a
+        // bug. Toast it.
+        if (!res.ok && res.status === 409) {
+          const data = (await res.json().catch(() => null)) as
+            | { tooLate?: boolean; correct?: boolean; cap?: number | null }
+            | null;
+          if (data?.tooLate && data.correct) {
+            const cap = data.cap ?? 0;
+            toast.info(t(lang, "trivia_too_late_correct_toast", cap));
+          }
+        }
       } catch {
         /* server-side scoring missed — player still sees the reveal */
       }
     },
-    [card, phase, countryCode, roomCode, session],
+    [card, phase, countryCode, roomCode, session, lang],
   );
 
   if (!card) return null;
@@ -409,14 +425,30 @@ export function ChatTriviaCard({
                       }}
                     />
                   )}
-                  {/* "+2" points chip — only on the correct answer
-                      once we're in the reveal phase. Sits in the
-                      right gutter, doesn't shift the answer text. */}
-                  {revealed && isCorrect && !closed && (
+                  {/* "+2" points chip — ONLY when the player actually
+                      earned the points (correct pick, on time). The
+                      chip used to land on the correct plate regardless
+                      of outcome, which read as "I got 2 points" to a
+                      player who'd just guessed wrong. Now it only
+                      shows when phase.correct is true. */}
+                  {phase.kind === "answered" && phase.correct && isCorrect && !closed && (
                     <span className="self-center mr-3 shrink-0 inline-flex items-center justify-center
                                      rounded-full bg-emerald-400/95 text-dark-blue font-display text-[11px]
                                      px-2 h-6">
                       +2
+                    </span>
+                  )}
+                  {/* "Not this time" chip on the player's wrong pick.
+                      Lives in the right gutter of the chosen (red)
+                      plate so the player sees a tight loop: "I picked
+                      this, it was wrong, here's the correct one" —
+                      vs the old layout which only marked the correct
+                      plate, leaving the player's wrong pick silent. */}
+                  {phase.kind === "answered" && !phase.correct && isChosen && !isCorrect && (
+                    <span className="self-center mr-3 shrink-0 inline-flex items-center justify-center
+                                     rounded-full bg-error/40 ring-1 ring-error/55 text-white/90 font-display text-[10px]
+                                     px-2 h-6 leading-none">
+                      {t(lang, "trivia_not_this_time")}
                     </span>
                   )}
                 </button>

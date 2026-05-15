@@ -719,6 +719,15 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                 mine: nextReactions[emoji].mine,
               }
             : { count: 0, names: [] as string[], mine: false };
+          // Echo-of-our-own dedup. The react() handler does an
+          // optimistic update BEFORE the POST; the server then
+          // broadcasts the same fact back at us. Without this check
+          // we'd apply our own delta twice: count flickers from 0
+          // → 1 (optimistic) → 2 (broadcast). The optimistic update
+          // is the source of truth for `mine` — if `slot.mine`
+          // already reflects the delta's direction, skip.
+          if (isMine && added && slot.mine) return prev;
+          if (isMine && !added && !slot.mine) return prev;
           if (added) {
             slot.count += 1;
             slot.names.push(reactorName);
@@ -1488,14 +1497,23 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           )}
         </AnimatePresence>
 
-        {/* Composer. The wrapper carries a tall fade-to-dark gradient
-            so messages scrolling underneath the composer melt into the
-            page backdrop instead of being chopped by a hard horizontal
-            edge. `pt-8` gives the gradient real estate to breathe (vs
-            the old `pt-2` which left ~8px of fade and read as a cut),
-            and the from-stop is held to 35% so the bottom is the solid
-            dark plate while the upper 65% does the actual fade. */}
-        <div className="shrink-0 pb-2 pt-8 bg-gradient-to-t from-dark-blue-900 from-35% to-dark-blue-900/0">
+        {/* Composer. Wrapper itself is transparent — the dark-to-fade
+            mask lives in a separate strip positioned ABOVE the pill
+            (see the .composer-fade-strip below) so the pill never sits
+            on its own solid-dark plate. Old layout had `pt-8` + a
+            gradient on the wrapper, which created a black band
+            wrapping the pill on focus-state + on the small gap
+            between the pill and the dock, especially against the
+            violet page bg. */}
+        <div className="shrink-0 pb-2 pt-2 relative">
+          {/* Fade strip — short, smooth, only above the pill. Sits in
+              the wrapper's own padding region; `bottom-full` floats
+              it into the messages-list area above. */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-full h-10
+                       bg-gradient-to-t from-dark-blue-900/95 to-transparent"
+          />
           {/* Typing indicator */}
           {typingNames.length > 0 && !editing && (
             <p className="px-3 pb-1 text-[11px] text-white/45">

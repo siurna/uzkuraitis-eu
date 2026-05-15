@@ -135,6 +135,20 @@ const S = {
   // the right answer is still readable in the chat scrollback) but
   // the buttons are inert and this line explains the muted look.
   trivia_closed:     { en: "Time's up for this one. Wait for the next.", lt: "Šio jau nepavyks. Lauk kito." },
+  // Chip rendered next to the player's pick when they got the answer
+  // wrong. Replaces the +2 points chip that used to live on the
+  // correct plate regardless of outcome — that read as "I got 2
+  // points" to a player who'd just missed it.
+  trivia_not_this_time: { en: "Not this time", lt: "Ne šįkart" },
+  // Toast that pops when the server returns `tooLate: true` for a
+  // CORRECT answer: the player nailed it but the room's per-question
+  // cap (first N answerers) was already hit. The plate still flips
+  // emerald + Check on reveal so they see they got it; the toast
+  // explains the missing +2.
+  trivia_too_late_correct_toast: {
+    en: (n: number) => `Right answer, too slow. Trivia points are for the first ${n} hands up. Chop chop next time!`,
+    lt: (n: number) => `Atsakymas geras, bet vėluoji. Taškai keliauja pirmiems ${n} pakeltiems rankas. Greičiau kitą kartą!`,
+  },
   tab_ballot:        { en: "Ballot", lt: "Balsavimas" },
   tab_bets:          { en: "Guesses", lt: "Spėjimai" },
   tab_rules:         { en: "Rules", lt: "Taisyklės" },

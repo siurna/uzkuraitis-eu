@@ -92,8 +92,14 @@ export function MyResults() {
 
           {me ? (
             <>
-              {/* Total — the showpiece number, centred so it carries the card. */}
-              <div className="flex items-baseline gap-2 justify-center">
+              {/* Total — the showpiece number, centred so it carries
+                  the card. Negative margin-top pulls the score up into
+                  the header band so the visually-empty strip between
+                  the eyebrow and the score disappears (the rank pill
+                  on the right and the number on the left share the
+                  same vertical band now). The compensating pb on the
+                  chips below restores breathing room at the bottom. */}
+              <div className="flex items-baseline gap-2 justify-center -mt-3 sm:-mt-4">
                 <span
                   className="font-display tabular-nums leading-none text-white drop-shadow"
                   style={{ fontSize: "clamp(3.25rem, 14vw, 5rem)" }}
@@ -107,7 +113,7 @@ export function MyResults() {
 
               {/* Breakdown chips — quick read of where the points came
                   from. Zero-value categories stay hidden to avoid noise. */}
-              <ul className="flex flex-wrap items-center justify-center gap-1.5 text-[12px]">
+              <ul className="flex flex-wrap items-center justify-center gap-1.5 text-[12px] pt-3 pb-1">
                 {me.topTen > 0 && <Chip label={t(lang, "breakdown_top_ten")} value={`+${me.topTen}`} />}
                 {me.home > 0 && <Chip label={t(lang, "breakdown_home")} value={`+${me.home}`} />}
                 {betsTotal > 0 && <Chip label={t(lang, "breakdown_bets_sum")} value={`+${betsTotal}`} />}
