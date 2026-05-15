@@ -33,8 +33,6 @@ export type Presence = {
   name: string | null;
   /** Avatar id from lib/avatars.ts; null = colour+initial fallback. */
   avatar: string | null;
-  /** Chat: currently composing a message. */
-  typing?: boolean;
   /** Chat: ISO timestamp of the newest message this user has seen. */
   seenAt?: string | null;
   /** Stable browser-session id (mirrors lib/use-identity.ts). Lets
@@ -111,6 +109,24 @@ export type ChatReactEvent = {
   name?: string;
 };
 export type ChatDeleteEvent = { type: "chat:delete"; id: string };
+// Typing indicator runs as a broadcast, not as presence. Reason:
+// Supabase presence is rate-limited at ~1/sec per client; chasing a
+// typing flag on every keystroke blew past that and got the tab
+// kicked off the channel. Broadcasts have a much higher ceiling and
+// fire instantly. The shape carries enough for the listener to
+// render "Danny is typing…" with no DB lookup. `typing:start` is
+// resent every 4s as a keepalive — listeners auto-expire entries
+// 6s after the last start so a typer who closed the tab doesn't
+// leave a ghost indicator running forever.
+export type ChatTypingStartEvent = {
+  type: "typing:start";
+  sessionId: string;
+  name: string;
+};
+export type ChatTypingStopEvent = {
+  type: "typing:stop";
+  sessionId: string;
+};
 // Edit echo carries the new body + meta directly so listeners can
 // patch the existing row in place. Previously edits piggybacked on
 // `chat:react` which routed through the 600ms throttled refetch —
@@ -130,7 +146,9 @@ export type RoomEvent =
   | ChatNewEvent
   | ChatReactEvent
   | ChatDeleteEvent
-  | ChatEditEvent;
+  | ChatEditEvent
+  | ChatTypingStartEvent
+  | ChatTypingStopEvent;
 
 // -----------------------------------------------------------------------
 // React layer.

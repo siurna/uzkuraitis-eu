@@ -24,7 +24,6 @@ type Person = {
   key: string;
   name: string;
   avatarId: string | null;
-  typing: boolean;
   isSelf: boolean;
   /** Their stable browser-session id (set in presence by the name gate).
    *  May be null for older clients that haven't upgraded; in that case
@@ -84,7 +83,6 @@ export function WhosHere() {
         key: "self",
         name: self.presence.name,
         avatarId: self.presence.avatar ?? null,
-        typing: !!self.presence.typing,
         isSelf: true,
         sessionId: self.presence.sessionId ?? ensureSessionId(),
         vibe: self.presence.vibe ?? 0,
@@ -96,7 +94,6 @@ export function WhosHere() {
         key: `c${o.connectionId}`,
         name: o.presence.name,
         avatarId: o.presence.avatar ?? null,
-        typing: !!o.presence.typing,
         isSelf: false,
         sessionId: o.presence.sessionId ?? null,
         vibe: o.presence.vibe ?? 0,
@@ -225,20 +222,12 @@ function Bubble({
         )}
       </button>
 
-      {/* Thought bubble: typing dots take priority, otherwise the last
-          reaction emoji this person sent. */}
-      {person.typing ? (
-        <span className="pointer-events-none absolute -top-2.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5 rounded-full bg-white/12 ring-1 ring-white/15 px-1.5 py-1 backdrop-blur-sm">
-          {[0, 1, 2].map((d) => (
-            <motion.span
-              key={d}
-              className="h-1 w-1 rounded-full bg-white/80"
-              animate={{ opacity: [0.25, 1, 0.25], y: [0, -1.5, 0] }}
-              transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: d * 0.15 }}
-            />
-          ))}
-        </span>
-      ) : null}
+      {/* Typing-dots overlay used to live here, driven by
+          presence.typing. Typing now rides on `typing:start` /
+          `typing:stop` broadcasts and is rendered inline inside
+          the chat panel (the dock-edge "X is typing…" caption),
+          which is the surface that actually benefits from the
+          signal. Honeycomb stays still — cleaner read at a glance. */}
     </div>
   );
 }

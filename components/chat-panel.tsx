@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  useBroadcastEvent,
   useEventListener,
   useOthers,
   useStatus,
@@ -49,7 +50,18 @@ import { haptic } from "@/lib/haptics";
 // user just summoned. Tracked via the `loadedHistory` ref below.
 const RENDER_CAP = 120;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const TYPING_OFF_MS = 3000;
+// Typing-as-broadcast tuning.
+// - `KEEPALIVE_MS`: while the composer has text, resend `typing:start`
+//   every this many ms so listeners know we're still going.
+// - `STOP_AFTER_MS`: when there's been no keystroke for this long
+//   AND the composer still has text, fire `typing:stop` and stop
+//   keepaliving (the user wandered off mid-draft).
+// - `STALE_MS`: listener-side TTL — entries older than this since
+//   their last `typing:start` are auto-cleared. Higher than
+//   KEEPALIVE_MS so one missed keepalive doesn't drop the indicator.
+const TYPING_KEEPALIVE_MS = 4000;
+const TYPING_STOP_AFTER_MS = 8000;
+const TYPING_STALE_MS = 6000;
 
 // ---------------------------------------------------------------------
 // Helpers
@@ -88,6 +100,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const others = useOthers();
   const updatePresence = useUpdateMyPresence();
   const realtimeStatus = useStatus();
+  const broadcastEvent = useBroadcastEvent();
   const { name, avatarId, sessionId } = useIdentity();
   const mySession = sessionId();
 
@@ -156,7 +169,39 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   // rows; otherwise the next live event would yank the paginated
   // history out from under the reader.
   const loadedHistoryRef = useRef(0);
-  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Map of sessionId → { name, lastStart } for everyone currently
+  // typing (driven by `typing:start` / `typing:stop` broadcasts).
+  // A periodic sweep auto-clears entries older than TYPING_STALE_MS
+  // so a typer who closed the tab doesn't leave a ghost indicator.
+  const [typingMap, setTypingMap] = useState<Map<string, { name: string; lastStart: number }>>(
+    () => new Map(),
+  );
+  useEffect(() => {
+    const id = setInterval(() => {
+      setTypingMap((prev) => {
+        if (prev.size === 0) return prev;
+        const cutoff = Date.now() - TYPING_STALE_MS;
+        let changed = false;
+        const next = new Map(prev);
+        for (const [sid, info] of next) {
+          if (info.lastStart < cutoff) {
+            next.delete(sid);
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+  const typingNames = useMemo(() => {
+    const out: string[] = [];
+    for (const [sid, info] of typingMap) {
+      if (sid === mySession) continue;
+      out.push(info.name);
+    }
+    return out;
+  }, [typingMap, mySession]);
 
   // Build an optimistic Message from the current identity + reply state.
   const makeOptimistic = useCallback(
@@ -189,22 +234,9 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     return [...set].sort((a, b) => a.localeCompare(b));
   }, [others, name]);
 
-  // Who's typing right now (excluding me — useOthers already excludes self).
-  const typingNames = useMemo(
-    () =>
-      others
-        .filter((o) => o.presence?.typing && o.presence?.name)
-        .map((o) => o.presence!.name as string),
-    [others],
-  );
-
-  // Clear typing presence on unmount.
-  useEffect(() => {
-    return () => {
-      if (typingTimer.current) clearTimeout(typingTimer.current);
-      updatePresence({ typing: false });
-    };
-  }, [updatePresence]);
+  // Typing indicator dropped: at the 30s presence cadence the
+  // "X is typing…" caption was always stale by the time the
+  // recipient saw it. Less moving parts, simpler presence shape.
 
   // Warm the profile cache for recently active chat authors so taps
   // on an avatar bubble feel instant. Computed as a memoised key —
@@ -709,6 +741,30 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         ),
       );
     }
+    // Typing indicator: broadcast-driven. `start` stamps the
+    // sender into the typingMap with a fresh `lastStart` (a
+    // keepalive `start` arriving later just bumps the timestamp),
+    // `stop` drops them. The periodic sweep above auto-clears
+    // entries older than 6s so a typer who closed the tab without
+    // a stop event disappears on its own.
+    if (ev.type === "typing:start" && ev.sessionId && ev.name) {
+      const sid = ev.sessionId;
+      const name = ev.name;
+      setTypingMap((prev) => {
+        const next = new Map(prev);
+        next.set(sid, { name, lastStart: Date.now() });
+        return next;
+      });
+    }
+    if (ev.type === "typing:stop" && ev.sessionId) {
+      const sid = ev.sessionId;
+      setTypingMap((prev) => {
+        if (!prev.has(sid)) return prev;
+        const next = new Map(prev);
+        next.delete(sid);
+        return next;
+      });
+    }
   });
 
   // First render: jump to the bottom (no animation). After that:
@@ -831,20 +887,67 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [replyTo?.id]);
 
-  // ----- composer / typing -----
+  // ----- composer + typing indicator -----
+  // Typing rides on broadcasts now (NOT presence — presence is rate-
+  // limited at ~1/sec and got the channel kicked when the typing
+  // flag bumped on every keystroke). We send `typing:start` the
+  // first time the composer goes non-empty, resend every 4s as a
+  // keepalive while the user keeps typing, and fire `typing:stop`
+  // on clear, on send, or after 8s of inactivity-with-text. Cheap:
+  // one broadcast every few seconds while typing, zero otherwise.
+  const typingActive = useRef(false);
+  const typingKeepalive = useRef<ReturnType<typeof setInterval> | null>(null);
+  const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Use `name` (the live composer-name state) directly here; the
+  // `senderName` const further down isn't in scope yet at this
+  // point in the component, and refs are fine for a value that
+  // only ever changes via state-driven re-renders.
+  const sendTypingStart = useCallback(() => {
+    broadcastEvent({
+      type: "typing:start",
+      sessionId: mySession,
+      name: (name ?? "").trim() || "Anon",
+    });
+  }, [broadcastEvent, mySession, name]);
+  const sendTypingStop = useCallback(() => {
+    broadcastEvent({ type: "typing:stop", sessionId: mySession });
+  }, [broadcastEvent, mySession]);
+  const beginTyping = useCallback(() => {
+    if (typingActive.current) return;
+    typingActive.current = true;
+    sendTypingStart();
+    typingKeepalive.current = setInterval(sendTypingStart, TYPING_KEEPALIVE_MS);
+  }, [sendTypingStart]);
+  const endTyping = useCallback(() => {
+    if (!typingActive.current) return;
+    typingActive.current = false;
+    if (typingKeepalive.current) {
+      clearInterval(typingKeepalive.current);
+      typingKeepalive.current = null;
+    }
+    if (typingStopTimer.current) {
+      clearTimeout(typingStopTimer.current);
+      typingStopTimer.current = null;
+    }
+    sendTypingStop();
+  }, [sendTypingStop]);
+  useEffect(() => {
+    return () => {
+      // Wandered off / unmounted — clean up the keepalive + stop fan-out.
+      if (typingActive.current) endTyping();
+    };
+  }, [endTyping]);
   const onComposerChange = (v: string) => {
     setBody(v.slice(0, 2000));
-    updatePresence({ typing: v.trim().length > 0 });
-    if (typingTimer.current) clearTimeout(typingTimer.current);
-    typingTimer.current = setTimeout(
-      () => updatePresence({ typing: false }),
-      TYPING_OFF_MS,
-    );
+    if (v.trim().length > 0) {
+      beginTyping();
+      if (typingStopTimer.current) clearTimeout(typingStopTimer.current);
+      typingStopTimer.current = setTimeout(endTyping, TYPING_STOP_AFTER_MS);
+    } else if (typingActive.current) {
+      endTyping();
+    }
   };
-  const clearTyping = () => {
-    if (typingTimer.current) clearTimeout(typingTimer.current);
-    updatePresence({ typing: false });
-  };
+  const clearTyping = endTyping;
 
   const insertMention = (name: string) => {
     setBody((b) => b.replace(/@[^\s@]*$/, `@${name} `));
