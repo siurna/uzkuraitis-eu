@@ -74,7 +74,6 @@ const S = {
   settings:          { en: "Settings", lt: "Nustatymai" },
   language:          { en: "Language", lt: "Kalba" },
   share_link:        { en: "Share room link", lt: "Pasidalinti nuoroda" },
-  save:              { en: "Save", lt: "Išsaugoti" },
   cancel:            { en: "Cancel", lt: "Atšaukti" },
   clear:             { en: "Clear", lt: "Išvalyti" },
   next:              { en: "Next", lt: "Toliau" },
@@ -88,7 +87,6 @@ const S = {
   leave_confirm_body: { en: "Your name, avatar and ballot stay on this device, leaving just takes you back to the entrance. You'll need the room code or link to come back.", lt: "Tavo vardas, veidas ir balsas lieka šiame įrenginyje, palikęs grįši į pradžios ekraną. Norėdamas grįžti, naudok kambario kodą ar nuorodą." },
   leave_yes:         { en: "Leave room", lt: "Palikti kambarį" },
   link_copied:       { en: "Link copied", lt: "Nuoroda nukopijuota" },
-  couldnt_copy:      { en: "Couldn't copy link", lt: "Nepavyko nukopijuoti" },
 
   // ── RoomGate (entrance code screen) ──────────────────────────────
   enter_room:        { en: "Enter room", lt: "Įeiti" },
@@ -99,7 +97,6 @@ const S = {
   // Turnstile status pill copy — explains the disabled join button so
   // it doesn't read as "broken form".
   ts_checking:       { en: "Verifying you're human…", lt: "Patvirtinama, kad žmogus…" },
-  ts_ok:             { en: "All clear, you can enter", lt: "Viskas tvarkoj, gali eiti" },
   ts_error:          { en: "Couldn't verify you. Tap to retry.", lt: "Nepavyko patvirtinti. Bakstelėk dar kartą." },
   ts_waiting_to_submit: { en: "One sec, finishing the check…", lt: "Akimirką, baigiam patikrinti…" },
   bad_code:          { en: "No room with that code.", lt: "Nėra kambario tokiu kodu." },
@@ -128,7 +125,6 @@ const S = {
   your_top_10:       { en: "My TOP10", lt: "Mano TOP10" },
   tap_to_pick:       { en: "Pick", lt: "Pasirink" },
   pick_avatar_apply: { en: "Change", lt: "Pakeisti" },
-  trivia_closed:     { en: "Time's up for this one. Wait for the next.", lt: "Šio jau nepavyks. Lauk kito." },
   pick_n_more:       { en: (n: number) => `Pick ${n} more`, lt: (n: number) => `Dar ${n}` },
   submitting:        { en: "Submitting…", lt: "Siunčiama…" },
   fill_n_more:       { en: (n: number) => `Fill all 10 slots, ${n} to go.`, lt: (n: number) => `Užpildyk visas 10 vietų, dar ${n}.` },
@@ -189,13 +185,10 @@ const S = {
   home_my_results:     { en: "Your results", lt: "Tavo rezultatai" },
   home_results_in:     { en: "Results are in", lt: "Rezultatai jau čia" },
   home_results_in_sub: { en: "See how everyone did", lt: "Pažiūrėk, kaip visiems sekėsi" },
-  home_my_results_rank: { en: (rank: number, total: number) => `Ranked ${rank} of ${total}, tap for the breakdown`, lt: (rank: number, total: number) => `${rank} vieta iš ${total}, bakstelėk išklotinei` },
   results_tab_me:      { en: "My breakdown", lt: "Mano išklotinė" },
   results_tab_board:   { en: "Leaderboard", lt: "Lyderių lentelė" },
-  results_pick_vs_actual_h: { en: "Your TOP 10 vs the result", lt: "Tavo TOP 10 prieš realybę" },
   results_you_said:    { en: "You said", lt: "Tu pasakei" },
   results_it_was:      { en: "It was", lt: "Buvo" },
-  results_bets_breakdown_h: { en: "Bonus bets", lt: "Papildomi statymai" },
   bet_yes:             { en: "Yes", lt: "Taip" },
   bet_no:              { en: "No", lt: "Ne" },
   bet_none_label:      { en: "No country", lt: "Jokios šalies" },
@@ -204,9 +197,7 @@ const S = {
   chat_empty:        { en: "No messages yet. Say hi 👋", lt: "Dar nieks nieko nerašė. Pasisveikink pirmas 👋" },
   chat_placeholder:  { en: "Message", lt: "Tavo žinutė" },
   chat_load_earlier: { en: "Load earlier messages", lt: "Įkelti senesnes žinutes" },
-  chat_send_failed:  { en: "Couldn't send your message.", lt: "Nepavyko išsiųsti žinutės." },
   chat_slow_down:    { en: "Whoa, slow down a sec.", lt: "Pala, neskubėk." },
-  chat_delete_failed: { en: "Couldn't delete that message.", lt: "Nepavyko ištrinti žinutės." },
   chat_today:        { en: "Today", lt: "Šiandien" },
   chat_yesterday:    { en: "Yesterday", lt: "Vakar" },
   chat_jump_bottom:  { en: "To bottom", lt: "Į apačią" },
@@ -244,7 +235,6 @@ const S = {
   sys_cta_vote_title: { en: "Lines are open", lt: "Balsavimas pradėtas" },
   sys_cta_vote_sub_empty:    { en: "Drop your TOP 10. Every spot is points.", lt: "Užfiksuok TOP 10. Kiekviena vieta yra taškai." },
   sys_cta_vote_sub_progress: { en: (n: number) => `Your ballot is ${n}/10. Finish it off.`, lt: (n: number) => `Tavo balsas: ${n}/10. Užbaik.` },
-  sys_cta_vote_sub_done:     { en: "All 10 in. Tap to tweak.", lt: "Visi 10 vietoje. Bakstelėk pakeisti." },
   sys_cta_vote_done_headline: { en: "All 10 are locked in.", lt: "Visi 10 jau užfiksuoti." },
   sys_cta_vote_btn_cast:     { en: "Cast your ballot", lt: "Atiduoti balsą" },
   sys_cta_vote_btn_adjust:   { en: "Tweak your TOP 10", lt: "Pakeisti TOP 10" },
@@ -265,7 +255,6 @@ const S = {
   sys_cta_selfie_eyebrow:    { en: "Selfie time", lt: "Selfio metas" },
   sys_cta_selfie_title:      { en: "Show the room your face.", lt: "Parodyk kambariui savo veidą." },
   sys_cta_selfie_sub:        { en: "One tap, front camera, straight into chat.", lt: "Vienas bakstelėjimas, priekinė kamera, tiesiai į pokalbį." },
-  sys_cta_selfie_btn:        { en: "Take one", lt: "Daryti" },
   sys_cta_selfie_sending:    { en: "Sending…", lt: "Siunčiama…" },
   sys_cta_selfie_done_title: { en: "Looking great.", lt: "Atrodai puikiai." },
   sys_cta_selfie_done_sub:   { en: "Posted to the room.", lt: "Įmesta į pokalbį." },
@@ -299,7 +288,6 @@ const S = {
   // Welcome / housekeeping widget at the bottom of every room home.
   // The card itself is a single tap target; the markdown opens in a
   // drawer rather than sitting open on the home scroll.
-  welcome_eyebrow:           { en: "From the organisers", lt: "Nuo organizatorių" },
   welcome_card_title:        { en: "A word from the organisers", lt: "Žodis nuo organizatorių" },
   welcome_card_sub:          { en: "House rules, schedule, the usual housekeeping. Tap to open.", lt: "Taisyklės, tvarkaraštis, smulkmenos. Bakstelėk." },
   // Title used by the chat ticket's "Read more" drawer — friendlier
@@ -341,9 +329,7 @@ const S = {
   chat_edited:       { en: "edited", lt: "redaguota" },
   chat_editing:      { en: "Editing your message", lt: "Redaguoji žinutę" },
   chat_edit_placeholder: { en: "Edit your message…", lt: "Redaguok žinutę…" },
-  chat_edit_failed:  { en: "Couldn't save your edit.", lt: "Nepavyko išsaugoti pakeitimo." },
   chat_copy:         { en: "Copy", lt: "Kopijuoti" },
-  chat_copied:       { en: "Copied", lt: "Nukopijuota" },
   chat_send_photo:   { en: "Send a photo", lt: "Siųsti nuotrauką" },
   chat_image_send:   { en: "Send", lt: "Siųsti" },
   chat_image_too_big: { en: "Image is too large (max 8 MB).", lt: "Nuotrauka per didelė (maks. 8 MB)." },
@@ -375,7 +361,6 @@ const S = {
   np_empty:          { en: "Empty", lt: "Tuščia" },
 
   // ── Bingo ────────────────────────────────────────────────────────
-  bingo_you_did_it:  { en: "You got bingo! 🎉", lt: "Surinkai bingo! 🎉" },
   bingo_list:        { en: "What to watch for", lt: "Ko ieškoti" },
   bingo_generate:    { en: "New ticket", lt: "Nauja kortelė" },
   bingo_ticket:      { en: "Ticket", lt: "Kortelė" },
@@ -392,7 +377,6 @@ const S = {
   push_enable:          { en: "Turn on notifications", lt: "Įjungti pranešimus" },
   push_off:             { en: "Off", lt: "Išjungta" },
   push_on:              { en: "Notifications on", lt: "Pranešimai įjungti" },
-  push_disable:         { en: "Turn off", lt: "Išjungti" },
   push_enabled:         { en: "Notifications enabled", lt: "Pranešimai įjungti" },
   // "Permission denied" was the literal browser response, but it
   // reads as "you tried something and we said no" — the actual
@@ -494,7 +478,6 @@ const S = {
   profile_you:               { en: "you", lt: "tu" },
   profile_stat_messages:     { en: "messages", lt: "žinutės" },
   profile_stat_loves:        { en: "loves", lt: "širdys" },
-  profile_stat_given:        { en: "given", lt: "atiduota" },
   profile_stat_highlights:   { en: "highlights", lt: "akcentai" },
   profile_stat_bingo:        { en: "bingos", lt: "bingo" },
   profile_stat_bets:         { en: "bets", lt: "statymai" },
@@ -505,15 +488,10 @@ const S = {
   profile_top10_empty:       { en: "Hasn't voted yet.", lt: "Dar nebalsavo." },
   profile_top10_finished:    { en: (n: number) => `finished #${n}`, lt: (n: number) => `liko #${n}` },
   profile_top10_unranked:    { en: "out of top 10", lt: "už TOP 10" },
-  profile_picked_artist:     { en: "Picked the artist", lt: "Pasirinko atlikėją" },
-  profile_loading:           { en: "Loading…", lt: "Įkeliama…" },
 
   // ── Trivia ───────────────────────────────────────────────────────
   trivia_eyebrow:            { en: "Trivia", lt: "Smulkmenos" },
-  trivia_answered_correct:   { en: "Spot on, +2 points!", lt: "Pataikei! +2 taškai." },
-  trivia_answered_wrong:     { en: "Not this time.", lt: "Šįkart pro šalį." },
   trivia_breaking:           { en: "Quick question!", lt: "Greitas klausimas!" },
-  trivia_breaking_kicker:    { en: "Trivia break", lt: "Klausimas iš salės" },
 
   // ── Reactions / honeycomb ────────────────────────────────────────
 };

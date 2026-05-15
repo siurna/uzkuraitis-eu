@@ -449,10 +449,15 @@ function RoomLiveProvider({
     if (event.type === "room:updated") {
       refetch();
     } else if (event.type === "now-playing:change") {
-      setState((prev) => ({
-        ...prev,
-        nowPlayingCode: event.countryCode ?? null,
-      }));
+      // Bail when the broadcasted country matches what we already
+      // have — without this, an admin re-tapping the same country
+      // cascades a state-identity-change through every useRoomLive
+      // consumer (HomePanel, ChatPanel, VotePanel, PresenceBar…).
+      setState((prev) => {
+        const next = event.countryCode ?? null;
+        if (prev.nowPlayingCode === next) return prev;
+        return { ...prev, nowPlayingCode: next };
+      });
     }
   });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Reply, Pencil, Copy, Trash2, Smile, Loader2, Mic, Music, Trophy, Plus, ChevronRight, Users,
@@ -361,8 +361,15 @@ export { renderBanter };
 // Single message row. Handles all kinds: now-playing banner, system
 // pill, bingo card, GIF/image, and plain text — plus swipe-to-reply,
 // long-press menu, reactions strip and the "seen by N" footer.
+//
+// memo()'d at the bottom of the file. ChatPanel rerenders on every
+// broadcast / state change; without memo, all 50+ rows recompute on
+// every typing event, every reaction, every refetch — and each row
+// does its own date parse + country lookup + body render. With memo
+// + Object.is shallow compare on props, a row only re-renders when
+// ITS message or interactivity flags actually changed.
 
-export function ChatRow({
+function ChatRowInner({
   message: m,
   mine,
   parent,
@@ -1300,6 +1307,14 @@ export function ChatRow({
     </li>
   );
 }
+
+// memo wrapper — shallow Object.is compare across all props. The
+// callbacks (onReply, onEdit, onCopy, onDelete, onReact, onOpenMenu,
+// onOpenImage) come down stable per chat-panel render thanks to
+// useCallback on the panel side; the message object is reference-
+// stable from the messages array unless its row actually changed.
+// Net effect: rows skip render unless their own props really moved.
+export const ChatRow = memo(ChatRowInner);
 
 // Trivia firesAt gate. The server stamps each trivia message with a
 // random firesAt 30s–3:30 after the country goes live; this wrapper

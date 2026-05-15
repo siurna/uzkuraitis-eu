@@ -176,7 +176,12 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const [typingMap, setTypingMap] = useState<Map<string, { name: string; lastStart: number }>>(
     () => new Map(),
   );
+  // Only run the 1s sweep while there's actually somebody typing.
+  // Without the size guard, every chat-panel mount holds a 1Hz timer
+  // forever even when no one's typed in hours; with it, the timer
+  // only spins while there are stale entries to maybe-clear.
   useEffect(() => {
+    if (typingMap.size === 0) return;
     const id = setInterval(() => {
       setTypingMap((prev) => {
         if (prev.size === 0) return prev;
@@ -193,7 +198,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       });
     }, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [typingMap.size]);
   const typingNames = useMemo(() => {
     const out: string[] = [];
     for (const [sid, info] of typingMap) {
