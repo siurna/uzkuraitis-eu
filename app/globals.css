@@ -287,6 +287,17 @@
   }
 }
 
+/* iOS PWA only: round the BOTTOM corners of the BottomSheet to 40px
+   so the drawer's outline matches the iOS device's rounded screen
+   corners. The class is applied by JS (lib/use-ios-pwa.ts) — a CSS
+   media query alone can't distinguish iOS standalone from
+   Android standalone, and Android phones don't all have the same
+   screen radius. */
+.uzk-sheet-ios-pwa-bottom {
+  border-bottom-left-radius: 40px;
+  border-bottom-right-radius: 40px;
+}
+
 /* Poll-card backdrop shine. Slow conic gradient rotation that
    keeps the card feeling alive between vote events. GPU-cheap +
    reduce-motion respects the user's preference. */

@@ -14,6 +14,7 @@ import {
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 import { useRoomLive, useRoomTab, type RoomTab } from "@/components/room-shell";
+import { useRoomChrome } from "@/lib/use-room-chrome";
 
 // Bottom dock. Each tab switches the room's active panel in place —
 // pure state, no navigation. The active pill layoutId-animates between
@@ -81,11 +82,18 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  // Same story as PresenceBar: the bar is portaled to document.body
+  // so any wrapping <div className={...}> in room-shell never
+  // reached this DOM node. The hide-on-mobile class has to be on the
+  // bar itself, driven by the shared RoomChromeProvider.
+  const { hidden: chromeHidden } = useRoomChrome();
+
   const bar = (
     <nav
-      className="uzk-edge-bar fixed bottom-0 left-0 z-40 px-3
+      className={`uzk-edge-bar fixed bottom-0 left-0 z-40 px-3
                  pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2
-                 bg-gradient-to-t from-dark-blue-900 via-dark-blue-900/92 to-transparent"
+                 bg-gradient-to-t from-dark-blue-900 via-dark-blue-900/92 to-transparent
+                 ${chromeHidden ? "max-md:hidden" : ""}`}
     >
       <ul
         className="mx-auto max-w-md flex items-stretch justify-around gap-1

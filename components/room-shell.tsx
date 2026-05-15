@@ -17,6 +17,7 @@ import { BingoCard } from "@/components/bingo-card";
 import { VotePanel } from "@/components/vote-panel";
 import { ParticleLayer } from "@/components/particle-layer";
 import { CountryDeepDiveProvider } from "@/components/country-deep-dive";
+import { RoomChromeProvider } from "@/lib/use-room-chrome";
 import { ProfileProvider } from "@/components/profile-sheet";
 import { VotingAnnouncement } from "@/components/voting-announcement";
 import { NowPlayingTakeover } from "@/components/now-playing-takeover";
@@ -139,14 +140,22 @@ export function RoomShell({
             <CountryDeepDiveProvider>
               <ProfileProvider>
                 <LeaderboardProvider>
-                  <VibeTracker code={code} />
-                  <NowPlayingTakeover />
-                  <VotingAnnouncement />
-                  {/* TriviaCard (the floating popup) was removed —
-                      trivia now lands as a chat message (kind="trivia")
-                      rendered inline in the thread. See
-                      components/chat-trivia-inline.tsx. */}
-                  <RoomBody>{children}</RoomBody>
+                  {/* Single source of truth for the header + dock
+                      visibility on mobile. Replaces the earlier
+                      `composing` state + `uzk:compose-focus` custom
+                      event glue, which dropped signals if the focus
+                      event ever failed to fire. See
+                      lib/use-room-chrome.tsx. */}
+                  <RoomChromeProvider>
+                    <VibeTracker code={code} />
+                    <NowPlayingTakeover />
+                    <VotingAnnouncement />
+                    {/* TriviaCard (the floating popup) was removed —
+                        trivia now lands as a chat message (kind="trivia")
+                        rendered inline in the thread. See
+                        components/chat-trivia-inline.tsx. */}
+                    <RoomBody>{children}</RoomBody>
+                  </RoomChromeProvider>
                 </LeaderboardProvider>
               </ProfileProvider>
             </CountryDeepDiveProvider>
@@ -265,9 +274,10 @@ function RoomBody({ children }: { children: React.ReactNode }) {
     () => new Set<RoomTab>(["home"]),
   );
   const [unread, setUnread] = useState(0);
-  // Hide the bottom dock while the chat composer is focused — on iOS the
-  // keyboard otherwise stacks it over the input.
-  const [composing, setComposing] = useState(false);
+  // Header + dock visibility is owned by <RoomChromeProvider/> and
+  // applied DIRECTLY by PresenceBar + RoomTabBar (both portal to
+  // document.body, so a wrapper here can't reach their nodes).
+  // RoomBody no longer participates in that flow.
 
   const isHome = tab === "home";
   const isChat = tab === "chat";
@@ -338,43 +348,11 @@ function RoomBody({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const onSeen = () => setUnread(0);
-    const onCompose = (e: Event) => setComposing(!!(e as CustomEvent).detail);
     window.addEventListener("uzk:chat-seen", onSeen);
-    window.addEventListener("uzk:compose-focus", onCompose);
     return () => {
       window.removeEventListener("uzk:chat-seen", onSeen);
-      window.removeEventListener("uzk:compose-focus", onCompose);
     };
   }, []);
-
-  // visualViewport-based keyboard heuristic. The dock-hide used to
-  // ride ONLY on the chat-panel's custom `uzk:compose-focus` event,
-  // but if that event ever fails to fire (input mounted late, focus
-  // landed on a child not the input, iOS quirk on re-mount) the tab
-  // bar stays visible AND ends up sandwiched between the chat
-  // composer and the keyboard — leaving the composer invisible and
-  // the chat unusable. Detecting "is the keyboard up?" directly via
-  // visualViewport gives us a redundant signal that's independent
-  // of which input got focus.
-  const [keyboardUp, setKeyboardUp] = useState(false);
-  useEffect(() => {
-    const vv = typeof window !== "undefined" ? window.visualViewport : null;
-    if (!vv) return;
-    const onResize = () => {
-      // Keyboard takes ~250-350px on phones; a 120px delta between
-      // layout viewport and visual viewport is well past any
-      // browser-chrome shrink and a solid "keyboard is up" call.
-      setKeyboardUp(window.innerHeight - vv.height > 120);
-    };
-    onResize();
-    vv.addEventListener("resize", onResize);
-    return () => vv.removeEventListener("resize", onResize);
-  }, []);
-  // Effective "hide the dock" signal: either the chat composer fired
-  // its focus event OR we detect a keyboard via the viewport delta.
-  // OR-ing keeps the existing happy path intact AND survives the
-  // event-not-firing failure mode.
-  const dockHidden = composing || keyboardUp;
 
   return (
     <RoomTabContext.Provider value={{ tab, setTab }}>
@@ -386,13 +364,11 @@ function RoomBody({ children }: { children: React.ReactNode }) {
           isChat ? "h-[100dvh] overflow-hidden" : "min-h-dvh"
         }`}
       >
-        {/* Header hides while the chat composer is focused on touch
-            devices — keeps the keyboarded-up chat panel from leaving an
-            empty strip up top. On desktop there's no keyboard inset, so
-            the header stays put. */}
-        <div className={dockHidden ? "max-md:hidden" : ""}>
-          <PresenceBar />
-        </div>
+        {/* PresenceBar handles its own chrome-hidden state internally
+            via useRoomChrome(). It portals to document.body, so a
+            CSS-class wrapper here would never reach the rendered
+            DOM node anyway. */}
+        <PresenceBar />
         {/* <TabSync> + anything the route segment renders (no UI). */}
         {children}
 
@@ -412,9 +388,9 @@ function RoomBody({ children }: { children: React.ReactNode }) {
         {/* Chat is `position:fixed` — it manages its own visibility. */}
         {visited.has("chat") && <ChatPanel active={isChat} />}
 
-        <div className={dockHidden ? "max-md:hidden" : ""}>
-          <RoomTabBar chatUnread={unread} />
-        </div>
+        {/* Same as PresenceBar: RoomTabBar applies max-md:hidden to
+            its own portaled DOM node via useRoomChrome(). */}
+        <RoomTabBar chatUnread={unread} />
       </div>
     </RoomTabContext.Provider>
   );

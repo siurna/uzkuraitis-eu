@@ -15,6 +15,7 @@ import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { getCountry, countryName } from "@/lib/countries";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
+import { useRoomChrome } from "@/lib/use-room-chrome";
 
 // Unified room header. Carries everything chrome-y in one translucent
 // strip:
@@ -72,9 +73,17 @@ export function PresenceBar() {
       ? getCountry(nowPlayingCode)
       : null;
 
+  // Hide on mobile when the room chrome is hidden (chat composer
+  // active or visualViewport says a keyboard's up). The portal
+  // means a wrapping <div className={...}> in room-shell never
+  // reached the bar's actual DOM node — the class has to live on
+  // the bar itself.
+  const { hidden } = useRoomChrome();
   const bar = (
     <header
-      className="uzk-edge-bar fixed top-0 left-0 z-30 backdrop-blur-md bg-dark-blue-900/80 border-b border-white/5 overflow-x-hidden"
+      className={`uzk-edge-bar fixed top-0 left-0 z-30 backdrop-blur-md bg-dark-blue-900/80 border-b border-white/5 overflow-x-hidden ${
+        hidden ? "max-md:hidden" : ""
+      }`}
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <div className="container mx-auto max-w-3xl px-4 h-14 flex items-center gap-3">

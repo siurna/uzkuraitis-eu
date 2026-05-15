@@ -7,6 +7,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
+import { useIsIOSPwa } from "@/lib/use-ios-pwa";
 
 // Bottom-sheet drawer, shared by NameGate, SettingsModal, CountryDrawer,
 // and anything else that wants the same iOS-style slide-up overlay.
@@ -56,6 +57,13 @@ export function BottomSheet({
   const lang = useLang();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  // iOS PWA installs have rounded screen corners (system-level); a
+  // bottom-anchored sheet should round its own bottom corners to
+  // match instead of sitting in a flat-vs-curved mismatch. Plain
+  // browser mode already gets the top corners bumped to 40px via
+  // `uzk-sheet-ios-radius` in globals.css; this picks up the bottom
+  // pair when we're explicitly inside an iOS standalone shell.
+  const iosPwa = useIsIOSPwa();
 
   useEffect(() => {
     if (!open) return;
@@ -103,10 +111,18 @@ export function BottomSheet({
             // corners to 40px when display-mode is browser — matches
             // iOS Safari's native sheet feel — and stays at the
             // Tailwind default (24px / rounded-3xl) in PWA / desktop.
-            className="fixed bottom-0 inset-x-0 z-[60] mx-auto w-full max-w-md
-                       glass-card rounded-t-3xl uzk-sheet-ios-radius
-                       border-x-0 border-b-0
-                       max-h-[78dvh] flex flex-col"
+            className={cn(
+              "fixed bottom-0 inset-x-0 z-[60] mx-auto w-full max-w-md",
+              "glass-card rounded-t-3xl uzk-sheet-ios-radius",
+              "border-x-0 border-b-0",
+              "max-h-[78dvh] flex flex-col",
+              // iOS PWA: round the bottom corners to 40px so the
+              // sheet's outline tracks the iOS device's rounded
+              // screen edge. The safe-area-inset-bottom padding
+              // on the content keeps the home indicator clear of
+              // text; the rounded bottom is purely visual.
+              iosPwa && "uzk-sheet-ios-pwa-bottom",
+            )}
           >
             {(title || sub || dismissible || trailing) && (
               <div className="px-5 pt-5 pb-2 flex items-start gap-3 shrink-0">

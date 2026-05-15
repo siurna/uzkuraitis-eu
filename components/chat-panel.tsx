@@ -30,6 +30,7 @@ import {
 } from "@/lib/realtime";
 import { useParticipants } from "@/lib/use-participants";
 import { useRoomLive } from "@/components/room-shell";
+import { useRoomChrome } from "@/lib/use-room-chrome";
 import { useIdentity } from "@/lib/use-identity";
 import { bumpVibe } from "@/lib/use-vibe-tracker";
 import { GifPicker } from "@/components/gif-picker";
@@ -130,7 +131,12 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const [dragOver, setDragOver] = useState(false);
   // The current visual viewport (the bit of the page that's actually
   const [viewport, setViewport] = useState<{ h: number; top: number } | null>(null);
-  const [composerFocused, setComposerFocused] = useState(false);
+  // Chrome (header + dock) visibility lives in <RoomChromeProvider/>.
+  // Setting `composerActive` via this hook tells the chrome to hide
+  // on mobile; the provider OR's it with a visualViewport keyboard
+  // heuristic so a missed onFocus still hides the dock. See
+  // lib/use-room-chrome.tsx for the design.
+  const chrome = useRoomChrome();
   // True at the md+ breakpoint. On mobile the bottom dock CSS-hides
   // when the composer is focused (room-shell adds max-md:hidden) and
   // the chat panel consumes the full visual viewport so the composer
@@ -148,20 +154,15 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
-  // The dock + header are CSS-hidden in two scenarios:
-  //   1. composerFocused (chat input has focus, custom event fired)
-  //   2. visualViewport delta says a keyboard is up regardless of
-  //      which input has focus.
-  // We OR both because the focus event is occasionally lost (input
-  // mounted late, focus landed on a child not the input, iOS quirk
-  // on re-mount), and a missing signal here means the chat-panel
-  // reserves 4.75rem of dock space the dock isn't actually using.
-  // The viewport state below is already tracked for height; we
-  // derive `keyboardUp` from the same delta.
-  const keyboardUp = !!viewport && typeof window !== "undefined"
-    ? window.innerHeight - viewport.h > 120
-    : false;
-  const dockHidden = (composerFocused || keyboardUp) && !isDesktop;
+  // The chat panel sizes itself differently when the chrome is
+  // hidden vs visible — full viewport when hidden (composer flush
+  // above the keyboard), viewport minus 4.75rem when the dock is
+  // up. We read the SAME `hidden` value the header + dock use, so
+  // both sides agree about whether the dock is on screen. The chrome
+  // already OR's the explicit composer-focus signal with a
+  // visualViewport keyboard heuristic; no redundant logic needed
+  // here.
+  const dockHidden = chrome.hidden && !isDesktop;
   const dragDepth = useRef(0);
 
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -1629,13 +1630,14 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                 }}
                 onPaste={editing ? undefined : onPaste}
                 onFocus={() => {
-                  setComposerFocused(true);
-                  window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: true }));
+                  // Explicit hand-off to the chrome provider; the
+                  // provider OR's this with its visualViewport
+                  // keyboard heuristic so the dock hides either way.
+                  chrome.setComposerActive(true);
                 }}
                 onBlur={(e) => {
-                  setComposerFocused(false);
+                  chrome.setComposerActive(false);
                   if (!editing) clearTyping();
-                  window.dispatchEvent(new CustomEvent("uzk:compose-focus", { detail: false }));
 
                   // iOS keyboard toolbar "Done" / checkmark dismisses
                   // the keyboard via input.blur() without moving focus
