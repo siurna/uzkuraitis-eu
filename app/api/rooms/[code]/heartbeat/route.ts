@@ -32,6 +32,12 @@ const BodySchema = z.object({
   avatarId: z.string().trim().min(1).max(40).optional(),
   vibe: z.number().int().min(0).max(1000).optional(),
   seenAt: z.string().datetime().optional(),
+  // Leave beacon. The room-shell fires this on `pagehide` via
+  // navigator.sendBeacon. We back-date updatedAt past the 90s
+  // active window so WhosHere + the admin active-count drop them
+  // on the next poll instead of waiting for the window to expire
+  // naturally.
+  leaving: z.boolean().optional(),
 });
 
 export async function POST(req: Request, { params }: RouteCtx) {
@@ -41,10 +47,24 @@ export async function POST(req: Request, { params }: RouteCtx) {
 
   const parsed = BodySchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: true });
-  const { session, name, avatarId, vibe, seenAt } = parsed.data;
+  const { session, name, avatarId, vibe, seenAt, leaving } = parsed.data;
 
   const guard = await guardSession(session);
   if (guard) return guard;
+
+  // Leave beacon: back-date updatedAt past the 90s active window so
+  // WhosHere + admin active-count drop this session on their next
+  // poll. We DON'T delete the row — the ballot / bets / chat
+  // history all live on it, and the row's other consumers don't
+  // care about updatedAt. If the same session comes back, the next
+  // heartbeat upserts updatedAt forward and they reappear.
+  if (leaving) {
+    await db
+      .update(voters)
+      .set({ updatedAt: sql`now() - interval '5 minutes'` })
+      .where(sql`${voters.roomId} = ${room.id} AND ${voters.sessionId} = ${session}`);
+    return NextResponse.json({ ok: true });
+  }
 
   // Upsert. The `name` column is NOT NULL — if this is the first
   // time we're seeing this session in this room AND they haven't

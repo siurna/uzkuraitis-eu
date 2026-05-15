@@ -166,38 +166,97 @@ export function RoomShell({
 // bar can badge it.
 function RoomBody({ children }: { children: React.ReactNode }) {
   const { code } = useRoomLive();
-  // Active-presence heartbeat. Pings the room's heartbeat endpoint
-  // on mount, every 60s, and whenever the tab returns to visible.
-  // Server bumps voters.updatedAt so the admin Live page can count
-  // "active in the last 90s" instead of falling back to a lifetime
-  // joined count that over-reports everyone who ever opened the
-  // room. Cheap: single-row UPDATE by an indexed (roomId, sessionId).
+  // Presence heartbeat — the only path now for "I'm here". Reads
+  // the current session snapshot from localStorage on every beat
+  // (name + avatar from the name-gate's persisted state, vibe from
+  // the vibe-tracker, seenAt from the chat panel) and POSTs to
+  // /api/rooms/[code]/heartbeat which upserts a voters row. WhosHere
+  // and the admin active-count both consume that row via REST polls.
+  //
+  // Cadence: immediate beat on mount, every 30s, on
+  // visibilitychange-return so a returning tab announces itself
+  // before its next tick, AND a final `leaving=true` beacon on
+  // pagehide so peers see the tab close almost instantly instead
+  // of waiting for the 90s active-window to expire.
   useEffect(() => {
     if (!code) return;
-    let cancelled = false;
-    const beat = () => {
+    const buildBody = (leaving = false) => {
       const sid = ensureSessionId();
-      if (!sid) return;
+      if (!sid) return null;
+      let name: string | undefined;
+      let avatarId: string | undefined;
+      let vibe: number | undefined;
+      let seenAt: string | undefined;
+      try {
+        name = localStorage.getItem("uzk_name") || undefined;
+        avatarId = localStorage.getItem("uzk_avatar") || undefined;
+        const v = localStorage.getItem(`uzk_vibe_${code}`);
+        if (v != null) {
+          const n = Number(v);
+          if (Number.isFinite(n)) vibe = Math.max(0, Math.round(n));
+        }
+        seenAt = localStorage.getItem(`uzk_seen_${code}`) || undefined;
+      } catch {
+        /* private mode — heartbeat still pings session, name etc just absent */
+      }
+      return JSON.stringify({
+        session: sid,
+        name,
+        avatarId,
+        vibe,
+        seenAt,
+        ...(leaving ? { leaving: true } : {}),
+      });
+    };
+    const beat = () => {
+      const body = buildBody();
+      if (!body) return;
       void fetch(`/api/rooms/${code}/heartbeat`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ session: sid }),
+        body,
         keepalive: true,
       }).catch(() => {
         /* heartbeat is best-effort */
       });
     };
     beat();
-    const id = setInterval(beat, 60_000);
+    const id = setInterval(beat, 30_000);
     const onVis = () => {
       if (document.visibilityState === "visible") beat();
     };
+    // Leave beacon. `pagehide` fires on actual navigations / close
+    // (and on bfcache; we let bfcache leavers fall off naturally
+    // since they might be back in seconds). `navigator.sendBeacon`
+    // is the only delivery guaranteed during unload — a regular
+    // fetch is cancelled the moment the page unloads. The server
+    // back-dates updatedAt so the row falls outside the 90s active
+    // window immediately, and WhosHere drops them on its next poll.
+    const onPageHide = (e: PageTransitionEvent) => {
+      if (e.persisted) return; // bfcache, not a real leave
+      const body = buildBody(true);
+      if (!body) return;
+      try {
+        const blob = new Blob([body], { type: "application/json" });
+        navigator.sendBeacon(`/api/rooms/${code}/heartbeat`, blob);
+      } catch {
+        /* sendBeacon refused (size limit / browser without it) — fall
+           back to a keepalive fetch; if even that doesn't make it the
+           90s active window will eventually evict us. */
+        void fetch(`/api/rooms/${code}/heartbeat`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    };
     document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pagehide", onPageHide);
     return () => {
-      cancelled = true;
       clearInterval(id);
       document.removeEventListener("visibilitychange", onVis);
-      void cancelled; // silence unused-var when the closure is GC'd
+      window.removeEventListener("pagehide", onPageHide);
     };
   }, [code]);
 
