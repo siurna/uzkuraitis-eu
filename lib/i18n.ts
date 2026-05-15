@@ -413,6 +413,11 @@ const S = {
   push_cta_sub:         { en: "Get a ping when a country goes on stage, results land, or someone replies to you.", lt: "Sužinok, kai į sceną žengia šalis, paskelbiami rezultatai ar kažkas tau atrašo." },
   push_cta_enable:      { en: "Turn on", lt: "Įjungti" },
 
+  // ── PWA install prompt (room-gate bottom CTA) ────────────────────
+  install_cta:             { en: "Get ready for the big night: install the app", lt: "Pasiruošk didžiajam vakarui: įdiek aplikaciją" },
+  install_drawer_title:    { en: "Install the app", lt: "Įdiek aplikaciją" },
+  install_drawer_sub:      { en: "Two taps and you'll have us on your home screen for finale night.", lt: "Du paspaudimai ir mes tūnosim tavo pagrindiniame ekrane finalui." },
+
   // ── Notification install instructions ────────────────────────────
   push_help_ios_title:     { en: "On iPhone / iPad", lt: "„iPhone“ / „iPad“" },
   push_help_ios_1:         { en: "Tap the Share button in Safari (the square with an arrow).", lt: "„Safari“ paspausk dalinimosi mygtuką (kvadratas su rodyklę)." },

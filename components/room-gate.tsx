@@ -11,10 +11,17 @@ import { useLang } from "@/lib/i18n-client";
 import { Button } from "@/components/ui/button";
 import { CodeInput } from "@/components/code-input";
 import { HeartbeatBackdrop } from "@/components/heartbeat-backdrop";
+import { InstallPwaPrompt } from "@/components/install-pwa-prompt";
 import { Logo2026 } from "@/components/logo-2026";
 import { TurnstileWidget } from "@/components/turnstile";
 
 const LAST_ROOM_KEY = "uzk_last_room";
+// Minimum loader hold so the central heart actually beats. The
+// .heartbeat-loop CSS animation is a 1.4s cycle with a 0.4s lead-in.
+// 3.6s gives the user ~two-and-a-half full thumps after the lead-in,
+// which reads as "the app is breathing" instead of "a flash". A
+// short network reply still respects this floor.
+const MIN_HEARTBEAT_HOLD_MS = 3600;
 // Public site key gets inlined at build time when configured. When it
 // isn't set we render the gate without the widget and the server-side
 // verify endpoint passes everything through — same flow, no friction.
@@ -45,6 +52,14 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
   // While we're checking a remembered room, we want to show a loading
   // splash instead of flashing the empty input box. Distinct from `pending`
   // (which only covers user-initiated submits).
+  //
+  // Minimum heartbeat hold: the loader's central heart pulses on a 1.05s
+  // keyframe cycle. On a fast connection /api/rooms/X resolves in ~150ms
+  // and the heart never finishes a single beat — feels like a flash, not
+  // a moment. We keep `rehydrating` true for at least `MIN_HOLD_MS` so
+  // the heart gets to play out three full cycles regardless of how
+  // quickly the room check returns. Past that, the natural network
+  // jitter handles the rest.
   const [rehydrating, setRehydrating] = useState(!prefilled && !isLeaving);
 
   // On mount: if there's no prefilled code from ?room= and the user didn't
@@ -72,26 +87,41 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
       setRehydrating(false);
       return;
     }
+    const startedAt = performance.now();
     const remembered = localStorage.getItem(LAST_ROOM_KEY);
-    if (!remembered || !isValidRoomCode(remembered)) {
-      setRehydrating(false);
-      return;
-    }
+    // Race the heartbeat hold against the room-check fetch (when there
+    // IS a remembered code) or just hold the heartbeat (when there
+    // isn't). Either way, we don't drop the loader before the heart
+    // has had its three beats.
     let cancelled = false;
+    const settle = (next: () => void) => {
+      const elapsed = performance.now() - startedAt;
+      const wait = Math.max(0, MIN_HEARTBEAT_HOLD_MS - elapsed);
+      window.setTimeout(() => {
+        if (!cancelled) next();
+      }, wait);
+    };
+
+    if (!remembered || !isValidRoomCode(remembered)) {
+      settle(() => setRehydrating(false));
+      return () => {
+        cancelled = true;
+      };
+    }
     (async () => {
       try {
         const res = await fetch(`/api/rooms/${remembered}`, { cache: "no-store" });
         if (cancelled) return;
         if (res.ok) {
-          router.replace(`/r/${remembered}`);
+          settle(() => router.replace(`/r/${remembered}`));
         } else {
           // Stale code — room was deleted server-side. Drop the key and
           // fall through to the gate.
           localStorage.removeItem(LAST_ROOM_KEY);
-          setRehydrating(false);
+          settle(() => setRehydrating(false));
         }
       } catch {
-        if (!cancelled) setRehydrating(false);
+        settle(() => setRehydrating(false));
       }
     })();
     return () => {
@@ -192,6 +222,9 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
         }}
       />
       <HeartbeatBackdrop />
+      {/* Install-this-app prompt. Self-hides when running in PWA
+          standalone mode. */}
+      <InstallPwaPrompt />
       <AnimatePresence mode="wait">
         {rehydrating ? (
           <motion.div

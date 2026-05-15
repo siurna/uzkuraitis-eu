@@ -1208,18 +1208,38 @@ export function ChatRow({
             </AnimatePresence>
           </div>
 
-          {translateOn && !mine && m.kind === "text" && m.body && (
-            <TranslationBubble text={m.body} mine={mine} />
-          )}
-
-          {/* Beginner gloss only fires when auto-translate is OFF —
-              the translate prompt already emits a [bracketed context
-              note] for Lithuanian-specific references, so showing
-              both bubbles under the same line is a duplicate. If a
-              viewer wants the gloss, they uncheck translate. */}
-          {beginnerOn && !translateOn && !mine && m.kind === "text" && m.body && (
-            <BeginnerBubble text={m.body} lang={lang} mine={mine} />
-          )}
+          {/* Auto-translate + beginner-gloss bubbles fade in/out when
+              their settings flip. AnimatePresence wraps each one so
+              toggling the setting in the drawer doesn't snap a bunch
+              of bubbles into existence across the visible thread —
+              they ease in (and ease out when turned off) as the user
+              expects from a chat companion-feature. */}
+          <AnimatePresence initial={false}>
+            {translateOn && !mine && m.kind === "text" && m.body && (
+              <motion.div
+                key="translate"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                style={{ overflow: "hidden" }}
+              >
+                <TranslationBubble text={m.body} mine={mine} />
+              </motion.div>
+            )}
+            {beginnerOn && !translateOn && !mine && m.kind === "text" && m.body && (
+              <motion.div
+                key="beginner"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                style={{ overflow: "hidden" }}
+              >
+                <BeginnerBubble text={m.body} lang={lang} mine={mine} />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {Object.keys(m.reactions).length > 0 && (
             <div className={`flex flex-wrap items-center gap-1 ${mine ? "self-end" : "self-start"}`}>
