@@ -54,7 +54,7 @@ export async function postSystemMessage(
   roomCode: string,
   roomId: string,
   sys: SystemMsg,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const [row] = await db
       .insert(chatMessages)
@@ -77,8 +77,11 @@ export async function postSystemMessage(
       quiet: true,
       message: toChatPayload(row),
     });
+    return true;
   } catch {
-    /* a missing announcement is not worth a 500 */
+    /* a missing announcement is not worth a 500 — caller can surface
+       the false return if they want admin-visible diagnostics. */
+    return false;
   }
 }
 
@@ -99,10 +102,10 @@ export async function postTriviaMessage(
   roomCode: string,
   roomId: string,
   countryCode: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const card = await getTriviaMerged(countryCode);
-    if (!card) return;
+    if (!card) return false;
     const [row] = await db
       .insert(chatMessages)
       .values({
@@ -125,25 +128,23 @@ export async function postTriviaMessage(
       quiet: true,
       message: toChatPayload(row),
     });
+    return true;
   } catch {
-    /* not worth a 500 */
+    return false;
   }
 }
 
 // Full-width "now on stage" banner in the thread. Carries the country
-// code (+ artist/song snapshot) in meta so the client can render the
-// heart-flag chip in its own language; `body` is a plain-text fallback.
-// Best-effort.
+// code (+ artist/song snapshot) in meta so the client renders the
+// heart-flag chip and country name in the viewer's language. `body`
+// stays null — the client doesn't read it. Best-effort.
 export async function postNowPlayingMessage(
   roomCode: string,
   roomId: string,
   countryCode: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const c = getCountry(countryCode);
-    const body = c
-      ? `🎤 ${c.name} on stage${c.artist ? ` — ${c.artist}${c.song ? ` · ${c.song}` : ""}` : ""}`
-      : `🎤 ${countryCode.toUpperCase()} on stage`;
     const [row] = await db
       .insert(chatMessages)
       .values({
@@ -151,7 +152,7 @@ export async function postNowPlayingMessage(
         sessionId: "system",
         name: "system",
         kind: "now_playing",
-        body,
+        body: null,
         meta: { code: countryCode, artist: c?.artist ?? null, song: c?.song ?? null },
       })
       .returning();
@@ -161,8 +162,9 @@ export async function postNowPlayingMessage(
       quiet: true,
       message: toChatPayload(row),
     });
+    return true;
   } catch {
-    /* not worth a 500 */
+    return false;
   }
 }
 
@@ -184,7 +186,7 @@ export async function postPollMessage(
   roomId: string,
   question: { en: string; lt: string },
   choices: PollChoice[],
-): Promise<void> {
+): Promise<boolean> {
   try {
     const [row] = await db
       .insert(chatMessages)
@@ -208,8 +210,9 @@ export async function postPollMessage(
       id: row.id,
       message: toChatPayload(row),
     });
+    return true;
   } catch {
-    /* not worth a 500 */
+    return false;
   }
 }
 
@@ -225,13 +228,12 @@ export async function postResultsMessage(
     tallyEnabled: boolean;
     highlightThreshold?: number | null;
   },
-): Promise<void> {
+): Promise<boolean> {
   try {
     const { hasResults, leaderboard } = await computeRoomLeaderboard(room);
     if (!hasResults || leaderboard.length === 0) {
       // No scoreable data yet — fall back to the plain announcement.
-      await postSystemMessage(roomCode, room.id, { key: "sys_results_in" });
-      return;
+      return await postSystemMessage(roomCode, room.id, { key: "sys_results_in" });
     }
     const podium = leaderboard.slice(0, 3).map((r) => ({ name: r.name, total: r.total }));
     const body =
@@ -245,8 +247,9 @@ export async function postResultsMessage(
       id: row.id,
       message: toChatPayload(row),
     });
+    return true;
   } catch {
-    /* not worth a 500 */
+    return false;
   }
 }
 
@@ -259,14 +262,14 @@ export async function postCommentatorMessage(
   roomCode: string,
   roomId: string,
   countryCode: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const [room] = await db
       .select({ on: rooms.commentatorEnabled })
       .from(rooms)
       .where(eq(rooms.id, roomId))
       .limit(1);
-    if (room && room.on === false) return; // host muted the bot for this room
+    if (room && room.on === false) return false; // host muted the bot for this room
     const rows = await db
       .select()
       .from(commentator)
@@ -274,7 +277,7 @@ export async function postCommentatorMessage(
     const byKey = new Map(rows.map((r) => [r.countryCode, r.text]));
     const name = byKey.get(COMMENTATOR_NAME_KEY)?.trim();
     const line = byKey.get(countryCode)?.trim();
-    if (!name || !line) return; // bot not set up, or nothing to say for this country
+    if (!name || !line) return false; // bot not set up, or nothing to say for this country
     const photo = byKey.get(COMMENTATOR_PHOTO_KEY)?.trim() || null;
     const [row] = await db
       .insert(chatMessages)
@@ -293,8 +296,9 @@ export async function postCommentatorMessage(
       quiet: true,
       message: toChatPayload(row),
     });
+    return true;
   } catch {
-    /* a missing commentary line is not worth a 500 */
+    return false;
   }
 }
 

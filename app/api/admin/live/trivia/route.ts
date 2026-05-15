@@ -43,14 +43,15 @@ export async function POST(req: Request) {
   //   - room must STILL have this country on stage (skips stale
   //     timers that survived an admin advance past the country)
   //   - room must have triviaEnabled (per-room opt-out)
-  let fired = 0;
-  await Promise.all(
+  // Only increment `fired` when the helper actually landed (DB insert
+  // + broadcast both succeeded). Previously this counted every room
+  // we ATTEMPTED to post to, which made silent DB / Supabase failures
+  // look like successful fires in the admin's diagnostic toast.
+  const results = await Promise.all(
     allRooms
       .filter((r) => r.nowPlayingCode === countryCode && r.triviaEnabled)
-      .map(async (r) => {
-        await postTriviaMessage(r.code, r.id, countryCode);
-        fired += 1;
-      }),
+      .map((r) => postTriviaMessage(r.code, r.id, countryCode)),
   );
+  const fired = results.filter(Boolean).length;
   return NextResponse.json({ fired });
 }

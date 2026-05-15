@@ -76,7 +76,7 @@ export function ChatBroadcastCard({
     case "sys_cta_vote":
       return <VoteOpenCard lang={lang} />;
     case "sys_cta_bet":
-      return <BonusBetCard lang={lang} />;
+      return <BonusBetCard lang={lang} messageId={messageId} />;
     case "sys_cta_selfie":
       return (
         <SelfieCard
@@ -288,7 +288,7 @@ function VoteOpenCard({ lang }: { lang: Language }) {
 
 // "Don't forget your bonus bets" — picks a random unfilled bet the
 // viewer hasn't set yet and surfaces it as a concrete suggestion.
-function BonusBetCard({ lang }: { lang: Language }) {
+function BonusBetCard({ lang, messageId }: { lang: Language; messageId: string }) {
   const { setTab } = useRoomTab();
   const { code, homeCountryCode } = useRoomLive();
   const suggestion = useMemo(() => {
@@ -304,11 +304,19 @@ function BonusBetCard({ lang }: { lang: Language }) {
       }
       const open = BET_DEFS_FOR_BROADCAST.filter((b) => !placed.has(b.key));
       if (open.length === 0) return null;
-      return open[Math.floor(Math.random() * open.length)];
+      // Deterministic pick: hash the messageId to an index into the
+      // open list. Same broadcast → same suggested bet across mounts
+      // / reloads / tab switches. Previously this used Math.random()
+      // which gave a fresh pick on every full page load.
+      let hash = 0;
+      for (let i = 0; i < messageId.length; i++) {
+        hash = ((hash << 5) - hash + messageId.charCodeAt(i)) | 0;
+      }
+      return open[Math.abs(hash) % open.length];
     } catch {
       return null;
     }
-  }, [code]);
+  }, [code, messageId]);
 
   // Resolve any {home}/{host} placeholders in the suggested bet label.
   // Without this we'd literally print "Where does {home} finish?" in
@@ -737,7 +745,14 @@ function ThanksCard({
     return entry?.[0] ?? null;
   }, [payload]);
 
-  const fresh = Date.now() - Date.parse(messageCreatedAt) < ANIMATION_FRESH_MS;
+  // Computed once on mount. Calling Date.now() inline in render was
+  // a smell (different value every render) and theoretically a
+  // hydration mismatch source if this card ever pre-renders on the
+  // server. `fresh` is a one-shot gate for the confetti animation;
+  // it doesn't need to track the wall clock.
+  const [fresh] = useState(
+    () => Date.now() - Date.parse(messageCreatedAt) < ANIMATION_FRESH_MS,
+  );
 
   const fireConfetti = useCallback(() => {
     void import("canvas-confetti").then(({ default: confetti }) => {
@@ -929,7 +944,10 @@ function SelfieCard({
   // animation queued; the moment the user returns to chat, the
   // useFireOnceWhen below resolves true and the flash plays.
   const [flash, setFlash] = useState(false);
-  const fresh = Date.now() - Date.parse(messageCreatedAt) < ANIMATION_FRESH_MS;
+  // Computed once on mount; see ThanksCard for the same pattern.
+  const [fresh] = useState(
+    () => Date.now() - Date.parse(messageCreatedAt) < ANIMATION_FRESH_MS,
+  );
 
   const fireFlash = useCallback(() => {
     // rAF so the row is painted before we flip flash on — otherwise

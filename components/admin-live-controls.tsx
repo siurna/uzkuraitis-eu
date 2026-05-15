@@ -131,10 +131,24 @@ export function AdminLiveControls({
     setTrivia(initialTrivia);
   }, [initialVoting, initialTally, initialTrivia]);
 
+  // Re-fire gate: 5s since the last successful fire of THIS kind in
+  // THIS room. Stops the double-tap accidental dupe (admin's thumb
+  // bounces, drawer is open, two welcome cards land back to back)
+  // without blocking deliberate re-fires (8s later is fine).
+  const REFIRE_GATE_MS = 5000;
+
   const fireBroadcast = async (kind: BroadcastKind) => {
     if (!room) {
       toast.error("Pick a room first.");
       return;
+    }
+    const recent = lastFired[kind];
+    if (recent) {
+      const age = Date.now() - Date.parse(recent);
+      if (age < REFIRE_GATE_MS) {
+        toast.warning("Just fired this. Give it a beat before resending.");
+        return;
+      }
     }
     setBusyShot(kind);
     try {

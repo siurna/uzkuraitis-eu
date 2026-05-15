@@ -79,14 +79,35 @@ export function NowPlayingTakeover() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
         >
-          {/* Frosted backdrop — blurs the room behind without re-painting
-              the whole page (backdrop-filter is GPU-cheap). */}
+          {/* Frosted backdrop. The blur RADIUS is animated (not just
+              the element's opacity, which used to leave a "snap to
+              blurry" feel as the dark overlay faded in over an
+              already-fixed 12px blur). Now the blur eases up from
+              0 → 18px, holds, then eases back to 0, in lockstep with
+              the dark wash, so the room behind dissolves into
+              out-of-focus progressively instead of glitching in.
+              We drive a CSS custom property `--bd-blur` via motion
+              and reference it from both `backdrop-filter` and
+              `-webkit-backdrop-filter` in inline style, so older
+              Safari (iOS 17 and below) — which only honours the
+              prefixed form — picks it up too. */}
           <motion.div
-            className="absolute inset-0 backdrop-blur-md"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 1, 1, 1, 0] }}
-            transition={{ duration: HOLD_MS / 1000, times: [0, 0.12, 0.5, 0.8, 1] }}
-            style={{ backgroundColor: "rgba(6,7,22,0.5)" }}
+            className="absolute inset-0"
+            initial={{ opacity: 0, ["--bd-blur" as string]: "0px" }}
+            animate={{
+              opacity: [0, 1, 1, 1, 0],
+              ["--bd-blur" as string]: ["0px", "18px", "18px", "18px", "0px"],
+            }}
+            transition={{
+              duration: HOLD_MS / 1000,
+              times: [0, 0.18, 0.5, 0.82, 1],
+              ease: "easeInOut",
+            }}
+            style={{
+              backgroundColor: "rgba(6,7,22,0.5)",
+              backdropFilter: "blur(var(--bd-blur))",
+              WebkitBackdropFilter: "blur(var(--bd-blur))",
+            }}
           />
           {/* Colour wash — two soft radial pools in the flag colours. */}
           <motion.div

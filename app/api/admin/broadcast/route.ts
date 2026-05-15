@@ -44,31 +44,37 @@ export async function POST(req: Request) {
   const room = await findRoomByCode(code);
   if (!room) return NextResponse.json({ error: "Room not found" }, { status: 404 });
 
+  // Each branch dispatches to the matching chat-system helper and
+  // collects its boolean result. The helpers swallow internal errors
+  // (DB insert / Supabase broadcast) and return false on failure, so
+  // we can surface a real "did the message land?" signal to the admin
+  // instead of returning ok:true regardless.
+  let ok = false;
   if (kind === "notifications") {
-    await postSystemMessage(room.code, room.id, { key: "sys_cta_notifications" });
+    ok = await postSystemMessage(room.code, room.id, { key: "sys_cta_notifications" });
   } else if (kind === "vote") {
-    await postSystemMessage(room.code, room.id, { key: "sys_cta_vote" });
+    ok = await postSystemMessage(room.code, room.id, { key: "sys_cta_vote" });
   } else if (kind === "bet") {
-    await postSystemMessage(room.code, room.id, { key: "sys_cta_bet" });
+    ok = await postSystemMessage(room.code, room.id, { key: "sys_cta_bet" });
   } else if (kind === "selfie") {
-    await postSystemMessage(room.code, room.id, { key: "sys_cta_selfie" });
+    ok = await postSystemMessage(room.code, room.id, { key: "sys_cta_selfie" });
   } else if (kind === "welcome") {
     // The CTA's body is fetched client-side from /api/welcome so each
     // viewer sees the markdown in their own language — server just
     // drops the marker card into chat.
-    await postSystemMessage(room.code, room.id, { key: "sys_cta_welcome" });
+    ok = await postSystemMessage(room.code, room.id, { key: "sys_cta_welcome" });
   } else if (kind === "thanks") {
     // Closing card. The card itself fires its own confetti on mount
     // client-side via ParticleLayer, so the server just posts the
     // marker.
-    await postSystemMessage(room.code, room.id, { key: "sys_cta_thanks" });
+    ok = await postSystemMessage(room.code, room.id, { key: "sys_cta_thanks" });
   } else if (kind === "drunk_poll") {
     const poll = POLLS.drunk_poll;
-    await postPollMessage(room.code, room.id, poll.question, [...poll.choices]);
+    ok = await postPollMessage(room.code, room.id, poll.question, [...poll.choices]);
   } else if (kind === "final") {
     // The scored leaderboard podium (falls back to a plain "results are
     // in" line if nothing's scoreable yet).
-    await postResultsMessage(room.code, {
+    ok = await postResultsMessage(room.code, {
       id: room.id,
       homeCountryCode: room.homeCountryCode,
       tallyEnabled: true,
@@ -86,18 +92,24 @@ export async function POST(req: Request) {
       GROUP BY v.country_code ORDER BY total_points DESC LIMIT 3`);
     const codes = rows.map((r) => r.country_code);
     if (codes.length === 0) {
-      await postSystemMessage(room.code, room.id, { key: "sys_cta_top3_empty" });
+      ok = await postSystemMessage(room.code, room.id, { key: "sys_cta_top3_empty" });
     } else {
       const list = codes.map((cc) => {
         const c = getCountry(cc);
         return c ? `${c.flag} ${c.name}` : cc.toUpperCase();
       });
-      await postSystemMessage(room.code, room.id, {
+      ok = await postSystemMessage(room.code, room.id, {
         key: "sys_cta_top3",
         arg: list.join(" · "),
         data: { codes },
       });
     }
+  }
+  if (!ok) {
+    return NextResponse.json(
+      { ok: false, error: "Broadcast helper failed (DB insert or realtime fan-out). Check server logs." },
+      { status: 502 },
+    );
   }
   return NextResponse.json({ ok: true });
 }
