@@ -121,16 +121,20 @@ const VOTE_BALLS: ReadonlyArray<{
   size: number;
   gold?: boolean;
 }> = [
-  { v: "12", size: 34, gold: true },
-  { v: "10", size: 30 },
-  { v: "8",  size: 27 },
-  { v: "7",  size: 25 },
-  { v: "6",  size: 23 },
-  { v: "5",  size: 22 },
-  { v: "4",  size: 21 },
-  { v: "3",  size: 20 },
-  { v: "2",  size: 19 },
-  { v: "1",  size: 18 },
+  // Sizes scale roughly with the point value so the eye reads the
+  // pile as a hierarchy (12 = headline ball, 1 = pebble). The golden
+  // 12 leads everything by a wide margin. Sized for the banner's
+  // ~140px-tall artwork slot — 12 alone fills ~⅓ of the column.
+  { v: "12", size: 54, gold: true },
+  { v: "10", size: 46 },
+  { v: "8",  size: 40 },
+  { v: "7",  size: 36 },
+  { v: "6",  size: 33 },
+  { v: "5",  size: 30 },
+  { v: "4",  size: 28 },
+  { v: "3",  size: 26 },
+  { v: "2",  size: 24 },
+  { v: "1",  size: 22 },
 ];
 
 function PointsBallSvg({ value, gold }: { value: string; gold?: boolean }) {
@@ -217,8 +221,15 @@ function PointsBallSvg({ value, gold }: { value: string; gold?: boolean }) {
 
 // Container dimensions and physics constants live outside the
 // component so the rAF loop closure picks them up without React deps.
+// PHYS_W is the ball-sandbox width — balls bounce within [0, PHYS_W]
+// and the container is sized to that. The wrap div in <Banner/>
+// pushes the artwork 24px past the banner's right edge via
+// `-right-6`; we counter that with marginRight: 24 below so the
+// container sits flush against the banner's right edge and no ball
+// is clipped at the rounded corner. PHYS_H matches the lg banner
+// height so the pile fills the whole vertical column.
 const PHYS_W = 144;
-const PHYS_H = 128;
+const PHYS_H = 140;
 const PHYS_FLOOR = PHYS_H - 2;
 const PHYS_GRAVITY = 1100; // px / s²
 const PHYS_RESTITUTION_WALL = 0.42;
@@ -390,8 +401,8 @@ function VoteBallsRain() {
 
   return (
     <span
-      className="relative block opacity-95 mr-2"
-      style={{ width: PHYS_W, height: PHYS_H }}
+      className="relative block opacity-95"
+      style={{ width: PHYS_W, height: PHYS_H, marginRight: 24 }}
       aria-hidden
     >
       {VOTE_BALLS.map((ball, i) => (

@@ -156,7 +156,7 @@ export function AdminBroadcasts({
         </label>
       )}
 
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-4">
         {SHOTS.map(({ kind, icon: Icon, title, desc }) => {
           const last = lastFired[kind];
           const sending = busy === kind;

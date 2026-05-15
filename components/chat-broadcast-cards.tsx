@@ -890,7 +890,10 @@ function SelfieCard({ lang, messageId }: { lang: Language; messageId: string }) 
     // Timeout is intentionally NOT cleared on unmount. setFlash on an
     // unmounted component is a no-op in React 18+; we'd rather guarantee
     // the false-flip happens than cancel it from strict-mode cleanup.
-    window.setTimeout(() => setFlash(false), 1000);
+    // 1400ms ≥ the 1.3s keyframe duration so AnimatePresence sees
+    // flash flip false AFTER the four-flash burst finishes its
+    // animate cycle, not in the middle of it.
+    window.setTimeout(() => setFlash(false), 1400);
     return () => cancelAnimationFrame(raf);
   }, [code, messageId]);
 
@@ -965,8 +968,10 @@ function SelfieCard({ lang, messageId }: { lang: Language; messageId: string }) 
           the card) instead of covering the viewport. Same gotcha
           CLAUDE.md flags for PageTransition. pointer-events-none so
           the user can keep tapping the polaroid through it.
-          Two-pulse keyframe (flash-blink-flash-out) reads more
-          "camera shutter" than the previous single fade. */}
+          Four-flash burst with sharp peaks, quick decays, and
+          slightly different intensities — reads like a real
+          paparazzi flurry instead of a soft sine wave. linear ease
+          keeps each transition sharp-edged. */}
       {typeof document !== "undefined" &&
         createPortal(
           <AnimatePresence>
@@ -974,12 +979,31 @@ function SelfieCard({ lang, messageId }: { lang: Language; messageId: string }) 
               <motion.div
                 key="paparazzi"
                 initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 1, 0.15, 0.85, 0] }}
+                animate={{
+                  opacity: [
+                    0,    // t=0:    dark
+                    1,    // t=0.04: FLASH 1 peak
+                    0.85, // t=0.10: decay
+                    0.08, // t=0.20: between
+                    0.95, // t=0.24: FLASH 2 peak
+                    0.7,  // t=0.30: decay
+                    0.05, // t=0.42: between
+                    0.9,  // t=0.46: FLASH 3 peak
+                    0.55, // t=0.54: decay
+                    0.1,  // t=0.66: between
+                    0.75, // t=0.70: FLASH 4 peak (last, dimmer)
+                    0.25, // t=0.82: decay
+                    0,    // t=1:    out
+                  ],
+                }}
                 exit={{ opacity: 0 }}
                 transition={{
-                  duration: 0.85,
-                  times: [0, 0.12, 0.36, 0.5, 1],
-                  ease: [0.22, 1, 0.36, 1],
+                  duration: 1.3,
+                  times: [
+                    0, 0.04, 0.10, 0.20, 0.24, 0.30, 0.42, 0.46,
+                    0.54, 0.66, 0.70, 0.82, 1,
+                  ],
+                  ease: "linear",
                 }}
                 className="fixed inset-0 z-[80] pointer-events-none bg-white"
                 aria-hidden

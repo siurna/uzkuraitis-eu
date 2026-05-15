@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Share2, Check, LogOut, ChevronRight, Bell, Languages, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -141,16 +142,20 @@ export function SettingsModal({
 
           <Section label={t(lang, "language")}>
             <div className="relative grid grid-cols-2 gap-1 rounded-2xl bg-black/30 ring-1 ring-white/10 p-1">
-              {/* Pill position is bound to `lang` directly — no
-                  view-transition shenanigans. The pill snaps to its
-                  new side the instant React commits, and every
-                  translated string in the drawer re-renders in the
-                  same tick. */}
+              {/* Pill position bound to `lang` directly + a CSS
+                  transition on `left` for a smooth slide between the
+                  two sides. No view-transition involved (those rounds
+                  fought a losing battle with the root snapshot
+                  ghosting the pill). The labels INSIDE the toggle are
+                  language-agnostic ("Lietuviškai" / "English") so they
+                  don't need to fade — only their text-colour swap on
+                  active-state, handled by transition-colors. */}
               <span
                 aria-hidden
                 className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-xl bg-white pointer-events-none"
                 style={{
                   left: lang === LANGUAGES[0] ? "0.25rem" : "50%",
+                  transition: "left 0.32s cubic-bezier(0.22, 1, 0.36, 1)",
                 }}
               />
               {LANGUAGES.map((code) => {
@@ -160,7 +165,7 @@ export function SettingsModal({
                     key={code}
                     type="button"
                     onClick={() => setLanguage(code)}
-                    className={`relative z-10 h-11 rounded-xl font-display text-base ${
+                    className={`relative z-10 h-11 rounded-xl font-display text-base transition-colors duration-200 ${
                       active ? "text-dark-blue" : "text-white/65"
                     }`}
                   >

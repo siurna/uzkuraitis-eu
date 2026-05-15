@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Reply, Pencil, Copy, Trash2, Smile, Loader2, Mic, Music, Trophy, Plus, ChevronRight, Users,
@@ -160,7 +161,10 @@ function AddTopTenSheet({
 // yasss / no way / so bad it's good. Stored as the emoji glyph so the
 // reaction strip below the message renders it directly.
 const QUICK_REACTS: { emoji: string; bg: string }[] = [
-  { emoji: "❤️", bg: "from-[#ff6a86] to-[#e0123f]" }, // I love it
+  // ❤️ was a dark red→cherry that swallowed the 3D Fluent heart;
+  // pulled the gradient up into flamingo pink so the glyph reads
+  // against the chip instead of disappearing into it.
+  { emoji: "❤️", bg: "from-[#ffafd1] to-[#ff5fa2]" }, // I love it
   { emoji: "😂", bg: "from-[#ffe35a] to-[#f0a400]" }, // haha
   { emoji: "🤯", bg: "from-[#cf8df7] to-[#7e2fe0]" }, // what the hell
   { emoji: "🙌", bg: "from-[#5fe3c0] to-[#0fae8a]" }, // yasss
@@ -541,6 +545,35 @@ export function ChatRow({
   // when it opens.
   useEffect(() => {
     if (menuOpen) swipe.ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menuOpen]);
+
+  // Portal-anchor for the long-press menu. The reactions toolbar +
+  // actions sheet are rendered straight onto document.body so no
+  // ancestor (chat-row's transforms from motion, the bubble's
+  // overflow-hidden / will-change-transform, etc) can break the
+  // backdrop-filter on the .glass-card surface — iOS Safari refuses
+  // to honour backdrop-filter on a descendant of any element with a
+  // transform, and motion is liberal about applying them. Measure on
+  // open + re-measure on scroll/resize so the menu tracks the bubble
+  // while it stays mounted.
+  const [bubbleRect, setBubbleRect] = useState<DOMRect | null>(null);
+  useEffect(() => {
+    if (!menuOpen) {
+      setBubbleRect(null);
+      return;
+    }
+    const measure = () => {
+      const r = swipe.ref.current?.getBoundingClientRect();
+      if (r) setBubbleRect(r);
+    };
+    measure();
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [menuOpen]);
 
@@ -1108,100 +1141,113 @@ export function ChatRow({
               )}
             </button>
 
-            <AnimatePresence>
-              {menuOpen && (
-                <>
-                  {/* reaction toolbar — sits ABOVE the bubble (iMessage-style) */}
-                  <motion.div
-                    key="reacts"
-                    initial={{ opacity: 0, scale: 0.85, y: 8 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: 6 }}
-                    transition={{ type: "spring", stiffness: 900, damping: 30, mass: 0.4 }}
-                    onClick={(e) => e.stopPropagation()}
-                    className={`absolute bottom-full mb-2 z-30 ${mine ? "right-0" : "left-0"}`}
-                  >
-                    <div className="flex items-center gap-2 p-2 rounded-full bg-black/80 ring-1 ring-white/12 backdrop-blur-md shadow-xl">
-                      {QUICK_REACTS.map(({ emoji, bg }, i) => {
-                        const picked = !!m.reactions[emoji]?.mine;
-                        const anyPicked = Object.values(m.reactions).some((r) => r.mine);
-                        // Three states:
-                        // - You picked this one     → flamingo ring + dot (full colour)
-                        // - You picked SOMETHING ELSE → grey this one out
-                        // - You haven't picked any  → ALL emojis stay full colour
-                        //   (lets the eye see the whole set as available)
-                        const showGray = anyPicked && !picked;
-                        return (
-                          <motion.button
-                            key={emoji}
-                            type="button"
-                            onClick={(e) => reactWithRain(e, emoji)}
-                            initial={{ scale: 0.4, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.4, opacity: 0 }}
-                            transition={{ delay: i * 0.012, duration: 0.05, ease: "easeOut" }}
-                            className={`relative h-11 w-11 shrink-0 rounded-full grid place-items-center text-xl leading-none
-                                        bg-gradient-to-br ${bg}
-                                        shadow-[0_4px_12px_-3px_rgba(0,0,0,0.55)] transition-transform active:scale-90
-                                        ${
-                                          picked
-                                            ? "ring-2 ring-flamingo brightness-110"
-                                            : showGray
-                                              ? "ring-1 ring-white/20 grayscale opacity-65 hover:opacity-100 hover:grayscale-0"
-                                              : "ring-1 ring-white/20"
-                                        }`}
-                          >
-                            <FluentEmoji glyph={emoji} size={26} className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
-                            {picked && (
-                              <span
-                                className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-flamingo ring-2 ring-black/80"
-                                aria-hidden
-                              />
-                            )}
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                  {/* actions — below the bubble. We finally pinned the
-                      blur: motion.div on its own (opacity-only fade,
-                      no transform) creates NO stacking context, and
-                      the inner `.glass-card` wrapper does its
-                      backdrop-filter against whatever's behind the
-                      menu in the page. Round 6 used a nested wrapper
-                      but motion had a scale animation that gave it a
-                      transform-driven stacking context, and round 7
-                      hoisted glass-card onto motion which ran into
-                      the same wall in iOS Safari (transform +
-                      backdrop-filter on the same element renders
-                      flat). Strip the transform animation and the
-                      nesting both works. */}
-                  <motion.div
-                    key="actions"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.14 }}
-                    onClick={(e) => e.stopPropagation()}
-                    className={`absolute top-full mt-2 z-30 ${mine ? "right-0" : "left-0"}`}
-                  >
-                    <div className="glass-card rounded-2xl overflow-hidden min-w-[10.5rem] flex flex-col">
-                      <MenuAction onClick={onReply} icon={Reply} label={t(lang, "chat_reply")} />
-                      {reactionTotal > 0 && (
-                        <MenuAction
-                          onClick={() => setReactorsOpen(true)}
-                          icon={Users}
-                          label={t(lang, "chat_who_reacted")}
-                        />
-                      )}
-                      {canEdit && <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />}
-                      {m.body && <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />}
-                      {mine && <MenuAction onClick={onDelete} icon={Trash2} label={t(lang, "chat_delete")} danger />}
-                    </div>
-                  </motion.div>
-                </>
+            {/* The reactions toolbar + actions sheet are PORTALED to
+                document.body. They were rendered inline as siblings
+                of the bubble before, but iOS Safari refuses to
+                honour backdrop-filter on a .glass-card descendant of
+                ANY ancestor with a transform — and motion + chat-row
+                + the bubble's own will-change-transform were all
+                contributing transforms up the chain. Portaling out
+                bypasses every one of those. Position is computed
+                from bubbleRect (measured in the useEffect above on
+                menuOpen + on scroll/resize). */}
+            {typeof document !== "undefined" &&
+              createPortal(
+                <AnimatePresence>
+                  {menuOpen && bubbleRect && (
+                    <>
+                      <motion.div
+                        key="reacts"
+                        initial={{ opacity: 0, scale: 0.85, y: 8 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 6 }}
+                        transition={{ type: "spring", stiffness: 900, damping: 30, mass: 0.4 }}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          position: "fixed",
+                          bottom: window.innerHeight - bubbleRect.top + 8,
+                          ...(mine
+                            ? { right: window.innerWidth - bubbleRect.right }
+                            : { left: bubbleRect.left }),
+                          zIndex: 70,
+                        }}
+                      >
+                        <div className="flex items-center gap-2 p-2 rounded-full bg-black/80 ring-1 ring-white/12 backdrop-blur-md shadow-xl">
+                          {QUICK_REACTS.map(({ emoji, bg }, i) => {
+                            const picked = !!m.reactions[emoji]?.mine;
+                            const anyPicked = Object.values(m.reactions).some((r) => r.mine);
+                            // Three states:
+                            // - You picked this one     → flamingo ring + dot (full colour)
+                            // - You picked SOMETHING ELSE → grey this one out
+                            // - You haven't picked any  → ALL emojis stay full colour
+                            const showGray = anyPicked && !picked;
+                            return (
+                              <motion.button
+                                key={emoji}
+                                type="button"
+                                onClick={(e) => reactWithRain(e, emoji)}
+                                initial={{ scale: 0.4, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.4, opacity: 0 }}
+                                transition={{ delay: i * 0.012, duration: 0.05, ease: "easeOut" }}
+                                className={`relative h-11 w-11 shrink-0 rounded-full grid place-items-center text-xl leading-none
+                                            bg-gradient-to-br ${bg}
+                                            shadow-[0_4px_12px_-3px_rgba(0,0,0,0.55)] transition-transform active:scale-90
+                                            ${
+                                              picked
+                                                ? "ring-2 ring-flamingo brightness-110"
+                                                : showGray
+                                                  ? "ring-1 ring-white/20 grayscale opacity-65 hover:opacity-100 hover:grayscale-0"
+                                                  : "ring-1 ring-white/20"
+                                            }`}
+                              >
+                                <FluentEmoji glyph={emoji} size={26} className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
+                                {picked && (
+                                  <span
+                                    className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-flamingo ring-2 ring-black/80"
+                                    aria-hidden
+                                  />
+                                )}
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                      <motion.div
+                        key="actions"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.14 }}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          position: "fixed",
+                          top: bubbleRect.bottom + 8,
+                          ...(mine
+                            ? { right: window.innerWidth - bubbleRect.right }
+                            : { left: bubbleRect.left }),
+                          zIndex: 70,
+                        }}
+                      >
+                        <div className="glass-card rounded-2xl overflow-hidden min-w-[10.5rem] flex flex-col">
+                          <MenuAction onClick={onReply} icon={Reply} label={t(lang, "chat_reply")} />
+                          {reactionTotal > 0 && (
+                            <MenuAction
+                              onClick={() => setReactorsOpen(true)}
+                              icon={Users}
+                              label={t(lang, "chat_who_reacted")}
+                            />
+                          )}
+                          {canEdit && <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />}
+                          {m.body && <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />}
+                          {mine && <MenuAction onClick={onDelete} icon={Trash2} label={t(lang, "chat_delete")} danger />}
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>,
+                document.body,
               )}
-            </AnimatePresence>
           </div>
 
           {translateOn && !mine && m.kind === "text" && m.body && (

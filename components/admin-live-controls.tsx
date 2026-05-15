@@ -276,7 +276,7 @@ export function AdminLiveControls({
           rooms.find((r) => r.code === room)?.name ?? "No room selected"
         }
       >
-        <ul className="flex flex-col gap-1">
+        <ul className="flex flex-col gap-3">
           {SHOTS.map(({ kind, title, desc, icon: Icon }) => {
             const last = lastFired[kind];
             const sending = busyShot === kind;

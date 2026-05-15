@@ -86,8 +86,14 @@ export function LeaderboardProvider({ children }: { children: ReactNode }) {
         const res = await fetch(`/api/rooms/${code}/leaderboard`, { cache: "no-store" });
         if (!res.ok) return;
         const data = (await res.json()) as LeaderboardPayload;
-        if (data.hasResults) setPayload(data);
-        else setPayload(null);
+        // Always store the response — even when hasResults is false,
+        // the payload still carries the OFFICIAL placements (admin
+        // entered the top-10 but hasn't flipped tallyEnabled yet),
+        // and consumers like the ThanksCard winning-country heart
+        // need them regardless of whether the scoreboard reveal
+        // has happened. The leaderboard ROWS themselves still gate
+        // their own render on hasResults downstream.
+        setPayload(data);
       } catch {
         /* network blip — try again next event */
       }
