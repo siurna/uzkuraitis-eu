@@ -171,6 +171,13 @@ export function ChatTriviaCard({
     if (!card) return;
     if (flashFiredRef.current) return;
     if (phase.kind === "answered") return;
+    // Expired card: the country has already left the stage, so the
+    // user can't answer this anymore (the closing effect below will
+    // settle phase to "closed" — but state writes don't apply in
+    // the same render cycle, so this effect would still fire the
+    // breaking-news flash on first mount for a card the user is
+    // just scrolling back to). Skip directly.
+    if (!isOnStage) return;
     // Belt to the phase-state braces: the restore-from-localStorage
     // effect above sets phase to "answered" but state writes don't
     // apply within the same render cycle, so on FIRST mount this
@@ -214,7 +221,7 @@ export function ChatTriviaCard({
     // setFlashing(false) timeout intentionally has no cleanup;
     // setFlashing on unmount is a no-op in React 18+.
     window.setTimeout(() => setFlashing(false), FLASH_MS);
-  }, [card, phase.kind, countryCode, roomCode]);
+  }, [card, phase.kind, isOnStage, countryCode, roomCode]);
 
   // Country navigated away while this player was still on the idle
   // buttons view → close the card (reveal answer, disable buttons).
