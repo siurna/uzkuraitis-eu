@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useEventListener } from "@/lib/realtime";
+import { useEventListener, useStatus } from "@/lib/realtime";
 import { useRoomLive } from "@/components/room-shell";
 import type {
   BetBreakdown,
@@ -132,6 +132,23 @@ export function LeaderboardProvider({ children }: { children: ReactNode }) {
       if (refetchTimer.current) clearTimeout(refetchTimer.current);
     };
   }, []);
+
+  // Reconnect catch-up. `leaderboard:updated` broadcasts that landed
+  // while the websocket was reconnecting are lost forever otherwise;
+  // refetch on the reconnecting → connected edge so the home banner
+  // + results tab don't sit on a stale snapshot.
+  const realtimeStatus = useStatus();
+  const wasReconnecting = useRef(false);
+  useEffect(() => {
+    if (realtimeStatus === "reconnecting" || realtimeStatus === "disconnected") {
+      wasReconnecting.current = true;
+      return;
+    }
+    if (realtimeStatus === "connected" && wasReconnecting.current) {
+      wasReconnecting.current = false;
+      refresh();
+    }
+  }, [realtimeStatus, refresh]);
 
   return <Context.Provider value={{ payload, refresh }}>{children}</Context.Provider>;
 }

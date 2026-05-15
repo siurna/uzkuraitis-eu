@@ -95,7 +95,19 @@ export async function POST(req: Request, { params }: RouteCtx) {
     added = false;
   }
 
-  await broadcastToRoom(code, { type: "chat:react", id });
+  // Delta payload: emoji + added + sessionId + name. Listeners patch
+  // the affected message's reactions map locally instead of firing a
+  // full 50-row GET — at climax 30 viewers reacting was previously
+  // ~3000 GETs/min, now ~zero. A throttled refetch still runs as a
+  // safety net for clients that missed the broadcast (see chat-panel).
+  await broadcastToRoom(code, {
+    type: "chat:react",
+    id,
+    emoji,
+    added,
+    sessionId: session,
+    name,
+  });
   return NextResponse.json({ ok: true, added });
 }
 

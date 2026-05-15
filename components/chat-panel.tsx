@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import {
   useEventListener,
   useOthers,
+  useStatus,
   useUpdateMyPresence,
   type ChatMessagePayload,
 } from "@/lib/realtime";
@@ -86,6 +87,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const lang = useLang();
   const others = useOthers();
   const updatePresence = useUpdateMyPresence();
+  const realtimeStatus = useStatus();
   const { name, avatarId, sessionId } = useIdentity();
   const mySession = sessionId();
 
@@ -321,6 +323,25 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     }, 600);
   }, [runFetch]);
 
+  // Reconnect catch-up. Supabase broadcasts are advisory; if our
+  // websocket flips to reconnecting (CHANNEL_ERROR / TIMED_OUT)
+  // and recovers, anything that landed in the gap is lost forever
+  // unless we explicitly refetch. Track the previous status in a
+  // ref and fire a full window pull on the reconnecting → connected
+  // edge. The initial connecting → connected transition is gated by
+  // `wasReconnecting` so the mount-time fetch doesn't double-fire.
+  const wasReconnecting = useRef(false);
+  useEffect(() => {
+    if (realtimeStatus === "reconnecting" || realtimeStatus === "disconnected") {
+      wasReconnecting.current = true;
+      return;
+    }
+    if (realtimeStatus === "connected" && wasReconnecting.current) {
+      wasReconnecting.current = false;
+      void runFetch();
+    }
+  }, [realtimeStatus, runFetch]);
+
   // Mount: paint the last-seen messages from sessionStorage instantly so
   // switching to the Chat tab isn't a blank flash, then refresh in the
   // background.
@@ -507,6 +528,13 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       type?: string;
       id?: string;
       message?: ChatMessagePayload;
+      // Delta fields on chat:react — present on the current server
+      // so listeners can patch reactions in place. Falls back to the
+      // throttled refetch when fields are missing (old server).
+      emoji?: string;
+      added?: boolean;
+      sessionId?: string;
+      name?: string;
     };
     if (ev.type === "chat:delete") {
       if (ev.id) setMessages((prev) => prev.filter((m) => m.id !== ev.id));
@@ -598,13 +626,61 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       fetchMessages();
       return;
     }
-    // chat:react used to refetch the entire 50-msg window for every
-    // toggle. With N viewers × M reactions/min during a song's
-    // climax that's a thundering-herd at the API. We throttle to
-    // one refetch per second; broadcasts that land during the
-    // cooldown still register as "we need another refresh once the
-    // window opens" via the trailing flag.
-    if (ev.type === "chat:react") scheduleReactRefetch();
+    // chat:react: prefer the in-place delta patch when the server
+    // included `{emoji, added, sessionId, name}` in the payload —
+    // skips the 50-row GET entirely. At climax 30 viewers reacting
+    // was previously ~3000 GETs/min; with the delta path it's
+    // essentially zero. The throttled refetch still runs as a
+    // safety net (handles missed broadcasts / older payload shape).
+    if (ev.type === "chat:react" && ev.id) {
+      const hasDelta =
+        typeof ev.emoji === "string" &&
+        typeof ev.added === "boolean" &&
+        typeof ev.sessionId === "string" &&
+        typeof ev.name === "string";
+      if (hasDelta) {
+        const id = ev.id;
+        const emoji = ev.emoji as string;
+        const added = ev.added as boolean;
+        const reactorSession = ev.sessionId as string;
+        const reactorName = ev.name as string;
+        const isMine = reactorSession === mySession;
+        setMessages((prev) => {
+          const idx = prev.findIndex((m) => m.id === id);
+          if (idx < 0) return prev;
+          const m = prev[idx];
+          const nextReactions = { ...m.reactions };
+          const slot = nextReactions[emoji]
+            ? {
+                count: nextReactions[emoji].count,
+                names: nextReactions[emoji].names.slice(),
+                mine: nextReactions[emoji].mine,
+              }
+            : { count: 0, names: [] as string[], mine: false };
+          if (added) {
+            slot.count += 1;
+            slot.names.push(reactorName);
+            if (isMine) slot.mine = true;
+          } else {
+            slot.count = Math.max(0, slot.count - 1);
+            const ni = slot.names.indexOf(reactorName);
+            if (ni >= 0) slot.names.splice(ni, 1);
+            if (isMine) slot.mine = false;
+          }
+          if (slot.count <= 0) {
+            delete nextReactions[emoji];
+          } else {
+            nextReactions[emoji] = slot;
+          }
+          const next = prev.slice();
+          next[idx] = { ...m, reactions: nextReactions };
+          return next;
+        });
+        return;
+      }
+      // No delta (older server) — fall back to the throttled refetch.
+      scheduleReactRefetch();
+    }
     // chat:edit carries the full updated payload so we can patch
     // the row in place — no follow-up GET, no waiting for the
     // reaction throttle to flush.

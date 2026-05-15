@@ -99,7 +99,19 @@ export type ChatNewEvent = {
   quiet?: boolean;
   message?: ChatMessagePayload;
 };
-export type ChatReactEvent = { type: "chat:react"; id: string };
+export type ChatReactEvent = {
+  type: "chat:react";
+  id: string;
+  // Delta payload — present on broadcasts from the current server.
+  // When all four are set the listener can patch the affected
+  // message's reactions map locally instead of firing a full
+  // 50-row GET. Falls back to refetch when fields are missing
+  // (older server) or when the message id isn't in the window.
+  emoji?: string;
+  added?: boolean;
+  sessionId?: string;
+  name?: string;
+};
 export type ChatDeleteEvent = { type: "chat:delete"; id: string };
 // Edit echo carries the new body + meta directly so listeners can
 // patch the existing row in place. Previously edits piggybacked on
