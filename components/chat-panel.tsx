@@ -752,6 +752,24 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                 mine: nextReactions[emoji].mine,
               }
             : { count: 0, names: [] as string[], mine: false };
+          // Belt-and-braces safety net for Supabase Realtime's
+          // at-least-once delivery: the pending counter above
+          // dedups the first echo of each optimistic op, but if the
+          // broadcast layer redelivers the same message later (no
+          // ID on broadcasts, so the counter is already empty), we
+          // can still detect it by checking whether the state
+          // already reflects this delta. For our own session: if
+          // the slot.mine flag already matches the direction we'd
+          // be applying, the echo is a duplicate — skip. For
+          // cross-tab / cross-session adds, this guard correctly
+          // doesn't fire (other-session adds don't move slot.mine).
+          if (isMine && added && slot.mine) return prev;
+          if (isMine && !added && !slot.mine) return prev;
+          // Same safety net for non-me reactors: if their name is
+          // already in the names list and they're adding, or NOT
+          // in the list and they're removing, this is a redelivery.
+          if (!isMine && added && slot.names.includes(reactorName)) return prev;
+          if (!isMine && !added && !slot.names.includes(reactorName)) return prev;
           if (added) {
             slot.count += 1;
             slot.names.push(reactorName);
@@ -1530,23 +1548,13 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           )}
         </AnimatePresence>
 
-        {/* Composer. Wrapper itself is transparent — the dark-to-fade
-            mask lives in a separate strip positioned ABOVE the pill
-            (see the .composer-fade-strip below) so the pill never sits
-            on its own solid-dark plate. Old layout had `pt-8` + a
-            gradient on the wrapper, which created a black band
-            wrapping the pill on focus-state + on the small gap
-            between the pill and the dock, especially against the
-            violet page bg. */}
-        <div className="shrink-0 pb-2 pt-2 relative">
-          {/* Fade strip — short, smooth, only above the pill. Sits in
-              the wrapper's own padding region; `bottom-full` floats
-              it into the messages-list area above. */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-full h-10
-                       bg-gradient-to-t from-dark-blue-900/95 to-transparent"
-          />
+        {/* Composer. No custom fade strip on the wrapper — the
+            messages list above already wears `.fade-scroll-y`
+            (mask-image, see globals.css) which softly dissolves its
+            top + bottom edges into the chrome. Wrapper is transparent
+            so the page bg shows through and the pill provides its
+            own backdrop. */}
+        <div className="shrink-0 pb-2 pt-2">
           {/* Typing indicator */}
           {typingNames.length > 0 && !editing && (
             <p className="px-3 pb-1 text-[11px] text-white/45">
