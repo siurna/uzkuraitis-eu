@@ -52,8 +52,16 @@ export function NowPlayingTakeover() {
   // glyph-width) — the display face is condensed so ~0.55em per char.
   // Clamped so short names don't get cartoonishly huge or long ones
   // (e.g. "Jungtinė Karalystė") shrink to nothing.
+  //
+  // The 80 in the numerator is the EFFECTIVE width budget in vw:
+  // viewport-wide (100vw) minus the takeover's own px-8 padding
+  // (~16vw on a 393px iPhone) leaves ~84vw of drawable space, and a
+  // small safety margin gets us to 80. The old value (94) assumed
+  // a max-w-[94vw] inner cap that's since been replaced with
+  // max-w-full — the higher constant was sizing the type as if it
+  // had 14vw more to work with than the new container actually offers.
   const longestWord = name.split(/\s+/).reduce((a, w) => Math.max(a, w.length), 1);
-  const nameVw = Math.max(7, Math.min(30, (94 / Math.max(longestWord, 5)) * 1.7));
+  const nameVw = Math.max(7, Math.min(28, (80 / Math.max(longestWord, 5)) * 1.7));
 
   return createPortal(
     <AnimatePresence>

@@ -17,8 +17,13 @@ export default function manifest(): MetadataRoute.Manifest {
       "Cast your votes and watch live with friends. United by music, Vienna 2026.",
     start_url: "/",
     display: "standalone",
-    background_color: "#10142a",
-    theme_color: "#10142a",
+    // background_color is what iOS PWA paints under the home-indicator
+    // area + the cold-start splash; theme_color is what fills behind
+    // the status bar at the top. Both tuned to sit INSIDE the brand
+    // bloom so the iOS chrome zones don't read as a black slab
+    // against the purple page underneath.
+    background_color: "#1a1334",
+    theme_color: "#1a1334",
     icons: [
       {
         src: `${ICON_BUCKET}/icon-192.png`,
