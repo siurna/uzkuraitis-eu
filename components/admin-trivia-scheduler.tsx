@@ -40,43 +40,44 @@ export function AdminTriviaScheduler({
   } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [firing, setFiring] = useState(false);
-  // Read lastFired SYNCHRONOUSLY on first render. The previous version
-  // populated this in a post-mount useEffect, so on first mount the
-  // dedup check (in the nowPlayingCode effect below) saw lastFired
-  // as null and ALWAYS armed the timer regardless of whether the
-  // same country had already been fired in this browser. By the time
-  // the localStorage read landed and triggered a re-run, the
-  // lastScheduled ref had already latched, blocking the re-evaluation.
-  // Lazy initialiser fixes the race once and for all.
-  const [lastFired, setLastFired] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
+  // lastFired starts as null on both server + client so the first
+  // render is hydration-stable; the localStorage read runs in an
+  // effect below and the nowPlayingCode effect re-evaluates whenever
+  // lastFired changes so a late-loading dedup hit still cancels the
+  // armed timer (see the effect below for the late-cancel branch).
+  const [lastFired, setLastFired] = useState<string | null>(null);
+  useEffect(() => {
     try {
-      return localStorage.getItem(LAST_FIRED_KEY);
+      const v = localStorage.getItem(LAST_FIRED_KEY);
+      if (v) setLastFired(v);
     } catch {
-      return null;
+      /* localStorage blocked / private mode */
     }
-  });
+  }, []);
   const [confirmResend, setConfirmResend] = useState(false);
   const lastScheduled = useRef<string | null>(null);
 
   // Arm a timer when nowPlayingCode changes, UNLESS the new country
-  // matches the last successfully-fired one. The lastScheduled ref
-  // dedupes RE-runs of this effect for the SAME country (e.g. when
-  // lastFired changes, the deps re-fire). The localStorage check is
-  // already correct from first render (lazy initialiser above).
+  // matches the last successfully-fired one. lastFired loads from
+  // localStorage in a post-mount effect (above) for SSR-stability, so
+  // this effect can run BEFORE the dedup data has arrived; we re-run
+  // on every lastFired change to cover the late-arrival case.
   useEffect(() => {
     if (!nowPlayingCode) {
       setTarget(null);
       lastScheduled.current = null;
       return;
     }
-    if (lastScheduled.current === nowPlayingCode) return;
-    lastScheduled.current = nowPlayingCode;
+    // Dedup re-check on every render (incl. the one right after
+    // lastFired hydrates from localStorage). Cancels any armed
+    // timer if it turns out the dedup hit applies.
     if (nowPlayingCode === lastFired) {
-      // Dedup hit. Don't arm; UI shows the resend affordance.
       setTarget(null);
+      lastScheduled.current = nowPlayingCode;
       return;
     }
+    if (lastScheduled.current === nowPlayingCode) return;
+    lastScheduled.current = nowPlayingCode;
     armFresh(nowPlayingCode);
   }, [nowPlayingCode, lastFired]);
 
