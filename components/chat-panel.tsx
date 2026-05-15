@@ -1473,7 +1473,19 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           // We deliberately don't dismiss the keyboard on touch-move:
           // every modern chat lets you keep typing while scrolling the
           // history. Tap the bubble or the composer Done key to close.
-          className="flex-1 min-h-0 overflow-y-auto py-4 flex flex-col gap-3 fade-scroll-y"
+          // `justify-end` so messages stack at the BOTTOM of the
+          // scroll container when there are too few to fill it. The
+          // panel's height is now `viewport - dock - safe-bottom`
+          // (the dock is portaled out and its space is reserved
+          // here), which means with two messages in the room the
+          // list expands to ~80vh and the last message floats up
+          // near the top with a giant purple void between it and
+          // the composer. With `justify-end`, the list still scrolls
+          // when content overflows (justify-content has no effect on
+          // overflowing content) but underflowing content pins to
+          // the bottom edge — latest row sits flush above the
+          // composer pill, no void.
+          className="flex-1 min-h-0 overflow-y-auto py-4 flex flex-col justify-end gap-3 fade-scroll-y"
           onClick={() => menuFor && setMenuFor(null)}
         >
           {loading ? (

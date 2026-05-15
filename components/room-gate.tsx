@@ -246,11 +246,14 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
     <main
       className={`relative h-dvh overflow-hidden flex flex-col items-center px-4 ${
         // Three layout cases:
-        //   1. rehydrate state — justify-center INSIDE the safe-area
-        //      insets. On iOS PWA, min-h-dvh covers the notch + home-
-        //      indicator areas, so a plain justify-center centred
-        //      against geometric middle (slightly low against the
-        //      visible middle). Safe-area padding pulls it back.
+        //   1. rehydrate state — plain `justify-center` on the full
+        //      h-dvh. The earlier `pt-safe-top + pb-safe-bottom`
+        //      version asymmetrically padded the top (dynamic-island
+        //      ~60px) more than the bottom (home-indicator ~34px),
+        //      which left the centred motion.div sitting visibly
+        //      LOW. The heart + RECONNECTING text are small and
+        //      sit nowhere near the system chrome, so dropping the
+        //      safe-area padding here doesn't risk an overlap.
         //   2. gate + install banner showing — mobile pulls logo+form
         //      up (pt-[18dvh] + pb-32) so they balance ABOVE the
         //      install CTA that sits near the bottom. Desktop
@@ -260,7 +263,7 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
         //      on every viewport. The pull-up would just shove the
         //      logo into the top of the screen for no reason.
         rehydrating
-          ? "justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+          ? "justify-center"
           : showInstallBanner
             ? "pt-[18dvh] pb-32 sm:justify-center sm:pt-12 sm:pb-12"
             : "justify-center py-12"
