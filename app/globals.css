@@ -252,18 +252,18 @@
     background:
       radial-gradient(ellipse at top, oklch(28% 0.12 290 / 0.32), transparent 65%),
       radial-gradient(ellipse at bottom, oklch(40% 0.18 336 / 0.32), transparent 70%),
-      /* Thin bottom-edge gradient that guarantees the home-indicator
-         area on iOS PWA reads as the brand violet/flamingo, not the
-         dark base bleeding through where the bottom radial bloom
-         fades. Solid at the very bottom edge, transparent past 18%. */
-      linear-gradient(0deg,
-        oklch(22% 0.13 320) 0%,
-        oklch(20% 0.10 295 / 0.6) 12%,
-        transparent 22%
-      ),
       url("/images/participant-backdrop@2x.webp") center/cover no-repeat,
       var(--color-dark-blue-900);
-    background-blend-mode: screen, screen, normal, soft-light;
+    background-blend-mode: screen, screen, soft-light;
+    /* Was: a `linear-gradient(0deg, oklch(22% .13 320) 0%, … 22%)`
+       in this stack to "guarantee the home-indicator area reads as
+       the brand violet" on iOS PWA. But 22% of html-height on a
+       modern iPhone is ~200px — far past the ~34px home-indicator
+       inset — which painted a visible violet band across the bottom
+       of the entrance / any short page. Removed: the `html`
+       background-color (#1a1334, same brand violet) already covers
+       the home-indicator area + any rubber-band overscroll, no
+       gradient strip needed. */
   }
 
   h1, h2, h3, .font-display {
