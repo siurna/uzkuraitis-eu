@@ -182,7 +182,7 @@ const S = {
   rules_bets_h:      { en: "Bonus bets", lt: "Papildomi statymai" },
   rules_bets_intro:  { en: "Every bet is optional. You only score if you call it right; a skipped bet is just 0.", lt: "Taškų gausi tik pataikęs. Praleistas statymas, tiesiog 0. Tai,.. ko nesurizikavus?" },
   rules_trivia_h:    { en: "Trivia", lt: "Viktorina" },
-  rules_trivia_b:    { en: "Each country on stage may get a quick trivia question. The first few players to answer correctly score +2 points; everyone else (and anyone who skips or gets it wrong) takes a 0. Speed matters.", lt: "Kiekviena scenoje pasirodanti šalis gali sulaukti greito viktorinos klausimo. Pirmieji teisingai atsakę gauna po +2 taškus; kiti (taip pat praleidę ar suklydę) lieka su 0. Greitis lemia." },
+  rules_trivia_b:    { en: "During each performance, a trivia question pops up on screen at some point. The first few to answer correctly score +2 points each; everyone else (and anyone who skips or gets it wrong) takes a 0. Speed is everything, don't snooze!", lt: "Kiekvieno pasirodymo metu, kažkada ekrane sulauksi viktorinos klausimo. Pirmieji teisingai atsakę gauna po +2 taškus; kiti (taip pat praleidę ar suklydę) lieka su 0. Greitis lemia viską, nežiopsok!" },
   rules_highlights_b:{ en: "When a chat message you sent picks up enough reactions it becomes a highlight: +2 points each, up to +12. (You have to have voted to score.)", lt: "Kai tavo žinutė pokalbyje surenka daug reakcijų, ji tampa vakaro akcentu: po +2 t. už kiekvieną, iki +12. Taškai skaičiuojami tik pateikusiems savo TOP 10!" },
 
   // ── Room tab bar ─────────────────────────────────────────────────
