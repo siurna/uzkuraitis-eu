@@ -372,6 +372,7 @@ export { renderBanter };
 function ChatRowInner({
   message: m,
   mine,
+  isModerator = false,
   parent,
   showHeader,
   menuOpen,
@@ -391,6 +392,13 @@ function ChatRowInner({
 }: {
   message: Message;
   mine: boolean;
+  /** Viewer holds the chat-admin powerup (lib/use-chat-admin.ts).
+   *  When true, the long-press menu surfaces a Delete on EVERY
+   *  message — own, others', and the system / commentator broadcasts
+   *  — and the server validates the actual delete from the httpOnly
+   *  cookie. Defaults to false so non-moderator callers don't have
+   *  to thread the prop. */
+  isModerator?: boolean;
   parent: Message | null;
   showHeader: boolean;
   menuOpen: boolean;
@@ -529,7 +537,11 @@ function ChatRowInner({
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longFired = useRef(false);
   const startPress = () => {
-    if (isSystem || isNowPlaying || isResults) return;
+    // System / now-playing / results rows have no per-message
+    // affordances for regular viewers, so the long-press menu is
+    // suppressed there. The moderator IS allowed to long-press them
+    // — that's how they delete a misfired broadcast / clean up.
+    if (!isModerator && (isSystem || isNowPlaying || isResults)) return;
     longFired.current = false;
     pressTimer.current = setTimeout(() => {
       longFired.current = true;
@@ -655,8 +667,9 @@ function ChatRowInner({
         initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="my-1 px-1"
+        className="my-1 px-1 relative"
       >
+        {isModerator && <ModDeleteHandle onDelete={onDelete} />}
         {/* Thicker turquoise border (ring-[3px]) so the card reads as a
             clear "Big Deal among the surrounding chatter" frame.
             Gradient is intentionally calmer than the earlier
@@ -768,8 +781,9 @@ function ChatRowInner({
         initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="my-1"
+        className="my-1 relative"
       >
+        {isModerator && <ModDeleteHandle onDelete={onDelete} />}
         <div
           className="p-[2px] rounded-2xl"
           style={{ background: `linear-gradient(120deg, ${c1}, ${c2})` }}
@@ -870,7 +884,7 @@ function ChatRowInner({
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          className="px-1"
+          className="px-1 relative"
         >
           <ChatBroadcastCard
             meta={sys}
@@ -878,6 +892,7 @@ function ChatRowInner({
             messageId={m.id}
             messageCreatedAt={m.createdAt}
           />
+          {isModerator && <ModDeleteHandle onDelete={onDelete} />}
         </motion.li>
       );
     }
@@ -885,8 +900,9 @@ function ChatRowInner({
     // the tiny muted pill — they're meta-narration, not a host shout.
     const text = sys?.sysKey ? tDyn(lang, sys.sysKey, sys.sysArg ?? undefined) : m.body;
     return (
-      <motion.li initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center">
+      <motion.li initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center items-center gap-1.5">
         <span className="text-[11px] text-white/40 px-3 py-1 rounded-full bg-white/[0.03]">{text}</span>
+        {isModerator && <ModDeleteHandle inline onDelete={onDelete} />}
       </motion.li>
     );
   }
@@ -1212,7 +1228,13 @@ function ChatRowInner({
                       )}
                       {canEdit && <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />}
                       {m.body && <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />}
-                      {mine && <MenuAction onClick={onDelete} icon={Trash2} label={t(lang, "chat_delete")} danger />}
+                      {/* Author can delete own messages; moderator
+                          can delete ANY message in the room — including
+                          system / commentator broadcasts — server
+                          re-validates from the chat-admin cookie. */}
+                      {(mine || isModerator) && (
+                        <MenuAction onClick={onDelete} icon={Trash2} label={t(lang, "chat_delete")} danger />
+                      )}
                     </div>
                   </motion.div>
                 </>
@@ -1326,6 +1348,44 @@ function ChatRowInner({
 // stable from the messages array unless its row actually changed.
 // Net effect: rows skip render unless their own props really moved.
 export const ChatRow = memo(ChatRowInner);
+
+// A tiny ✕ button surfaced on system / broadcast / now-playing /
+// results rows ONLY when the viewer holds the chat-admin powerup
+// (lib/use-chat-admin.ts). One tap deletes — the server validates
+// the deletion from the httpOnly cookie before touching the DB, so
+// even a malicious client can't fire this without the actual
+// powerup. No confirm sheet: a misfired broadcast can be re-sent
+// from /admin/live, and second-guessing every cleanup gets in the
+// way of moderation. The regular long-press menu carries the
+// delete affordance for normal user messages; this one exists
+// because system rows have no menu of their own.
+function ModDeleteHandle({
+  onDelete,
+  inline = false,
+}: {
+  onDelete: () => void;
+  inline?: boolean;
+}) {
+  // `inline`: use when the parent is an inline flex row (e.g. the
+  // tiny muted "someone voted" pill) and we want the button to sit
+  // alongside the content. Default treats the parent as `relative`
+  // and pins the button to the top-right corner.
+  return (
+    <button
+      type="button"
+      onClick={onDelete}
+      aria-label="Delete (mod)"
+      title="Delete (mod)"
+      className={
+        inline
+          ? "shrink-0 grid place-items-center h-5 w-5 rounded-full bg-error/15 ring-1 ring-error/35 text-error/85 hover:bg-error/25 transition"
+          : "absolute -top-1 -right-1 z-20 grid place-items-center h-6 w-6 rounded-full bg-error/20 ring-1 ring-error/45 text-error backdrop-blur hover:bg-error/30 transition"
+      }
+    >
+      <Trash2 className="h-3 w-3" />
+    </button>
+  );
+}
 
 // Trivia firesAt gate. The server stamps each trivia message with a
 // random firesAt 30s–3:30 after the country goes live; this wrapper

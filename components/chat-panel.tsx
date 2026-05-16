@@ -41,6 +41,7 @@ import { prefetchProfile } from "@/components/profile-sheet";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 import { haptic } from "@/lib/haptics";
+import { setChatAdmin, useChatAdmin } from "@/lib/use-chat-admin";
 
 // How many messages we keep in the DOM. The API already windows to the
 // last ~50 per fetch; this is the cap once "load earlier" pages kick in.
@@ -96,6 +97,7 @@ function dayLabel(iso: string, lang: "en" | "lt"): string {
 // ---------------------------------------------------------------------
 
 export function ChatPanel({ active = true }: { active?: boolean }) {
+  const isModerator = useChatAdmin();
   const { code, nowPlayingCode } = useRoomLive();
   const lang = useLang();
   // Roster from the REST participants poll. Replaces useOthers() —
@@ -1109,7 +1111,25 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         if (res.status === 429) toast.error(t(lang, "chat_slow_down"));
         return;
       }
-      const data = (await res.json()) as { id?: string };
+      const data = (await res.json()) as {
+        id?: string;
+        adminGranted?: boolean;
+        adminRevoked?: boolean;
+      };
+      // Moderator powerup toggled. The server intercepted the secret
+      // and never created a chat row, so retire the optimistic stub
+      // we already appended (no `id` came back) and flip the local
+      // hint that paints the dot on the avatar.
+      if (data.adminGranted || data.adminRevoked) {
+        setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+        setChatAdmin(!!data.adminGranted);
+        toast.success(
+          data.adminGranted
+            ? t(lang, "chat_admin_on")
+            : t(lang, "chat_admin_off"),
+        );
+        return;
+      }
       if (data.id) {
         // The broadcast handler may have already swapped the optimistic
         // row for the real one. In that case the optimistic id is gone
@@ -1559,6 +1579,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                     <ChatRow
                       message={m}
                       mine={m.sessionId === mySession}
+                      isModerator={isModerator}
                       parent={m.replyTo ? byId.get(m.replyTo) ?? null : null}
                       showHeader={!sameAuthor}
                       menuOpen={menuFor === m.id}

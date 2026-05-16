@@ -232,6 +232,8 @@ const S = {
   // (author deleted it OR it scrolled out of the rendered window).
   chat_reply_deleted: { en: "(message removed)", lt: "(žinutė pašalinta)" },
   chat_delete:       { en: "Delete", lt: "Ištrinti" },
+  chat_admin_on:     { en: "Moderator mode on", lt: "Moderatoriaus režimas įjungtas" },
+  chat_admin_off:    { en: "Moderator mode off", lt: "Moderatoriaus režimas išjungtas" },
   chat_card:         { en: "card", lt: "kortelė" },
   chat_who_reacted:  { en: "Who reacted?", lt: "Kas reagavo?" },
   chat_reactors_title: { en: "Reactions", lt: "Reakcijos" },
