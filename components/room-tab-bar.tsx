@@ -151,14 +151,43 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
                         them — no per-country contrast tuning
                         required. */}
                     {id === "chat" && (
+                      // Lens-pull transition: each new country wash
+                      // arrives as a tiny focal point at the centre,
+                      // briefly defocused (blur), then expands outward
+                      // to fill the pill while pulling sharp. Reads
+                      // as the colours being drawn through a lens
+                      // rather than a flat opacity crossfade. The
+                      // outgoing wash is sucked back into the lens
+                      // (clip closes + blur returns) so the swap
+                      // looks symmetric. `clip-path: circle()` is
+                      // animatable in WebKit/Blink/Gecko; the
+                      // `inset-0 rounded-[22px]` stays an outer
+                      // bound so the iris never overshoots the
+                      // pill's rounded corners.
                       <AnimatePresence mode="wait">
                         {nowPlayingCode && (
                           <motion.span
                             key={`chat-wash-${nowPlayingCode}`}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.5, ease: "easeOut" }}
+                            initial={{
+                              clipPath: "circle(0% at 50% 50%)",
+                              filter: "blur(10px) saturate(1.4)",
+                              opacity: 0,
+                            }}
+                            animate={{
+                              clipPath: "circle(140% at 50% 50%)",
+                              filter: "blur(0px) saturate(1)",
+                              opacity: 1,
+                            }}
+                            exit={{
+                              clipPath: "circle(0% at 50% 50%)",
+                              filter: "blur(10px) saturate(1.4)",
+                              opacity: 0,
+                            }}
+                            transition={{
+                              clipPath: { duration: 0.65, ease: [0.22, 1, 0.36, 1] },
+                              filter: { duration: 0.5, ease: "easeOut" },
+                              opacity: { duration: 0.32 },
+                            }}
                             className="absolute inset-0 rounded-[22px]"
                             style={{
                               background: `linear-gradient(135deg, color-mix(in oklch, ${countryColors(nowPlayingCode)[0]} 60%, var(--color-dark-blue-900)), color-mix(in oklch, ${countryColors(nowPlayingCode)[1]} 60%, var(--color-dark-blue-900)))`,
