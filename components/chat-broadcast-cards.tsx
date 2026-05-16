@@ -582,6 +582,9 @@ function WelcomeChatCard({ lang }: { lang: Language }) {
         .catch(() => {});
     };
     load();
+    // Tell WelcomeBanner on the Home tab to refetch too — it loaded on
+    // mount before this broadcast arrived and won't update otherwise.
+    window.dispatchEvent(new Event("uzk:welcome-refresh"));
     window.addEventListener("uzk:welcome-refresh", load);
     return () => {
       alive = false;

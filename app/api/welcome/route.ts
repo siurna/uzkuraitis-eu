@@ -14,9 +14,6 @@ export async function GET() {
     welcome_md_en: rows.find((r) => r.key === "welcome_md_en")?.value ?? "",
     welcome_md_lt: rows.find((r) => r.key === "welcome_md_lt")?.value ?? "",
   });
-  res.headers.set(
-    "Cache-Control",
-    "public, s-maxage=300, stale-while-revalidate=3600",
-  );
+  res.headers.set("Cache-Control", "no-store");
   return res;
 }
