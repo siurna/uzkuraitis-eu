@@ -132,8 +132,6 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   // leaving the (still-valid) Supabase URL hanging.
   const [lightbox, setLightbox] = useState<{ url: string; messageId: string | null } | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  // The current visual viewport (the bit of the page that's actually
-  const [viewport, setViewport] = useState<{ h: number; top: number } | null>(null);
   // Chrome (header + dock) visibility lives in <RoomChromeProvider/>.
   // Setting `composerActive` via this hook tells the chrome to hide
   // on mobile; the provider OR's it with a visualViewport keyboard
@@ -482,63 +480,15 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     };
   }, [messages, code]);
 
-  // Mirror the visual viewport — the panel is sized to *exactly* this
-  // (top = offsetTop, height = height), so its bottom edge is the bottom
-  // of what's visible = the top of the on-screen keyboard.
-  //
-  // IMPORTANT: iOS Safari is unreliable about firing
-  // `visualViewport.resize` after the keyboard Done dismissal. The
-  // `resize` events DO fire during the slide-up, but the FINAL resize
-  // back to full height can silently drop — leaving our local state
-  // pinned to the shrunk-keyboard value, the chat panel rendering at
-  // a stale short height, and a visible dead band between the panel
-  // bottom and the dock that only resolves once the user taps
-  // somewhere (which forces iOS to re-measure and emit a fresh
-  // event). Same drop happens with `scroll` events in some PWA
-  // states.
-  //
-  // The cure is a 200ms poll: on every tick, read
-  // `visualViewport.height + offsetTop` directly from the API and
-  // set state. React's setState shortcircuit means there's NO
-  // re-render unless the values actually changed — net cost per
-  // tick is one DOM read, invisible at scale. Catches the dropped
-  // events without changing the event-driven happy path at all.
-  // Only runs while the chat tab is active; other tabs skip the
-  // interval entirely.
-  useEffect(() => {
-    const vv = typeof window !== "undefined" ? window.visualViewport : null;
-    if (!vv) return;
-    // Functional setState + integer-round + value compare so React's
-    // bailout actually kicks in. iOS reports `visualViewport.height`
-    // with sub-pixel variation between ticks (599.99 vs 600.01), and
-    // predictive-text-bar toggles during typing nudge the value by
-    // ~36px — without rounding + a bailout, every poll tick fired a
-    // fresh `{ h: …, top: … }` object and React re-rendered the whole
-    // chat-panel + recomputed inline `height` styles, which the user
-    // sees as the messages list flickering as they type a multi-line
-    // message.
-    const sync = () => {
-      const h = Math.round(vv.height);
-      const top = Math.round(Math.max(0, vv.offsetTop));
-      setViewport((prev) => {
-        if (prev && prev.h === h && prev.top === top) return prev;
-        return { h, top };
-      });
-    };
-    vv.addEventListener("resize", sync);
-    vv.addEventListener("scroll", sync);
-    sync();
-    // Poll while active to catch dropped visualViewport.resize events
-    // (the canonical iOS Safari "stuck height after Done" bug). 200ms
-    // is fast enough that the user never sees the stale state past
-    // one frame past the actual keyboard dismissal.
-    const iv = active ? window.setInterval(sync, 200) : 0;
-    return () => {
-      vv.removeEventListener("resize", sync);
-      vv.removeEventListener("scroll", sync);
-      if (iv) window.clearInterval(iv);
-    };
-  }, [active]);
+  // (Earlier iterations tracked the visual viewport in JS — a `resize`
+  // listener plus a 200ms safety poll because iOS Safari occasionally
+  // drops the final `visualViewport.resize` after a keyboard dismissal.
+  // Ripped out: the polling was causing measurable flicker as the
+  // predictive-text strip toggled during typing, and the underlying
+  // dvh bug is now sidestepped in CSS via `--uzk-vh-100`, which
+  // resolves to `100lvh` in PWA standalone. If iOS PWA users start
+  // seeing the dead band below the dock again, the listener + poll
+  // are easy enough to reinstate — but try the CSS path first.)
 
   const loadEarlier = async () => {
     if (loadingMore || messages.length === 0) return;
@@ -1000,20 +950,17 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     return () => window.removeEventListener("uzk:chat-media-loaded", stick);
   }, []);
 
-  // iOS keyboard fix: when the visualViewport shrinks (keyboard
-  // animates open) the panel's height drops to match — but the list
-  // inside keeps its old scrollTop, so the newest message slides
-  // *up* out of view by exactly the keyboard's first paint height.
-  // The user is "naturally at the bottom" of the chat and focusing
-  // the composer makes the thread jump up a few px. Pin scrollTop
-  // back to scrollHeight whenever the viewport changes AND the
-  // user was parked at the bottom.
+  // iOS keyboard fix: when the dock vanishes / reappears the panel
+  // changes height, but the list inside keeps its old scrollTop, so
+  // the newest message slides up out of view by the keyboard's
+  // first paint height. Pin scrollTop back to scrollHeight whenever
+  // the dock-hidden flag flips AND the user was parked at the bottom.
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
     if (!atBottomRef.current) return;
     el.scrollTop = el.scrollHeight;
-  }, [viewport]);
+  }, [dockHidden]);
 
   // Swipe / tap to reply: anchor the replied-to message in the middle
   // so the list doesn't jump somewhere random. Run once now, and again
@@ -1510,38 +1457,21 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           : "pt-[calc(env(safe-area-inset-top)+3.5rem)]"
       }`}
       style={{
-        // top: when the keyboard's up we follow visualViewport.offsetTop
-        // so the panel rides any URL-bar scroll. Keyboard down → pin to
-        // 0; visualViewport.offsetTop can lag iOS Safari's keyboard
-        // dismissal by a frame, which surfaces as a dead band below
-        // the dock until the next user tap forces a re-measure.
-        top: dockHidden ? viewport?.top ?? 0 : 0,
-        // dockHidden = mobile + composer focused. In that one state the
-        // dock + header are gone, so the chat panel takes the full
-        // visual viewport (which on mobile is already shrunk by the
-        // keyboard — composer ends flush above the keyboard, no gap).
-        // Otherwise reserve the 4.75rem of dock space so the bottom
-        // tab bar never overlaps the composer.
-        //
-        // Keyboard DOWN: use the JS-synced `--uzk-vh` (set by
-        // <ViewportSync/> in the root layout from
-        // `window.innerHeight`), NOT `visualViewport.h` and NOT raw
-        // `100dvh`. Both APIs have iOS Safari bugs:
-        //   - visualViewport.h can stay stale after the user taps Done
-        //     on the keyboard (the resize event doesn't fire reliably),
-        //     which left a dead band below the dock.
-        //   - `100dvh` itself can be ~80px past the real viewport on
-        //     iOS 16/18 (WebKit bug 242758) and doesn't update on
-        //     URL-bar collapse mid-scroll, which produces the same
-        //     gap-at-the-bottom symptom.
-        // `window.innerHeight` is the only iOS measure that reliably
-        // emits `resize` / `orientationchange` updates AND tracks the
-        // layout viewport; ViewportSync pipes it through. The
-        // `1dvh` fallback covers the first paint before the effect
-        // runs.
+        // Pin to the top of the layout viewport in every state. iOS
+        // PWA shifts the entire visual viewport up when the keyboard
+        // opens, so `position: fixed; top: 0` keeps the panel anchored
+        // to the visible top without us tracking offsets in JS.
+        top: 0,
+        // dockHidden = mobile + composer focused. Full viewport when
+        // the dock is gone, viewport minus the 4.75rem dock band
+        // otherwise. `--uzk-vh-100` is `100dvh` in browser and
+        // `100lvh` in PWA standalone (see globals.css) — `dvh`
+        // ships broken on iOS PWA after a keyboard dismissal,
+        // `lvh` is stable there because PWA has no chrome to
+        // subtract.
         height: dockHidden
-          ? viewport?.h ?? window.innerHeight
-          : "calc(var(--uzk-vh, 1dvh) * 100 - env(safe-area-inset-bottom) - 4.75rem)",
+          ? "var(--uzk-vh-100)"
+          : "calc(var(--uzk-vh-100) - env(safe-area-inset-bottom) - 4.75rem)",
         ...(active ? null : { display: "none" }),
       }}
       onDragEnter={(e) => {

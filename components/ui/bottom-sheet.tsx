@@ -152,7 +152,7 @@ export function BottomSheet({
               "fixed bottom-0 inset-x-0 z-[60] mx-auto w-full max-w-md",
               "glass-card rounded-t-3xl uzk-sheet-ios-radius",
               "border-x-0 border-b-0",
-              "max-h-[78dvh] flex flex-col",
+              "max-h-[calc(var(--uzk-vh-100)*0.78)] flex flex-col",
               // iOS PWA: round the bottom corners to 40px so the
               // sheet's outline tracks the iOS device's rounded
               // screen edge. The safe-area-inset-bottom padding

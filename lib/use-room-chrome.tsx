@@ -4,7 +4,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -17,30 +16,17 @@ import {
 // truth that any descendant can read and any caller can imperatively
 // drive.
 //
-// Two state inputs converge into one `hidden` boolean:
+// Single state input: `composerActive`, flipped by the chat composer's
+// onFocus / onBlur via `useRoomChrome().setComposerActive(...)`. The
+// header / dock apply `max-md:hidden` when this is true so the rule
+// only fires on mobile; desktop keeps the chrome regardless.
 //
-//   1. `composerActive` — flipped by the chat composer's onFocus /
-//      onBlur via `useRoomChrome().setComposerActive(...)`. The
-//      cleanest, explicit signal: "the chat composer has the
-//      keyboard up; clear the dock".
-//
-//   2. `keyboardUp` — visualViewport heuristic that derives "is a
-//      keyboard up" from the height delta between window.innerHeight
-//      and visualViewport.height. Acts as a safety net in case the
-//      onFocus event ever fails to fire (input mounted late, focus
-//      landed on a child, iOS re-mount quirk). It triggers IN
-//      ADDITION to the explicit signal, never INSTEAD of it.
-//
-// Either signal alone hides the chrome. Both clearing brings it
-// back. The header / dock components apply `max-md:hidden` to
-// themselves when `hidden` is true so the rule only fires on mobile —
-// desktop keeps the chrome regardless.
-//
-// Why a context instead of custom DOM events (the previous design):
-// events can be missed (timing, listener teardown order, dispatch
-// before mount). A useState + Provider is the canonical React way
-// to share boolean state across a tree, and the value flows through
-// React's reconciliation so consumers always see the current value.
+// (A visualViewport keyboard heuristic used to OR alongside this as a
+// safety net, but it was the source of mid-typing chrome flickers as
+// the iOS predictive-text strip toggled — the resize was crossing
+// the threshold both ways within a single keystroke. The explicit
+// onFocus / onBlur signal is reliable enough on its own; we'll add
+// the heuristic back if a real "missed onFocus" bug surfaces.)
 
 type RoomChromeAPI = {
   /** True when the chrome (header + dock) should be hidden on mobile. */
@@ -52,34 +38,15 @@ type RoomChromeAPI = {
 
 const RoomChromeContext = createContext<RoomChromeAPI | null>(null);
 
-const KEYBOARD_DELTA_PX = 120;
-
 export function RoomChromeProvider({ children }: { children: ReactNode }) {
   const [composerActive, setComposerActive] = useState(false);
-  const [keyboardUp, setKeyboardUp] = useState(false);
-
-  // visualViewport-based keyboard heuristic. Fires whenever the
-  // visual viewport resizes (keyboard slide, URL bar collapse, screen
-  // rotation). 120px delta is comfortably above any browser-chrome
-  // shrink and well below any iPhone keyboard size — a clean threshold.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const onResize = () => {
-      setKeyboardUp(window.innerHeight - vv.height > KEYBOARD_DELTA_PX);
-    };
-    onResize();
-    vv.addEventListener("resize", onResize);
-    return () => vv.removeEventListener("resize", onResize);
-  }, []);
 
   const value = useMemo<RoomChromeAPI>(
     () => ({
-      hidden: composerActive || keyboardUp,
+      hidden: composerActive,
       setComposerActive,
     }),
-    [composerActive, keyboardUp],
+    [composerActive],
   );
 
   return (

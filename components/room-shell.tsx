@@ -360,19 +360,17 @@ function RoomBody({ children }: { children: React.ReactNode }) {
           (+ the iOS notch). On the chat tab the panel is fixed too, so
           the page itself must not scroll — lock it to the viewport. */}
       <div
-        // `h-[calc(var(--uzk-vh)*100)]` instead of `h-[100dvh]` on
-        // the chat tab. The `dvh` unit is unreliable on iOS Safari
-        // 16/18 (WebKit #242758: up to ~80px past the real viewport),
-        // so chat would leave a gap at the bottom of the screen on
-        // some devices. The custom property is fed by
-        // `<ViewportSync/>` from `window.innerHeight`, which is the
-        // only iOS measure that reliably tracks the layout viewport.
-        // `min-h-dvh` is kept for non-chat tabs — there the
-        // overshoot is harmless (it just means we render a bit more
-        // content past the fold than strictly necessary).
+        // Use the CSS `--uzk-vh-100` token on the chat tab (resolves
+        // to `100dvh` in browser, `100lvh` in PWA standalone — see
+        // globals.css). iOS Safari's `dvh` ships broken in PWA mode
+        // for a frame after a keyboard dismissal, which used to leave
+        // a gap at the bottom of the chat tab; `lvh` is stable there
+        // because a PWA has no chrome to subtract. `min-h-dvh` is
+        // fine for non-chat tabs — those scroll the page, so a tiny
+        // overshoot at the fold is invisible.
         className={`flex flex-col pb-24 pt-[calc(env(safe-area-inset-top)+3.5rem)] ${
           isChat
-            ? "h-[calc(var(--uzk-vh,1dvh)*100)] overflow-hidden"
+            ? "h-[var(--uzk-vh-100)] overflow-hidden"
             : "min-h-dvh"
         }`}
       >

@@ -293,6 +293,26 @@
   display: block;
 }
 
+/* Viewport unit swap. `dvh` (dynamic viewport height) is the correct
+   choice in a normal browser tab: it tracks the URL bar and bottom
+   bezel as they collapse and expand. In PWA standalone there is no
+   browser chrome, but iOS Safari still ships a broken `dvh` that
+   reports the *large* viewport for a tick after the keyboard
+   dismisses, leaving fixed-positioned content sitting offset above
+   the home indicator. `lvh` (largest viewport height) is stable in
+   PWA — no chrome to subtract — and dodges the bug entirely.
+   Anywhere a panel needs "100% of the visible viewport", reference
+   `var(--uzk-vh-100)`; it resolves to `100dvh` in browser and
+   `100lvh` in the installed app. */
+:root {
+  --uzk-vh-100: 100dvh;
+}
+@media (display-mode: standalone) {
+  :root {
+    --uzk-vh-100: 100lvh;
+  }
+}
+
 /* iOS Safari pulls its native bottom sheet with a chunky ~40px top
    radius; matching that in our portaled drawer makes the room feel
    native there without changing the PWA standalone shell. Scoped
