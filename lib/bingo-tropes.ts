@@ -118,6 +118,16 @@ export const TROPES_EN = [
   "🛸 A weirdly sci-fi staging concept",
   "🧊 The stage floor lights up like a dance pad",
   "🥱 A whole song about partying all night, zero sleep",
+  "📮 Postcard plays like a tourism ad",
+  "🤐 Lip-sync visibly slips on a high note",
+  "📋 Audience holds a hand-made lyric sign",
+  "🚪 A stagehand briefly wanders into shot",
+  "🕳️ The song fades to black, then silence",
+  "🤳 A jury spokesperson goes off-script",
+  "👏 Loud boos greet a low jury score",
+  "🥁 A drummer joins for one chorus only",
+  "🎻 A famous classical piece gets sampled",
+  "🛗 Singer rises through a hatch in the stage",
 ] as const;
 
 export const TROPES_LT = [
@@ -225,6 +235,16 @@ export const TROPES_LT = [
   "🛸 Keistai mokslinės fantastikos scenografija",
   "🧊 Scenos grindys šviečia kaip šokių aikštelė",
   "🥱 Visa daina apie naktinį vakarėlį be miego",
+  "📮 Atvirukas atrodo kaip turizmo reklama",
+  "🤐 Per aukštą natą akivaizdžiai prasprūsta fonograma",
+  "📋 Žiūrovas iškelia ranka rašytą teksto plakatą",
+  "🚪 Į kadrą įklysta scenos darbuotojas",
+  "🕳️ Daina užgesta į tamsą ir tylą",
+  "🤳 Šalies žiuri atstovas pradeda improvizuoti",
+  "👏 Salė nušvilpia žemą žiuri įvertinimą",
+  "🥁 Būgnininkas pasirodo tik vienam priedainiui",
+  "🎻 Dainoje pasiskolinta klasikos melodija",
+  "🛗 Atlikėjas iškyla pro angą scenos viduryje",
 ] as const;
 
 export type TropeIndex = number;

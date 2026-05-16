@@ -212,24 +212,36 @@ export function Highlights() {
       </motion.button>
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title={t(lang, "highlights_title")}>
-        <ul className="flex flex-col gap-2.5">
-          {items.map((h) => {
+        <ul className="flex flex-col">
+          {items.map((h, idx) => {
             const avatar = h.avatarId ? getAvatar(h.avatarId) : null;
             const np = (h.meta as { nowPlaying?: string } | null)?.nowPlaying;
             const country = np ? getCountry(np) : null;
             const text = preview(h);
             const isMedia = (h.kind === "gif" || h.kind === "image") && !!h.gifUrl;
+            const rank = idx + 1;
             return (
               <li
                 key={h.id}
-                className="flex flex-col gap-3 rounded-2xl glass-surface p-4"
+                className="flex flex-col gap-2.5 py-4 first:pt-2"
               >
-                {/* THE MOMENT comes first — it's what the row is about.
-                    For text moments: the line in big quote type, left-
-                    aligned against the container edge. For GIF / image
-                    moments: the actual asset (we never render "GIF" as
-                    a label — the picture is the moment, it just loads
-                    inline). For a bingo strike: the 🎯 + bingo line. */}
+                {/* Country eyebrow — lifted above the quote so the
+                    "what was on stage at that moment" context lands
+                    before the line itself. Flag + localised name as
+                    a small all-caps eyebrow. Falls back to nothing
+                    when meta.nowPlaying is empty (bingo strikes
+                    sent before the show, etc). */}
+                {country && (
+                  <p className="text-[10px] uppercase tracking-[0.22em] font-display text-white/55 leading-tight flex items-center gap-1.5">
+                    <span aria-hidden>{country.flag}</span>
+                    {countryName(country.code, lang)}
+                  </p>
+                )}
+
+                {/* THE MOMENT — hero-sized type so the quote is the
+                    body of the row. GIF / image moments still render
+                    the actual asset inline; bingo strikes show the
+                    🎯 + bingo label. */}
                 {isMedia ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -238,12 +250,12 @@ export function Highlights() {
                     className="rounded-xl ring-1 ring-white/10 max-h-64 w-full object-cover"
                   />
                 ) : h.kind === "bingo_strike" ? (
-                  <p className="font-display text-xl text-white inline-flex items-center gap-2">
-                    <FluentEmoji glyph="🎯" size={20} />
+                  <p className="font-display text-2xl text-white inline-flex items-center gap-2 leading-snug">
+                    <FluentEmoji glyph="🎯" size={24} />
                     Bingo!
                   </p>
                 ) : text ? (
-                  <p className="font-display text-[19px] text-white leading-snug text-balance">
+                  <p className="font-display text-2xl text-white leading-snug text-balance">
                     {/* Locale-aware quotes — matches the hero card up top. */}
                     {lang === "lt" ? "„" : "“"}
                     {text}
@@ -251,32 +263,36 @@ export function Highlights() {
                   </p>
                 ) : null}
 
-                {/* Author row — smaller now that the quote leads. Avatar,
-                    name, country chip, reaction count all on one line. */}
-                <div className="flex items-center gap-2.5">
-                  <span className="h-8 w-8 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/12 bg-white/[0.06]">
+                {/* Author row — tiny photo (matches the reaction
+                    pill's h-6 height), name, reaction count. The
+                    small rank badge in the photo's top-right pins
+                    each row to its position in the night's ranking. */}
+                <div className="flex items-center gap-2">
+                  <span className="relative h-6 w-6 shrink-0 rounded-md overflow-hidden ring-1 ring-white/12 bg-white/[0.06]">
                     {avatar?.photo ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={optimizedSrc(avatar.photo, 128)}
+                        src={optimizedSrc(avatar.photo, 96)}
                         alt=""
                         className="h-full w-full object-cover"
                         style={{ objectPosition: avatar.focal ? `${avatar.focal.x}% ${avatar.focal.y}%` : "50% 30%" }}
                       />
                     ) : (
-                      <span className="h-full w-full grid place-items-center text-[11px] font-display text-white/45">
+                      <span className="h-full w-full grid place-items-center text-[9px] font-display text-white/45">
                         {h.name.charAt(0).toUpperCase()}
                       </span>
                     )}
+                    <span
+                      className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-[3px] rounded-full
+                                 bg-flamingo text-[9px] leading-none text-white grid place-items-center
+                                 font-display tabular-nums ring-1 ring-dark-blue-900"
+                      aria-label={`#${rank}`}
+                    >
+                      {rank}
+                    </span>
                   </span>
-                  <p className="flex-1 min-w-0 text-xs text-white/80 truncate leading-tight">
+                  <p className="flex-1 min-w-0 text-xs text-white/85 truncate leading-tight">
                     <span className="font-display text-white/95">{h.name}</span>
-                    {country && (
-                      <span className="text-white/55">
-                        {" · "}
-                        {country.flag} {countryName(country.code, lang)}
-                      </span>
-                    )}
                   </p>
                   <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange/15 ring-1 ring-orange/35 px-2 h-6 text-xs text-orange tabular-nums font-display">
                     <FluentEmoji glyph="❤️" size={12} />

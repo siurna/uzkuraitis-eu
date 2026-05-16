@@ -1856,7 +1856,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                     onClick={() => setGifOpen(true)}
                     aria-label={t(lang, "gif_pick")}
                     className="h-9 px-2.5 shrink-0 rounded-full grid place-items-center text-white
-                               bg-white/[0.04] hover:bg-white/15 transition active:scale-[0.92]"
+                               bg-white/[0.09] hover:bg-white/15 transition active:scale-[0.92]"
                   >
                     <span className="text-[11px] font-display font-bold tracking-tight leading-none">GIF</span>
                   </button>
@@ -1868,7 +1868,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                     disabled={uploading}
                     aria-label={t(lang, "chat_send_photo")}
                     className="h-9 w-9 shrink-0 rounded-full grid place-items-center text-white
-                               bg-white/[0.04] hover:bg-white/15 transition active:scale-[0.92] disabled:opacity-50"
+                               bg-white/[0.09] hover:bg-white/15 transition active:scale-[0.92] disabled:opacity-50"
                   >
                     {uploading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <ImagePlus className="h-[18px] w-[18px]" />}
                   </button>

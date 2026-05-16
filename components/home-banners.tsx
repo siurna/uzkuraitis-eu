@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
-import { MessageCircle, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
@@ -187,10 +187,13 @@ function PointsBallSvg({ value, tint }: { value: string; tint: BallTint }) {
   // viewBox is 100×100; circle centred at (50, 50) with r=46 leaves a
   // 4-unit edge for the soft outer shadow inside the svg bounds.
   // The numeral sits dead-centre via dominant-baseline. Specular
-  // highlight is a pale ellipse over the top-left — same trick the
-  // real Eurovision points balls use on the broadcast.
+  // highlight is a soft radial gradient that fades to transparent at
+  // the edges — solid-fill ellipses (previous treatment) read flat /
+  // 2D against the body gradient, the soft falloff sells the curved
+  // surface instead.
   const fillId = `uzk-ball-${tint}`;
   const shadowId = `uzk-ball-shadow-${tint}`;
+  const specularId = `uzk-ball-specular-${tint}`;
   const t = BALL_TINTS[tint];
   return (
     <svg
@@ -212,6 +215,15 @@ function PointsBallSvg({ value, tint }: { value: string; tint: BallTint }) {
           <stop offset="55%" stopColor="rgba(0,0,0,0.05)" />
           <stop offset="100%" stopColor="rgba(0,0,0,0)" />
         </radialGradient>
+        {/* Specular highlight gradient — bright core, soft fade to
+            zero alpha so the highlight blends into the sphere body
+            instead of reading as a stuck-on opaque shape. */}
+        <radialGradient id={specularId} cx="50%" cy="50%" r="55%">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
+          <stop offset="35%" stopColor="rgba(255,255,255,0.45)" />
+          <stop offset="75%" stopColor="rgba(255,255,255,0.12)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+        </radialGradient>
       </defs>
       {/* Contact shadow — wisp, not puddle. Just enough to hint that
           the ball is resting on something. */}
@@ -225,8 +237,10 @@ function PointsBallSvg({ value, tint }: { value: string; tint: BallTint }) {
         stroke={t.rim}
         strokeWidth="1.5"
       />
-      <ellipse cx="36" cy="30" rx="20" ry="13" fill="rgba(255,255,255,0.55)" />
-      <ellipse cx="32" cy="26" rx="8" ry="5" fill="rgba(255,255,255,0.85)" />
+      {/* Single soft-edged highlight tilted toward the top-left. The
+          gradient falls off through ~75% of its radius before going
+          fully transparent, so the bright spot has no hard outline. */}
+      <ellipse cx="35" cy="28" rx="24" ry="16" fill={`url(#${specularId})`} />
       <text
         x="50"
         y="54"
@@ -946,8 +960,8 @@ function PlayingCard({
   const { scrollY } = useScroll();
   const photoY = useTransform(scrollY, [0, 700], [-14, 14]);
   const prog = pos != null ? Math.min(Math.max(pos, 0) / GRAND_FINAL_ACTS, 1) : 0;
-  const eyebrow =
-    pos != null ? `${t(lang, "now_playing")} · ${pos} / ${GRAND_FINAL_ACTS}` : t(lang, "now_playing");
+  const eyebrowLabel = t(lang, "now_playing");
+  const posLabel = pos != null ? `${pos} / ${GRAND_FINAL_ACTS}` : null;
   // Always-present track so the "progress lives here" affordance reads,
   // even before the host sets the running-order position (then it's 0%).
   // The fill slides when the running-order position advances.
@@ -993,34 +1007,47 @@ function PlayingCard({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-x-0 bottom-0 p-4 pb-5 sm:p-5 sm:pb-6 flex items-end gap-3"
+            // items-center so the flag lines up vertically with the
+            // eyebrow + country name block on the left (was items-end,
+            // which docked the flag to the chip row's bottom).
+            className="absolute inset-x-0 bottom-0 p-4 pb-5 sm:p-5 sm:pb-6 flex items-center gap-3"
           >
             <span className="shrink-0">
               <HeartFlag code={country.code} size="md" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-[0.32em] text-white/85 font-display leading-tight mb-0.5 drop-shadow">
-                {eyebrow}
+              <p className="text-[10px] uppercase text-white/85 font-display leading-tight mb-0.5 drop-shadow tracking-[0.32em]">
+                {eyebrowLabel}
+                {posLabel && (
+                  // Tighter letter-spacing on the numeric tail — wide
+                  // tracking (0.32em) on "21 / 26" reads as gappy
+                  // because digits are already monospaced.
+                  <span className="tracking-[0.12em] text-white/70"> · {posLabel}</span>
+                )}
               </p>
               <p className="font-display text-2xl text-white leading-tight truncate drop-shadow">
                 {countryName(country.code, lang)}
               </p>
-              {(country.artist || country.song) && (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {country.artist && (
-                    <span className="rounded-full bg-white/15 backdrop-blur-sm ring-1 ring-white/20 px-2 py-0.5 text-[11px] text-white">
-                      {country.artist}
-                    </span>
-                  )}
-                  {country.song && (
-                    <span className="rounded-full bg-white/10 backdrop-blur-sm ring-1 ring-white/15 px-2 py-0.5 text-[11px] italic text-white/80">
-                      {country.song}
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
-            <MessageCircle className="h-5 w-5 text-white/80 shrink-0 mb-1" />
+            {/* Artist + song stacked vertically, right side. Was a
+                row of chips below the country name + a chat icon on
+                the right; consolidated into one small column so the
+                "who's singing / what's the song" pair reads as a
+                single caption without competing chrome. */}
+            {(country.artist || country.song) && (
+              <div className="shrink-0 max-w-[40%] text-right flex flex-col gap-0.5">
+                {country.artist && (
+                  <span className="text-[12px] text-white font-display leading-tight truncate drop-shadow">
+                    {country.artist}
+                  </span>
+                )}
+                {country.song && (
+                  <span className="text-[11px] italic text-white/75 leading-tight truncate drop-shadow">
+                    {country.song}
+                  </span>
+                )}
+              </div>
+            )}
           </motion.div>
           {progressBar}
         </div>
@@ -1046,18 +1073,30 @@ function PlayingCard({
             <HeartFlag code={country.code} size="lg" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.32em] text-white font-display leading-tight mb-1 drop-shadow">
-              {eyebrow}
+            <p className="text-[10px] uppercase text-white font-display leading-tight mb-1 drop-shadow tracking-[0.32em]">
+              {eyebrowLabel}
+              {posLabel && (
+                <span className="tracking-[0.12em] text-white/75"> · {posLabel}</span>
+              )}
             </p>
             <p className="font-display text-2xl text-white leading-tight truncate drop-shadow">
               {countryName(country.code, lang)}
             </p>
-            <p className="text-sm text-white/75 leading-tight truncate mt-0.5">
-              {country.artist}
-              {country.song ? <span className="italic text-white/55"> · {country.song}</span> : null}
-            </p>
           </div>
-          <MessageCircle className="h-5 w-5 text-dark-blue-200 shrink-0" />
+          {(country.artist || country.song) && (
+            <div className="shrink-0 max-w-[38%] text-right flex flex-col gap-0.5">
+              {country.artist && (
+                <span className="text-[12px] text-white font-display leading-tight truncate">
+                  {country.artist}
+                </span>
+              )}
+              {country.song && (
+                <span className="text-[11px] italic text-white/65 leading-tight truncate">
+                  {country.song}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         {progressBar}
       </div>

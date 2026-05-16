@@ -515,7 +515,7 @@ const S = {
   profile_top10_unranked:    { en: "out of top 10", lt: "už TOP 10" },
 
   // ── Trivia ───────────────────────────────────────────────────────
-  trivia_eyebrow:            { en: "Trivia", lt: "Smulkmenos" },
+  trivia_eyebrow:            { en: "Trivia", lt: "Viktorina" },
   trivia_breaking:           { en: "Quick question!", lt: "Greitas klausimas!" },
 
   // ── Reactions / honeycomb ────────────────────────────────────────

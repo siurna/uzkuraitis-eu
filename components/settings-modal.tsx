@@ -11,6 +11,7 @@ import { AvatarPicker } from "@/components/avatar-picker";
 import { SelectedAvatarCard } from "@/components/selected-avatar-card";
 import { NotificationToggles } from "@/components/notification-toggles";
 import { getAvatar } from "@/lib/avatars";
+import { countryName } from "@/lib/countries";
 import { optimizedSrc } from "@/lib/img";
 import { LANGUAGES, LANGUAGE_NAMES, t, type Language } from "@/lib/i18n";
 import { readLang, writeLang } from "@/lib/i18n-client";
@@ -258,7 +259,7 @@ export function SettingsModal({
                       {" · "}
                       {selectedAvatar.year}
                       {" · "}
-                      {selectedAvatar.country.toUpperCase()}
+                      {countryName(selectedAvatar.country, lang)}
                     </p>
                   </>
                 ) : (
