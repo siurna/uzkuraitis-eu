@@ -200,6 +200,13 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   // (otherwise the deleted message would still pop up later, with
   // no way to remove it short of a refetch).
   const firesAtTimers = useRef<Map<string, number>>(new Map());
+  // chat:edit deltas that landed BEFORE the matching chat:new
+  // (broadcast race). Keyed by message id; applied as the chat:new
+  // row appends. Cleared on use OR after a short timeout so a
+  // stray buffered edit for a never-seen id doesn't leak forever.
+  const pendingEdits = useRef<
+    Map<string, { body: string | null; meta: Record<string, unknown> | null }>
+  >(new Map());
   // Map of sessionId → { name, lastStart } for everyone currently
   // typing (driven by `typing:start` / `typing:stop` broadcasts).
   // A periodic sweep auto-clears entries older than TYPING_STALE_MS
@@ -679,16 +686,20 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
               firesAtTimers.current.delete(m.id);
               setMessages((prev) => {
                 if (prev.some((x) => x.id === m.id)) return prev;
+                const buffered = pendingEdits.current.get(m.id);
+                if (buffered) pendingEdits.current.delete(m.id);
                 const appended: Message = {
                   id: m.id,
                   sessionId: m.sessionId,
                   name: m.name,
                   avatarId: m.avatarId,
                   kind: m.kind as MessageKind,
-                  body: m.body,
+                  body: buffered?.body ?? m.body,
                   gifUrl: m.gifUrl,
                   replyTo: m.replyTo,
-                  meta: (m.meta ?? null) as Record<string, unknown> | null,
+                  meta:
+                    buffered?.meta ??
+                    ((m.meta ?? null) as Record<string, unknown> | null),
                   createdAt: m.createdAt,
                   reactions: {},
                 };
@@ -763,16 +774,24 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
               return next;
             }
           }
+          // Apply any chat:edit that arrived for this id BEFORE the
+          // chat:new (broadcast race). Without this, the edit would
+          // be silently dropped because the prior .map() ran against
+          // a list that didn't yet contain the id.
+          const buffered = pendingEdits.current.get(m.id);
+          if (buffered) pendingEdits.current.delete(m.id);
           const appended: Message = {
             id: m.id,
             sessionId: m.sessionId,
             name: m.name,
             avatarId: m.avatarId,
             kind: m.kind as MessageKind,
-            body: m.body,
+            body: buffered?.body ?? m.body,
             gifUrl: m.gifUrl,
             replyTo: m.replyTo,
-            meta: (m.meta ?? null) as Record<string, unknown> | null,
+            meta:
+              buffered?.meta ??
+              ((m.meta ?? null) as Record<string, unknown> | null),
             createdAt: m.createdAt,
             reactions: {},
           };
@@ -887,20 +906,34 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     }
     // chat:edit carries the full updated payload so we can patch
     // the row in place — no follow-up GET, no waiting for the
-    // reaction throttle to flush.
+    // reaction throttle to flush. If the matching chat:new for
+    // this id hasn't landed yet (broadcast race), buffer the
+    // latest body for the id and apply it the moment chat:new
+    // arrives below. Without the buffer, an edit that loses the
+    // race against the original chat:new would be silently
+    // dropped and the message would show its un-edited body
+    // forever.
     if (ev.type === "chat:edit" && ev.message) {
       const m = ev.message;
-      setMessages((prev) =>
-        prev.map((x) =>
-          x.id === m.id
-            ? {
-                ...x,
-                body: m.body,
-                meta: (m.meta ?? null) as Record<string, unknown> | null,
-              }
-            : x,
-        ),
-      );
+      let applied = false;
+      setMessages((prev) => {
+        const idx = prev.findIndex((x) => x.id === m.id);
+        if (idx < 0) return prev;
+        applied = true;
+        const next = prev.slice();
+        next[idx] = {
+          ...prev[idx],
+          body: m.body,
+          meta: (m.meta ?? null) as Record<string, unknown> | null,
+        };
+        return next;
+      });
+      if (!applied) {
+        pendingEdits.current.set(m.id, {
+          body: m.body,
+          meta: (m.meta ?? null) as Record<string, unknown> | null,
+        });
+      }
     }
     // Typing indicator: broadcast-driven. `start` stamps the
     // sender into the typingMap with a fresh `lastStart` (a

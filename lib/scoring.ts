@@ -321,14 +321,26 @@ function scoreBetsWithCtx(input: {
     ltJuryCountTruth,
   } = ctx;
 
-  // Wooden spoon: exact +5, off-by-1 +2 (only useful when last is in
-  // the placement table), else 0.
+  // Wooden spoon: exact +5, off-by-1 +2 (only useful when both the
+  // truth's placement AND the guess's placement are in the table),
+  // else 0. Earlier rev measured against `totalFinalists` blindly,
+  // which was wrong any time the placement table only covered a
+  // top-N slice (we typically enter the top 10 only) — the truth
+  // sat at slot N from the bottom but the comparison was against
+  // slot N=totalFinalists, and the off-by-1 ladder rewarded the
+  // wrong neighbour. Use the truth's actual placement and only
+  // fire the ladder when both placements are known.
   let woodenSpoon = 0;
   if (bets.woodenSpoon && last) {
-    const lastPlacement = totalFinalists;
+    const lastPlacement = placements[last] ?? null;
     const guessPlacement = placements[bets.woodenSpoon] ?? null;
-    if (bets.woodenSpoon === last) woodenSpoon = 5;
-    else if (guessPlacement != null && Math.abs(guessPlacement - lastPlacement) === 1) {
+    if (bets.woodenSpoon === last) {
+      woodenSpoon = 5;
+    } else if (
+      guessPlacement != null &&
+      lastPlacement != null &&
+      Math.abs(guessPlacement - lastPlacement) === 1
+    ) {
       woodenSpoon = 2;
     }
   }

@@ -48,6 +48,36 @@ export function getBrowserSupabase(): SupabaseClient {
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
 const BROADCAST_RETRIES = 3;
 const BROADCAST_RETRY_DELAY_MS = 1_000;
+// Per-attempt timeout on the broadcast fetch. Without this, a hung
+// TLS handshake or a stalled connection to Supabase Realtime would
+// block the calling route for the platform default (~30s on Vercel),
+// which during a chat / vote storm means every Lambda invocation
+// holds for the full timeout. 2s per attempt is more than enough
+// for the round-trip (typically &lt;200ms) and keeps the worst-case
+// add-on at the route handler under ~7s (3 attempts × 2s + 2 ×
+// retry delay) instead of ~95s.
+const BROADCAST_TIMEOUT_MS = 2_000;
+
+async function attemptBroadcast(
+  url: string,
+  serviceRole: string,
+  body: string,
+): Promise<Response | null> {
+  try {
+    return await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: serviceRole,
+        Authorization: `Bearer ${serviceRole}`,
+      },
+      body,
+      signal: AbortSignal.timeout(BROADCAST_TIMEOUT_MS),
+    });
+  } catch {
+    return null;
+  }
+}
 
 export async function serverBroadcast(
   channel: string,
@@ -67,42 +97,23 @@ export async function serverBroadcast(
   const body = JSON.stringify({
     messages: [{ topic: channel, event, payload }],
   });
+  const url = `${URL}/realtime/v1/api/broadcast`;
 
   for (let attempt = 1; attempt <= BROADCAST_RETRIES; attempt++) {
-    try {
-      const res = await fetch(`${URL}/realtime/v1/api/broadcast`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: serviceRole,
-          Authorization: `Bearer ${serviceRole}`,
-        },
-        body,
-      });
-      if (res.ok) return;
-      // 4xx (other than 429) means we sent a bad payload / auth is
-      // wrong — retrying won't help, log and bail.
-      if (!RETRYABLE_STATUSES.has(res.status)) {
-        if (process.env.NODE_ENV !== "production") {
-          console.warn(
-            `[supabase] broadcast ${event} → ${res.status} (non-retryable): ${await res.text()}`,
-          );
-        }
-        return;
-      }
+    const res = await attemptBroadcast(url, serviceRole, body);
+    if (res?.ok) return;
+    if (res && !RETRYABLE_STATUSES.has(res.status)) {
       if (process.env.NODE_ENV !== "production") {
         console.warn(
-          `[supabase] broadcast ${event} → ${res.status} on attempt ${attempt}/${BROADCAST_RETRIES}`,
+          `[supabase] broadcast ${event} → ${res.status} (non-retryable): ${await res.text()}`,
         );
       }
-    } catch (err) {
-      // Network throw — treat as retryable.
-      if (process.env.NODE_ENV !== "production") {
-        console.warn(
-          `[supabase] broadcast ${event} network error on attempt ${attempt}/${BROADCAST_RETRIES}`,
-          err,
-        );
-      }
+      return;
+    }
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        `[supabase] broadcast ${event} attempt ${attempt}/${BROADCAST_RETRIES} failed (${res?.status ?? "network/abort"})`,
+      );
     }
     if (attempt < BROADCAST_RETRIES) {
       await new Promise((r) => setTimeout(r, BROADCAST_RETRY_DELAY_MS));

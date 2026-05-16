@@ -92,7 +92,7 @@ export function Highlights() {
   // (those render their picture inline; "GIF" placeholder text
   // sitting next to the actual image read as a duplicate label).
   const preview = (h: Highlight): string =>
-    h.kind === "bingo_strike" ? "🎯 Bingo!" : h.body?.trim() ?? "";
+    h.kind === "bingo_strike" ? `🎯 ${t(lang, "bingo_strike_label")}` : h.body?.trim() ?? "";
   const top = rotation[safeIdx] ?? items[0];
   const topPreview = preview(top);
   const topAvatar = top.avatarId ? getAvatar(top.avatarId) : null;
@@ -298,7 +298,7 @@ export function Highlights() {
                 ) : h.kind === "bingo_strike" ? (
                   <p className="font-display text-2xl text-white inline-flex items-center gap-2 leading-snug">
                     <FluentEmoji glyph="🎯" size={24} />
-                    Bingo!
+                    {t(lang, "bingo_strike_label")}
                   </p>
                 ) : text ? (
                   <p className="font-display text-2xl text-white leading-snug text-balance">

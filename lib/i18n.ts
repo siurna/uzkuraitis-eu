@@ -228,6 +228,7 @@ const S = {
   home_results:        { en: "Results are in", lt: "Rezultatai jau čia" },
   home_bingo_won:      { en: "Bingo! 🎉 Tap to see your card", lt: "Bingo! 🎉 Bakstelėk savo kortelę" },
   bingo_widget_title:  { en: "Play bingo!", lt: "Žaisk bingo!" },
+  bingo_strike_label:  { en: "Bingo!", lt: "Bingo!" },
   highlights_title:    { en: "Highlights", lt: "Akcentai" },
   highlights_more:     { en: "more", lt: "daugiau" },
   whos_here_title:     { en: (n: number) => (n === 1 ? "Just you here" : `${n} here right now`), lt: (n: number) => (n === 1 ? "Kol kas čia tik tu" : `Vakarėlyje ${n} ${ltGuests(n)}`) },
