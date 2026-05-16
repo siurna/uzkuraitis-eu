@@ -138,6 +138,10 @@ export function SettingsModal({
               className="heartbeat-focus h-14 text-center text-2xl font-bold rounded-xl
                          border border-white/15 bg-black/30 placeholder:text-white/30 placeholder:font-normal"
               maxLength={40}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              autoCapitalize="words"
             />
           </Section>
 

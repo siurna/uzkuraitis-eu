@@ -413,6 +413,7 @@ function NumberRow({
       <input
         type="number"
         inputMode="numeric"
+        autoComplete="off"
         min={inputMin}
         max={inputMax}
         value={value ?? ""}
