@@ -274,6 +274,20 @@ function RoomBody({ children }: { children: React.ReactNode }) {
     () => new Set<RoomTab>(["home"]),
   );
   const [unread, setUnread] = useState(0);
+  // First-paint flicker guard. The `useEffect` below reads the
+  // `uzk_last_tab_<code>` key from localStorage to restore whichever
+  // tab the user last left the room on — but localStorage can't be
+  // read in `useState`'s lazy initialiser (server returns null,
+  // client returns the saved value, JSX diverges, React tears the
+  // subtree). So `tab` starts as `"home"`, and if the saved tab is
+  // anything else, the body briefly paints the Home panel before
+  // the effect runs and swaps it. We gate the wrapper at
+  // `opacity: 0` until the restore effect has finished — invisible
+  // first paint, then a quick fade-in once the correct tab is
+  // mounted. Fade-out of the loader (rest of the page) is handled
+  // by <PageTransition>; this just keeps the room body invisible
+  // long enough that the user never sees the wrong tab first.
+  const [tabReady, setTabReady] = useState(false);
   // Header + dock visibility is owned by <RoomChromeProvider/> and
   // applied DIRECTLY by PresenceBar + RoomTabBar (both portal to
   // document.body, so a wrapper here can't reach their nodes).
@@ -311,18 +325,21 @@ function RoomBody({ children }: { children: React.ReactNode }) {
 
   // On mount: deep-link ?tab= wins; otherwise restore the per-room
   // last-tab memory from localStorage so reopening feels native.
+  // Flipping `tabReady` last lets the wrapper unhide once the right
+  // tab is committed — no flash of Home before the swap.
   useEffect(() => {
     const param = new URLSearchParams(window.location.search).get("tab");
     if (isRoomTab(param) && param !== "home") {
       setTab(param);
-      return;
+    } else {
+      try {
+        const saved = localStorage.getItem(`uzk_last_tab_${code}`);
+        if (saved && isRoomTab(saved) && saved !== "home") setTab(saved);
+      } catch {
+        /* ignore */
+      }
     }
-    try {
-      const saved = localStorage.getItem(`uzk_last_tab_${code}`);
-      if (saved && isRoomTab(saved) && saved !== "home") setTab(saved);
-    } catch {
-      /* ignore */
-    }
+    setTabReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -368,7 +385,9 @@ function RoomBody({ children }: { children: React.ReactNode }) {
         // because a PWA has no chrome to subtract. `min-h-dvh` is
         // fine for non-chat tabs — those scroll the page, so a tiny
         // overshoot at the fold is invisible.
-        className={`flex flex-col pb-24 pt-[calc(env(safe-area-inset-top)+3.5rem)] ${
+        className={`flex flex-col pb-24 pt-[calc(env(safe-area-inset-top)+3.5rem)]
+                    transition-opacity duration-150 ease-out
+                    ${tabReady ? "opacity-100" : "opacity-0"} ${
           isChat
             ? "h-[var(--uzk-vh-100)] overflow-hidden"
             : "min-h-dvh"
