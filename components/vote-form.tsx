@@ -569,7 +569,7 @@ function RulesPanel({
     { label: tr("bet_wooden_spoon"),    sub: tr("bet_wooden_spoon_sub"),    pts: "+5",   big: true },
     { label: tr("bet_lt_12_to"),        sub: tr("bet_lt_12_to_sub"),        pts: "+5",   big: true },
     { label: tr("bet_lt_jury_count"),   sub: tr("bet_lt_jury_count_sub"),   pts: "0–5",  big: true },
-    { label: tr("bet_nul"),             sub: tr("bet_nul_sub"),             pts: "+4" },
+    { label: tr("bet_nul"),             sub: tr("bet_nul_sub"),             pts: "+3" },
     { label: tr("bet_big5"),            sub: tr("bet_big5_sub"),            pts: "+3" },
     { label: tr("bet_host_top3"),       sub: tr("bet_host_top3_sub"),       pts: "+3" },
     { label: tr("bet_solo_winner"),     sub: tr("bet_solo_winner_sub"),     pts: "+2" },

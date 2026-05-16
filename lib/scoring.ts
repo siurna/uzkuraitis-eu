@@ -288,7 +288,7 @@ export type BetBreakdown = {
 // number of guesses a voter can register on the client-side at
 // NUL_TELEVOTE_MAX_PICKS so a player who picks every country can't get
 // the max just by carpet-bombing — the server enforces the same cap.
-export const NUL_TELEVOTE_PER_HIT = 4;
+export const NUL_TELEVOTE_PER_HIT = 3;
 export const NUL_TELEVOTE_MAX = 12;
 export const NUL_TELEVOTE_MAX_PICKS = 5;
 
