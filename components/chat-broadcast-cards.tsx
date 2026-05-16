@@ -33,6 +33,7 @@ const BET_DEFS_FOR_BROADCAST: { key: string; labelKey: MessageKey }[] = [
   { key: "hostTop3", labelKey: "bet_host_top3" },
   { key: "winnerSolo", labelKey: "bet_solo_winner" },
   { key: "ltTotalPoints", labelKey: "bet_lt_total" },
+  { key: "ltJuryCount", labelKey: "bet_lt_jury_count" },
 ];
 
 // Each `sys_cta_*` system message gets a tailored card here. We

@@ -39,6 +39,10 @@ const VotesSchema = z.object({
       hostTop3: z.boolean().nullable().optional(),
       winnerSolo: z.boolean().nullable().optional(),
       ltTotalPoints: z.number().int().min(0).max(1000).nullable().optional(),
+      // ~40 voting countries cap on the count bet; leave 60 of slack
+      // so a sloppy guess outside the realistic range still validates
+      // and just scores 0 instead of bouncing the whole ballot.
+      ltJuryCount: z.number().int().min(0).max(60).nullable().optional(),
     })
     .optional()
     .default({}),
@@ -137,6 +141,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     betHostTop3: bets.hostTop3 ?? null,
     betWinnerSolo: bets.winnerSolo ?? null,
     betLtTotalPoints: bets.ltTotalPoints ?? null,
+    betLtJuryCount: bets.ltJuryCount ?? null,
   } as const;
   const [voter] = await db
     .insert(voters)

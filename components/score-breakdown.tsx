@@ -33,6 +33,7 @@ export function ScoreBreakdown({
     { label: t(lang, "rules_top10_h"), pts: topTen },
     { label: tpl("bet_lt_placement"), pts: home },
     { label: tpl("bet_lt_total"), pts: bets.ltTotalPoints },
+    { label: tpl("bet_lt_jury_count"), pts: bets.ltJuryCount },
     { label: t(lang, "bet_wooden_spoon"), pts: bets.woodenSpoon },
     { label: tpl("bet_lt_12_to"), pts: bets.lt12To },
     { label: t(lang, "bet_big5"), pts: bets.highestBig5 },
