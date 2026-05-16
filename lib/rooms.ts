@@ -87,6 +87,13 @@ export async function createRoom(name: string, preferredCode?: string): Promise<
           code: normalizedPreferred,
           name: name.trim() || "Eurovision party",
           adminToken,
+          // New rooms open in the "lobby" state with voting off so
+          // hosts can finish bingo setup / invite-link sharing / admin
+          // wiring without ballots starting to land. The host flips
+          // it on from /admin/live when the show actually begins.
+          // Schema column default is `true` for backward-compat with
+          // pre-existing rows; we override here at every create site.
+          votingEnabled: false,
         })
         .returning();
       return room;
@@ -108,6 +115,7 @@ export async function createRoom(name: string, preferredCode?: string): Promise<
           code,
           name: name.trim() || "Eurovision party",
           adminToken,
+          votingEnabled: false,
         })
         .returning();
       return room;
