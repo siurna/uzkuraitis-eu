@@ -193,7 +193,15 @@ export async function GET(req: Request, { params }: RouteCtx) {
   }
 
   const name = voterRow?.name ?? latestMsg?.name ?? "Anon";
-  const avatarId = latestMsg?.avatarId ?? null;
+  // Heartbeat-tracked avatar wins: the voter row's avatarId is refreshed
+  // every ~30s from the client's localStorage, so it's current the moment
+  // someone picks an avatar in the name gate. Falling back to the latest
+  // chat message's avatar covers anyone who hasn't heartbeat'd yet, and
+  // null is the last resort. Earlier rev only read `latestMsg?.avatarId`,
+  // so a participant who hadn't chatted came back with `avatarId: null` —
+  // the sheet's optimistic-paint avatar flashed and then vanished as soon
+  // as the API response landed.
+  const avatarId = voterRow?.avatarId ?? latestMsg?.avatarId ?? null;
 
   let betsPlaced = 0;
   if (voterRow) {
