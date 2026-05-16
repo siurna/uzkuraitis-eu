@@ -508,7 +508,23 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   useEffect(() => {
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!vv) return;
-    const sync = () => setViewport({ h: vv.height, top: Math.max(0, vv.offsetTop) });
+    // Functional setState + integer-round + value compare so React's
+    // bailout actually kicks in. iOS reports `visualViewport.height`
+    // with sub-pixel variation between ticks (599.99 vs 600.01), and
+    // predictive-text-bar toggles during typing nudge the value by
+    // ~36px — without rounding + a bailout, every poll tick fired a
+    // fresh `{ h: …, top: … }` object and React re-rendered the whole
+    // chat-panel + recomputed inline `height` styles, which the user
+    // sees as the messages list flickering as they type a multi-line
+    // message.
+    const sync = () => {
+      const h = Math.round(vv.height);
+      const top = Math.round(Math.max(0, vv.offsetTop));
+      setViewport((prev) => {
+        if (prev && prev.h === h && prev.top === top) return prev;
+        return { h, top };
+      });
+    };
     vv.addEventListener("resize", sync);
     vv.addEventListener("scroll", sync);
     sync();
@@ -1481,7 +1497,14 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     // subtree from focus + AX trees, so iOS skips it.
     <main
       inert={!active}
-      className={`fixed inset-x-0 z-10 flex justify-center ${
+      // bg-dark-blue-900 so the chat surface paints its own opaque
+      // backdrop instead of letting the page's html::before radial
+      // pink/violet bloom show through wherever the inner column
+      // doesn't reach (most visible during the loading skeleton + on
+      // a short messages list, where the bottom of the panel was
+      // a pink wash). Edge-to-edge bg also gives the area between
+      // messages and composer a consistent floor.
+      className={`fixed inset-x-0 z-10 flex justify-center bg-dark-blue-900 ${
         dockHidden
           ? "pt-[env(safe-area-inset-top)]"
           : "pt-[calc(env(safe-area-inset-top)+3.5rem)]"
