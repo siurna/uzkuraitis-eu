@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq, sql, desc } from "drizzle-orm";
+import { and, eq, sql, desc, notInArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { chatMessages, chatReactions } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
@@ -11,6 +11,12 @@ import { findRoomByCode } from "@/lib/rooms";
 // already honour the same column, this rail was hard-coded.
 const DEFAULT_THRESHOLD = 5;
 const LIMIT = 12;
+
+// Synthetic authors — system / commentator bot — must never qualify
+// as a highlight even when they collect reactions. They're broadcasts,
+// not human moments, and seeing a row labelled "system · 21" in the
+// Akcentai rail reads as a bug.
+const SYNTHETIC_SESSIONS = ["system", "commentator"];
 
 type RouteCtx = { params: Promise<{ code: string }> };
 
@@ -35,7 +41,12 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     })
     .from(chatMessages)
     .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
-    .where(eq(chatMessages.roomId, room.id))
+    .where(
+      and(
+        eq(chatMessages.roomId, room.id),
+        notInArray(chatMessages.sessionId, SYNTHETIC_SESSIONS),
+      ),
+    )
     .groupBy(chatMessages.id)
     .having(sql`count(${chatReactions.messageId}) >= ${threshold}`)
     .orderBy(desc(reactionCount), desc(chatMessages.createdAt))

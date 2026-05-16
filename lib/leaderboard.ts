@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, notInArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   officialResults,
@@ -163,7 +163,14 @@ export async function computeRoomLeaderboard(room: {
       })
       .from(chatMessages)
       .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
-      .where(eq(chatMessages.roomId, room.id))
+      // System / commentator bot authorships never qualify as
+      // highlights, mirrors the /highlights rail filter.
+      .where(
+        and(
+          eq(chatMessages.roomId, room.id),
+          notInArray(chatMessages.sessionId, ["system", "commentator"]),
+        ),
+      )
       .groupBy(chatMessages.id, chatMessages.sessionId)
       .having(sql`count(${chatReactions.messageId}) >= ${threshold}`),
     db

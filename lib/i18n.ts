@@ -247,7 +247,6 @@ const S = {
   bet_none_label:      { en: "No country", lt: "Jokios šalies" },
 
   // ── Chat ─────────────────────────────────────────────────────────
-  chat_empty:        { en: "No messages yet. Say hi 👋", lt: "Dar nieks nieko nerašė. Pasisveikink pirmas 👋" },
   chat_placeholder:  { en: "Message", lt: "Tavo žinutė" },
   chat_load_earlier: { en: "Load earlier", lt: "Įkelti senesnes" },
   chat_slow_down:    { en: "Whoa, slow down a sec.", lt: "Pala, PALA, neskubėk taip!" },

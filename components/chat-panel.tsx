@@ -14,7 +14,6 @@ import {
   X,
   Reply,
   Pencil,
-  Smile,
   ImagePlus,
   Loader2,
   ChevronUp,
@@ -1669,12 +1668,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                 <li key={i} className="h-12 rounded-2xl bg-white/[0.04] skeleton" />
               ))}
             </ul>
-          ) : messages.length === 0 ? (
-            <div className="flex-1 grid place-items-center text-center text-white/45 gap-2">
-              <Smile className="h-6 w-6 text-dark-blue-300" />
-              <p className="text-sm">{t(lang, "chat_empty")}</p>
-            </div>
-          ) : (
+          ) : messages.length === 0 ? null : (
             <ul className="mt-auto flex flex-col gap-3">
               {hasMore && (
                 <li className="flex justify-center">
