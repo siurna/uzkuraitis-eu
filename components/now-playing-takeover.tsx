@@ -38,6 +38,21 @@ export function NowPlayingTakeover() {
       return;
     }
     if (timer.current) clearTimeout(timer.current);
+    // If the viewer is currently typing in a chat / form input, blur
+    // the field so the iOS keyboard slides away and the takeover
+    // gets the full viewport. Without this the takeover centres on
+    // the FULL viewport (fixed inset-0) while the visible area is
+    // shortened by the keyboard, so the country reveal partly
+    // hides behind it. The draft text stays in the composer; the
+    // user just loses focus for the duration of the reveal.
+    const activeEl = document.activeElement;
+    if (
+      activeEl instanceof HTMLInputElement ||
+      activeEl instanceof HTMLTextAreaElement ||
+      (activeEl instanceof HTMLElement && activeEl.isContentEditable)
+    ) {
+      activeEl.blur();
+    }
     setActive({ id: Date.now(), code: next });
     timer.current = setTimeout(() => setActive(null), HOLD_MS);
   });

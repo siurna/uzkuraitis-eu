@@ -11,12 +11,15 @@
  * step, and we want the SW to load instantly without a bundler.
  */
 
-// Bump the version any time this file changes — the `activate` handler
-// wipes every cache whose key doesn't match CACHE, which is also what
-// flushes a viewer's broken-SW state in the wild (a SW that's already
-// installed only updates when the byte-for-byte sw.js changes AND the
-// new SW takes control, which the `clients.claim()` below + a fresh
-// CACHE name together guarantee).
+// CACHE is auto-stamped on every production build by
+// `scripts/stamp-sw.mjs` (wired in as the `prebuild` script), which
+// replaces the version slug below with the deploying commit SHA
+// (e.g. esc-2026-3c4171c). That means every Vercel deploy ships a
+// fresh CACHE name, the `activate` handler below wipes the prior
+// deploy's cache on first run, and PWAs in the wild flush their
+// stale bundles automatically on next reload — critical for hot
+// fixes during a live show. The literal value committed here is
+// the local-dev fallback; do not hand-bump it for prod.
 const CACHE = "esc-2026-v7";
 // Icons live on a Supabase bucket now (see app/manifest.ts), so the
 // precache list only carries first-party static assets. The bucket
