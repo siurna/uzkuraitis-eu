@@ -1478,18 +1478,25 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         // Otherwise reserve the 4.75rem of dock space so the bottom
         // tab bar never overlaps the composer.
         //
-        // Keyboard DOWN: use 100dvh, NOT visualViewport.h. iOS Safari
-        // doesn't reliably emit visualViewport.resize back to the full
-        // height when the user dismisses the keyboard via the Done
-        // accessory button — visualViewport.h can stay pinned at the
-        // shrunk value until the next user gesture forces a layout
-        // re-measure. That's the "dead band below the dock" the user
-        // sees. 100dvh is a CSS unit that doesn't track the keyboard,
-        // so the panel snaps back to its full size as soon as
-        // composerActive flips false.
+        // Keyboard DOWN: use the JS-synced `--uzk-vh` (set by
+        // <ViewportSync/> in the root layout from
+        // `window.innerHeight`), NOT `visualViewport.h` and NOT raw
+        // `100dvh`. Both APIs have iOS Safari bugs:
+        //   - visualViewport.h can stay stale after the user taps Done
+        //     on the keyboard (the resize event doesn't fire reliably),
+        //     which left a dead band below the dock.
+        //   - `100dvh` itself can be ~80px past the real viewport on
+        //     iOS 16/18 (WebKit bug 242758) and doesn't update on
+        //     URL-bar collapse mid-scroll, which produces the same
+        //     gap-at-the-bottom symptom.
+        // `window.innerHeight` is the only iOS measure that reliably
+        // emits `resize` / `orientationchange` updates AND tracks the
+        // layout viewport; ViewportSync pipes it through. The
+        // `1dvh` fallback covers the first paint before the effect
+        // runs.
         height: dockHidden
           ? viewport?.h ?? window.innerHeight
-          : "calc(100dvh - env(safe-area-inset-bottom) - 4.75rem)",
+          : "calc(var(--uzk-vh, 1dvh) * 100 - env(safe-area-inset-bottom) - 4.75rem)",
         ...(active ? null : { display: "none" }),
       }}
       onDragEnter={(e) => {

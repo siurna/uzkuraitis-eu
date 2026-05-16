@@ -305,15 +305,27 @@
   }
 }
 
-/* iOS PWA only: round the BOTTOM corners of the BottomSheet to 40px
+/* iOS PWA only: round the BOTTOM corners of the BottomSheet to 66px
    so the drawer's outline matches the iOS device's rounded screen
    corners. The class is applied by JS (lib/use-ios-pwa.ts) — a CSS
    media query alone can't distinguish iOS standalone from
    Android standalone, and Android phones don't all have the same
-   screen radius. */
+   screen radius.
+   When the sheet ISN'T flush against the layout viewport bottom
+   (e.g. keyboard up pushes the visible bottom higher than the
+   sheet's anchored bottom; the sheet then appears to "float" above
+   the keyboard with its bottom edge clipped by it), drop the
+   radii to 0 — rounded corners against the keyboard's flat top
+   read as an off-by-a-pixel mismatch. The BottomSheet toggles
+   `data-floating="1"` on this element via a visualViewport
+   listener. */
 .uzk-sheet-ios-pwa-bottom {
-  border-bottom-left-radius: 40px;
-  border-bottom-right-radius: 40px;
+  border-bottom-left-radius: 66px;
+  border-bottom-right-radius: 66px;
+}
+.uzk-sheet-ios-pwa-bottom[data-floating="1"] {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 /* Apple-style squircle for the app's icon-tiles. `corner-shape:

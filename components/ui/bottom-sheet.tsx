@@ -64,6 +64,35 @@ export function BottomSheet({
   // `uzk-sheet-ios-radius` in globals.css; this picks up the bottom
   // pair when we're explicitly inside an iOS standalone shell.
   const iosPwa = useIsIOSPwa();
+  // Detect "the sheet's bottom edge isn't flush with the visible
+  // viewport bottom" — most commonly when the iOS keyboard is up
+  // and the visible area shrinks above the anchored bottom-0
+  // position. When floating, the sheet's bottom edge meets the
+  // keyboard's flat top, and the iOS-PWA rounded bottom corners
+  // (66px each) look like an off-by-a-pixel mismatch against that
+  // straight edge. CSS in globals.css drops the radii to 0 when
+  // this attribute is set.
+  const [floating, setFloating] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const sync = () => {
+      const visibleBottom = vv.offsetTop + vv.height;
+      const layoutBottom = window.innerHeight;
+      // 50px slack — small browser-chrome shifts (URL bar collapse)
+      // shouldn't flip the radii on and off mid-scroll. Anything
+      // beyond is a keyboard / picker covering the sheet bottom.
+      setFloating(layoutBottom - visibleBottom > 50);
+    };
+    sync();
+    vv.addEventListener("resize", sync);
+    vv.addEventListener("scroll", sync);
+    return () => {
+      vv.removeEventListener("resize", sync);
+      vv.removeEventListener("scroll", sync);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -103,6 +132,14 @@ export function BottomSheet({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            // CSS in globals.css watches this attribute (see
+            // `.uzk-sheet-ios-pwa-bottom[data-floating="1"]`) to drop
+            // the rounded bottom corners when the sheet is no longer
+            // flush against the layout-viewport bottom (keyboard /
+            // picker covering it). undefined when at the bottom so
+            // the attribute is simply absent — no need for an
+            // explicit "0" value.
+            data-floating={floating ? "1" : undefined}
             // Edge-to-edge on mobile (the sheet hugs the bottom flush so
             // the home indicator sits over its own background, not a
             // gap), centred at max-w-md on tablets/desktops. Rounded

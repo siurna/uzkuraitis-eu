@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { AppToaster } from "@/components/app-toaster";
 import { PageTransition } from "@/components/page-transition";
+import { ViewportSync } from "@/components/viewport-sync";
 
 // Icon bucket on Supabase Storage — the PNGs aren't checked in so the
 // repo stays light. Browsers (and the install-prompt sheet) fetch
@@ -90,6 +91,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           (URL bar collapsed), so `min-h-screen` leaves a strip of phantom
           scroll whenever the URL bar is showing. dvh follows it. */}
       <body className="min-h-dvh antialiased">
+        {/* Push window.innerHeight into --uzk-vh on resize so layouts
+            can dodge iOS's flaky `dvh` unit. See components/viewport-sync.tsx. */}
+        <ViewportSync />
         <PageTransition>{children}</PageTransition>
         <AppToaster />
       </body>
