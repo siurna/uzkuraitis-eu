@@ -9,6 +9,7 @@ import { Flag, HeartFlag } from "@/components/flag";
 import { WelcomeMarkdown } from "@/components/welcome-banner";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { FluentEmoji } from "@/components/fluent-emoji";
+import { AvatarMatrixBg } from "@/components/avatar-matrix-bg";
 import { countryName, getCountry } from "@/lib/countries";
 import { isSupported as pushIsSupported } from "@/lib/push-client";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
@@ -33,6 +34,7 @@ const BET_DEFS_FOR_BROADCAST: { key: string; labelKey: MessageKey }[] = [
   { key: "hostTop3", labelKey: "bet_host_top3" },
   { key: "winnerSolo", labelKey: "bet_solo_winner" },
   { key: "ltTotalPoints", labelKey: "bet_lt_total" },
+  { key: "ltJuryCount", labelKey: "bet_lt_jury_count" },
 ];
 
 // Each `sys_cta_*` system message gets a tailored card here. We
@@ -123,12 +125,16 @@ function PlainBanner({ text }: { text: string }) {
   );
 }
 
-// "Turn on notifications" — bigger card with current state pill that
-// opens the notifications sheet on tap.
+// "Turn on notifications" — borrows the welcome-gate Step 3 visual
+// language: a Fluent 3D ringing bell sits centred over a diagonal
+// avatar-matrix backdrop, the title + sub stack underneath, and the
+// status pill anchors top-right. Reads as a brand moment in chat
+// rather than another row of card chrome — same "this is a thing
+// the system wants you to do" weight the welcome flow ends on.
 function NotificationsCard({ lang }: { lang: Language }) {
-  // We can't reach the server-side state from here cheaply; use the
-  // browser's Notification.permission as the cheap source of truth.
-  // "default" / "denied" → off; "granted" + a worker active → "on".
+  // Browser permission is the cheap client-side source of truth.
+  // "default" / "denied" → off; "granted" → on; no Push API at all
+  // → unsupported.
   const [status, setStatus] = useState<"unsupported" | "on" | "off">("off");
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -155,29 +161,42 @@ function NotificationsCard({ lang }: { lang: Language }) {
       className="rainbow-border rounded-2xl w-full block text-left"
     >
       <div
-        className="rounded-[14px] px-5 py-5 flex items-center gap-4
-                   bg-gradient-to-br from-dark-blue-800/95 to-dark-blue-900/95"
+        className="relative overflow-hidden rounded-[14px]
+                   bg-gradient-to-br from-dark-blue-800/95 to-dark-blue-900/95
+                   px-5 pt-5 pb-5 min-h-[10.5rem]
+                   flex flex-col items-center justify-center gap-2 text-center"
       >
-        <span className="shrink-0 grid place-items-center h-12 w-12 uzk-icon-squircle bg-flamingo/20 ring-1 ring-flamingo/40 text-flamingo">
-          <Bell className="h-6 w-6" fill="currentColor" />
+        {/* Avatar matrix backdrop — same diagonal scroll the welcome
+            gate's Step 3 uses behind the bell. The matrix's own
+            edges are feathered, so it dissolves cleanly into the
+            card's gradient at the corners; no extra mask needed
+            here. Pointer-events-none so the underlying button stays
+            tappable. */}
+        <span className="pointer-events-none absolute inset-0 opacity-70" aria-hidden>
+          <AvatarMatrixBg />
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-display text-base text-white leading-tight">
-            {t(lang, "sys_cta_notifications_title")}
-          </p>
-          <p className="text-xs text-white/65 leading-snug mt-0.5">
-            {t(lang, "sys_cta_notifications_sub")}
-          </p>
-        </div>
-        {/* Status pill — different copy + colour per state. */}
+        {/* A faint dark wash sits above the matrix so the type below
+            stays legible regardless of which avatars happen to scroll
+            past — without it, a bright-white press photo can swallow
+            the title for a second. */}
         <span
-          className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 h-7 text-[11px] font-display uppercase tracking-wider
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "radial-gradient(60% 80% at 50% 60%, rgba(8,9,28,0.55), rgba(8,9,28,0.78))" }}
+          aria-hidden
+        />
+        {/* Status pill anchored top-right so the centred bell + title
+            don't share a baseline with it. Same colour scheme as
+            before — turquoise for ON, flamingo for OFF, dim for
+            unsupported — so a returning viewer's eye still locks
+            onto the same "where am I right now?" chip. */}
+        <span
+          className={`absolute top-3 right-3 inline-flex items-center gap-1 rounded-full px-2.5 h-7 text-[11px] font-display uppercase tracking-wider
                       ${
                         status === "on"
-                          ? "bg-turquoise/15 ring-1 ring-turquoise/40 text-turquoise"
+                          ? "bg-turquoise/20 ring-1 ring-turquoise/45 text-turquoise"
                           : status === "unsupported"
-                            ? "bg-white/[0.06] ring-1 ring-white/12 text-white/45"
-                            : "bg-flamingo/15 ring-1 ring-flamingo/35 text-flamingo"
+                            ? "bg-white/[0.08] ring-1 ring-white/15 text-white/55"
+                            : "bg-flamingo/20 ring-1 ring-flamingo/45 text-flamingo"
                       }`}
         >
           {status === "on"
@@ -186,6 +205,19 @@ function NotificationsCard({ lang }: { lang: Language }) {
               ? t(lang, "sys_cta_notifications_unsupported")
               : t(lang, "sys_cta_notifications_off")}
         </span>
+        {/* Hero bell — Fluent 3D 🔔 with the same ringing-bell keyframe
+            the welcome gate uses, scaled down to fit the card. */}
+        <span className="relative ringing-bell drop-shadow-[0_8px_24px_rgba(0,0,0,0.45)]">
+          <FluentEmoji glyph="🔔" size={64} ariaLabel="bell" />
+        </span>
+        <div className="relative max-w-[20rem] flex flex-col gap-0.5">
+          <p className="font-display text-base text-white leading-tight text-balance">
+            {t(lang, "sys_cta_notifications_title")}
+          </p>
+          <p className="text-xs text-white/75 leading-snug text-balance">
+            {t(lang, "sys_cta_notifications_sub")}
+          </p>
+        </div>
       </div>
     </motion.button>
   );

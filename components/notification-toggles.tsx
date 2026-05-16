@@ -233,6 +233,33 @@ function DisabledWithHelp({
   reason: "install" | "blocked";
 }) {
   const steps = installSteps(lang, platform, reason);
+  // When the OS has actively blocked permission, hiding the guide
+  // behind a "How?" expander is friction the user doesn't need — the
+  // only thing they CAN do is open their browser settings, so we
+  // surface the steps straight away. The "install required" case
+  // stays collapsible (it's softer guidance for users who haven't
+  // tried to enable yet).
+  if (reason === "blocked") {
+    return (
+      <div className="flex flex-col gap-2">
+        <div
+          className="w-full flex items-center gap-2 rounded-2xl px-4 py-3
+                     bg-white/[0.04] ring-1 ring-white/10 text-sm text-white/70"
+        >
+          <BellOff className="h-4 w-4 text-dark-blue-200" />
+          {t(lang, "push_blocked")}
+        </div>
+        <div className="rounded-2xl bg-flamingo/8 ring-1 ring-flamingo/20 px-4 py-3 text-sm text-white/85 leading-relaxed flex flex-col gap-2">
+          <p className="font-display">{steps.title}</p>
+          <ol className="list-decimal pl-5 flex flex-col gap-1 text-white/75">
+            {steps.steps.map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-2">
       <button
@@ -243,9 +270,7 @@ function DisabledWithHelp({
       >
         <span className="flex items-center gap-2 text-white/70">
           <BellOff className="h-4 w-4 text-dark-blue-200" />
-          {reason === "install"
-            ? t(lang, "push_install_required")
-            : t(lang, "push_blocked")}
+          {t(lang, "push_install_required")}
         </span>
         <span className="flex items-center gap-1.5 text-xs text-flamingo">
           <HelpCircle className="h-3.5 w-3.5" />

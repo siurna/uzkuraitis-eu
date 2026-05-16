@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
-import { MessageCircle, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
@@ -187,10 +187,13 @@ function PointsBallSvg({ value, tint }: { value: string; tint: BallTint }) {
   // viewBox is 100×100; circle centred at (50, 50) with r=46 leaves a
   // 4-unit edge for the soft outer shadow inside the svg bounds.
   // The numeral sits dead-centre via dominant-baseline. Specular
-  // highlight is a pale ellipse over the top-left — same trick the
-  // real Eurovision points balls use on the broadcast.
+  // highlight is a soft radial gradient that fades to transparent at
+  // the edges — solid-fill ellipses (previous treatment) read flat /
+  // 2D against the body gradient, the soft falloff sells the curved
+  // surface instead.
   const fillId = `uzk-ball-${tint}`;
   const shadowId = `uzk-ball-shadow-${tint}`;
+  const specularId = `uzk-ball-specular-${tint}`;
   const t = BALL_TINTS[tint];
   return (
     <svg
@@ -212,6 +215,15 @@ function PointsBallSvg({ value, tint }: { value: string; tint: BallTint }) {
           <stop offset="55%" stopColor="rgba(0,0,0,0.05)" />
           <stop offset="100%" stopColor="rgba(0,0,0,0)" />
         </radialGradient>
+        {/* Specular highlight gradient — bright core, soft fade to
+            zero alpha so the highlight blends into the sphere body
+            instead of reading as a stuck-on opaque shape. */}
+        <radialGradient id={specularId} cx="50%" cy="50%" r="55%">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
+          <stop offset="35%" stopColor="rgba(255,255,255,0.45)" />
+          <stop offset="75%" stopColor="rgba(255,255,255,0.12)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+        </radialGradient>
       </defs>
       {/* Contact shadow — wisp, not puddle. Just enough to hint that
           the ball is resting on something. */}
@@ -225,8 +237,10 @@ function PointsBallSvg({ value, tint }: { value: string; tint: BallTint }) {
         stroke={t.rim}
         strokeWidth="1.5"
       />
-      <ellipse cx="36" cy="30" rx="20" ry="13" fill="rgba(255,255,255,0.55)" />
-      <ellipse cx="32" cy="26" rx="8" ry="5" fill="rgba(255,255,255,0.85)" />
+      {/* Single soft-edged highlight tilted toward the top-left. The
+          gradient falls off through ~75% of its radius before going
+          fully transparent, so the bright spot has no hard outline. */}
+      <ellipse cx="35" cy="28" rx="24" ry="16" fill={`url(#${specularId})`} />
       <text
         x="50"
         y="54"
@@ -280,12 +294,35 @@ const PHYS_SLEEP_FRAMES = 10;
 // speed threshold.
 const PHYS_FORCE_SLEEP_AT_MS = 2600;
 // Longer + more sporadic. CYCLE_MS bumped 6.5s → 9s so the pile
-// gets to settle and breathe before the fade. FADE_MS doubled so
-// the crossfade between cycles is gentler. Stagger is now a min/max
+// gets to settle and breathe before the rollout. The drop sequence
+// is followed by a rollout phase (the side walls "break", every
+// ball gets kicked outward, gravity carries them off-screen) and a
+// short rest beat before the next batch falls. Stagger is a min/max
 // range — each ball picks a random delay in that window so the
 // drop sequence varies cycle-to-cycle instead of metronoming.
 const CYCLE_MS = 9000;
-const FADE_MS = 1400;
+// Rollout phase replaces the old fade-out. Walls + floor + sleep
+// pass all switch off; every awake ball gets a one-time outward
+// kick (left half left, right half right) plus a small upward
+// pop, then gravity + ball-ball collisions carry them out past
+// the container edges. The parent card's `overflow-hidden`
+// clips them as they leave the visible area, so it reads as
+// "the bowl tipped, the balls went everywhere."
+const ROLLOUT_MS = 1100;
+// Empty beat after the rollout. Container goes blank for a moment
+// before the next batch starts dropping in — the pause is what
+// sells the "ok, that round's done, here come the next ones"
+// rhythm. Without it the drop reads as a flicker reset, not a
+// fresh cycle.
+const REST_MS = 1500;
+// Speed of the outward kick. Tuned so a ball clears its half of
+// the container in ~400ms (PHYS_W/2 ÷ kick ≈ 96/320 ≈ 0.3s) — fast
+// enough that the rollout reads as a deliberate sweep, slow enough
+// that the eye tracks individual balls leaving instead of a blur.
+const ROLLOUT_KICK_VX = 320;
+// Small vertical pop on the kick — gives each ball a slight arc as
+// it exits rather than a flat horizontal slide. Negative = upward.
+const ROLLOUT_KICK_VY = -120;
 const STAGGER_MIN_MS = 80;
 const STAGGER_MAX_MS = 320;
 
@@ -308,6 +345,11 @@ function VoteBallsRain() {
   const containerRef = useRef<HTMLSpanElement | null>(null);
   const ballRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const stateRef = useRef<BallSim[]>([]);
+  // Set true the first frame we cross into the rollout phase. The
+  // outward kick is one-shot (every awake ball gets a single push,
+  // not a per-frame nudge), so we need a flag rather than re-checking
+  // the time window. Reset on each new cycle in the useEffect below.
+  const kickedRef = useRef(false);
   // Pause the rAF loop when the balls aren't on screen. The Home tab
   // keeps this component MOUNTED when the user switches to Chat /
   // Bingo / Vote (TabPane uses display:contents/none, not unmount),
@@ -375,43 +417,71 @@ function VoteBallsRain() {
 
     let raf = 0;
     let lastT = start;
-    const cycleEnd = start + CYCLE_MS;
+    // Three phases per cycle:
+    //   t < settleEnd          → drop + bounce + sleep, the existing pile
+    //   settleEnd ≤ t < rollEnd → walls/floor off, every ball flung
+    //                              outward, gravity carries them off
+    //   rollEnd ≤ t < endTime  → empty container, no physics, no render
+    const settleEnd = start + CYCLE_MS;
+    const rollEnd = settleEnd + ROLLOUT_MS;
+    const endTime = rollEnd + REST_MS;
+    kickedRef.current = false;
 
     const step = (t: number) => {
       const dt = Math.min((t - lastT) / 1000, 0.033);
       lastT = t;
 
       const balls = stateRef.current;
+      const inSettle = t < settleEnd;
+      const inRollout = !inSettle && t < rollEnd;
+      const inRest = !inSettle && !inRollout;
 
-      // Integrate each spawned ball, then resolve walls + floor.
-      // Asleep balls skip integration entirely — once latched, they
-      // don't accept new impulses. The cleanup pass below can wake
-      // them via overlap nudges if a fresh ball lands on top of an
-      // already-settled pile, but the steady-state pile holds.
+      // Crossing into rollout — wake every ball, kick the left half
+      // left and the right half right, with a small upward pop. One-
+      // shot: kickedRef stops it from re-firing every frame.
+      if (inRollout && !kickedRef.current) {
+        kickedRef.current = true;
+        for (const b of balls) {
+          if (t < b.spawnAt) continue;
+          b.asleep = false;
+          const fromLeft = b.x < PHYS_W / 2;
+          const dir = fromLeft ? -1 : 1;
+          // ±20% randomness on the kick + an asymmetric pop so the
+          // pile doesn't read as a synchronised launch.
+          b.vx = dir * (ROLLOUT_KICK_VX + Math.random() * 120);
+          b.vy = ROLLOUT_KICK_VY - Math.random() * 80;
+        }
+      }
+
+      // Integrate each spawned ball. Walls + floor + sleep all
+      // disabled in rollout — balls are supposed to leave the box.
       for (const b of balls) {
         if (t < b.spawnAt) continue;
-        if (b.asleep) continue;
+        if (inRest) continue; // frozen, the render pass hides them
+        if (b.asleep && inSettle) continue;
         b.vy += PHYS_GRAVITY * dt;
         b.x += b.vx * dt;
         b.y += b.vy * dt;
-        // Floor bounce — settle when bouncing is below threshold.
-        if (b.y + b.r > PHYS_FLOOR) {
-          b.y = PHYS_FLOOR - b.r;
-          if (Math.abs(b.vy) > PHYS_REST_THRESHOLD) {
-            b.vy = -b.vy * PHYS_RESTITUTION_WALL;
-          } else {
-            b.vy = 0;
+        if (inSettle) {
+          // Floor bounce — settle when bouncing is below threshold.
+          if (b.y + b.r > PHYS_FLOOR) {
+            b.y = PHYS_FLOOR - b.r;
+            if (Math.abs(b.vy) > PHYS_REST_THRESHOLD) {
+              b.vy = -b.vy * PHYS_RESTITUTION_WALL;
+            } else {
+              b.vy = 0;
+            }
+            b.vx *= PHYS_HORIZONTAL_FRICTION;
+            if (Math.abs(b.vx) < 4) b.vx = 0;
           }
-          b.vx *= PHYS_HORIZONTAL_FRICTION;
-          if (Math.abs(b.vx) < 4) b.vx = 0;
-        }
-        // Walls.
-        if (b.x - b.r < 0) {
-          b.x = b.r;
-          b.vx = -b.vx * PHYS_RESTITUTION_WALL;
-        } else if (b.x + b.r > PHYS_W) {
-          b.x = PHYS_W - b.r;
-          b.vx = -b.vx * PHYS_RESTITUTION_WALL;
+          // Walls.
+          if (b.x - b.r < 0) {
+            b.x = b.r;
+            b.vx = -b.vx * PHYS_RESTITUTION_WALL;
+          } else if (b.x + b.r > PHYS_W) {
+            b.x = PHYS_W - b.r;
+            b.vx = -b.vx * PHYS_RESTITUTION_WALL;
+          }
         }
       }
 
@@ -419,7 +489,10 @@ function VoteBallsRain() {
       // along the contact normal, then exchange the normal component
       // of velocity for a soft elastic-ish bounce. Three passes so a
       // ball wedged between two others doesn't poke through — and so
-      // a settling pile has enough time to converge.
+      // a settling pile has enough time to converge. Skipped during
+      // the rest beat (no movement to resolve) and during settle's
+      // asleep-on-asleep pairs.
+      if (!inRest)
       for (let pass = 0; pass < 3; pass++) {
         for (let i = 0; i < balls.length; i++) {
           const a = balls[i];
@@ -484,7 +557,11 @@ function VoteBallsRain() {
         }
       }
 
-      // Sleep pass — two paths to rest:
+      // Sleep pass only runs in the settle phase. During rollout
+      // every ball is awake by design (pinning would freeze the
+      // outward kick mid-flight); during rest there's nothing to
+      // sleep against.
+      //
       //   1. Natural settle: ball on the floor with speed under the
       //      sleep threshold for N consecutive frames. The decrement
       //      (slowFrames -= 2 on a fast frame) is gentler than a
@@ -497,49 +574,52 @@ function VoteBallsRain() {
       //      where two awake balls keep trading micro-impulses
       //      without either crossing the speed threshold.
       const elapsed = t - start;
-      const forceSleep = elapsed >= PHYS_FORCE_SLEEP_AT_MS;
-      for (const b of balls) {
-        if (t < b.spawnAt) continue;
-        if (b.asleep) continue;
-        if (forceSleep) {
-          b.asleep = true;
-          b.vx = 0;
-          b.vy = 0;
-          if (b.y + b.r > PHYS_FLOOR) b.y = PHYS_FLOOR - b.r;
-          continue;
-        }
-        const onFloor = b.y + b.r >= PHYS_FLOOR - 0.5;
-        const speed = Math.hypot(b.vx, b.vy);
-        if (onFloor && speed < PHYS_SLEEP_SPEED) {
-          b.slowFrames += 1;
-          if (b.slowFrames >= PHYS_SLEEP_FRAMES) {
+      if (inSettle) {
+        const forceSleep = elapsed >= PHYS_FORCE_SLEEP_AT_MS;
+        for (const b of balls) {
+          if (t < b.spawnAt) continue;
+          if (b.asleep) continue;
+          if (forceSleep) {
             b.asleep = true;
             b.vx = 0;
             b.vy = 0;
-            b.y = PHYS_FLOOR - b.r;
+            if (b.y + b.r > PHYS_FLOOR) b.y = PHYS_FLOOR - b.r;
+            continue;
           }
-        } else {
-          b.slowFrames = Math.max(0, b.slowFrames - 2);
+          const onFloor = b.y + b.r >= PHYS_FLOOR - 0.5;
+          const speed = Math.hypot(b.vx, b.vy);
+          if (onFloor && speed < PHYS_SLEEP_SPEED) {
+            b.slowFrames += 1;
+            if (b.slowFrames >= PHYS_SLEEP_FRAMES) {
+              b.asleep = true;
+              b.vx = 0;
+              b.vy = 0;
+              b.y = PHYS_FLOOR - b.r;
+            }
+          } else {
+            b.slowFrames = Math.max(0, b.slowFrames - 2);
+          }
         }
       }
 
       // Write to DOM directly — no React render per frame.
-      const timeUntilEnd = cycleEnd - t;
-      const fadeAlpha =
-        timeUntilEnd < FADE_MS ? Math.max(0, timeUntilEnd / FADE_MS) : 1;
+      // Rest beat: hide everything (the empty container is the whole
+      // point of the pause). Rollout + settle render at full opacity
+      // — the parent card's overflow-hidden handles the off-screen
+      // clipping for balls that have rolled past the bounds.
       for (let i = 0; i < balls.length; i++) {
         const el = ballRefs.current[i];
         if (!el) continue;
         const b = balls[i];
-        if (t < b.spawnAt) {
+        if (t < b.spawnAt || inRest) {
           el.style.opacity = "0";
         } else {
-          el.style.opacity = String(fadeAlpha);
+          el.style.opacity = "1";
           el.style.transform = `translate(${b.x - b.r}px, ${b.y - b.r}px)`;
         }
       }
 
-      if (t < cycleEnd) {
+      if (t < endTime) {
         raf = requestAnimationFrame(step);
       } else {
         setCycle((c) => c + 1);
@@ -946,8 +1026,8 @@ function PlayingCard({
   const { scrollY } = useScroll();
   const photoY = useTransform(scrollY, [0, 700], [-14, 14]);
   const prog = pos != null ? Math.min(Math.max(pos, 0) / GRAND_FINAL_ACTS, 1) : 0;
-  const eyebrow =
-    pos != null ? `${t(lang, "now_playing")} · ${pos} / ${GRAND_FINAL_ACTS}` : t(lang, "now_playing");
+  const eyebrowLabel = t(lang, "now_playing");
+  const posLabel = pos != null ? `${pos} / ${GRAND_FINAL_ACTS}` : null;
   // Always-present track so the "progress lives here" affordance reads,
   // even before the host sets the running-order position (then it's 0%).
   // The fill slides when the running-order position advances.
@@ -993,34 +1073,47 @@ function PlayingCard({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-x-0 bottom-0 p-4 pb-5 sm:p-5 sm:pb-6 flex items-end gap-3"
+            // items-center so the flag lines up vertically with the
+            // eyebrow + country name block on the left (was items-end,
+            // which docked the flag to the chip row's bottom).
+            className="absolute inset-x-0 bottom-0 p-4 pb-5 sm:p-5 sm:pb-6 flex items-center gap-3"
           >
             <span className="shrink-0">
               <HeartFlag code={country.code} size="md" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-[0.32em] text-white/85 font-display leading-tight mb-0.5 drop-shadow">
-                {eyebrow}
+              <p className="text-[10px] uppercase text-white/85 font-display leading-tight mb-0.5 drop-shadow tracking-[0.32em]">
+                {eyebrowLabel}
+                {posLabel && (
+                  // Tighter letter-spacing on the numeric tail — wide
+                  // tracking (0.32em) on "21 / 26" reads as gappy
+                  // because digits are already monospaced.
+                  <span className="tracking-[0.12em] text-white/70"> · {posLabel}</span>
+                )}
               </p>
               <p className="font-display text-2xl text-white leading-tight truncate drop-shadow">
                 {countryName(country.code, lang)}
               </p>
-              {(country.artist || country.song) && (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {country.artist && (
-                    <span className="rounded-full bg-white/15 backdrop-blur-sm ring-1 ring-white/20 px-2 py-0.5 text-[11px] text-white">
-                      {country.artist}
-                    </span>
-                  )}
-                  {country.song && (
-                    <span className="rounded-full bg-white/10 backdrop-blur-sm ring-1 ring-white/15 px-2 py-0.5 text-[11px] italic text-white/80">
-                      {country.song}
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
-            <MessageCircle className="h-5 w-5 text-white/80 shrink-0 mb-1" />
+            {/* Artist + song stacked vertically, right side. Was a
+                row of chips below the country name + a chat icon on
+                the right; consolidated into one small column so the
+                "who's singing / what's the song" pair reads as a
+                single caption without competing chrome. */}
+            {(country.artist || country.song) && (
+              <div className="shrink-0 max-w-[40%] text-right flex flex-col gap-0.5">
+                {country.artist && (
+                  <span className="text-[12px] text-white font-display leading-tight truncate drop-shadow">
+                    {country.artist}
+                  </span>
+                )}
+                {country.song && (
+                  <span className="text-[11px] italic text-white/75 leading-tight truncate drop-shadow">
+                    {country.song}
+                  </span>
+                )}
+              </div>
+            )}
           </motion.div>
           {progressBar}
         </div>
@@ -1046,18 +1139,30 @@ function PlayingCard({
             <HeartFlag code={country.code} size="lg" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.32em] text-white font-display leading-tight mb-1 drop-shadow">
-              {eyebrow}
+            <p className="text-[10px] uppercase text-white font-display leading-tight mb-1 drop-shadow tracking-[0.32em]">
+              {eyebrowLabel}
+              {posLabel && (
+                <span className="tracking-[0.12em] text-white/75"> · {posLabel}</span>
+              )}
             </p>
             <p className="font-display text-2xl text-white leading-tight truncate drop-shadow">
               {countryName(country.code, lang)}
             </p>
-            <p className="text-sm text-white/75 leading-tight truncate mt-0.5">
-              {country.artist}
-              {country.song ? <span className="italic text-white/55"> · {country.song}</span> : null}
-            </p>
           </div>
-          <MessageCircle className="h-5 w-5 text-dark-blue-200 shrink-0" />
+          {(country.artist || country.song) && (
+            <div className="shrink-0 max-w-[38%] text-right flex flex-col gap-0.5">
+              {country.artist && (
+                <span className="text-[12px] text-white font-display leading-tight truncate">
+                  {country.artist}
+                </span>
+              )}
+              {country.song && (
+                <span className="text-[11px] italic text-white/65 leading-tight truncate">
+                  {country.song}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         {progressBar}
       </div>

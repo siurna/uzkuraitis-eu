@@ -49,6 +49,21 @@ function ltPoints(n: number): string {
   return "taškai";
 }
 
+// Guests-at-the-party agreement. Same rule family as `ltPoints` but
+// the singular form lands on numbers like 21 / 31 too (last digit 1,
+// not in the teens range), not just on the literal `1`. So:
+//   1, 21, 31, 41… → "svečias"      (nom sg)
+//   2-9, 22-29…    → "svečiai"      (nom pl)
+//   10-20, 30, 40… → "svečių"       (gen pl)
+function ltGuests(n: number): string {
+  const last = n % 10;
+  const mod100 = n % 100;
+  const isTeen = mod100 >= 11 && mod100 <= 19;
+  if (last === 1 && !isTeen) return "svečias";
+  if (last >= 2 && last <= 9 && !isTeen) return "svečiai";
+  return "svečių";
+}
+
 const S = {
   // ── Auto-translate to English (Settings) ─────────────────────────
   settings_translate_h:    { en: "Auto-translate Lithuanian to English", lt: "Auto-vertimas į anglų" },
@@ -160,12 +175,14 @@ const S = {
   // ── Rules tab (scoring explainer) ────────────────────────────────
   rules_title:       { en: "How scoring works", lt: "Kaip skaičiuojami taškai?" },
   rules_top10_h:     { en: "Your TOP 10", lt: "Tavo TOP 10" },
-  rules_top10_b:     { en: "Only countries that finish in the official Top 10 score anything. Place one in the exact spot it finished and you bank its full Eurovision points (12, 10, 8…1). Off by a place? Slide one rung down the scoreboard: a country that came 1st but you ranked 3rd scores 8 (3rd place's value), and sliding past 10th means 0.", lt: "Taškus gausi tik už šalis, patekusias į oficialų TOP 10. Tiksliai įvardyta užimta vieta gauna pilnus Eurovizijos taškus (12, 10, 8…1). Klysti viena vieta? Nuslysti viena pakopa žemyn: jei šalis liko 1-a, o tu ją pastatei 3-ią, gauni 8 (3-ios vietos vertę). Nuslydęs už 10-os vietos negausi nieko." },
+  rules_top10_b:     { en: "Only countries that finish in the official Top 10 score anything.\n\nPlace one in the exact spot it finished and you bank its full Eurovision points (12, 10, 8…1).\n\nOff by a place? Slide one rung down the scoreboard: a country that came 1st but you ranked 3rd scores 8 (3rd place's value), and sliding past 10th means 0.", lt: "Taškus gausi tik už šalis, patekusias į oficialų TOP 10.\n\nTiksliai įvardyta užimta vieta gauna pilnus Eurovizijos taškus (12, 10, 8…1).\n\nKlysti viena vieta? Nuslysti viena pakopa žemyn: jei šalis liko 1-a, o tu ją pastatei 3-ią, gauni 8 (3-ios vietos vertę). Nuslydęs už 10-os vietos negausi nieko." },
   rules_top10_eg:    { en: "Example: A country that finished 1st, scored by how far off your ranking was:", lt: "Pavyzdys: 1-ą vietą užėmusi šalis. Kiek taškų gausi pagal spėjimo tikslumą:" },
   rules_home_h:      { en: "How will {home} place?", lt: "Kelintą vietą užims {home}?" },
   rules_home_b:      { en: "Nail it and that's 12 points! Every place you're off slides you one rung down the Eurovision ladder (12 → 10 → 8 → 7 … 1):", lt: "Pataikyk tiksliai ir uždirbk 12 taškų! Už kiekvieną netaiklią vietą nuslysti pakopa žemyn Eurovizijos skalėje (12 → 10 → 8 → 7 … 1):" },
   rules_bets_h:      { en: "Bonus bets", lt: "Papildomi statymai" },
-  rules_bets_intro:  { en: "Every bet is optional. You only score if you call it right; a skipped bet is just 0.", lt: "Taškų gausi tik pataikęs. Praleistas statymas – tiesiog 0. Tai,.. ko nesurizikavus?" },
+  rules_bets_intro:  { en: "Every bet is optional. You only score if you call it right; a skipped bet is just 0.", lt: "Taškų gausi tik pataikęs. Praleistas statymas, tiesiog 0. Tai,.. ko nesurizikavus?" },
+  rules_trivia_h:    { en: "Trivia", lt: "Viktorina" },
+  rules_trivia_b:    { en: "Each country on stage may get a quick trivia question. The first few players to answer correctly score +2 points; everyone else (and anyone who skips or gets it wrong) takes a 0. Speed matters.", lt: "Kiekviena scenoje pasirodanti šalis gali sulaukti greito viktorinos klausimo. Pirmieji teisingai atsakę gauna po +2 taškus; kiti (taip pat praleidę ar suklydę) lieka su 0. Greitis lemia." },
   rules_highlights_b:{ en: "When a chat message you sent picks up enough reactions it becomes a highlight: +2 points each, up to +12. (You have to have voted to score.)", lt: "Kai tavo žinutė pokalbyje surenka daug reakcijų, ji tampa vakaro akcentu: po +2 t. už kiekvieną, iki +12. Taškai skaičiuojami tik pateikusiems savo TOP 10!" },
 
   // ── Room tab bar ─────────────────────────────────────────────────
@@ -200,10 +217,13 @@ const S = {
   bingo_widget_title:  { en: "Play bingo!", lt: "Žaisk bingo!" },
   highlights_title:    { en: "Highlights", lt: "Akcentai" },
   highlights_more:     { en: "more", lt: "daugiau" },
-  whos_here_title:     { en: (n: number) => (n === 1 ? "Just you here" : `${n} here right now`), lt: (n: number) => (n === 1 ? "Kol kas čia tik tu" : `${n} čia dabar`) },
+  whos_here_title:     { en: (n: number) => (n === 1 ? "Just you here" : `${n} here right now`), lt: (n: number) => (n === 1 ? "Kol kas čia tik tu" : `Vakarėlyje ${n} ${ltGuests(n)}`) },
   home_my_results:     { en: "Your results", lt: "Tavo rezultatai" },
   home_results_in:     { en: "Results are in", lt: "Rezultatai jau čia" },
   home_results_in_sub: { en: "See how everyone did", lt: "Pamatyk, kaip visiems sekėsi" },
+  results_top5:        { en: "Top 5 of the night", lt: "Vakaro TOP 5" },
+  results_voters:      { en: "voters", lt: "balsavusių" },
+  results_you_label:   { en: "You", lt: "Tu" },
   results_tab_me:      { en: "My breakdown", lt: "Mano išklotinė" },
   results_tab_board:   { en: "Leaderboard", lt: "Lyderių lentelė" },
   results_you_said:    { en: "You said", lt: "Tu sakei" },
@@ -230,6 +250,8 @@ const S = {
   // (author deleted it OR it scrolled out of the rendered window).
   chat_reply_deleted: { en: "(message removed)", lt: "(žinutė pašalinta)" },
   chat_delete:       { en: "Delete", lt: "Ištrinti" },
+  chat_admin_on:     { en: "Moderator mode on", lt: "Moderatoriaus režimas įjungtas" },
+  chat_admin_off:    { en: "Moderator mode off", lt: "Moderatoriaus režimas išjungtas" },
   chat_card:         { en: "card", lt: "kortelė" },
   chat_who_reacted:  { en: "Who reacted?", lt: "Kas reagavo?" },
   chat_reactors_title: { en: "Reactions", lt: "Reakcijos" },
@@ -462,7 +484,7 @@ const S = {
   bet_lt_12_to:          { en: "12 points from {home}", lt: "{home} 12 taškų skirs..." },
   bet_lt_12_to_sub:      { en: "Which country gets {home}'s 12 points?", lt: "Kuriai šaliai {home} skirs savo 12 taškų?" },
   bet_big5:              { en: "Best of the Big 5", lt: "Geriausias iš Big 5" },
-  bet_big5_sub:          { en: "UK, Germany, France, Italy or Spain, which finishes highest?", lt: "Iš JK, Vokietijos, Prancūzijos, Italijos, Ispanijos (haha), kas finišuos aukščiausiai?" },
+  bet_big5_sub:          { en: "UK, Germany, France, Italy or Spain, which finishes highest? Within two spots also scores.", lt: "Iš JK, Vokietijos, Prancūzijos, Italijos, Ispanijos (haha), kas finišuos aukščiausiai? Pataikius per 2 vietas, dalis taškų vis tiek." },
   bet_jury_winner:       { en: "Jury winner", lt: "Žiuri nugalėtojas" },
   bet_jury_winner_sub:   { en: "Country with the highest jury total.", lt: "Šalis, kuri surinks daugiausiai žiuri taškų." },
   bet_televote_winner:   { en: "Televote winner", lt: "Žiūrovų nugalėtojas" },
@@ -471,6 +493,8 @@ const S = {
   bet_nul_sub:           { en: "Pick up to 5 countries you think get zero from the public, +3 for each right (capped at +12). Or 'No country' if you reckon everyone scores.", lt: "Pasirink iki 5 šalių, kurios, tavo manymu, gaus nulį iš žiūrovų, po +3 už kiekvieną teisingą (daugiausiai +12). Arba „Nė viena“, jei manai, kad visos ką nors uždirbs." },
   bet_lt_total:          { en: "{home} total points", lt: "{home} surinks" },
   bet_lt_total_sub:      { en: "How many points (jury + public) does {home} end with? Closer guesses score more.", lt: "Kiek iš viso taškų (žiuri + žiūrovai) surinks {home}? Kuo arčiau atspėsi, tuo daugiau uždirbsi." },
+  bet_lt_jury_count:     { en: "Juries scoring {home}", lt: "Kiek žiuri {home} įvertins" },
+  bet_lt_jury_count_sub: { en: "During the long jury reveal, how many countries give {home} any points? Closer guesses score more.", lt: "Per ilgąją žiuri dalį, kiek šalių skirs {home} bent kažkiek taškų? Kuo arčiau, tuo daugiau." },
   bet_host_top3:         { en: "{host} top 3?", lt: "Ar {host} bus TOP3?" },
   bet_host_top3_sub:     { en: "Will the host land in the top 3?", lt: "Ar šeimininkai pateks į geriausiųjų trejetuką" },
   bet_solo_winner:       { en: "Solo winner?", lt: "Vieniša pergalė?" },

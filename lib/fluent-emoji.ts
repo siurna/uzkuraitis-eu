@@ -170,6 +170,14 @@ const FLUENT_EMOJI: Record<string, FluentEntry> = {
   "🪑":  { folder: "Chair", slug: "chair" },
   "0️⃣":  { folder: "Keycap 0", slug: "keycap_0" },
   "🎷":  { folder: "Saxophone", slug: "saxophone" },
+  "📮":  { folder: "Postbox", slug: "postbox" },
+  "🤐":  { folder: "Zipper-mouth face", slug: "zipper-mouth_face" },
+  "📋":  { folder: "Clipboard", slug: "clipboard" },
+  "🚪":  { folder: "Door", slug: "door" },
+  "🕳️":  { folder: "Hole", slug: "hole" },
+  "🤳":  { folder: "Selfie", slug: "selfie", skin: true },
+  "🥁":  { folder: "Drum", slug: "drum" },
+  "🛗":  { folder: "Elevator", slug: "elevator" },
 
   // Toast icon set (`components/app-toaster.tsx`). MS Fluent ships
   // "Red exclamation mark" (not "Exclamation mark") so the slug

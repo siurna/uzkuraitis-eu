@@ -130,6 +130,7 @@ export async function computeRoomLeaderboard(room: {
         betHostTop3: voters.betHostTop3,
         betWinnerSolo: voters.betWinnerSolo,
         betLtTotalPoints: voters.betLtTotalPoints,
+        betLtJuryCount: voters.betLtJuryCount,
       })
       .from(voters)
       .where(eq(voters.roomId, room.id)),
@@ -205,6 +206,7 @@ export async function computeRoomLeaderboard(room: {
         hostTop3: v.betHostTop3,
         winnerSolo: v.betWinnerSolo,
         ltTotalPoints: v.betLtTotalPoints,
+        ltJuryCount: v.betLtJuryCount,
       };
       const score = scoreVoter({
         ballot: ballotByVoter.get(v.id) ?? {},

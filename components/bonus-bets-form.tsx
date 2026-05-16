@@ -50,6 +50,17 @@ export function BonusBetsForm({
         />
       )}
 
+      {home && (
+        <NumberRow
+          label={fmt(t(lang, "bet_lt_jury_count"), { home: homeName })}
+          sub={fmt(t(lang, "bet_lt_jury_count_sub"), { home: homeName })}
+          max={5}
+          inputMax={60}
+          value={bets.ltJuryCount ?? null}
+          onChange={(v) => set("ltJuryCount", v)}
+        />
+      )}
+
       <CountryRow
         label={t(lang, "bet_jury_winner")}
         sub={t(lang, "bet_jury_winner_sub")}
@@ -240,7 +251,7 @@ function HeaderText({
           </span>
         )}
       </div>
-      <p className="text-xs text-white/50 leading-snug mt-0.5">{sub}</p>
+      <p className="text-xs text-white/50 leading-snug mt-0.5 text-balance">{sub}</p>
     </div>
   );
 }
@@ -381,12 +392,20 @@ function NumberRow({
   max,
   value,
   onChange,
+  inputMin = 0,
+  inputMax = 1000,
 }: {
   label: string;
   sub: string;
   max?: number;
   value: number | null;
   onChange: (v: number | null) => void;
+  /** Bounds for the input itself (separate from `max`, which is the
+   *  label chip's +N hint). Default 0..1000 fits the LT-total guess;
+   *  smaller bets (e.g. jury-count out of ~40) tighten this so the
+   *  spinner / clamp stays inside the realistic range. */
+  inputMin?: number;
+  inputMax?: number;
 }) {
   return (
     <RowFrame asButton={false}>
@@ -394,8 +413,8 @@ function NumberRow({
       <input
         type="number"
         inputMode="numeric"
-        min={0}
-        max={1000}
+        min={inputMin}
+        max={inputMax}
         value={value ?? ""}
         onChange={(e) => {
           const v = e.target.value;
@@ -405,7 +424,7 @@ function NumberRow({
           }
           const n = Number(v);
           if (!Number.isFinite(n)) return;
-          onChange(Math.max(0, Math.min(1000, Math.round(n))));
+          onChange(Math.max(inputMin, Math.min(inputMax, Math.round(n))));
         }}
         placeholder="?"
         className="h-11 w-16 shrink-0 rounded-xl border border-white/15 bg-black/30

@@ -192,10 +192,13 @@ export function RoomLiveControls({
       {nextUpButton}
 
       {status === "in_progress" && (
-        <div ref={listRef} className="flex flex-col gap-1.5 max-h-[55vh] overflow-y-auto -mx-1 px-1">
-          <p className="text-[10px] uppercase tracking-widest text-white/45 font-display px-1 pt-1 pb-1">
-            Tap to put on stage
-          </p>
+        // `fade-scroll-y` matches the drawer treatment — top + bottom
+        // mask softly dissolves the list edges as you scroll. `pb-3`
+        // keeps the last act's row clear of the bottom fade so the
+        // tap target isn't ghosted at the edge of the panel. The
+        // "Tap to put on stage" eyebrow was removed — the list +
+        // active-row highlight already telegraph what to do.
+        <div ref={listRef} className="flex flex-col gap-1.5 max-h-[55vh] overflow-y-auto -mx-1 px-1 pb-3 fade-scroll-y">
           {countries.map((c) => {
             const isActive = nowPlaying === c.code;
             return (

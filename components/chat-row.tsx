@@ -13,6 +13,7 @@ import { HeartFlag } from "@/components/flag";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { ChatBroadcastCard } from "@/components/chat-broadcast-cards";
 import { useRoomTab } from "@/components/room-shell";
+import { useLeaderboard } from "@/components/leaderboard-provider";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { useProfile, prefetchProfile } from "@/components/profile-sheet";
 import { ensureSessionId } from "@/lib/use-identity";
@@ -372,6 +373,7 @@ export { renderBanter };
 function ChatRowInner({
   message: m,
   mine,
+  isModerator = false,
   parent,
   showHeader,
   menuOpen,
@@ -391,6 +393,13 @@ function ChatRowInner({
 }: {
   message: Message;
   mine: boolean;
+  /** Viewer holds the chat-admin powerup (lib/use-chat-admin.ts).
+   *  When true, the long-press menu surfaces a Delete on EVERY
+   *  message — own, others', and the system / commentator broadcasts
+   *  — and the server validates the actual delete from the httpOnly
+   *  cookie. Defaults to false so non-moderator callers don't have
+   *  to thread the prop. */
+  isModerator?: boolean;
   parent: Message | null;
   showHeader: boolean;
   menuOpen: boolean;
@@ -474,6 +483,7 @@ function ChatRowInner({
   const profile = useProfile();
   const particles = useParticles();
   const roomTab = useRoomTab();
+  const leaderboard = useLeaderboard();
   const translateOn = useTranslateEnabled();
   const beginnerOn = useBeginnerEnabled();
   const lastTap = useRef(0); // for double-tap-a-text-bubble → ❤️
@@ -529,7 +539,11 @@ function ChatRowInner({
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longFired = useRef(false);
   const startPress = () => {
-    if (isSystem || isNowPlaying || isResults) return;
+    // System / now-playing / results rows have no per-message
+    // affordances for regular viewers, so the long-press menu is
+    // suppressed there. The moderator IS allowed to long-press them
+    // — that's how they delete a misfired broadcast / clean up.
+    if (!isModerator && (isSystem || isNowPlaying || isResults)) return;
     longFired.current = false;
     pressTimer.current = setTimeout(() => {
       longFired.current = true;
@@ -637,13 +651,41 @@ function ChatRowInner({
   }
 
   if (isResults) {
-    const podium = ((m.meta as { podium?: { name: string; total: number }[] } | null)?.podium ?? []).slice(0, 3);
-    const medals = ["🥇", "🥈", "🥉"];
+    // Scoreboard tape — top 5 of the room with bars sized to #1's
+    // score. Live leaderboard is preferred (it stays in sync with
+    // any post-tally facts-edit); the frozen `meta.podium` snapshot
+    // is the fallback when the leaderboard payload hasn't landed
+    // yet OR for legacy messages posted before we expanded the
+    // snapshot from top 3 to top 5.
+    const liveRows = leaderboard.payload?.leaderboard ?? [];
+    const liveTop = liveRows.slice(0, 5).map((r) => ({
+      name: r.name,
+      total: r.total,
+      sessionId: r.sessionId,
+    }));
+    const metaTop = (
+      (m.meta as {
+        podium?: { name: string; total: number; sessionId?: string }[];
+      } | null)?.podium ?? []
+    ).slice(0, 5);
+    const top = liveTop.length > 0 ? liveTop : metaTop;
+    const session = ensureSessionId();
+    // Me's actual row in the LIVE leaderboard — used for the "YOU"
+    // highlight + the outside-top-5 footer. We don't fall back to
+    // meta here: a snapshot would lie about your current rank if
+    // the host re-tallied after the card was posted.
+    const myIdx = liveRows.findIndex((r) => r.sessionId === session);
+    const myRank = myIdx >= 0 ? myIdx + 1 : 0;
+    const meRow = myIdx >= 0 ? liveRows[myIdx] : null;
+    const meInTop = myIdx >= 0 && myIdx < 5;
+
     // Bar widths scale relative to the #1's score so the eye can read
-    // "how close are 2nd/3rd to the leader" without doing math.
-    const top = podium[0]?.total ?? 1;
+    // "how close is everyone else to the leader" without doing math.
+    // Floor at 8% so even a 0-pt row leaves a visible sliver (the
+    // rank still matters when the score doesn't).
+    const topScore = Math.max(1, top[0]?.total ?? 1);
     const widthFor = (n: number) =>
-      `${Math.max(20, Math.min(100, (n / top) * 100))}%`;
+      `${Math.max(8, Math.min(100, (n / topScore) * 100))}%`;
     // "Your breakdown" makes no sense if you didn't cast a ballot;
     // disable it. Local-only check via the localStorage flag the vote
     // form sets.
@@ -655,8 +697,9 @@ function ChatRowInner({
         initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="my-1 px-1"
+        className="my-1 px-1 relative"
       >
+        {isModerator && <ModDeleteHandle onDelete={onDelete} />}
         {/* Thicker turquoise border (ring-[3px]) so the card reads as a
             clear "Big Deal among the surrounding chatter" frame.
             Gradient is intentionally calmer than the earlier
@@ -679,46 +722,113 @@ function ChatRowInner({
               </p>
             </header>
 
-            {podium.length > 0 ? (
+            {top.length > 0 ? (
               <ol className="flex flex-col gap-2">
-                {podium.map((p, i) => (
-                  <li key={i} className="relative">
-                    <div className="flex items-center gap-2 mb-1">
-                      <FluentEmoji glyph={medals[i]} size={18} className="shrink-0" />
-                      {/* Bigger name as the user asked: text-base
-                          (was text-sm) + drop-shadow for legibility on
-                          the gradient bar that sits behind it. */}
-                      <span className="font-display text-base text-white truncate flex-1 drop-shadow-sm">
-                        {p.name}
-                      </span>
-                    </div>
-                    <div className="relative h-7 rounded-lg overflow-hidden bg-white/15">
-                      <motion.div
-                        className={`absolute inset-y-0 left-0 rounded-lg
-                                    ${
-                                      i === 0
-                                        ? "bg-gradient-to-r from-yellow to-orange shadow-[0_0_18px_rgba(245,163,2,0.5)]"
-                                        : i === 1
-                                          ? "bg-white/55"
-                                          : "bg-orange/60"
-                                    }`}
-                        initial={{ width: 0 }}
-                        animate={{ width: widthFor(p.total) }}
-                        transition={{ duration: 0.7, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
-                      />
-                      {/* Score lives ON the bar — embedded in the chip
-                          itself rather than floating to the right, so
-                          the bar's width carries the "how far ahead"
-                          signal cleanly. */}
-                      <span className="absolute inset-y-0 right-2 flex items-center font-display tabular-nums text-sm text-white drop-shadow-sm">
-                        {p.total}
-                      </span>
-                    </div>
-                  </li>
-                ))}
+                {top.map((p, i) => {
+                  const rank = i + 1;
+                  const medal =
+                    rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : null;
+                  const isMe =
+                    "sessionId" in p &&
+                    p.sessionId != null &&
+                    p.sessionId === session;
+                  // Bar palette per rank — gold for #1, silver-ish
+                  // #2, bronze-ish #3, then two quieter shades. The
+                  // "me" row swaps in a brighter white-tipped
+                  // gradient regardless of rank so the eye lands
+                  // there first.
+                  const barClass = isMe
+                    ? "bg-gradient-to-r from-white to-yellow shadow-[0_0_20px_rgba(255,255,255,0.55)]"
+                    : rank === 1
+                      ? "bg-gradient-to-r from-yellow to-orange shadow-[0_0_18px_rgba(245,163,2,0.5)]"
+                      : rank === 2
+                        ? "bg-white/55"
+                        : rank === 3
+                          ? "bg-orange/60"
+                          : rank === 4
+                            ? "bg-white/35"
+                            : "bg-white/25";
+                  return (
+                    <li key={i} className="relative">
+                      <div className="flex items-center gap-2 mb-1">
+                        {medal ? (
+                          <FluentEmoji
+                            glyph={medal}
+                            size={18}
+                            className="shrink-0"
+                          />
+                        ) : (
+                          // Ranks 4/5 don't have a Fluent medal —
+                          // a tabular numeral chip keeps the row
+                          // height + leading-edge alignment matching
+                          // the medal rows.
+                          <span className="shrink-0 grid place-items-center h-[18px] w-[18px] rounded-full bg-white/15 text-[10px] text-white/80 font-display tabular-nums">
+                            {rank}
+                          </span>
+                        )}
+                        <span
+                          className={`font-display text-base truncate flex-1 drop-shadow-sm ${
+                            isMe ? "text-white" : "text-white"
+                          }`}
+                        >
+                          {p.name}
+                          {isMe && (
+                            <span className="ml-1.5 text-[10px] uppercase tracking-[0.2em] text-white/70 font-display">
+                              · {t(lang, "results_you_label")}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div
+                        className={`relative h-7 rounded-lg overflow-hidden bg-white/15 ${
+                          isMe ? "ring-1 ring-white/55" : ""
+                        }`}
+                      >
+                        <motion.div
+                          className={`absolute inset-y-0 left-0 rounded-lg ${barClass}`}
+                          initial={{ width: 0 }}
+                          animate={{ width: widthFor(p.total) }}
+                          transition={{
+                            duration: 0.7,
+                            delay: i * 0.08,
+                            ease: [0.22, 1, 0.36, 1],
+                          }}
+                        />
+                        {/* Score embedded on the bar — width carries
+                            the "how far ahead" signal, the number
+                            spells it out. */}
+                        <span className="absolute inset-y-0 right-2 flex items-center font-display tabular-nums text-sm text-white drop-shadow-sm">
+                          {p.total}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
               </ol>
             ) : (
               <p className="text-sm text-white/85">{m.body}</p>
+            )}
+
+            {/* Outside-top-5 footer — only when the live leaderboard
+                actually loaded AND the viewer placed below 5th. Keeps
+                "where did I land?" inside the card so the moderator
+                doesn't have to tap through to the Results tab. */}
+            {!meInTop && meRow && (
+              <div className="flex items-center gap-2 rounded-xl bg-white/10 ring-1 ring-white/18 px-3 py-2">
+                <span className="text-[10px] uppercase tracking-[0.22em] text-white/70 font-display">
+                  {t(lang, "results_you_label")}
+                </span>
+                <span className="text-sm text-white font-display tabular-nums">
+                  #{myRank}
+                </span>
+                <span className="text-white/55">·</span>
+                <span className="flex-1 truncate text-sm text-white/85 font-display">
+                  {meRow.name}
+                </span>
+                <span className="shrink-0 text-sm text-white font-display tabular-nums">
+                  {meRow.total} {t(lang, "pts_short")}
+                </span>
+              </div>
             )}
 
             <div className="flex gap-2">
@@ -768,8 +878,9 @@ function ChatRowInner({
         initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="my-1"
+        className="my-1 relative"
       >
+        {isModerator && <ModDeleteHandle onDelete={onDelete} />}
         <div
           className="p-[2px] rounded-2xl"
           style={{ background: `linear-gradient(120deg, ${c1}, ${c2})` }}
@@ -870,7 +981,7 @@ function ChatRowInner({
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          className="px-1"
+          className="px-1 relative"
         >
           <ChatBroadcastCard
             meta={sys}
@@ -878,6 +989,7 @@ function ChatRowInner({
             messageId={m.id}
             messageCreatedAt={m.createdAt}
           />
+          {isModerator && <ModDeleteHandle onDelete={onDelete} />}
         </motion.li>
       );
     }
@@ -885,8 +997,9 @@ function ChatRowInner({
     // the tiny muted pill — they're meta-narration, not a host shout.
     const text = sys?.sysKey ? tDyn(lang, sys.sysKey, sys.sysArg ?? undefined) : m.body;
     return (
-      <motion.li initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center">
+      <motion.li initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center items-center gap-1.5">
         <span className="text-[11px] text-white/40 px-3 py-1 rounded-full bg-white/[0.03]">{text}</span>
+        {isModerator && <ModDeleteHandle inline onDelete={onDelete} />}
       </motion.li>
     );
   }
@@ -1212,7 +1325,13 @@ function ChatRowInner({
                       )}
                       {canEdit && <MenuAction onClick={onEdit} icon={Pencil} label={t(lang, "chat_edit")} />}
                       {m.body && <MenuAction onClick={onCopy} icon={Copy} label={t(lang, "chat_copy")} />}
-                      {mine && <MenuAction onClick={onDelete} icon={Trash2} label={t(lang, "chat_delete")} danger />}
+                      {/* Author can delete own messages; moderator
+                          can delete ANY message in the room — including
+                          system / commentator broadcasts — server
+                          re-validates from the chat-admin cookie. */}
+                      {(mine || isModerator) && (
+                        <MenuAction onClick={onDelete} icon={Trash2} label={t(lang, "chat_delete")} danger />
+                      )}
                     </div>
                   </motion.div>
                 </>
@@ -1326,6 +1445,44 @@ function ChatRowInner({
 // stable from the messages array unless its row actually changed.
 // Net effect: rows skip render unless their own props really moved.
 export const ChatRow = memo(ChatRowInner);
+
+// A tiny ✕ button surfaced on system / broadcast / now-playing /
+// results rows ONLY when the viewer holds the chat-admin powerup
+// (lib/use-chat-admin.ts). One tap deletes — the server validates
+// the deletion from the httpOnly cookie before touching the DB, so
+// even a malicious client can't fire this without the actual
+// powerup. No confirm sheet: a misfired broadcast can be re-sent
+// from /admin/live, and second-guessing every cleanup gets in the
+// way of moderation. The regular long-press menu carries the
+// delete affordance for normal user messages; this one exists
+// because system rows have no menu of their own.
+function ModDeleteHandle({
+  onDelete,
+  inline = false,
+}: {
+  onDelete: () => void;
+  inline?: boolean;
+}) {
+  // `inline`: use when the parent is an inline flex row (e.g. the
+  // tiny muted "someone voted" pill) and we want the button to sit
+  // alongside the content. Default treats the parent as `relative`
+  // and pins the button to the top-right corner.
+  return (
+    <button
+      type="button"
+      onClick={onDelete}
+      aria-label="Delete (mod)"
+      title="Delete (mod)"
+      className={
+        inline
+          ? "shrink-0 grid place-items-center h-5 w-5 rounded-full bg-error/15 ring-1 ring-error/35 text-error/85 hover:bg-error/25 transition"
+          : "absolute -top-1 -right-1 z-20 grid place-items-center h-6 w-6 rounded-full bg-error/20 ring-1 ring-error/45 text-error backdrop-blur hover:bg-error/30 transition"
+      }
+    >
+      <Trash2 className="h-3 w-3" />
+    </button>
+  );
+}
 
 // Trivia firesAt gate. The server stamps each trivia message with a
 // random firesAt 30s–3:30 after the country goes live; this wrapper

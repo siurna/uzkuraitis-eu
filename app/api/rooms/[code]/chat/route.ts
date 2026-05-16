@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -9,6 +10,11 @@ import { pushToRoom } from "@/lib/push";
 import { guardSession } from "@/lib/server-session";
 import { checkAndIncrement } from "@/lib/rate-limit";
 import { toChatPayload } from "@/lib/chat-system";
+import {
+  CHAT_ADMIN_COOKIE,
+  chatAdminSecret,
+  constantTimeEqual,
+} from "@/lib/chat-admin";
 import { t } from "@/lib/i18n";
 
 // Grapheme-safe truncation for push notification bodies. JS string
@@ -190,6 +196,37 @@ export async function POST(req: Request, { params }: RouteCtx) {
   // Cookie must vouch for the session the client claims to be.
   const guard = await guardSession(data.session);
   if (guard) return guard;
+
+  // Moderator powerup. If the typed body matches the server-known
+  // secret, intercept it: toggle the httpOnly cookie that the DELETE
+  // route checks, never insert the message into chat. The body never
+  // hits the database, never broadcasts, never appears anywhere — so
+  // even if someone happens to type it in a real conversation it just
+  // silently flips their mod state and the rest of the room sees
+  // nothing. Returns `adminGranted: true` / `adminRevoked: true` so
+  // the client can update its localStorage UI hint + show a toast.
+  const secret = chatAdminSecret();
+  if (secret && data.body && constantTimeEqual(data.body.trim(), secret)) {
+    const jar = await cookies();
+    const existing = jar.get(CHAT_ADMIN_COOKIE)?.value ?? null;
+    const wasAdmin = existing != null && constantTimeEqual(existing, secret);
+    if (wasAdmin) {
+      jar.delete(CHAT_ADMIN_COOKIE);
+      return NextResponse.json({ ok: true, adminRevoked: true });
+    }
+    // 30-day cookie, httpOnly so JS can't read it (the source of
+    // truth lives here; localStorage on the client is a UI hint).
+    // sameSite=lax so reload + same-origin nav keeps it; the chat
+    // panel never makes cross-site fetches that would need 'none'.
+    jar.set(CHAT_ADMIN_COOKIE, secret, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+    return NextResponse.json({ ok: true, adminGranted: true });
+  }
 
   const rl = await checkAndIncrement(
     `chat:${room.id}:${data.session}`,

@@ -121,6 +121,11 @@ export const voters = pgTable(
     // Scored on closeness, not exact match (shape: exact +10, off-by-5
     // +7, off-by-15 +5, off-by-30 +3, beyond +0). Optional bet.
     betLtTotalPoints: integer("bet_lt_total_points"),
+    // Count of voting countries that gave the home country ANY jury
+    // points (the "long voting part" — easy to count live during the
+    // jury reveal). Scored on closeness: exact +5, ±1 +3, ±3 +2,
+    // ±5 +1, beyond 0. Optional bet.
+    betLtJuryCount: integer("bet_lt_jury_count"),
     // Presence-as-REST fields. These used to ride on Supabase Realtime
     // presence (channel.track payload) which capped at ~1 update/sec
     // per client and got us kicked off the channel during busy moments.

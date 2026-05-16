@@ -38,6 +38,21 @@ export function NowPlayingTakeover() {
       return;
     }
     if (timer.current) clearTimeout(timer.current);
+    // If the viewer is currently typing in a chat / form input, blur
+    // the field so the iOS keyboard slides away and the takeover
+    // gets the full viewport. Without this the takeover centres on
+    // the FULL viewport (fixed inset-0) while the visible area is
+    // shortened by the keyboard, so the country reveal partly
+    // hides behind it. The draft text stays in the composer; the
+    // user just loses focus for the duration of the reveal.
+    const activeEl = document.activeElement;
+    if (
+      activeEl instanceof HTMLInputElement ||
+      activeEl instanceof HTMLTextAreaElement ||
+      (activeEl instanceof HTMLElement && activeEl.isContentEditable)
+    ) {
+      activeEl.blur();
+    }
     setActive({ id: Date.now(), code: next });
     timer.current = setTimeout(() => setActive(null), HOLD_MS);
   });
@@ -79,55 +94,58 @@ export function NowPlayingTakeover() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
         >
-          {/* Frosted backdrop. The blur RADIUS is animated (not just
-              the element's opacity, which used to leave a "snap to
-              blurry" feel as the dark overlay faded in over an
-              already-fixed 12px blur). Now the blur eases up from
-              0 → 18px, holds, then eases back to 0, in lockstep with
-              the dark wash, so the room behind dissolves into
-              out-of-focus progressively instead of glitching in.
-              We drive a CSS custom property `--bd-blur` via motion
-              and reference it from both `backdrop-filter` and
-              `-webkit-backdrop-filter` in inline style, so older
-              Safari (iOS 17 and below) — which only honours the
-              prefixed form — picks it up too. */}
+          {/* Frosted backdrop. Blur RADIUS leads the takeover — it
+              rises faster than the colour wash so the room dissolves
+              out of focus FIRST and the flag-colour pools land on
+              an already-blurry plate (previous timing had the
+              colours hit before the blur was fully in, which read
+              as "colour pop, blur catches up" instead of "the room
+              softens, then the country arrives"). The CSS custom
+              property `--bd-blur` drives both `backdrop-filter`
+              and the prefixed `-webkit-backdrop-filter` so iOS
+              Safari 17- picks it up too. */}
           <motion.div
             className="absolute inset-0"
             initial={{ opacity: 0, ["--bd-blur" as string]: "0px" }}
             animate={{
               opacity: [0, 1, 1, 1, 0],
-              ["--bd-blur" as string]: ["0px", "18px", "18px", "18px", "0px"],
+              ["--bd-blur" as string]: ["0px", "20px", "20px", "20px", "0px"],
             }}
             transition={{
               duration: HOLD_MS / 1000,
-              times: [0, 0.18, 0.5, 0.82, 1],
+              times: [0, 0.08, 0.5, 0.82, 1],
               ease: "easeInOut",
             }}
             style={{
-              backgroundColor: "rgba(6,7,22,0.5)",
+              backgroundColor: "rgba(6,7,22,0.55)",
               backdropFilter: "blur(var(--bd-blur))",
               WebkitBackdropFilter: "blur(var(--bd-blur))",
             }}
           />
-          {/* Colour wash — two soft radial pools in the flag colours. */}
+          {/* Colour wash — two soft radial pools in the flag colours.
+              Kicks in AFTER the blur (peak alpha at 0.22 vs blur's
+              0.08), so the country's colours land on an already-soft
+              backdrop instead of competing with a sharp room. Alpha
+              bumped (0.42/0.36 → 0.62/0.55) so the country reads
+              louder on screen. */}
           <motion.div
             className="absolute inset-0"
             initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.75, 0.6, 0.66, 0] }}
-            transition={{ duration: HOLD_MS / 1000, times: [0, 0.12, 0.5, 0.8, 1] }}
+            animate={{ opacity: [0, 0.9, 0.78, 0.82, 0] }}
+            transition={{ duration: HOLD_MS / 1000, times: [0, 0.22, 0.5, 0.8, 1] }}
             style={{
-              background: `radial-gradient(72% 62% at 20% 22%, ${hexA(c1, 0.42)}, transparent 70%), radial-gradient(72% 62% at 84% 82%, ${hexA(c2, 0.36)}, transparent 70%)`,
+              background: `radial-gradient(72% 62% at 20% 22%, ${hexA(c1, 0.62)}, transparent 70%), radial-gradient(72% 62% at 84% 82%, ${hexA(c2, 0.55)}, transparent 70%)`,
             }}
           />
           {/* Faint shimmer band sweeping across, tinted with c1. */}
           <motion.div
             className="absolute inset-x-0 top-1/3 h-1/3 blur-3xl"
             style={{
-              background: `linear-gradient(90deg, transparent, ${hexA(c1, 0.55)}, ${hexA(c2, 0.45)}, transparent)`,
+              background: `linear-gradient(90deg, transparent, ${hexA(c1, 0.7)}, ${hexA(c2, 0.6)}, transparent)`,
               backgroundSize: "250% 100%",
             }}
             initial={{ backgroundPositionX: "0%", opacity: 0 }}
-            animate={{ backgroundPositionX: ["0%", "250%"], opacity: [0, 0.6, 0] }}
+            animate={{ backgroundPositionX: ["0%", "250%"], opacity: [0, 0.75, 0] }}
             transition={{ duration: 3.4, ease: "easeInOut", times: [0, 0.5, 1] }}
           />
 

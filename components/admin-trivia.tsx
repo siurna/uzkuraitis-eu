@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, Download, Upload } from "lucide-react";
+import { Check, Download, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { HeartFlag } from "@/components/flag";
 import { AdminPageTitle } from "@/components/admin-page-title";
 
@@ -191,134 +192,186 @@ export function AdminTrivia({ initial }: { initial: TriviaRow[] }) {
   return (
     <div className="flex flex-col gap-6">
       {/* Page header lives here instead of the page wrapper so the
-          Export + Import buttons can sit on the right of the gradient
-          title; the per-deck status reads as the page subtitle. The
-          inner "Question deck" card header is gone — it was a
-          duplicate heading inside a single-section page. */}
+          Edit-questions button sits on the right of the gradient
+          title; the per-deck status reads as the page subtitle.
+          Single trailing button now — Export collapsed into the
+          editor drawer alongside Save / Cancel, since both are
+          deck-write workflows. */}
       <AdminPageTitle
         subtitle={`${filled}/${rows.length} countries have a question. Countries without one are skipped when they take the stage.`}
         trailing={
-          <div className="flex items-center gap-2">
-            <Button type="button" size="sm" variant="ghost" onClick={exportDeck}>
-              <Download className="h-4 w-4 mr-1.5" /> Export
-            </Button>
-            <Button type="button" size="sm" onClick={openEditor}>
-              <Upload className="h-4 w-4 mr-1.5" /> Import JSON
-            </Button>
-          </div>
+          <Button type="button" size="sm" onClick={openEditor}>
+            <Pencil className="h-4 w-4 mr-1.5" /> Edit questions
+          </Button>
         }
       >
         Trivia
       </AdminPageTitle>
 
       <section className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col gap-5">
-
-      {open && (
-        <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/10 p-4 flex flex-col gap-3">
-          <p className="text-xs text-white/55 leading-relaxed">
-            Paste a deck JSON. Same shape as Export. Schema:{" "}
-            <code className="text-white/70">
-              {`{ deck: [{ country, correctIndex (0-3), en: { question, choices[4] }, lt: { question, choices[4] } }] }`}
-            </code>
-          </p>
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            className="font-mono text-xs leading-relaxed bg-black/40 ring-1 ring-white/12 rounded-xl p-3 min-h-[280px] text-white/85 focus:outline-none focus:ring-flamingo/40"
-            spellCheck={false}
-            placeholder='{ "deck": [...] }'
-          />
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-white/55">
-              {validation.kind === "empty" && "Paste JSON to enable Save."}
-              {validation.kind === "error" && (
-                <span className="text-flamingo">{validation.message}</span>
-              )}
-              {validation.kind === "ok" && (
-                <span className="text-turquoise">
-                  Valid. {validation.count} questions ready to write.
-                </span>
-              )}
-            </span>
-            <div className="ml-auto flex items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={save}
-                disabled={validation.kind !== "ok" || saving}
-              >
-                {saving ? "Saving…" : "Save deck"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <ol className="flex flex-col gap-2">
-        {rows.map((r) => (
-          <li
-            key={r.country}
-            className="flex items-start gap-3 rounded-xl bg-white/[0.03] ring-1 ring-white/8 p-3"
-          >
-            <HeartFlag code={r.country} size="sm" />
-            <div className="flex-1 min-w-0">
-              <p className="font-display text-sm text-white/90">{r.name}</p>
-              {r.card ? (
-                <>
-                  <p className="text-[13px] text-white/65 leading-snug mt-0.5 truncate">
-                    {r.card.en.question}
+        <ol className="flex flex-col gap-2">
+          {rows.map((r) => (
+            <li
+              key={r.country}
+              className="flex items-start gap-3 rounded-xl bg-white/[0.03] ring-1 ring-white/8 p-3"
+            >
+              <HeartFlag code={r.country} size="sm" />
+              <div className="flex-1 min-w-0 flex flex-col gap-2.5">
+                <p className="font-display text-sm text-white/90">{r.name}</p>
+                {r.card ? (
+                  <>
+                    <QuestionBlock
+                      lang="EN"
+                      question={r.card.en.question}
+                      choices={r.card.en.choices}
+                      correctIndex={r.card.correctIndex}
+                    />
+                    <QuestionBlock
+                      lang="LT"
+                      question={r.card.lt.question}
+                      choices={r.card.lt.choices}
+                      correctIndex={r.card.correctIndex}
+                    />
+                  </>
+                ) : (
+                  <p className="text-[13px] text-white/35 italic">
+                    No question yet.
                   </p>
-                  <ul className="text-[11px] text-white/45 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                    {r.card.en.choices.map((c, i) => (
-                      <li
-                        key={i}
-                        className={
-                          i === r.card!.correctIndex
-                            ? "text-turquoise inline-flex items-center gap-1"
-                            : ""
-                        }
-                      >
-                        {i === r.card!.correctIndex && (
-                          <Check className="h-3 w-3" />
-                        )}
-                        {String.fromCharCode(65 + i)}. {c}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <p className="text-[13px] text-white/35 italic mt-0.5">
-                  No question yet.
-                </p>
-              )}
-            </div>
-            <div className="shrink-0 flex flex-col items-end gap-0.5 min-w-[5.5rem]">
-              <span className="text-[11px] uppercase tracking-[0.15em] text-white/35 font-display">
-                Stats
-              </span>
-              <span className="font-display text-sm tabular-nums">
-                {r.stats.correct}
-                <span className="text-white/35">/{r.stats.total}</span>
-              </span>
-              <span className="text-[10px] text-white/35 tabular-nums">
-                {r.stats.total > 0
-                  ? `${Math.round((r.stats.correct / r.stats.total) * 100)}% correct`
-                  : "—"}
-              </span>
-            </div>
+                )}
+              </div>
+              <div className="shrink-0 flex flex-col items-end gap-0.5 min-w-[5.5rem]">
+                <span className="text-[11px] uppercase tracking-[0.15em] text-white/35 font-display">
+                  Stats
+                </span>
+                <span className="font-display text-sm tabular-nums">
+                  {r.stats.correct}
+                  <span className="text-white/35">/{r.stats.total}</span>
+                </span>
+                <span className="text-[10px] text-white/35 tabular-nums">
+                  {r.stats.total > 0
+                    ? `${Math.round((r.stats.correct / r.stats.total) * 100)}% correct`
+                    : "—"}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* Editor lives in a bottom-sheet drawer. Export sits inside
+          the drawer's footer alongside Cancel / Save — both are
+          deck-write workflows, so co-locating them is cleaner than
+          scattering one button on the page header and one in a
+          modal. The textarea uses the BottomSheet's own scroll
+          area (no nested scroll) so a long deck JSON pages
+          naturally inside the sheet. */}
+      <BottomSheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Edit questions"
+        sub="Paste a deck JSON. Save overwrites the live deck."
+        footer={
+          <>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={exportDeck}
+              className="text-white/75"
+            >
+              <Download className="h-4 w-4 mr-1.5" /> Export current
+            </Button>
+            <div className="flex-1" />
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setOpen(false)}
+              className="text-white/70"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={save}
+              disabled={validation.kind !== "ok" || saving}
+            >
+              {saving ? "Saving…" : "Save deck"}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-xs text-white/55 leading-relaxed">
+          Schema:{" "}
+          <code className="text-white/70">
+            {`{ deck: [{ country, correctIndex (0-3), en: { question, choices[4] }, lt: { question, choices[4] } }] }`}
+          </code>
+        </p>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          className="font-mono text-xs leading-relaxed bg-black/40 ring-1 ring-white/12 rounded-xl p-3 min-h-[280px] text-white/85 focus:outline-none focus:ring-flamingo/40"
+          spellCheck={false}
+          placeholder='{ "deck": [...] }'
+        />
+        <div className="text-xs text-white/55">
+          {validation.kind === "empty" && "Paste JSON to enable Save."}
+          {validation.kind === "error" && (
+            <span className="text-flamingo">{validation.message}</span>
+          )}
+          {validation.kind === "ok" && (
+            <span className="text-turquoise">
+              Valid. {validation.count} questions ready to write.
+            </span>
+          )}
+        </div>
+      </BottomSheet>
+    </div>
+  );
+}
+
+// One language's question + 4 choices, rendered as a tight stacked
+// block. Both EN and LT instances share the same `correctIndex`
+// (the deck enforces that the right answer lives at the same slot
+// across languages), so the green check lands in the same row in
+// both blocks.
+function QuestionBlock({
+  lang,
+  question,
+  choices,
+  correctIndex,
+}: {
+  lang: "EN" | "LT";
+  question: string;
+  choices: string[];
+  correctIndex: number;
+}) {
+  return (
+    <div className="rounded-lg bg-white/[0.025] ring-1 ring-white/6 px-3 py-2">
+      <div className="flex items-baseline gap-2">
+        <span className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-display tabular-nums">
+          {lang}
+        </span>
+        <p className="text-[13px] text-white/85 leading-snug flex-1 min-w-0">
+          {question}
+        </p>
+      </div>
+      <ul className="text-[11px] text-white/55 mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
+        {choices.map((c, i) => (
+          <li
+            key={i}
+            className={
+              i === correctIndex
+                ? "text-turquoise inline-flex items-center gap-1"
+                : ""
+            }
+          >
+            {i === correctIndex && <Check className="h-3 w-3" />}
+            {String.fromCharCode(65 + i)}. {c}
           </li>
         ))}
-      </ol>
-
-      </section>
+      </ul>
     </div>
   );
 }

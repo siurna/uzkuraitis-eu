@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -8,6 +9,11 @@ import { broadcastToRoom } from "@/lib/realtime-server";
 import { guardSession } from "@/lib/server-session";
 import { checkAndIncrement } from "@/lib/rate-limit";
 import { toChatPayload } from "@/lib/chat-system";
+import {
+  CHAT_ADMIN_COOKIE,
+  chatAdminSecret,
+  constantTimeEqual,
+} from "@/lib/chat-admin";
 
 // Per-message ops. The voter can:
 //   - PATCH their own message within EDIT_WINDOW_MS to fix typos.
@@ -99,7 +105,11 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
   return NextResponse.json({ ok: true });
 }
 
-// Kept for future admin moderation, not surfaced in the UI.
+// Authors can delete their own messages. A holder of the chat-admin
+// httpOnly cookie (lib/chat-admin.ts) bypasses the same-author check
+// and can delete ANY message in the room — including the system /
+// commentator broadcast cards. The cookie is the source of truth;
+// we never trust a client-side flag.
 export async function DELETE(req: Request, { params }: RouteCtx) {
   const { code, id } = await params;
   const room = await findRoomByCode(code);
@@ -112,15 +122,22 @@ export async function DELETE(req: Request, { params }: RouteCtx) {
   const guard = await guardSession(session);
   if (guard) return guard;
 
-  const deleted = await db
-    .delete(chatMessages)
-    .where(
-      and(
+  const secret = chatAdminSecret();
+  const adminCookie = (await cookies()).get(CHAT_ADMIN_COOKIE)?.value ?? null;
+  const isAdmin =
+    secret != null && adminCookie != null && constantTimeEqual(adminCookie, secret);
+
+  const where = isAdmin
+    ? and(eq(chatMessages.id, id), eq(chatMessages.roomId, room.id))
+    : and(
         eq(chatMessages.id, id),
         eq(chatMessages.roomId, room.id),
         eq(chatMessages.sessionId, session),
-      ),
-    )
+      );
+
+  const deleted = await db
+    .delete(chatMessages)
+    .where(where)
     .returning({ id: chatMessages.id });
 
   if (deleted.length === 0) {

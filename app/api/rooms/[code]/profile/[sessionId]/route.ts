@@ -207,6 +207,7 @@ export async function GET(req: Request, { params }: RouteCtx) {
       voterRow.betHostTop3,
       voterRow.betWinnerSolo,
       voterRow.betLtTotalPoints,
+      voterRow.betLtJuryCount,
       voterRow.homeCountryPrediction,
     ];
     betsPlaced = slots.filter((v) => v !== null && v !== undefined).length;

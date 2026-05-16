@@ -41,6 +41,7 @@ import { prefetchProfile } from "@/components/profile-sheet";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 import { haptic } from "@/lib/haptics";
+import { setChatAdmin, useChatAdmin } from "@/lib/use-chat-admin";
 
 // How many messages we keep in the DOM. The API already windows to the
 // last ~50 per fetch; this is the cap once "load earlier" pages kick in.
@@ -96,6 +97,7 @@ function dayLabel(iso: string, lang: "en" | "lt"): string {
 // ---------------------------------------------------------------------
 
 export function ChatPanel({ active = true }: { active?: boolean }) {
+  const isModerator = useChatAdmin();
   const { code, nowPlayingCode } = useRoomLive();
   const lang = useLang();
   // Roster from the REST participants poll. Replaces useOthers() —
@@ -1109,7 +1111,25 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         if (res.status === 429) toast.error(t(lang, "chat_slow_down"));
         return;
       }
-      const data = (await res.json()) as { id?: string };
+      const data = (await res.json()) as {
+        id?: string;
+        adminGranted?: boolean;
+        adminRevoked?: boolean;
+      };
+      // Moderator powerup toggled. The server intercepted the secret
+      // and never created a chat row, so retire the optimistic stub
+      // we already appended (no `id` came back) and flip the local
+      // hint that paints the dot on the avatar.
+      if (data.adminGranted || data.adminRevoked) {
+        setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+        setChatAdmin(!!data.adminGranted);
+        toast.success(
+          data.adminGranted
+            ? t(lang, "chat_admin_on")
+            : t(lang, "chat_admin_off"),
+        );
+        return;
+      }
       if (data.id) {
         // The broadcast handler may have already swapped the optimistic
         // row for the real one. In that case the optimistic id is gone
@@ -1496,7 +1516,14 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           // to push the UL to the bottom of the messages-list when
           // there's extra space, and collapses to zero when content
           // overflows so scroll behaves normally.
-          className="flex-1 min-h-0 overflow-y-auto py-4 flex flex-col gap-3 fade-scroll-y"
+          // `overflow-y: auto` forces overflow-x to be non-visible
+          // per spec, which silently clips any row's right-edge ring
+          // or rainbow border that lands flush against the container
+          // edge (trivia card, +N highlight pill, etc). The
+          // `-mx-1 px-1` pair widens the scroll container by 8px while
+          // padding content back to its original position, giving
+          // rings 4px of breathing room before the clip kicks in.
+          className="flex-1 min-h-0 overflow-y-auto py-4 -mx-1 px-1 flex flex-col gap-3 fade-scroll-y"
           onClick={() => menuFor && setMenuFor(null)}
         >
           {loading ? (
@@ -1552,6 +1579,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                     <ChatRow
                       message={m}
                       mine={m.sessionId === mySession}
+                      isModerator={isModerator}
                       parent={m.replyTo ? byId.get(m.replyTo) ?? null : null}
                       showHeader={!sameAuthor}
                       menuOpen={menuFor === m.id}
@@ -1856,7 +1884,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                     onClick={() => setGifOpen(true)}
                     aria-label={t(lang, "gif_pick")}
                     className="h-9 px-2.5 shrink-0 rounded-full grid place-items-center text-white
-                               bg-white/[0.04] hover:bg-white/15 transition active:scale-[0.92]"
+                               bg-white/[0.09] hover:bg-white/15 transition active:scale-[0.92]"
                   >
                     <span className="text-[11px] font-display font-bold tracking-tight leading-none">GIF</span>
                   </button>
@@ -1868,7 +1896,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                     disabled={uploading}
                     aria-label={t(lang, "chat_send_photo")}
                     className="h-9 w-9 shrink-0 rounded-full grid place-items-center text-white
-                               bg-white/[0.04] hover:bg-white/15 transition active:scale-[0.92] disabled:opacity-50"
+                               bg-white/[0.09] hover:bg-white/15 transition active:scale-[0.92] disabled:opacity-50"
                   >
                     {uploading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <ImagePlus className="h-[18px] w-[18px]" />}
                   </button>

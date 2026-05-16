@@ -6,6 +6,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
 import { Settings as SettingsIcon } from "lucide-react";
 import { useIdentity } from "@/lib/use-identity";
+import { useChatAdmin } from "@/lib/use-chat-admin";
 import { useRoomLive } from "@/components/room-shell";
 import { SettingsModal } from "@/components/settings-modal";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -30,6 +31,7 @@ export function PresenceBar() {
   const { code, nowPlayingCode, showStatus } = useRoomLive();
   const lang = useLang();
   const { name, avatarId, avatar } = useIdentity();
+  const isModerator = useChatAdmin();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notifOnlyOpen, setNotifOnlyOpen] = useState(false);
   // Same defensive portal pattern as RoomTabBar + BottomSheet. The
@@ -178,7 +180,7 @@ export function PresenceBar() {
           type="button"
           onClick={() => setSettingsOpen(true)}
           aria-label={t(lang, "settings")}
-          className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-full
+          className="relative flex items-center gap-2 pl-2 pr-1 py-1 rounded-full
                      hover:bg-white/[0.04] transition group"
         >
           {name && (
@@ -210,6 +212,22 @@ export function PresenceBar() {
               </span>
             )}
           </span>
+          {/* Moderator dot. Only visible to the moderator themselves
+              (the flag is per-browser via lib/use-chat-admin); other
+              viewers see a normal avatar. Sits outside the avatar's
+              `overflow-hidden` so the ring isn't clipped — its own
+              parent button is the positioning context (`relative`
+              comes from `flex items-center` + the dot's `absolute`
+              referencing the nearest positioned ancestor; we add
+              `relative` here to be sure). */}
+          {isModerator && (
+            <span
+              aria-hidden
+              className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full
+                         bg-success ring-2 ring-dark-blue-900
+                         shadow-[0_0_8px_oklch(72%_0.18_155_/_0.55)]"
+            />
+          )}
         </button>
       </div>
 

@@ -79,6 +79,7 @@ function randomBets(codes: string[]) {
     betHostTop3: maybe(Math.random() < 0.5),
     betWinnerSolo: maybe(Math.random() < 0.5),
     betLtTotalPoints: maybe(Math.floor(Math.random() * 620)),
+    betLtJuryCount: maybe(Math.floor(Math.random() * 36)),
   };
 }
 
@@ -112,6 +113,7 @@ export async function POST(req: Request) {
       nul_televote: bottom.slice(0, 1 + Math.floor(Math.random() * 3)).join(","),
       lt_12_to: pick(codes),
       lt_total_points: String(40 + Math.floor(Math.random() * 280)),
+      lt_jury_count: String(4 + Math.floor(Math.random() * 22)),
       winner_solo: Math.random() < 0.6 ? "true" : "false",
     };
     await db.delete(officialFacts);

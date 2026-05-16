@@ -169,6 +169,20 @@ export function BetsComparison({
       earned: earned.ltTotalPoints,
     });
   }
+  if (picks.ltJuryCount != null) {
+    const truthN = facts.lt_jury_count ? Number(facts.lt_jury_count) : null;
+    rows.push({
+      kind: "number",
+      key: "ltjurycount",
+      label: t(lang, "bet_lt_jury_count").replace(
+        "{home}",
+        countryName(homeCountryCode, lang),
+      ),
+      you: picks.ltJuryCount,
+      truth: Number.isFinite(truthN) ? truthN : null,
+      earned: earned.ltJuryCount,
+    });
+  }
 
   if (rows.length === 0) return null;
 

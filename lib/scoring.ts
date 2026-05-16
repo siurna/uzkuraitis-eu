@@ -57,6 +57,8 @@ export type ScoringContext = {
   officialHomePlacement: number | null;
   /** Cached lt_total_points truth as a number, or null. */
   ltTotalTruth: number | null;
+  /** Cached lt_jury_count truth as a number, or null. */
+  ltJuryCountTruth: number | null;
 };
 
 export function precomputeScoringContext(
@@ -111,6 +113,11 @@ export function precomputeScoringContext(
   const ltTotalNum = ltTotalRaw != null && ltTotalRaw !== "" ? Number(ltTotalRaw) : null;
   const ltTotalTruth = Number.isFinite(ltTotalNum) ? ltTotalNum : null;
 
+  const ltJuryCountRaw = facts.lt_jury_count;
+  const ltJuryCountNum =
+    ltJuryCountRaw != null && ltJuryCountRaw !== "" ? Number(ltJuryCountRaw) : null;
+  const ltJuryCountTruth = Number.isFinite(ltJuryCountNum) ? ltJuryCountNum : null;
+
   return {
     officialTop10,
     placementToCountry: placementToCountryMap,
@@ -122,6 +129,7 @@ export function precomputeScoringContext(
     nulTrueSet,
     officialHomePlacement,
     ltTotalTruth,
+    ltJuryCountTruth,
   };
 }
 
@@ -256,6 +264,10 @@ export type Bets = {
   winnerSolo?: boolean | null;
   /** Voter's guess for the home country's final total points (0..1000). */
   ltTotalPoints?: number | null;
+  /** Voter's guess for how many voting countries gave the home country
+   *  any jury points (the "long voting part" count, 0..~40). Scored on
+   *  closeness. */
+  ltJuryCount?: number | null;
 };
 
 export type BetBreakdown = {
@@ -268,6 +280,7 @@ export type BetBreakdown = {
   hostTop3: number;
   winnerSolo: number;
   ltTotalPoints: number;
+  ltJuryCount: number;
 };
 
 // Per-correct-guess pts on the multi-select nul televote bet, capped at
@@ -275,7 +288,7 @@ export type BetBreakdown = {
 // number of guesses a voter can register on the client-side at
 // NUL_TELEVOTE_MAX_PICKS so a player who picks every country can't get
 // the max just by carpet-bombing — the server enforces the same cap.
-export const NUL_TELEVOTE_PER_HIT = 4;
+export const NUL_TELEVOTE_PER_HIT = 3;
 export const NUL_TELEVOTE_MAX = 12;
 export const NUL_TELEVOTE_MAX_PICKS = 5;
 
@@ -292,7 +305,16 @@ function scoreBetsWithCtx(input: {
   ctx: ScoringContext;
 }): BetBreakdown {
   const { bets, placements, facts, totalFinalists, ctx } = input;
-  const { last, bestBig5, juryWinner, teleWinner, winnerSolo, nulTrueSet, ltTotalTruth } = ctx;
+  const {
+    last,
+    bestBig5,
+    juryWinner,
+    teleWinner,
+    winnerSolo,
+    nulTrueSet,
+    ltTotalTruth,
+    ltJuryCountTruth,
+  } = ctx;
 
   // Wooden spoon: exact +5, off-by-1 +2 (only useful when last is in
   // the placement table), else 0.
@@ -309,8 +331,23 @@ function scoreBetsWithCtx(input: {
   // LT gives its 12 to: needs the lt_12_to fact to be set. Exact +5.
   const lt12To = bets.lt12To && facts.lt_12_to && bets.lt12To === facts.lt_12_to ? 5 : 0;
 
-  // Highest-placed Big 5 country: +3 if the voter picked it.
-  const highestBig5 = bets.highestBig5 && bestBig5 && bets.highestBig5 === bestBig5 ? 3 : 0;
+  // Highest-placed Big 5 country: +3 if the voter picked it exactly,
+  // +1 if their pick finished within 2 placement spots of the actual
+  // best Big 5 (consolation for "you bet on the right band of the
+  // scoreboard, just the wrong country"). Same closeness shape as the
+  // wooden-spoon off-by-one rule.
+  let highestBig5 = 0;
+  if (bets.highestBig5 && bestBig5) {
+    if (bets.highestBig5 === bestBig5) {
+      highestBig5 = 3;
+    } else {
+      const guessP = placements[bets.highestBig5] ?? null;
+      const truthP = placements[bestBig5] ?? null;
+      if (guessP != null && truthP != null && Math.abs(guessP - truthP) <= 2) {
+        highestBig5 = 1;
+      }
+    }
+  }
 
   // Jury / televote winners: +5 each.
   const juryW   = bets.juryWinner && juryWinner && bets.juryWinner === juryWinner ? 5 : 0;
@@ -360,6 +397,23 @@ function scoreBetsWithCtx(input: {
     else if (diff <= 60) ltTotal = 1;
   }
 
+  // LT jury count: how many voting countries gave LT any jury points
+  // during the long jury reveal. Tight closeness ladder because the
+  // range is small (0..~40):
+  //   exact   +5
+  //   ±1      +3
+  //   ±3      +2
+  //   ±5      +1
+  //   beyond  +0
+  let ltJuryC = 0;
+  if (bets.ltJuryCount != null && ltJuryCountTruth != null) {
+    const diff = Math.abs(bets.ltJuryCount - ltJuryCountTruth);
+    if (diff === 0) ltJuryC = 5;
+    else if (diff <= 1) ltJuryC = 3;
+    else if (diff <= 3) ltJuryC = 2;
+    else if (diff <= 5) ltJuryC = 1;
+  }
+
   return {
     woodenSpoon,
     lt12To,
@@ -370,6 +424,7 @@ function scoreBetsWithCtx(input: {
     hostTop3: hostT3,
     winnerSolo: winnerS,
     ltTotalPoints: ltTotal,
+    ltJuryCount: ltJuryC,
   };
 }
 
@@ -399,7 +454,8 @@ export function totalBetPoints(b: BetBreakdown): number {
     b.nulTelevote +
     b.hostTop3 +
     b.winnerSolo +
-    b.ltTotalPoints
+    b.ltTotalPoints +
+    b.ltJuryCount
   );
 }
 

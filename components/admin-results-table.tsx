@@ -75,6 +75,13 @@ const FACTS: FactInput[] = [
     min: 0,
     max: 1000,
   },
+  {
+    kind: "number",
+    key: "lt_jury_count",
+    label: "Juries scoring Lithuania",
+    min: 0,
+    max: 60,
+  },
   { kind: "boolean", key: "winner_solo", label: "Winner is a solo act?" },
 ];
 
