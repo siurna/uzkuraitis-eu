@@ -1496,7 +1496,14 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           // to push the UL to the bottom of the messages-list when
           // there's extra space, and collapses to zero when content
           // overflows so scroll behaves normally.
-          className="flex-1 min-h-0 overflow-y-auto py-4 flex flex-col gap-3 fade-scroll-y"
+          // `overflow-y: auto` forces overflow-x to be non-visible
+          // per spec, which silently clips any row's right-edge ring
+          // or rainbow border that lands flush against the container
+          // edge (trivia card, +N highlight pill, etc). The
+          // `-mx-1 px-1` pair widens the scroll container by 8px while
+          // padding content back to its original position, giving
+          // rings 4px of breathing room before the clip kicks in.
+          className="flex-1 min-h-0 overflow-y-auto py-4 -mx-1 px-1 flex flex-col gap-3 fade-scroll-y"
           onClick={() => menuFor && setMenuFor(null)}
         >
           {loading ? (

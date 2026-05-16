@@ -12,7 +12,14 @@ import { useLang } from "@/lib/i18n-client";
 // a live thumbnail of the rendered TOP10 card (which also warms the
 // browser cache, so the share/copy below is instant), and on tap hands
 // the PNG to the native share sheet (mobile) / clipboard (desktop).
-export function SharePicks() {
+//
+// `fluid`: skip the outer max-w-3xl px-4 wrapper. Use this when the
+// caller already provides a constrained container (e.g. vote-form's
+// ballot section); without it the share button gets double-padded
+// and sits ~32px narrower than its sibling widgets in that column.
+// On Home the wrapper is still needed because each home widget
+// brings its own.
+export function SharePicks({ fluid = false }: { fluid?: boolean } = {}) {
   const { code } = useRoomLive();
   const lang = useLang();
   const [voterId, setVoterId] = useState<string | null>(null);
@@ -43,15 +50,7 @@ export function SharePicks() {
     }
   };
 
-  // Self-contained container so the home stack's gap-3 collapses cleanly
-  // when this component returns null (no voter yet) — no phantom wrapper.
-  return (
-    // Matches the other home widgets' container (max-w-3xl px-4) so
-    // the widget stack reads as one consistent column instead of one
-    // edge-to-edge bleed-through breaking the rhythm. Vote-form mounts
-    // this same component too — that page already has its own
-    // max-w-3xl wrapper, so the double-wrap is harmless.
-    <div className="container mx-auto max-w-3xl px-4">
+  const card = (
     <button
       type="button"
       onClick={share}
@@ -85,6 +84,14 @@ export function SharePicks() {
         </div>
       </div>
     </button>
-    </div>
   );
+
+  if (fluid) return card;
+  // Self-contained container so the home stack's gap-3 collapses
+  // cleanly when this component returns null (no voter yet) — no
+  // phantom wrapper. Matches the other home widgets' container
+  // (max-w-3xl px-4) so the widget stack reads as one consistent
+  // column instead of an edge-to-edge bleed-through breaking the
+  // rhythm.
+  return <div className="container mx-auto max-w-3xl px-4">{card}</div>;
 }

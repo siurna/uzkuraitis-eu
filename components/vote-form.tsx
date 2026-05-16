@@ -387,7 +387,7 @@ export function VoteForm({
                 {!hasCast && allFilled && casting && (
                   <p className="text-sm text-white/55 text-center pt-1">{t(lang, "submitting")}</p>
                 )}
-                {hasCast && voterId && <SharePicks key={voterId} />}
+                {hasCast && voterId && <SharePicks key={voterId} fluid />}
               </section>
             )}
 
