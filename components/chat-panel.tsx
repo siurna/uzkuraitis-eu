@@ -1460,17 +1460,30 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           : "pt-[calc(env(safe-area-inset-top)+3.5rem)]"
       }`}
       style={{
-        top: viewport?.top ?? 0,
+        // top: when the keyboard's up we follow visualViewport.offsetTop
+        // so the panel rides any URL-bar scroll. Keyboard down → pin to
+        // 0; visualViewport.offsetTop can lag iOS Safari's keyboard
+        // dismissal by a frame, which surfaces as a dead band below
+        // the dock until the next user tap forces a re-measure.
+        top: dockHidden ? viewport?.top ?? 0 : 0,
         // dockHidden = mobile + composer focused. In that one state the
         // dock + header are gone, so the chat panel takes the full
         // visual viewport (which on mobile is already shrunk by the
         // keyboard — composer ends flush above the keyboard, no gap).
         // Otherwise reserve the 4.75rem of dock space so the bottom
         // tab bar never overlaps the composer.
-        height: viewport
-          ? dockHidden
-            ? viewport.h
-            : `calc(${viewport.h}px - env(safe-area-inset-bottom) - 4.75rem)`
+        //
+        // Keyboard DOWN: use 100dvh, NOT visualViewport.h. iOS Safari
+        // doesn't reliably emit visualViewport.resize back to the full
+        // height when the user dismisses the keyboard via the Done
+        // accessory button — visualViewport.h can stay pinned at the
+        // shrunk value until the next user gesture forces a layout
+        // re-measure. That's the "dead band below the dock" the user
+        // sees. 100dvh is a CSS unit that doesn't track the keyboard,
+        // so the panel snaps back to its full size as soon as
+        // composerActive flips false.
+        height: dockHidden
+          ? viewport?.h ?? window.innerHeight
           : "calc(100dvh - env(safe-area-inset-bottom) - 4.75rem)",
         ...(active ? null : { display: "none" }),
       }}

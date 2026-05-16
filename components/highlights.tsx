@@ -131,24 +131,14 @@ export function Highlights() {
           style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.20) 0%, transparent 70%)" }}
           aria-hidden
         />
-        {/* Whole content area is keyed by the active highlight's id so
-            the crossfade between rotation entries is a single opacity +
-            small-y motion — quote, GIF, reaction count, author all
-            change together as one beat. Eyebrow text reads as static
-            because its copy doesn't change between frames, even though
-            it remounts with each rotation. */}
-        <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={top.id}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="relative flex flex-col gap-3 p-5">
-          {/* Top row — eyebrow + reaction count badge on the same
-              baseline. Icon switched to solid-tinted dark-amber so it
-              reads against the orange-pink wash instead of bleeding
-              into it. */}
+        {/* Static chrome (eyebrow + "+N more" footer) sits OUTSIDE the
+            AnimatePresence so it doesn't blink with each crossfade.
+            Only the changing pieces — reaction count, quote / GIF,
+            avatar + author + country — get keyed by the active
+            highlight's id and tween between rotations. */}
+        <div className="relative flex flex-col gap-3 p-5">
+          {/* Top row — eyebrow stays put, reaction count crossfades
+              with the rest of the highlight content. */}
           <div className="flex items-center gap-2">
             <p className="text-[10px] uppercase tracking-[0.3em] text-white/95 font-display leading-tight flex items-center gap-1.5">
               <Flame
@@ -158,76 +148,103 @@ export function Highlights() {
               />
               {t(lang, "highlights_title")}
             </p>
-            <span
-              className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-full
-                         bg-white/25 ring-1 ring-white/40 px-2.5 h-6
-                         text-xs text-white tabular-nums font-display"
-            >
-              <FluentEmoji glyph="❤️" size={12} />
-              {top.reactionCount}
+            <span className="ml-auto shrink-0">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={`react-${top.id}`}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                  className="inline-flex items-center gap-1 rounded-full
+                             bg-white/25 ring-1 ring-white/40 px-2.5 h-6
+                             text-xs text-white tabular-nums font-display"
+                >
+                  <FluentEmoji glyph="❤️" size={12} />
+                  {top.reactionCount}
+                </motion.span>
+              </AnimatePresence>
             </span>
           </div>
 
-          {/* The quote, now hero-sized in the slot that used to hold
-              the author. */}
-          {topPreview && (
-            <p className="font-display text-2xl text-white leading-snug text-balance drop-shadow-sm line-clamp-3 pr-20">
-              {/* Locale-aware quotes: Lithuanian uses „low-9 + left
-                  open“ (U+201E + U+201C), English uses the curly
-                  pair “…” (U+201C + U+201D). The card's text body is
-                  the user's own quote, but the punctuation around
-                  it should follow the reader's language. */}
-              {lang === "lt" ? "„" : "“"}
-              {topPreview}
-              {lang === "lt" ? "“" : "”"}
-            </p>
-          )}
-
-          {top.gifUrl && top.kind !== "bingo_strike" && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={top.gifUrl}
-              alt=""
-              className="rounded-xl ring-1 ring-white/20 max-h-44 w-auto self-start"
-            />
-          )}
-
-          {/* Author row, now small, in the slot the quote used to
-              live in. Avatar + name + country chip read as a caption
-              under the headline quote. */}
-          {/* Author row + "+N daugiau" share the same baseline so the
-              eye reads "this person said it, and there are N more
-              like this" as one unit. The +N pinned right keeps the
-              card's bottom edge visually balanced. */}
-          <div className="flex items-center gap-2">
-            <span className="h-7 w-7 shrink-0 rounded-lg overflow-hidden ring-1 ring-white/30 bg-dark-blue-800">
-              {topAvatar?.photo ? (
+          {/* Quote + (optional) GIF crossfade as one block — both
+              re-key on top.id and slide in together. */}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={`body-${top.id}`}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col gap-3"
+            >
+              {topPreview && (
+                <p className="font-display text-2xl text-white leading-snug text-balance drop-shadow-sm line-clamp-3 pr-20">
+                  {/* Locale-aware quotes: Lithuanian uses „low-9 + left
+                      open“ (U+201E + U+201C), English uses the curly
+                      pair “…” (U+201C + U+201D). The card's text body
+                      is the user's own quote, but the punctuation
+                      around it should follow the reader's language. */}
+                  {lang === "lt" ? "„" : "“"}
+                  {topPreview}
+                  {lang === "lt" ? "“" : "”"}
+                </p>
+              )}
+              {top.gifUrl && top.kind !== "bingo_strike" && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={optimizedSrc(topAvatar.photo, 64)}
+                  src={top.gifUrl}
                   alt=""
-                  className="h-full w-full object-cover"
-                  style={{
-                    objectPosition: topAvatar.focal
-                      ? `${topAvatar.focal.x}% ${topAvatar.focal.y}%`
-                      : "50% 30%",
-                  }}
+                  className="rounded-xl ring-1 ring-white/20 max-h-44 w-auto self-start"
                 />
-              ) : (
-                <span className="h-full w-full grid place-items-center font-display text-[11px] text-white bg-white/15">
-                  {top.name.charAt(0).toUpperCase()}
-                </span>
               )}
-            </span>
-            <p className="flex-1 min-w-0 text-xs text-white/85 truncate leading-tight">
-              <span className="font-display">{top.name}</span>
-              {topCountry && (
-                <span className="text-white/65">
-                  {" · "}
-                  {topCountry.flag} {countryName(topCountry.code, lang)}
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Author row — avatar + name + country crossfade together,
+              but the trailing "+N daugiau" footer stays static because
+              its number is a count of TOTAL highlights, not a fact
+              about the currently-shown one. */}
+          <div className="flex items-center gap-2">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={`author-${top.id}`}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                className="flex-1 min-w-0 flex items-center gap-2"
+              >
+                <span className="h-7 w-7 shrink-0 rounded-lg overflow-hidden ring-1 ring-white/30 bg-dark-blue-800">
+                  {topAvatar?.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={optimizedSrc(topAvatar.photo, 64)}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      style={{
+                        objectPosition: topAvatar.focal
+                          ? `${topAvatar.focal.x}% ${topAvatar.focal.y}%`
+                          : "50% 30%",
+                      }}
+                    />
+                  ) : (
+                    <span className="h-full w-full grid place-items-center font-display text-[11px] text-white bg-white/15">
+                      {top.name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </span>
-              )}
-            </p>
+                <p className="flex-1 min-w-0 text-xs text-white/85 truncate leading-tight">
+                  <span className="font-display">{top.name}</span>
+                  {topCountry && (
+                    <span className="text-white/65">
+                      {" · "}
+                      {topCountry.flag} {countryName(topCountry.code, lang)}
+                    </span>
+                  )}
+                </p>
+              </motion.div>
+            </AnimatePresence>
             {rest > 0 && (
               <span
                 className="shrink-0 text-[10px] uppercase tracking-[0.18em]
@@ -238,8 +255,7 @@ export function Highlights() {
               </span>
             )}
           </div>
-        </motion.div>
-        </AnimatePresence>
+        </div>
       </motion.button>
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title={t(lang, "highlights_title")}>
