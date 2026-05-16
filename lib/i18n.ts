@@ -206,7 +206,7 @@ const S = {
   tab_results:       { en: "Results", lt: "Rezultatai" },
 
   // ── Home banners (context-aware shortcuts) ───────────────────────
-  home_vote_open:      { en: "Voting is open, cast your TOP 10", lt: "Balsavimas atidarytas, pasirink savo TOP 10" },
+  home_vote_open:      { en: "Vote now!", lt: "Vyksta balsavimas" },
   home_vote_open_sub:  { en: "Lines close soon, get it in.", lt: "Linijos užsidarys greitai, nežiopsok." },
   home_vote_done:      { en: "Your vote's in, reorder it anytime", lt: "Tavo balsas užfiksuotas" },
   home_vote_done_eyebrow: { en: "Voted", lt: "Balsuota" },
