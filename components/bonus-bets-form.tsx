@@ -240,7 +240,7 @@ function HeaderText({
           </span>
         )}
       </div>
-      <p className="text-xs text-white/50 leading-snug mt-0.5">{sub}</p>
+      <p className="text-xs text-white/50 leading-snug mt-0.5 text-balance">{sub}</p>
     </div>
   );
 }

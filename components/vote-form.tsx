@@ -578,25 +578,34 @@ function RulesPanel({
     <section className="flex flex-col gap-4">
       <h2 className="font-display text-xl gradient-text text-balance px-1">{t(lang, "rules_title")}</h2>
 
-      {/* TOP 10 ballot */}
+      {/* TOP 10 ballot. Body intentionally split on blank lines into
+          its own <p>s — one wall of text reads as a "tl;dr" the eye
+          skips; three small paragraphs let each scoring rule breathe. */}
       <div className="rounded-2xl glass-surface px-4 py-4 flex flex-col gap-2.5">
         <p className="font-display text-base text-white/90">{t(lang, "rules_top10_h")}</p>
-        <p className="text-[15px] text-white/65 leading-relaxed text-pretty">{t(lang, "rules_top10_b")}</p>
+        {t(lang, "rules_top10_b").split("\n\n").map((p, i) => (
+          <p key={i} className="text-[15px] text-white/65 leading-relaxed text-pretty">{p}</p>
+        ))}
         <p className="text-[13px] text-white/45 leading-relaxed pt-0.5">{t(lang, "rules_top10_eg")}</p>
         <ScaleRow items={[["0", 12], ["1", 10], ["2", 8], ["3", 7], ["5", 5], ["9", 1]]} />
       </div>
 
-      {/* Home-country placement */}
+      {/* Home-country placement. Same paragraph-split treatment as the
+          TOP 10 card above. */}
       <div className="rounded-2xl glass-surface px-4 py-4 flex flex-col gap-2.5">
         <p className="font-display text-base text-white/90">{t(lang, "rules_home_h")}</p>
-        <p className="text-[15px] text-white/65 leading-relaxed text-pretty">{tr("rules_home_b")}</p>
+        {tr("rules_home_b").split("\n\n").map((p, i) => (
+          <p key={i} className="text-[15px] text-white/65 leading-relaxed text-pretty">{p}</p>
+        ))}
         <ScaleRow items={[["0", 12], ["1", 10], ["2", 8], ["3", 7], ["5", 5], ["9", 1]]} />
       </div>
 
-      {/* Bonus bets */}
+      {/* Bonus bets. The "every bet is optional" subtitle was removed
+          here — the row-level subtitles already carry the rule (a
+          missed bet shows 0), and the intro was just delaying the
+          actual list. */}
       <div className="rounded-2xl glass-surface px-4 py-4 flex flex-col gap-3">
         <p className="font-display text-base text-white/90">{t(lang, "rules_bets_h")}</p>
-        <p className="text-[13px] text-white/50 leading-relaxed">{t(lang, "rules_bets_intro")}</p>
         <ul className="flex flex-col">
           {bets.map((b) => (
             <li
@@ -605,7 +614,7 @@ function RulesPanel({
             >
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] text-white/85 leading-snug">{b.label}</p>
-                <p className="text-[13px] text-white/45 leading-snug mt-0.5 text-pretty">{b.sub}</p>
+                <p className="text-[13px] text-white/45 leading-snug mt-0.5 text-pretty text-balance">{b.sub}</p>
               </div>
               <span
                 className={`shrink-0 mt-0.5 rounded-lg px-2 py-1 text-xs font-display tabular-nums leading-none ${
@@ -619,6 +628,12 @@ function RulesPanel({
             </li>
           ))}
         </ul>
+      </div>
+
+      {/* Trivia bonus — same shape as Chat highlights below it. */}
+      <div className="rounded-2xl glass-surface px-4 py-4 flex flex-col gap-2">
+        <p className="font-display text-base text-white/90">{t(lang, "rules_trivia_h")}</p>
+        <p className="text-[15px] text-white/65 leading-relaxed text-pretty">{t(lang, "rules_trivia_b")}</p>
       </div>
 
       {/* Chat highlights bonus */}
