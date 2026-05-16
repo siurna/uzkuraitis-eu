@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { roomFacts, officialFacts } from "@/lib/db/schema";
 import { findRoomByCodeWithToken } from "@/lib/rooms";
 import { broadcastToRoom } from "@/lib/realtime-server";
+import { broadcastLeaderboardUpdate } from "@/lib/leaderboard";
 
 type RouteCtx = { params: Promise<{ code: string }> };
 
@@ -63,7 +64,7 @@ export async function PUT(req: Request, { params }: RouteCtx) {
     }
   }
 
-  await broadcastToRoom(room.code, { type: "leaderboard:updated" });
+  await broadcastLeaderboardUpdate(room);
   return NextResponse.json({ ok: true });
 }
 
@@ -81,7 +82,7 @@ export async function POST(req: Request, { params }: RouteCtx) {
       .insert(roomFacts)
       .values(global.map((g) => ({ roomId: room.id, key: g.key, value: g.value })));
   }
-  await broadcastToRoom(room.code, { type: "leaderboard:updated" });
+  await broadcastLeaderboardUpdate(room);
   return NextResponse.json({ ok: true, copied: global.length });
 }
 
@@ -92,6 +93,6 @@ export async function DELETE(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   }
   await db.delete(roomFacts).where(eq(roomFacts.roomId, room.id));
-  await broadcastToRoom(room.code, { type: "leaderboard:updated" });
+  await broadcastLeaderboardUpdate(room);
   return NextResponse.json({ ok: true });
 }

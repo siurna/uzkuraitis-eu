@@ -9,6 +9,7 @@ import {
   invalidateRoomCache,
 } from "@/lib/rooms";
 import { broadcastToRoom } from "@/lib/realtime-server";
+import { broadcastLeaderboardUpdate } from "@/lib/leaderboard";
 import { pushToRoom } from "@/lib/push";
 import { getCountry, countryName } from "@/lib/countries";
 import { t } from "@/lib/i18n";
@@ -247,6 +248,6 @@ export async function DELETE(req: Request, { params }: RouteCtx) {
   }
   await db.delete(voters).where(eq(voters.roomId, room.id));
   await broadcastToRoom(room.code, { type: "scores:updated" });
-  await broadcastToRoom(room.code, { type: "leaderboard:updated" });
+  await broadcastLeaderboardUpdate(room);
   return NextResponse.json({ ok: true });
 }

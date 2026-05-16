@@ -59,18 +59,16 @@ export async function GET(_req: Request, { params }: RouteCtx) {
   // Post-reveal data is final and can sit on the edge.
   const res = NextResponse.json(body);
   if (result.hasResults) {
-    // Aggressive edge cache + long SWR. Post-tally the data only
-    // changes when the admin re-enters a result or a manual fact
-    // edit, which both call `bustRoomLeaderboardCache` server-side
-    // and broadcast `leaderboard:updated` to viewers (the client
-    // refetches on that event). Until then, 60s fresh + 5 min
-    // stale-while-revalidate means most viewers get instantaneous
-    // CDN replies and the heavy compute only runs every minute on
-    // a warm Lambda (which also has a 30s in-memory memo, see
-    // computeRoomLeaderboard).
+    // Edge cache tuned for mid-show: admin can re-reveal facts /
+    // re-enter placements during the broadcast, and viewers expect
+    // the leaderboard to follow within seconds. 10s fresh + 60s
+    // SWR is the right balance against the heavy compute. The
+    // Lambda-level memo (30s, computeRoomLeaderboard) covers
+    // the dedup on cold CDN, and admin writes proactively warm the
+    // memo via broadcastLeaderboardUpdate.
     res.headers.set(
       "Cache-Control",
-      "public, s-maxage=60, stale-while-revalidate=300",
+      "public, s-maxage=10, stale-while-revalidate=60",
     );
   } else {
     res.headers.set("Cache-Control", "no-store");

@@ -1,5 +1,6 @@
 import { and, eq, notInArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { broadcastToRoom } from "@/lib/realtime-server";
 import {
   officialResults,
   officialFacts,
@@ -103,6 +104,39 @@ const memo = new Map<string, { result: RoomLeaderboard; expiresAt: number }>();
 export function bustRoomLeaderboardCache(roomId: string): void {
   memo.delete(roomId);
   inflight.delete(roomId);
+}
+
+// Admin-side write helper. After any change that affects the
+// leaderboard (results entered, facts entered, tally toggled),
+// call this instead of broadcasting `leaderboard:updated` directly:
+//   * busts THIS Lambda's memo so the admin's own subsequent reads
+//     are fresh
+//   * fires a background recompute (no await) so the memo is hot
+//     for the wave of client refetches that lands ~1-2s later via
+//     the broadcast
+//   * sends the `leaderboard:updated` broadcast for clients to act on
+//
+// Caveats: only this Lambda's memo is busted; other warm Lambdas
+// keep their (stale) memo for up to LEADERBOARD_TTL_MS. The edge
+// cache (s-maxage on the GET route) is also a separate layer with
+// its own TTL. For mid-show this is acceptable — admin reveals
+// settle within ~15s for all viewers.
+export async function broadcastLeaderboardUpdate(room: {
+  id: string;
+  code: string;
+  homeCountryCode: string;
+  tallyEnabled: boolean;
+  highlightThreshold: number | null;
+}): Promise<void> {
+  bustRoomLeaderboardCache(room.id);
+  // Fire-and-forget: kick off the recompute now so the Lambda memo
+  // is hot by the time clients refetch via the broadcast event.
+  // We don't await it — the broadcast must go out ASAP so clients
+  // see the "new results" signal immediately.
+  void computeRoomLeaderboard(room).catch(() => {
+    /* compute will be retried by the next client fetch */
+  });
+  await broadcastToRoom(room.code, { type: "leaderboard:updated" });
 }
 
 export async function computeRoomLeaderboard(room: {
