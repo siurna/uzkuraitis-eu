@@ -132,11 +132,17 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   // leaving the (still-valid) Supabase URL hanging.
   const [lightbox, setLightbox] = useState<{ url: string; messageId: string | null } | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  // visualViewport.height while the chat tab is active — used to
-  // size the panel to the visible (above-keyboard) area when the
-  // composer is focused. `null` when no measurement has landed yet;
-  // CSS fallback (`100lvh`) covers that first paint.
-  const [kbViewportH, setKbViewportH] = useState<number | null>(null);
+  // visualViewport.height + offsetTop while the chat tab is active.
+  // Both are needed: `height` sizes the panel to the above-keyboard
+  // visible area, `offsetTop` keeps the panel pinned to the TOP of
+  // that visible area even when iOS Safari scrolls the layout viewport
+  // up to bring the focused textarea into view. Without `offsetTop`,
+  // the panel stays at `top: 0` of the layout viewport while iOS has
+  // scrolled the layout viewport upward — the panel then sits below
+  // the visible area, with extra room appearing inside the panel
+  // because its height is the visualViewport's (shorter) bound.
+  // Event-driven, no polling.
+  const [kbViewport, setKbViewport] = useState<{ h: number; top: number } | null>(null);
   // Chrome (header + dock) visibility lives in <RoomChromeProvider/>.
   // Setting `composerActive` via this hook tells the chrome to hide
   // on mobile; the provider OR's it with a visualViewport keyboard
@@ -512,27 +518,31 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     };
   }, []);
 
-  // Track the visual viewport's height while the chat tab is
-  // active. The keyboard-up branch of the panel (dockHidden) needs
-  // EXACTLY the above-keyboard height — `100lvh` is the full layout
-  // viewport (correct in PWA only when the keyboard is down) and
-  // `100dvh` ships stale-frame bugs on iOS PWA after the keyboard
-  // slide animation. `visualViewport.height` is the only measure
-  // that reliably tracks the keyboard. Listener-only — no 200ms
-  // safety poll (that was causing mid-typing flicker as the
-  // predictive-text strip nudged height by ~36px between keystrokes).
-  // If iOS PWA ever drops the final `resize` after a Done tap and
-  // the panel sits at a stale height, the user can scroll to force
-  // a re-measure; the bug is rare enough that the polling cost
-  // wasn't worth paying every typing session.
+  // Track visualViewport.height + offsetTop while the chat tab is
+  // active. `height` sizes the panel to the visible above-keyboard
+  // area, `offsetTop` lets the panel follow iOS Safari's
+  // layout-viewport scroll when it shifts to bring the focused
+  // textarea into view. Listener-only — no 200ms safety poll (that
+  // was the mid-typing flicker source).
   useEffect(() => {
     if (!active) return;
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!vv) return;
-    const sync = () => setKbViewportH(Math.round(vv.height));
+    const sync = () => {
+      const h = Math.round(vv.height);
+      const top = Math.round(Math.max(0, vv.offsetTop));
+      setKbViewport((prev) => {
+        if (prev && prev.h === h && prev.top === top) return prev;
+        return { h, top };
+      });
+    };
     sync();
     vv.addEventListener("resize", sync);
-    return () => vv.removeEventListener("resize", sync);
+    vv.addEventListener("scroll", sync);
+    return () => {
+      vv.removeEventListener("resize", sync);
+      vv.removeEventListener("scroll", sync);
+    };
   }, [active]);
 
   const loadEarlier = async () => {
@@ -1549,27 +1559,17 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
           : "pt-[calc(env(safe-area-inset-top)+3.5rem)]"
       }`}
       style={{
-        // Pin to the top of the layout viewport in every state. iOS
-        // PWA shifts the entire visual viewport up when the keyboard
-        // opens, so `position: fixed; top: 0` keeps the panel anchored
-        // to the visible top without us tracking offsets in JS.
-        top: 0,
-        // dockHidden = mobile + composer focused. Full viewport when
-        // the dock is gone, viewport minus the 4.75rem dock band
-        // otherwise. `--uzk-vh-100` is `100dvh` in browser and
-        // `100lvh` in PWA standalone (see globals.css) — `dvh`
-        // ships broken on iOS PWA after a keyboard dismissal,
-        // `lvh` is stable there because PWA has no chrome to
-        // subtract.
-        // dockHidden = composer focused = keyboard up. We MUST size
-        // to the above-keyboard visible height (visualViewport.h)
-        // there — otherwise the panel extends behind the keyboard
-        // and the composer sits below the on-screen keys.
-        // Keyboard-down branch uses `var(--uzk-vh-100)` (100lvh in
-        // PWA, 100dvh in browser) minus the dock + home-indicator
-        // space, which is stable and CSS-only.
+        // dockHidden (composer focused, keyboard up): follow the
+        // visualViewport. `top` tracks `vv.offsetTop` so iOS Safari's
+        // layout-viewport scroll-to-bring-input-into-view doesn't
+        // leave the panel anchored below the visible area; `height`
+        // tracks `vv.height` so the composer sits flush above the
+        // on-screen keyboard with no dead band beneath it. Keyboard-
+        // down branch uses the CSS token (100lvh in PWA, 100dvh in
+        // browser) minus dock + home-indicator space — stable, no JS.
+        top: dockHidden ? kbViewport?.top ?? 0 : 0,
         height: dockHidden
-          ? kbViewportH ?? "var(--uzk-vh-100)"
+          ? kbViewport?.h ?? "var(--uzk-vh-100)"
           : "calc(var(--uzk-vh-100) - env(safe-area-inset-bottom) - 4.75rem)",
         ...(active ? null : { display: "none" }),
       }}
