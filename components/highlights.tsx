@@ -6,7 +6,7 @@ import { Flame } from "lucide-react";
 import { useEventListener } from "@/lib/realtime";
 import { useRoomLive } from "@/components/room-shell";
 import { FluentEmoji } from "@/components/fluent-emoji";
-import { renderInline } from "@/components/chat-row";
+import { renderInline } from "@/lib/inline-md";
 import { getAvatar } from "@/lib/avatars";
 import { getCountry, countryName } from "@/lib/countries";
 import { optimizedSrc } from "@/lib/img";

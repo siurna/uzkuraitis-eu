@@ -39,14 +39,16 @@ function getConnection(): PostgresJsDatabase<typeof schema> {
     // this — prepared statements can't survive across pooled
     // connections.
     prepare: false,
-    // Lazy-open up to 8 sockets per Lambda so Promise.all fan-outs
-    // (e.g. the profile drawer's 9 parallel queries) actually run in
-    // parallel instead of queuing on one connection. postgres-js only
-    // opens sockets when concurrent queries demand them, so the
-    // sequential-query case still costs 1 socket. pgbouncer multiplexes
-    // these onto the underlying Postgres pool.
-    max: 8,
-    idle_timeout: 20,
+    // Per-Lambda socket cap. With Vercel running 50+ concurrent
+    // Lambdas during a busy watch party, max:8 blew past pgbouncer's
+    // 200-client ceiling and the room lookup started erroring with
+    // EMAXCONN. Drop to 2 so the same 200-client budget supports
+    // ~100 concurrent Lambdas — well above the climax fan-out — at
+    // the cost of serialising the rare 9-parallel-query handler.
+    max: 2,
+    // Release idle sockets fast so a quiet Lambda gives its slot
+    // back to the pool. Was 20s; cuts dead-weight by ~4×.
+    idle_timeout: 5,
     connect_timeout: 10,
   });
   cachedDb = drizzle(cachedSql, { schema });

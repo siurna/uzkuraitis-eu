@@ -10,6 +10,7 @@ import { optimizedSrc } from "@/lib/img";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { HeartFlag } from "@/components/flag";
+import { renderInline } from "@/lib/inline-md";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { ChatBroadcastCard } from "@/components/chat-broadcast-cards";
 import { useRoomTab } from "@/components/room-shell";
@@ -203,60 +204,9 @@ export type Message = {
   pending?: boolean;
 };
 
-// Markdown + URL renderer for a single string segment.
-// Supports **bold**, *italic*, __underline__ (non-greedy, no nesting),
-// plus auto-linking of http(s):// URLs and bare www.* URLs. Returns a
-// string when there's no markup, else an array of nodes.
-const INLINE_RE =
-  /\*\*([^*]+?)\*\*|\*([^*]+?)\*|__([^_]+?)__|(https?:\/\/[^\s<>"')\]]+|www\.[^\s<>"')\]]+)/g;
-
-export function renderInline(s: string): React.ReactNode {
-  if (!s.includes("*") && !s.includes("__") && !/https?:\/\/|www\./.test(s)) {
-    return s;
-  }
-  const parts: React.ReactNode[] = [];
-  let last = 0;
-  let k = 0;
-  let m: RegExpExecArray | null;
-  // Reset lastIndex — INLINE_RE is module-scoped + has /g, so reuse
-  // between calls would skip ahead.
-  INLINE_RE.lastIndex = 0;
-  while ((m = INLINE_RE.exec(s))) {
-    if (m.index > last) parts.push(s.slice(last, m.index));
-    if (m[1] != null) parts.push(<strong key={k++}>{m[1]}</strong>);
-    else if (m[2] != null) parts.push(<em key={k++}>{m[2]}</em>);
-    else if (m[3] != null) parts.push(<u key={k++}>{m[3]}</u>);
-    else if (m[4] != null) {
-      // Strip trailing punctuation that's almost always sentence-ending
-      // rather than part of the URL. Re-emit it as plain text so the
-      // sentence reads naturally.
-      let url = m[4];
-      let tail = "";
-      while (/[.,!?:;)]/.test(url[url.length - 1] ?? "")) {
-        tail = url[url.length - 1] + tail;
-        url = url.slice(0, -1);
-      }
-      const href = url.startsWith("http") ? url : `https://${url}`;
-      parts.push(
-        <a
-          key={k++}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="underline decoration-flamingo/60 underline-offset-2 hover:decoration-flamingo break-all"
-        >
-          {url}
-        </a>,
-      );
-      if (tail) parts.push(tail);
-    }
-    last = INLINE_RE.lastIndex;
-  }
-  if (parts.length === 0) return s;
-  if (last < s.length) parts.push(s.slice(last));
-  return parts;
-}
+// Markdown + URL renderer lives in lib/inline-md so highlights (which
+// hangs off home-panel) and the chat row don't form a circular
+// dependency through room-shell.
 
 // Render @mentions inside message text as highlighted tokens (+ inline
 // **bold** / *italic*). Only known participant names count
