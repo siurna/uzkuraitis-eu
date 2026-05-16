@@ -701,19 +701,25 @@ function ChatRowInner({
         className="my-1 px-1 relative"
       >
         {isModerator && <ModDeleteHandle onDelete={onDelete} />}
-        {/* Thicker turquoise border (ring-[3px]) so the card reads as a
-            clear "Big Deal among the surrounding chatter" frame.
-            Gradient is intentionally calmer than the earlier
-            turquoise → indigo → flamingo rainbow: a single deep
-            teal-to-indigo wash with a subtle plum closing note. Less
-            visual noise behind the leaderboard bars. */}
-        <div className="rounded-3xl ring-[3px] ring-turquoise/75 shadow-[0_18px_44px_-18px_oklch(70%_0.15_190_/_0.55)] overflow-hidden">
+        {/* Thicker border (ring-[3px]) so the card reads as a clear
+            "Big Deal among the surrounding chatter" frame.
+            Background: a royal-violet → mauve → warm-plum wash, mixed
+            in oklab so the middle tone stays saturated instead of
+            collapsing through the muddy sRGB midpoint (which the
+            earlier `linear-gradient(..., #006a73, #142255, #261545)`
+            in plain sRGB suffered from — a teal-to-indigo blend that
+            grayed out mid-card). The new palette stays inside the
+            brand violet family the rest of the home page lives in,
+            so the card reads as a richer member of the same family
+            instead of a teal stranger. Trophy + gold #1 bar pop
+            cleanly against this. */}
+        <div className="rounded-3xl ring-[3px] ring-fuchsia/55 shadow-[0_18px_44px_-18px_oklch(45%_0.22_330_/_0.7)] overflow-hidden">
           <div
             className="relative overflow-hidden p-5 flex flex-col gap-4
-                       shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]"
+                       shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
             style={{
               background:
-                "linear-gradient(140deg, #006a73 0%, #142255 55%, #261545 100%)",
+                "linear-gradient(140deg in oklab, #1a0e3e 0%, #3f1559 50%, #6e2147 100%)",
             }}
           >
             <header className="flex items-center gap-2">
