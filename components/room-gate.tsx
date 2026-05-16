@@ -386,23 +386,26 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
                   through to `retryTurnstile` when we're in the error
                   branch so the keyboard path doesn't dead-end. */}
               {tsError ? (
-                // Auto-height button (was forced h-12 which clipped the
-                // copy at large fonts on iPhone + made long
-                // translations wrap unevenly). Icon nests INLINE with
-                // the text so the centring stays clean across wrap
-                // counts; the text uses leading-snug + text-balance to
-                // settle into even lines, no oversized vertical gap.
+                // Icon-on-the-left settings-row layout: the ShieldAlert
+                // sits in a squircle tile (same shape as the
+                // notification card's bell, the admin section
+                // headers, etc) and the copy is flex-1 + text-left
+                // anchored to it. Reads as a labelled row, not a
+                // centred banner — easier on the eye when the error
+                // wraps to two lines.
                 <button
                   type="button"
                   onClick={retryTurnstile}
-                  className="w-full rounded-2xl flex items-center justify-center gap-2.5
-                             px-4 py-3
+                  className="w-full rounded-2xl flex items-center gap-3
+                             px-3 py-3 text-left
                              bg-error/12 ring-1 ring-error/35 text-error/95
-                             font-display text-[15px] leading-snug text-balance
+                             font-display text-[15px] leading-snug
                              active:scale-[0.98] transition"
                 >
-                  <ShieldAlert className="h-4 w-4 shrink-0" />
-                  <span>{t(lang, "ts_error")}</span>
+                  <span className="shrink-0 grid place-items-center h-10 w-10 uzk-icon-squircle bg-error/20 ring-1 ring-error/40 text-error">
+                    <ShieldAlert className="h-5 w-5" />
+                  </span>
+                  <span className="flex-1 min-w-0">{t(lang, "ts_error")}</span>
                 </button>
               ) : (
                 <button

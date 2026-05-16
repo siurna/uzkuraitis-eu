@@ -9,11 +9,12 @@ import {
 import { cn } from "@/lib/utils";
 
 const LENGTH = 6;
-// Same alphabet as lib/rooms.ts. We exclude 0 (looks like O on
-// most fonts) and I/L (look like 1) but DO allow O — hosts wanted
-// to type memorable codes like "HELLOX" without the picker
-// stripping the O.
-const ALPHABET = /^[2-9ABCDEFGHJKMNOPQRSTUVWXYZ]$/;
+// Has to match `ROOM_CODE_REGEX` in lib/room-code.ts so anything a
+// host can mint as a custom code is also typable here. We exclude
+// 0 (looks like O on most fonts) and I/L (look like 1) but DO
+// allow 1 and O — hosts can type memorable codes like "PARTY1"
+// or "HELLOX" without the input stripping the digit / letter.
+const ALPHABET = /^[1-9ABCDEFGHJKMNOPQRSTUVWXYZ]$/;
 
 // Six-cell OTP-style input rendered as a single conjoined pill — one outer
 // rounded border, dashed dividers between cells, no gaps. Each cell is its
@@ -150,6 +151,18 @@ export function CodeInput({
           }}
           onKeyDown={handleKey(i)}
           onPaste={handlePaste}
+          onFocus={(e) => {
+            // Empty code + the user tapped any cell other than the
+            // first → bounce focus to cell 0 so they start typing
+            // from position 1 instead of mid-field. iOS especially
+            // would otherwise leave focus mid-cell, hitting the
+            // physical input but typing-out-of-order vs the
+            // displayed cells.
+            if (i !== 0 && value === "") {
+              e.preventDefault();
+              refs.current[0]?.focus();
+            }
+          }}
           className={cn(
             // Square cell, no individual border-radius (the outer pill
             // handles rounded corners).
@@ -160,13 +173,16 @@ export function CodeInput({
             // glow + caret are signal enough; a per-cell flamingo
             // background read as decorative noise on focus.
             "focus:outline-none",
-            // Singing Sans has top-heavy metrics — pt nudges the
-            // cap-height visually centred in the cell, and pb gives
-            // the line proper breathing room below so the glyphs
-            // don't kiss the cell's bottom rule. Combined with
-            // leading-none the visual centre lands on the actual
-            // letters, not on the line-box.
-            "text-center font-display uppercase tabular-nums leading-none pt-2 pb-3",
+            // Default browser <input> vertical-centres the value
+            // when leading + padding are left to their defaults.
+            // Earlier override (`leading-none pt-2 pb-3`) was
+            // tuned against Singing Sans's metrics on Chrome
+            // desktop but rendered visually high on iOS — the
+            // line-box was shorter than the cell and the glyph
+            // baseline floated up. Reset to `leading-snug` + no
+            // explicit padding; the browser centres the text in
+            // the aspect-square cell.
+            "text-center font-display uppercase tabular-nums leading-snug",
             "text-3xl sm:text-4xl text-white caret-flamingo",
             // Suppress text selection: tapping a cell shouldn't drag-
             // select neighbouring cells, and auto-select-on-focus is
