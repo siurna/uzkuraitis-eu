@@ -244,7 +244,7 @@ export function RoomGate({ prefilled = "" }: { prefilled?: string }) {
 
   return (
     <main
-      className={`relative h-dvh overflow-hidden flex flex-col items-center px-4 ${
+      className={`relative h-[var(--uzk-vh-100)] overflow-hidden flex flex-col items-center px-4 ${
         // Three layout cases:
         //   1. rehydrate state — plain `justify-center` on the full
         //      h-dvh. The earlier `pt-safe-top + pb-safe-bottom`
