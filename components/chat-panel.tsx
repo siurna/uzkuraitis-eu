@@ -169,8 +169,13 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const dragDepth = useRef(0);
 
   const listRef = useRef<HTMLDivElement | null>(null);
-  // The composer is a contentEditable <div> (an experiment — dodges the
-  // iOS keyboard accessory bar that <textarea>/<input> always get).
+  // The composer is a <textarea> (Messenger-style multi-line). iOS
+  // shows the keyboard accessory bar (Done button + greyed prev/next
+  // arrows) above any focused textarea — the bar itself is part of
+  // the system keyboard and can't be suppressed for textarea/input.
+  // The arrows ACTIVATE if iOS's form-input scanner finds other text
+  // inputs on the page; the inert wrappers on hidden TabPanes +
+  // NameGate keep those neighbours invisible to it.
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const didInitialScroll = useRef(false);

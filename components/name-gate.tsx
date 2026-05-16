@@ -177,7 +177,20 @@ export function NameGate({
 
   return (
     <>
-      {children}
+      {/* While the gate is open, inert the entire room shell behind
+          it. iOS Safari's form-input scanner walks the DOM looking
+          for text inputs to populate the keyboard accessory bar's
+          `‹ › ✓` arrows, and it doesn't reliably respect the
+          per-TabPane `display:none + inert` we already apply: a
+          returning user whose Vote tab was visited has the bonus-bet
+          number inputs sitting in a hidden TabPane, and the scanner
+          still picks them up, hangs them above the name field, and
+          breaks the focused single-input feel of the gate. The
+          `display:contents` wrapper leaves layout untouched; the
+          `inert` attribute propagates through the whole subtree so
+          every input behind us is hidden from focus + AX trees + (in
+          practice) iOS's scanner. */}
+      <div inert={open} style={{ display: "contents" }}>{children}</div>
       <BottomSheet
         open={open}
         onClose={() => {
