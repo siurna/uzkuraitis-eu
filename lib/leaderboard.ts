@@ -34,6 +34,23 @@ import { TRIVIA_POINTS } from "@/lib/trivia";
 // module (kept for compatibility while the dust settles).
 export { HIGHLIGHT_POINTS_MAX };
 
+// "Price is Right" tiebreaker score for the LT-total-points guess.
+// Smaller is better. The voter whose guess is closest WITHOUT going
+// over wins; anyone who went over is ordered AFTER anyone who didn't,
+// regardless of how close. Missing inputs (no truth set, no guess
+// from the voter) collapse to +Infinity so they're ordered last among
+// tied scores. The 1e6 penalty for over-bids gives us plenty of
+// headroom over realistic |truth - guess| values (LT totals top out
+// near 600, so the under-bid distance is at most ~600 and over-bids
+// can be ordered by distance within their own group without colliding
+// with under-bids).
+function priceIsRight(guess: number | null, truth: number | null): number {
+  if (truth == null) return Infinity;
+  if (guess == null) return Infinity;
+  if (guess > truth) return 1_000_000 + (guess - truth);
+  return truth - guess;
+}
+
 export type LeaderboardRow = {
   voterId: string;
   sessionId: string;
@@ -237,6 +254,17 @@ export async function computeRoomLeaderboard(room: {
     })
     .sort((a, b) => {
       if (b.total !== a.total) return b.total - a.total;
+      // Tiebreaker 1: Price-is-Right on LT total points. The voter
+      // whose `bet_lt_total_points` guess is closest WITHOUT going
+      // over the truth wins. A guess > truth ("you bid 350, LT got
+      // 280") loses to any guess <= truth, even by a wide margin —
+      // same rule the TV show uses. No guess at all loses to anyone
+      // with a guess. No truth set yet → tiebreaker collapses.
+      const truth = scoringCtx.ltTotalTruth;
+      const aPir = priceIsRight(a.betPicks.ltTotalPoints ?? null, truth);
+      const bPir = priceIsRight(b.betPicks.ltTotalPoints ?? null, truth);
+      if (aPir !== bPir) return aPir - bPir;
+      // Tiebreaker 2 (fallback): closest home-country placement.
       const aDiff =
         a.homePrediction != null && officialHome != null
           ? Math.abs(a.homePrediction - officialHome)
