@@ -51,14 +51,14 @@ function ltPoints(n: number): string {
 
 const S = {
   // ── Auto-translate to English (Settings) ─────────────────────────
-  settings_translate_h:    { en: "Auto-translate to English", lt: "Auto-vertimas į anglų" },
-  settings_translate_sub:  { en: "We'll pop a clean English rendering under any Lithuanian message: slang, cultural beats, all of it.", lt: "Po lietuvišku tekstu paberiama angliška versija." },
+  settings_translate_h:    { en: "Auto-translate Lithuanian to English", lt: "Auto-vertimas į anglų" },
+  settings_translate_sub:  { en: "We'll pop a clean English rendering under any Lithuanian message: slang, cultural beats, all of it, so you won't miss a thing!", lt: "Po lietuvišku tekstu pateikiama angliška versija." },
   // "Beginner mode" was the original handle; reading it back the
   // label sounded patronising for a feature that's genuinely a
   // delight (Eurovision is FULL of references nobody catches on a
   // first watch). Friendlier framing — "Eurovision tips".
-  settings_beginner_h:     { en: "Eurovision tips", lt: "Eurovizijos užuominos" },
-  settings_beginner_sub:   { en: "We'll tuck a short explainer under any message that drops a reference, in your language.", lt: "Po žinute su Eurovizijos užuomina pridėsim trumpą paaiškinimą tavo kalba." },
+  settings_beginner_h:     { en: "Eurovision Wizard", lt: "Eurovizijos žiniuonis" },
+  settings_beginner_sub:   { en: "Not a mega fan? No worries. We'll tuck a short explainer under any message that drops a reference.", lt: "Nesupranti, kodėl Tadui tai primena 2015 Švediją? Po žinute su Eurovizijos kontekstu parodysim trumpą paaiškinimą." },
 
   // ── NameGate / SettingsModal ─────────────────────────────────────
   welcome:           { en: "Welcome", lt: "Labas!" },
@@ -68,7 +68,7 @@ const S = {
   // server enforcement) — just a heads-up that someone else here
   // already uses it, so adding an initial helps THEM not get
   // confused for the other fan.
-  name_taken_hint:   { en: "Someone here already goes by this. Totally fine to keep, but adding an initial saves you some 'wait, which one?' moments.", lt: "Kažkas čia jau tokiu vardu. Gali likti taip, bet pridėjus inicialą bus mažiau „palauk, apie kurį?“ momentų." },
+  name_taken_hint:   { en: "Someone here already goes by this name. Totally fine to keep, but adding an initial saves you some 'wait, which John?' moments.", lt: "Kažkas su tokiu vardu jau čia. Viskas tvarkoj, bet siūlom pridėt inicialą ar kokią raidę. Bus mažiau „kuris Vladas nekenčia šitos dainos?“ momentų." },
   join_party:        { en: "Join the party", lt: "Pradėti vakarėlį" },
   pick_avatar:       { en: "Pick an avatar", lt: "Pasirink avatarą" },
   settings:          { en: "Settings", lt: "Nustatymai" },
@@ -80,11 +80,11 @@ const S = {
   back:              { en: "Back", lt: "Atgal" },
   done:              { en: "Done", lt: "Gerai" },
   close:             { en: "Close", lt: "Uždaryti" },
-  loading:           { en: "Loading…", lt: "Įkeliama…" },
+  loading:           { en: "Loading", lt: "Krauna" },
   leave_room:        { en: "Leave room", lt: "Palikti kambarį" },
   leave_confirm:     { en: "Leave this room?", lt: "Tikrai nori palikti šitą kambarį?" },
   leave_confirm_sub: { en: "You can rejoin with the room link any time.", lt: "Jei turi nuorodą, grįžti galėsi bet kada." },
-  leave_confirm_body: { en: "Your name, avatar and ballot stay on this device, leaving just takes you back to the entrance. You'll need the room code or link to come back.", lt: "Tavo vardas, veidas ir balsas lieka šiame įrenginyje, palikęs grįši į pradžios ekraną. Norėdamas grįžti, naudok kambario kodą ar nuorodą." },
+  leave_confirm_body: { en: "Your name, avatar and ballot stay on this device, leaving just takes you back to the entrance. You'll need the room code or link to come back.", lt: "Tavo vardas, veidas ir balsai lieka šiame įrenginyje, palikęs grįši į pradžios ekraną. Norėdamas grįžti, naudok kambario kodą ar nuorodą." },
   leave_yes:         { en: "Leave room", lt: "Palikti kambarį" },
   link_copied:       { en: "Link copied", lt: "Nuoroda nukopijuota" },
 
@@ -92,20 +92,20 @@ const S = {
   enter_room:        { en: "Enter room", lt: "Įeiti" },
   // Disabled-state copy for the join CTA when the user hasn't typed
   // the full 6-char code yet. Reads as a hint, not a dead button.
-  enter_code_hint:   { en: "Enter room code", lt: "Įvesk kambario kodą" },
-  checking:          { en: "Checking…", lt: "Tikrinama…" },
+  enter_code_hint:   { en: "Enter party code", lt: "Įvesk vakarėlio kodą" },
+  checking:          { en: "Checking", lt: "Tikrinam" },
   // Turnstile status pill copy — explains the disabled join button so
   // it doesn't read as "broken form".
-  ts_checking:       { en: "Verifying you're human…", lt: "Patvirtinama, kad žmogus…" },
-  ts_error:          { en: "Couldn't verify you. Tap to retry.", lt: "Nepavyko patvirtinti. Bakstelėk dar kartą." },
-  ts_waiting_to_submit: { en: "One sec, finishing the check…", lt: "Akimirką, baigiam patikrinti…" },
-  bad_code:          { en: "No room with that code.", lt: "Nėra kambario tokiu kodu." },
+  ts_checking:       { en: "Verifying you're human", lt: "Tikrinam, ar žmogus" },
+  ts_error:          { en: "Couldn't verify you. Tap to retry.", lt: "Nepavyko patvirtinti. Bakstelk čia dar kartą." },
+  ts_waiting_to_submit: { en: "One sec, finishing the check…", lt: "Sekundę, baigiam patikrinti…" },
+  bad_code:          { en: "No room with that code.", lt: "Nėr kambario tokiu kodu." },
   bad_format:        { en: "Codes are 6 characters (A–Z, 2–9).", lt: "Kodas, 6 simboliai (A–Z, 2–9)." },
-  reconnecting:      { en: "Reconnecting…", lt: "Jungiamasi…" },
+  reconnecting:      { en: "Reconnecting", lt: "Jungiam" },
 
   // ── Standings ────────────────────────────────────────────────────
   no_votes_yet:      { en: "Standings are quiet", lt: "Lentelė tuščia. Gerbėjai tyli." },
-  no_votes_sub:      { en: "No one has voted yet. Be the first and the leaderboard fills up live as everyone joins in.", lt: "Niekas dar nebalsavo. Būk pirmas! Lentelė užsipildys realiu laiku, kai prisijungs kiti." },
+  no_votes_sub:      { en: "No one has voted yet. Be the first and the leaderboard fills up live as everyone joins in.", lt: "Niekas dar nebalsavo. Būk pirmas! Lentelė pildysis realiu laiku." },
   be_the_first:      { en: "Be the first", lt: "Būk pirmas" },
   fan_top5:          { en: "Fan TOP5", lt: "Vakarėlio TOP5" },
   see_all:           { en: "See all", lt: "Žiūrėti visus" },
@@ -114,7 +114,7 @@ const S = {
   live:              { en: "Live", lt: "Tiesiogiai" },
 
   // ── Voting open/closed states + the on-air banners ───────────────
-  update_vote:       { en: "Update your vote", lt: "Pakeisti balsą" },
+  update_vote:       { en: "Update your vote", lt: "Pakeisti balsus" },
   voting_closed:     { en: "Voting locked", lt: "Balsavimas užrakintas" },
   voting_closed_show: { en: "Let's enjoy the show first!", lt: "Pirma pasimėgaukime šou!" },
   voting_closed_results: { en: "Waiting for the official results!", lt: "Laukiame oficialių rezultatų!" },
@@ -125,21 +125,21 @@ const S = {
   your_top_10:       { en: "My TOP10", lt: "Mano TOP10" },
   tap_to_pick:       { en: "Pick", lt: "Pasirink" },
   pick_avatar_apply: { en: "Change", lt: "Pakeisti" },
-  pick_n_more:       { en: (n: number) => `Pick ${n} more`, lt: (n: number) => `Dar ${n}` },
-  submitting:        { en: "Submitting…", lt: "Siunčiama…" },
-  fill_n_more:       { en: (n: number) => `Fill all 10 slots, ${n} to go.`, lt: (n: number) => `Užpildyk visas 10 vietų, dar ${n}.` },
-  add_name_first:    { en: "Add your name first.", lt: "Pirma įvesk vardą." },
+  pick_n_more:       { en: (n: number) => `Pick ${n} more`, lt: (n: number) => `Pasirink dar ${n}` },
+  submitting:        { en: "Submitting", lt: "Siunčiama" },
+  fill_n_more:       { en: (n: number) => `Fill all 10 slots, ${n} to go.`, lt: (n: number) => `Užpildyk visas 10 vietų, liko dar ${n}.` },
+  add_name_first:    { en: "Add your name first.", lt: "Pirma įvesk savo vardą." },
   couldnt_submit:    { en: "Couldn't submit vote.", lt: "Nepavyko išsiųsti balso." },
   // Shown under the trivia card when the country left the stage
   // before the player tapped an answer. The card stays mounted (so
   // the right answer is still readable in the chat scrollback) but
   // the buttons are inert and this line explains the muted look.
-  trivia_closed:     { en: "Time's up for this one. Wait for the next.", lt: "Šio jau nepavyks. Lauk kito." },
+  trivia_closed:     { en: "Time's up for this one. Wait for the next.", lt: "Šįkart kiti buvo greitesni. Lauk kito klausimo." },
   // Chip rendered next to the player's pick when they got the answer
   // wrong. Replaces the +2 points chip that used to live on the
   // correct plate regardless of outcome — that read as "I got 2
   // points" to a player who'd just missed it.
-  trivia_not_this_time: { en: "Not this time", lt: "Ne šįkart" },
+  trivia_not_this_time: { en: "Not this time", lt: "Ech, ne šįkart" },
   // Toast that pops when the server returns `tooLate: true` for a
   // CORRECT answer: the player nailed it but the room's per-question
   // cap (first N answerers) was already hit. The plate still flips
@@ -147,26 +147,26 @@ const S = {
   // explains the missing +2.
   trivia_too_late_correct_toast: {
     en: (n: number) => `Right answer, too slow. Trivia points are for the first ${n} hands up. Chop chop next time!`,
-    lt: (n: number) => `Atsakymas geras, bet vėluoji. Taškai keliauja pirmiems ${n} pakeltiems rankas. Greičiau kitą kartą!`,
+    lt: (n: number) => `Atsakymas teisingas, bet vėluoji. Taškai keliauja pirmiems ${n}. Kitąkart nemiegok!`,
   },
   tab_ballot:        { en: "Ballot", lt: "Balsavimas" },
   tab_bets:          { en: "Guesses", lt: "Spėjimai" },
   tab_rules:         { en: "Rules", lt: "Taisyklės" },
   vote_cast_title:   { en: "Your vote's cast! 🎉", lt: "Tavo balsas užfiksuotas! 🎉" },
-  vote_cast_body:    { en: "Saved automatically. Reorder anytime, it updates on its own.", lt: "Išsaugota automatiškai. Eilę gali keisti bet kada, atsinaujins pati." },
-  vote_place_bets:   { en: "Place your bets", lt: "Užpildyk spėjimus" },
+  vote_cast_body:    { en: "Saved automatically. Reorder anytime, it updates on its own.", lt: "Išsaugom automatiškai. Eiliškumą gali keisti bet kada iki balsavimo pabaigos." },
+  vote_place_bets:   { en: "Place your bets", lt: "Pasidalink savo spėjimais" },
   vote_keep_editing: { en: "Keep editing", lt: "Tęsti redagavimą" },
 
   // ── Rules tab (scoring explainer) ────────────────────────────────
-  rules_title:       { en: "How scoring works", lt: "Kaip skaičiuojami taškai" },
+  rules_title:       { en: "How scoring works", lt: "Kaip skaičiuojami taškai?" },
   rules_top10_h:     { en: "Your TOP 10", lt: "Tavo TOP 10" },
-  rules_top10_b:     { en: "Only countries that finish in the official Top 10 score anything. Place one in the exact spot it finished and you bank its full Eurovision points (12, 10, 8…1). Off by a place? Slide one rung down the scoreboard: a country that came 1st but you ranked 3rd scores 8 (3rd place's value), and sliding past 10th means 0.", lt: "Taškus skiria tik šalys, patekusios į oficialų TOP 10. Šalis, pastatyta tiksliai į jos užimtą vietą, surenka pilnus Eurovizijos taškus (12, 10, 8…1). Klysti viena vieta? Nuslysti viena pakopa žemyn lentelėje: jei šalis liko 1-a, o tu ją pastatei 3-ią, gauni 8 (3-ios vietos vertę). Nuslydęs už 10-os negausi nieko." },
-  rules_top10_eg:    { en: "A country that finished 1st, scored by how far off your ranking was:", lt: "1-ą vietą užėmusi šalis: kiek taškų gausi pagal įvertinimo tikslumą:" },
-  rules_home_h:      { en: "Home-country placement", lt: "Savo šalies vieta" },
-  rules_home_b:      { en: "Guess where {home} finishes. Nail it and that's 12 points; every place you're off slides you one rung down the Eurovision ladder (12 → 10 → 8 → 7 … 1):", lt: "Atspėk, kelintas liks {home}. Pataikei tiksliai, 12 taškų; už kiekvieną netaiklią vietą nuslysti pakopa žemyn Eurovizijos skale (12 → 10 → 8 → 7 … 1):" },
-  rules_bets_h:      { en: "Bonus bets", lt: "Bonus statymai" },
-  rules_bets_intro:  { en: "Every bet is optional. You only score if you call it right; a skipped bet is just 0.", lt: "Kiekvienas statymas neprivalomas. Taškų gauni tik pataikęs; praleistas statymas tiesiog 0." },
-  rules_highlights_b:{ en: "When a chat message you sent picks up enough reactions it becomes a highlight: +2 points each, up to +12. (You have to have voted to score.)", lt: "Kai tavo žinutė pokalbyje surenka pakankamai reakcijų, ji tampa akcentu: po +2 t., iki +12. Taškai skaičiuojami tik balsavusiems." },
+  rules_top10_b:     { en: "Only countries that finish in the official Top 10 score anything. Place one in the exact spot it finished and you bank its full Eurovision points (12, 10, 8…1). Off by a place? Slide one rung down the scoreboard: a country that came 1st but you ranked 3rd scores 8 (3rd place's value), and sliding past 10th means 0.", lt: "Taškus gausi tik už šalis, patekusias į oficialų TOP 10. Tiksliai įvardyta užimta vieta gauna pilnus Eurovizijos taškus (12, 10, 8…1). Klysti viena vieta? Nuslysti viena pakopa žemyn: jei šalis liko 1-a, o tu ją pastatei 3-ią, gauni 8 (3-ios vietos vertę). Nuslydęs už 10-os vietos negausi nieko." },
+  rules_top10_eg:    { en: "Example: A country that finished 1st, scored by how far off your ranking was:", lt: "Pavyzdys: 1-ą vietą užėmusi šalis. Kiek taškų gausi pagal spėjimo tikslumą:" },
+  rules_home_h:      { en: "How will {home} place?", lt: "Kelintą vietą užims {home}?" },
+  rules_home_b:      { en: "Nail it and that's 12 points! Every place you're off slides you one rung down the Eurovision ladder (12 → 10 → 8 → 7 … 1):", lt: "Pataikyk tiksliai ir uždirbk 12 taškų! Už kiekvieną netaiklią vietą nuslysti pakopa žemyn Eurovizijos skalėje (12 → 10 → 8 → 7 … 1):" },
+  rules_bets_h:      { en: "Bonus bets", lt: "Papildomi statymai" },
+  rules_bets_intro:  { en: "Every bet is optional. You only score if you call it right; a skipped bet is just 0.", lt: "Taškų gausi tik pataikęs. Praleistas statymas – tiesiog 0. Tai,.. ko nesurizikavus?" },
+  rules_highlights_b:{ en: "When a chat message you sent picks up enough reactions it becomes a highlight: +2 points each, up to +12. (You have to have voted to score.)", lt: "Kai tavo žinutė pokalbyje surenka daug reakcijų, ji tampa vakaro akcentu: po +2 t. už kiekvieną, iki +12. Taškai skaičiuojami tik pateikusiems savo TOP 10!" },
 
   // ── Room tab bar ─────────────────────────────────────────────────
   tab_home:          { en: "Home", lt: "Pradžia" },
@@ -176,22 +176,22 @@ const S = {
   tab_results:       { en: "Results", lt: "Rezultatai" },
 
   // ── Home banners (context-aware shortcuts) ───────────────────────
-  home_vote_open:      { en: "Voting is open, cast your TOP 10", lt: "Balsavimas atidarytas, paskelbk savo TOP 10" },
-  home_vote_open_sub:  { en: "Lines close soon, get it in.", lt: "Linijos užsidaro, nežiopsok." },
+  home_vote_open:      { en: "Voting is open, cast your TOP 10", lt: "Balsavimas atidarytas, pasirink savo TOP 10" },
+  home_vote_open_sub:  { en: "Lines close soon, get it in.", lt: "Linijos užsidarys greitai, nežiopsok." },
   home_vote_done:      { en: "Your vote's in, reorder it anytime", lt: "Tavo balsas užfiksuotas" },
   home_vote_done_eyebrow: { en: "Voted", lt: "Balsuota" },
   home_vote_done_sub:  { en: "Place bets or tweak your TOP 10.", lt: "Spėliok arba pakeisk TOP 10." },
-  home_bonus_placed:   { en: (n: number) => `${n} side ${n === 1 ? "bet" : "bets"} placed`, lt: (n: number) => `pastatyta ${n}` },
-  home_bonus_none:     { en: "Place your side bets", lt: "Sudaryk savo statymus" },
-  home_bonus_sub:      { en: "Wooden spoon, jury winner, nul points… each pays out only if you call it.", lt: "Paskutinė vieta, žiuri nugalėtojas, nulis taškų… užskaitoma tik pataikius." },
+  home_bonus_placed:   { en: (n: number) => `${n} side ${n === 1 ? "bet" : "bets"} placed`, lt: (n: number) => `spėjimų: ${n}` },
+  home_bonus_none:     { en: "Place your side bets", lt: "Pabūk orakulu" },
+  home_bonus_sub:      { en: "Wooden spoon, jury winner, nul points…", lt: "Paskutinė vieta, žiuri nugalėtojas, nulis taškų…" },
   home_vs_room:        { en: "You vs the room", lt: "Tu prieš kitus" },
   home_vs_room_rank:   { en: (n: number) => `Your #1, the room ranks it #${n}`, lt: (n: number) => `Tavo Nr.1, kiti vertina ją #${n}` },
-  home_vs_room_agree:  { en: "You and the room agree, it's on top!", lt: "Tu ir kiti sutariate, ji pirmoji!" },
-  home_vs_room_bold:   { en: (n: number) => `Bold pick, the room has it way down at #${n}`, lt: (n: number) => `Drąsu, kiti ją laiko net #${n}` },
+  home_vs_room_agree:  { en: "You and the room agree, it's on top!", lt: "Tu ir kiti sutariate - numeris vienas!" },
+  home_vs_room_bold:   { en: (n: number) => `Bold pick, the room has it way down at #${n}`, lt: (n: number) => `Drąsus pasirinkimas, kiti ją laiko net #${n}` },
   home_vs_room_pending:{ en: "Your #1, waiting for more ballots", lt: "Tavo Nr.1, laukiam daugiau balsų" },
-  home_vs_room_wavelength: { en: (n: number) => `On the room's wavelength: ${n} of your top 5 are theirs too`, lt: (n: number) => `Tavo ir kitų skonis sutampa: ${n} iš tavo TOP 5 yra ir jų sąraše` },
+  home_vs_room_wavelength: { en: (n: number) => `On the room's wavelength: ${n} of your top 5 are theirs too`, lt: (n: number) => `Tavo ir kitų skonis sutampa: ${n} iš tavo TOP 5 yra ir daugelio kitų sąraše` },
   home_vs_room_outlier:    { en: "Lone wolf. Barely any of your picks crack the room's top 10", lt: "Vienišas vilkas. Beveik nė vienas tavo favoritas nepatenka į kitų TOP 10" },
-  home_vs_room_empty_title: { en: "How do you stack up?", lt: "Kaip atrodai prieš kitus?" },
+  home_vs_room_empty_title: { en: "How do you stack up?", lt: "Kaip atrodai lyginant su kitais?" },
   home_vs_room_empty_sub:   { en: "Cast your TOP 10 to compare with the room.", lt: "Balsuok ir palygink savo TOP 10 su kitais." },
   chat_np_my_rank:     { en: (n: number) => `My #${n}`, lt: (n: number) => `Mano #${n}` },
   chat_np_my_rank_aria:{ en: (n: number) => `Your #${n} in your TOP 10, tap to change`, lt: (n: number) => `Tavo #${n} TOP 10 sąraše, palieskite, kad pakeistumėte` },
@@ -200,13 +200,13 @@ const S = {
   bingo_widget_title:  { en: "Play bingo!", lt: "Žaisk bingo!" },
   highlights_title:    { en: "Highlights", lt: "Akcentai" },
   highlights_more:     { en: "more", lt: "daugiau" },
-  whos_here_title:     { en: (n: number) => (n === 1 ? "Just you here" : `${n} here right now`), lt: (n: number) => (n === 1 ? "Kol kas tik tu" : `${n} čia dabar`) },
+  whos_here_title:     { en: (n: number) => (n === 1 ? "Just you here" : `${n} here right now`), lt: (n: number) => (n === 1 ? "Kol kas čia tik tu" : `${n} čia dabar`) },
   home_my_results:     { en: "Your results", lt: "Tavo rezultatai" },
   home_results_in:     { en: "Results are in", lt: "Rezultatai jau čia" },
-  home_results_in_sub: { en: "See how everyone did", lt: "Pažiūrėk, kaip visiems sekėsi" },
+  home_results_in_sub: { en: "See how everyone did", lt: "Pamatyk, kaip visiems sekėsi" },
   results_tab_me:      { en: "My breakdown", lt: "Mano išklotinė" },
   results_tab_board:   { en: "Leaderboard", lt: "Lyderių lentelė" },
-  results_you_said:    { en: "You said", lt: "Tu pasakei" },
+  results_you_said:    { en: "You said", lt: "Tu sakei" },
   results_it_was:      { en: "It was", lt: "Buvo" },
   bet_yes:             { en: "Yes", lt: "Taip" },
   bet_no:              { en: "No", lt: "Ne" },
@@ -215,8 +215,8 @@ const S = {
   // ── Chat ─────────────────────────────────────────────────────────
   chat_empty:        { en: "No messages yet. Say hi 👋", lt: "Dar nieks nieko nerašė. Pasisveikink pirmas 👋" },
   chat_placeholder:  { en: "Message", lt: "Tavo žinutė" },
-  chat_load_earlier: { en: "Load earlier messages", lt: "Įkelti senesnes žinutes" },
-  chat_slow_down:    { en: "Whoa, slow down a sec.", lt: "Pala, neskubėk." },
+  chat_load_earlier: { en: "Load earlier", lt: "Įkelti senesnes" },
+  chat_slow_down:    { en: "Whoa, slow down a sec.", lt: "Pala, PALA, neskubėk taip!" },
   chat_today:        { en: "Today", lt: "Šiandien" },
   chat_yesterday:    { en: "Yesterday", lt: "Vakar" },
   chat_jump_bottom:  { en: "To bottom", lt: "Į apačią" },
@@ -240,49 +240,49 @@ const S = {
   sys_voting_open:   { en: "📣 Voting is OPEN, cast your TOP10!", lt: "📣 Balsavimas ATIDARYTAS, užfiksuok savo TOP10!" },
   sys_voting_closed: { en: "🔒 Voting is CLOSED.", lt: "🔒 Balsavimas UŽDARYTAS." },
   sys_show_started:  { en: "🟢 The show is underway, Europe, get ready!", lt: "🟢 Šou prasidėjo, Europa, pasiruošk!" },
-  sys_show_break:    { en: "⏸ Interval break. Stretch those legs.", lt: "⏸ Pertrauka. Pajudink kojas." },
+  sys_show_break:    { en: "⏸ Interval break. Stretch those legs.", lt: "⏸ Pertrauka. Pajudink kojas. Įsipilk dar vyno." },
   sys_show_ended:    { en: "🏁 Performances have ended.", lt: "🏁 Pasirodymai baigti." },
-  sys_show_doors:    { en: "🎬 Doors open, the show hasn't started yet.", lt: "🎬 Durys atvertos, šou dar neprasidėjo." },
-  sys_results_in:    { en: "🏆 Results are in, leaderboard's live!", lt: "🏆 Rezultatai jau čia, lyderių lentelė gyva!" },
+  sys_show_doors:    { en: "🎬 Doors open, the show hasn't started yet.", lt: "🎬 Durys atvertos, bet šou dar neprasidėjo." },
+  sys_results_in:    { en: "🏆 Results are in, leaderboard's live!", lt: "🏆 Rezultatai jau čia, lyderių lentelė paskelbta!" },
   sys_cta_notifications: { en: "🔔 Turn on notifications so you don't miss a beat (tap your avatar).", lt: "🔔 Įsijunk pranešimus, kad nieko nepražiopsotum (bakstelėk savo avatarą)." },
   sys_cta_notifications_title: { en: "Notifications", lt: "Pranešimai" },
-  sys_cta_notifications_sub: { en: "Stay in the loop while the show runs.", lt: "Likite kurse, kol vyksta šou." },
+  sys_cta_notifications_sub: { en: "Stay in the loop while the show runs.", lt: "Kol vyksta šou, nieko nepraleisk." },
   sys_cta_notifications_on:  { en: "On", lt: "Įjungta" },
   sys_cta_notifications_off: { en: "Off", lt: "Išjungta" },
   sys_cta_notifications_unsupported: { en: "Unsupported", lt: "Nepalaikoma" },
-  sys_cta_vote:      { en: "🗳️ Lines are open, get your TOP 10 in!", lt: "🗳️ Linijos atviros, užfiksuok savo TOP 10!" },
-  sys_cta_vote_title: { en: "Lines are open", lt: "Balsavimas pradėtas" },
-  sys_cta_vote_sub_empty:    { en: "Drop your TOP 10. Every spot is points.", lt: "Užfiksuok TOP 10. Kiekviena vieta yra taškai." },
-  sys_cta_vote_sub_progress: { en: (n: number) => `Your ballot is ${n}/10. Finish it off.`, lt: (n: number) => `Tavo balsas: ${n}/10. Užbaik.` },
-  sys_cta_vote_done_headline: { en: "All 10 are locked in.", lt: "Visi 10 jau užfiksuoti." },
+  sys_cta_vote:      { en: "🗳️ Lines are open, get your TOP 10 in!", lt: "🗳️ Linijos atviros, balsuok už savo TOP 10!" },
+  sys_cta_vote_title: { en: "Lines are open", lt: "Balsavimas praidėjo" },
+  sys_cta_vote_sub_empty:    { en: "Drop your TOP 10. Every spot is points.", lt: "Balsuok už savo TOP 10. Kiekviena aspėta vieta – taškai!" },
+  sys_cta_vote_sub_progress: { en: (n: number) => `Your ballot is ${n}/10. Finish it off.`, lt: (n: number) => `Tavo TOP 10: ${n}/10. Užbaik, ką pradėjai.` },
+  sys_cta_vote_done_headline: { en: "All 10 are locked in.", lt: "Turim tavo dešimtuką." },
   sys_cta_vote_btn_cast:     { en: "Cast your ballot", lt: "Atiduoti balsą" },
   sys_cta_vote_btn_adjust:   { en: "Tweak your TOP 10", lt: "Pakeisti TOP 10" },
-  sys_cta_bet:      { en: "🎲 Don't forget your bonus bets, every one is free points if you call it.", lt: "🎲 Nepamiršk bonus statymų, kiekvienas pataikytas, tai nemokami taškai." },
-  sys_cta_bet_title_suggest: { en: "Bonus bet idea", lt: "Bonus statymo idėja" },
-  sys_cta_bet_title_done:    { en: "All bets in", lt: "Visi statymai pateikti" },
-  sys_cta_bet_suggest_sub:   { en: (label: string) => `You haven't placed: ${label}`, lt: (label: string) => `Dar neuždėjai: ${label}` },
+  sys_cta_bet:      { en: "🎲 Don't forget your bonus bets, every one is free points if you call it.", lt: "🎲 Nepamiršk bonus spėlionių, kiekvienas pataikymas – nemokami taškai." },
+  sys_cta_bet_title_suggest: { en: "Bonus bet idea", lt: "Pabandyk atspėti" },
+  sys_cta_bet_title_done:    { en: "All bets in", lt: "Visi spėjimai pateikti. Super!" },
+  sys_cta_bet_suggest_sub:   { en: (label: string) => `You haven't placed: ${label}`, lt: (label: string) => `Dar nespėjai: ${label}` },
   sys_cta_bet_sub_done:      { en: "Nice. Now relax and wait for the points.", lt: "Šaunu. Dabar atsipalaiduok ir lauk taškų." },
   sys_cta_top3:      { en: (arg: string) => `🏆 Leading the room right now: ${arg}`, lt: (arg: string) => `🏆 Šiuo metu pirmauja: ${arg}` },
   sys_cta_top3_eyebrow: { en: "Top 3 right now", lt: "Šiuo metu pirmauja" },
-  sys_cta_top3_empty:{ en: "🏆 No votes yet, be the first!", lt: "🏆 Dar nebalsuota, būk pirmas!" },
+  sys_cta_top3_empty:{ en: "🏆 No votes yet, be the first!", lt: "🏆 Dar nieks nebalsavo, būk pirmas!" },
   sys_cta_results_breakdown: { en: "Your breakdown", lt: "Tavo išklotinė" },
-  sys_cta_results_breakdown_disabled: { en: "You didn't cast a ballot", lt: "Nebalsavai šįvakar" },
+  sys_cta_results_breakdown_disabled: { en: "You didn't cast a ballot", lt: "Šįvakar nebalsavai" },
   sys_cta_results_board:     { en: "Full list", lt: "Visa lentelė" },
   // Selfie CTA — chat-broadcast-cards renders the SelfieCard; the
   // sysKey itself is the fallback plain text when no card matches.
   sys_cta_selfie:            { en: "📸 Selfie time, drop one in chat!", lt: "📸 Selfio metas, mesk vieną į pokalbį!" },
-  sys_cta_selfie_eyebrow:    { en: "Selfie time", lt: "Selfio metas" },
-  sys_cta_selfie_title:      { en: "Show the room your face.", lt: "Parodyk kambariui savo veidą." },
-  sys_cta_selfie_sub:        { en: "One tap, front camera, straight into chat.", lt: "Vienas bakstelėjimas, priekinė kamera, tiesiai į pokalbį." },
-  sys_cta_selfie_sending:    { en: "Sending…", lt: "Siunčiama…" },
+  sys_cta_selfie_eyebrow:    { en: "Selfie time", lt: "Metas asmenukei!" },
+  sys_cta_selfie_title:      { en: "Show the room your face.", lt: "Parodyk savo euro-vakarėlį." },
+  sys_cta_selfie_sub:        { en: "One tap, front camera, straight into chat.", lt: "Pasidalink savo vakaruškos akimirka." },
+  sys_cta_selfie_sending:    { en: "Sending", lt: "Siunčiam" },
   sys_cta_selfie_done_title: { en: "Looking great.", lt: "Atrodai puikiai." },
-  sys_cta_selfie_done_sub:   { en: "Posted to the room.", lt: "Įmesta į pokalbį." },
+  sys_cta_selfie_done_sub:   { en: "Keep it up!", lt: "Taip ir toliau!" },
   // Quick poll card. Reuses chat reactions for storage, so live
   // tallies arrive on the existing chat:react broadcast.
-  poll_eyebrow:              { en: "Vibe check", lt: "Nuotaikos pulsas" },
-  poll_prompt:               { en: "Tap your pick. You can switch later.", lt: "Bakstelėk variantą. Galėsi persigalvoti." },
+  poll_eyebrow:              { en: "Vibe check", lt: "Pasitikrinam nuotaiką" },
+  poll_prompt:               { en: "Tap your pick", lt: "Pasirink variantą" },
   poll_voted:                { en: (n: number) => `Locked in. ${n} ${n === 1 ? "vote" : "votes"} so far.`, lt: (n: number) => `Užfiksuota. Šiuo metu balsų: ${n}.` },
-  poll_tap:                  { en: "Tap", lt: "Spausti" },
+  poll_tap:                  { en: "Tap", lt: "Balsuoti" },
   poll_undo:                 { en: "Undo my vote", lt: "Atšaukti balsą" },
   // ── Push notifications (rendered server-side per subscriber's
   //    `lang` column, so a LT viewer gets LT even when an EN sender
@@ -294,21 +294,21 @@ const S = {
   push_chat_mention_body:    { en: "Tap to open the chat", lt: "Bakstelėk, kad atvertum pokalbį" },
   push_chat_reply_title:     { en: (name: string) => `${name} replied to you`, lt: (name: string) => `${name} tau atsakė` },
   push_chat_reply_body:      { en: "Tap to see the reply", lt: "Bakstelėk, kad pamatytum atsakymą" },
-  push_now_playing_title:    { en: (flag: string, name: string) => `${flag}${name} is on stage`, lt: (flag: string, name: string) => `${flag}${name} dabar scenoje` },
+  push_now_playing_title:    { en: (flag: string, name: string) => `${flag}${name} is on stage`, lt: (flag: string, name: string) => `${flag} Scenoje – ${name}!` },
   push_now_playing_body_song: { en: (artist: string, song: string) => `${artist} · ${song}`, lt: (artist: string, song: string) => `${artist} · ${song}` },
-  push_now_playing_body_open: { en: "Tap to open the room", lt: "Bakstelėk, kad atvertum kambarį" },
+  push_now_playing_body_open: { en: "Tap to open the room", lt: "Spausk ir žiūrėk, kas nutiko" },
   push_voting_open_title:    { en: "Voting is open", lt: "Balsavimas pradėtas" },
   push_voting_open_body:     { en: "Cast your TOP 10 before the show kicks off.", lt: "Atiduok savo TOP 10 prieš šou pradžią." },
   push_voting_closed_title:  { en: "Voting just closed", lt: "Balsavimas baigtas" },
-  push_voting_closed_body:   { en: "Results coming in shortly.", lt: "Rezultatai jau netrukus." },
-  push_results_title:        { en: "Results are tallied", lt: "Rezultatai suskaičiuoti" },
-  push_results_body:         { en: "Open the leaderboard to see how you did.", lt: "Atverk lyderių lentelę ir pažiūrėk, kaip sekėsi." },
+  push_voting_closed_body:   { en: "Results coming in shortly.", lt: "Rezultatai jau netrukus" },
+  push_results_title:        { en: "Results are tallied", lt: "Suskaičiavom rezultatus" },
+  push_results_body:         { en: "Open the leaderboard to see how you did.", lt: "Atsidaryk lyderių lentelę ir pažiūrėk, kaip tau sekėsi." },
 
   // Welcome / housekeeping widget at the bottom of every room home.
   // The card itself is a single tap target; the markdown opens in a
   // drawer rather than sitting open on the home scroll.
-  welcome_card_title:        { en: "A word from the organisers", lt: "Žodis nuo organizatorių" },
-  welcome_card_sub:          { en: "House rules, schedule, the usual housekeeping. Tap to open.", lt: "Taisyklės, tvarkaraštis, smulkmenos. Bakstelėk." },
+  welcome_card_title:        { en: "'Hello' from the organisers", lt: "Trumpa įžanga" },
+  welcome_card_sub:          { en: "House rules, schedule, the usual housekeeping. Tap to open.", lt: "Vakaro taisyklės, veiklos, smulkmenos. Spausk ir susipažink." },
   // Title used by the chat ticket's "Read more" drawer — friendlier
   // than the eyebrow on the home banner because the drawer is the
   // direct read-the-whole-thing surface.
@@ -336,9 +336,9 @@ const S = {
   // Closing card: fired by the host at the very end. The card
   // surface owns the visual (gold gradient + confetti); these are
   // the headline + sub for screen-readers + non-card fallback.
-  sys_cta_thanks:            { en: "🎉 Thank you for the wonderful evening, Europe!", lt: "🎉 Ačiū už nuostabų vakarą, Europa!" },
-  sys_cta_thanks_eyebrow:    { en: "That's a wrap", lt: "Tai ir viskas" },
-  sys_cta_thanks_title:      { en: "Thank you for the wonderful evening, Europe!", lt: "Ačiū už nuostabų vakarą, Europa!" },
+  sys_cta_thanks:            { en: "🎉 Thank you for the wonderful show , Europe!", lt: "🎉 Ačiū už nuostabų vakarą, Europa!" },
+  sys_cta_thanks_eyebrow:    { en: "That's a wrap", lt: "Tad štai ir viskas" },
+  sys_cta_thanks_title:      { en: "Thank you for the wonderful show , Europe!", lt: "Ačiū už nuostabų vakarą, Europa!" },
   sys_cta_thanks_sub:        { en: "See you in {next}.", lt: "Pasimatysim {next}." },
   sys_cta_thanks_next:       { en: "2027", lt: "2027" },
   // Shown inside the chat card when the admin hasn't authored anything
@@ -347,13 +347,13 @@ const S = {
   chat_edit:         { en: "Edit", lt: "Redaguoti" },
   chat_edited:       { en: "edited", lt: "redaguota" },
   chat_editing:      { en: "Editing your message", lt: "Redaguoji žinutę" },
-  chat_edit_placeholder: { en: "Edit your message…", lt: "Redaguok žinutę…" },
+  chat_edit_placeholder: { en: "Edit your message", lt: "Redaguok žinutę" },
   chat_copy:         { en: "Copy", lt: "Kopijuoti" },
-  chat_send_photo:   { en: "Send a photo", lt: "Siųsti nuotrauką" },
+  chat_send_photo:   { en: "Send a photo", lt: "Įkelti nuotrauką" },
   chat_image_send:   { en: "Send", lt: "Siųsti" },
-  chat_image_too_big: { en: "Image is too large (max 8 MB).", lt: "Nuotrauka per didelė (maks. 8 MB)." },
+  chat_image_too_big: { en: "Image is too large (max 8 MB).", lt: "Nuotrauka per didelė (maks. 8 MB). Nepersistenk." },
   chat_image_failed: { en: "Couldn't upload that image.", lt: "Nepavyko įkelti nuotraukos." },
-  chat_drop_image:   { en: "Drop the image to send it", lt: "Nuvilk nuotrauką, kad išsiųstum" },
+  chat_drop_image:   { en: "Drop the image to send it. DROP IT LIKE IT'S HOT.", lt: "Mestelk nuotrauką čia, kad išsiųstum visiems." },
   gif_pick:          { en: "Pick a GIF", lt: "Pasirink GIF" },
   gif_search:        { en: "Search GIFs", lt: "Ieškoti GIF" },
   gif_empty:         { en: "No GIFs found.", lt: "Nieko nerasta." },
@@ -365,22 +365,22 @@ const S = {
   // ── Social share ─────────────────────────────────────────────────
   share_picks:        { en: "Share my TOP10", lt: "Dalinkis savo TOP10" },
   share_eyebrow:      { en: "Show it off", lt: "Pasigirk" },
-  share_picks_sub:    { en: "A shareable card of your ranking, straight to Stories or chat", lt: "Bendrinama tavo TOP10 kortelė, tiesiai į Stories ar pokalbį" },
+  share_picks_sub:    { en: "A shareable card of your ranking, straight to Stories or chat", lt: "Tavo TOP10 kortelė, tinkama tiesiai į Stories ar pokalbį!" },
   share_picks_caption: { en: "Cast my Eurovision 2026 TOP10", lt: "Mano Eurovizijos 2026 TOP10" },
-  share_preparing:    { en: "Preparing image…", lt: "Ruošiamas paveikslėlis…" },
-  share_image_copied: { en: "Image copied, paste it anywhere", lt: "Paveikslėlis nukopijuotas, įklijuok bet kur" },
+  share_preparing:    { en: "Preparing image", lt: "Ruošiam paveikslėlį" },
+  share_image_copied: { en: "Image copied, paste it anywhere", lt: "Paveikslėlis nukopijuotas, įklijuok bet kur!" },
   share_failed:       { en: "Couldn't prepare the share image", lt: "Nepavyko paruošti paveikslėlio" },
 
   // ── Now-playing strip ────────────────────────────────────────────
   now_playing:       { en: "On stage", lt: "Scenoje" },
   np_add_top10:      { en: "TOP 10", lt: "TOP 10" },
-  np_drawer_title:   { en: (c: string) => `Add ${c} to your TOP 10`, lt: (c: string) => `Įtraukti ${c} į tavo TOP 10` },
-  np_drawer_sub:     { en: "Tap a spot, the picks below it slide down a notch.", lt: "Bakstelėk vietą, žemiau esantys pasislenka per vieną." },
+  np_drawer_title:   { en: (c: string) => `Add ${c} to your TOP 10`, lt: (c: string) => `${c} keliauja į tavo TOP 10` },
+  np_drawer_sub:     { en: "Tap a spot, the picks below it slide down a notch.", lt: "Bakstelėk vietą, kur padėti. Žemiau esančios šalys pasislinks." },
   np_drawer_here:    { en: "current spot", lt: "dabar čia" },
   np_empty:          { en: "Empty", lt: "Tuščia" },
 
   // ── Bingo ────────────────────────────────────────────────────────
-  bingo_list:        { en: "What to watch for", lt: "Ko ieškoti" },
+  bingo_list:        { en: "What to watch for", lt: "Ko dairytis?" },
   bingo_generate:    { en: "New ticket", lt: "Nauja kortelė" },
   bingo_ticket:      { en: "Ticket", lt: "Kortelė" },
   bingo_remove_ticket: { en: "Remove this ticket", lt: "Pašalinti šią kortelę" },
@@ -391,7 +391,7 @@ const S = {
   // ── Notifications ────────────────────────────────────────────────
   notifications:        { en: "Notifications", lt: "Pranešimai" },
   push_blocked:         { en: "Notifications are blocked.", lt: "Pranešimai užblokuoti." },
-  push_install_required: { en: "Install the app to enable notifications", lt: "Įdiek aplikaciją, kad gautum pranešimus" },
+  push_install_required: { en: "Install the app to enable notifications", lt: "Įsidiek aplikaciją, kad gautum pranešimus" },
   push_how:             { en: "How", lt: "Kaip?" },
   push_enable:          { en: "Turn on notifications", lt: "Įjungti pranešimus" },
   push_off:             { en: "Off", lt: "Išjungta" },
@@ -401,30 +401,30 @@ const S = {
   // reads as "you tried something and we said no" — the actual
   // situation is the OS-level toggle being off. Reframe as
   // actionable advice the user can take.
-  push_denied:          { en: "Notifications are blocked. Open your browser's site settings to re-enable them.", lt: "Pranešimai užblokuoti. Atidaryk svetainės nustatymus naršyklėje, kad vėl įjungtum." },
+  push_denied:          { en: "Notifications are blocked. Open your browser's site settings to re-enable them.", lt: "Pranešimai užblokuoti. Atidaryk svetainės nustatymus naršyklėje, kad (vėl) įjungtum." },
   push_chat_all:        { en: "All chat messages", lt: "Visos pokalbių žinutės" },
   push_chat_all_sub:    { en: "Every message in the room thread.", lt: "Kiekviena žinutė kambario pokalbyje." },
   push_chat_replies:    { en: "Replies to my messages", lt: "Atsakymai į mano žinutes" },
   push_chat_replies_sub: { en: "When someone replies to or @-mentions you.", lt: "Kai kažkas atsako ar pamini tave su @." },
-  push_now_playing:     { en: "Country changes on stage", lt: "Kai keičiasi šalis scenoje" },
+  push_now_playing:     { en: "Country changes on stage", lt: "Kai scenoje pasikeičia šalis" },
   push_now_playing_sub: { en: "A ping each time a new act takes the stage.", lt: "Pranešimas kiekvienąkart, kai į sceną žengia naujas atlikėjas." },
-  push_voting_state:    { en: "Voting opens or closes", lt: "Balsavimas atidarytas ar uždarytas" },
+  push_voting_state:    { en: "Voting opens or closes", lt: "Balsavimas: atidarytas ar uždarytas" },
   push_voting_state_sub: { en: "So you don't miss the window to cast your TOP 10.", lt: "Kad nepražiopsotum laiko balsuoti už savo TOP 10." },
   push_results_tallied: { en: "Results are tallied", lt: "Suskaičiuoti rezultatai" },
-  push_results_tallied_sub: { en: "When the host enters the official results.", lt: "Kai šeimininkas suveda oficialius rezultatus." },
-  push_cta_title:       { en: "Don't miss a beat", lt: "Niekur nepražiopsok" },
-  push_cta_sub:         { en: "Get a ping when a country goes on stage, results land, or someone replies to you.", lt: "Sužinok, kai į sceną žengia šalis, paskelbiami rezultatai ar kažkas tau atrašo." },
+  push_results_tallied_sub: { en: "When the host enters the official results.", lt: "Kai paskelbsime oficialius rezultatus." },
+  push_cta_title:       { en: "Don't miss a beat", lt: "Nieko nepražiopsok!" },
+  push_cta_sub:         { en: "Get a ping when a country goes on stage, results land, or someone replies to you.", lt: "Sužinok, kai į sceną žengia šalis, paskelbiami rezultatai ar kažkas tau atrašo. O šiaip tai daugiau netrukdysim." },
   push_cta_enable:      { en: "Turn on", lt: "Įjungti" },
 
   // ── PWA install prompt (room-gate bottom CTA) ────────────────────
-  install_cta:             { en: "Get ready for the big night: install the app", lt: "Pasiruošk didžiajam vakarui: įdiek aplikaciją" },
-  install_drawer_title:    { en: "Install the app", lt: "Įdiek aplikaciją" },
-  install_drawer_sub:      { en: "Two taps and you'll have us on your home screen for finale night.", lt: "Du paspaudimai ir mes tūnosim tavo pagrindiniame ekrane finalui." },
+  install_cta:             { en: "Get ready for the big night: install the app", lt: "Pasiruošk didžiajam vakarui: įsidiek aplikaciją" },
+  install_drawer_title:    { en: "Install the app", lt: "Įsidiek aplikaciją" },
+  install_drawer_sub:      { en: "Two taps and you'll have us on your home screen for finale night.", lt: "Du paspaudimai ir mes tūnosim tavo pagrindiniame ekrane, pasiruošę finalui." },
 
   // ── Notification install instructions ────────────────────────────
   push_help_ios_title:     { en: "On iPhone / iPad", lt: "„iPhone“ / „iPad“" },
-  push_help_ios_1:         { en: "Tap the Share button in Safari (the square with an arrow).", lt: "„Safari“ paspausk dalinimosi mygtuką (kvadratas su rodyklę)." },
-  push_help_ios_2:         { en: 'Scroll down and tap "Add to Home Screen".', lt: "Nuslysk žemyn ir pasirink „Add to Home Screen“ (Pridėti į pagrindinį ekraną)." },
+  push_help_ios_1:         { en: "Tap the Share button in Safari (the square with an arrow).", lt: "„Safari“ paspausk dalinimosi mygtuką (kvadratas su rodykle aukštyn)." },
+  push_help_ios_2:         { en: 'Scroll down and tap "Add to Home Screen".', lt: "Slink žemyn ir pasirink „Add to Home Screen“ (Pridėti į pagrindinį ekraną)." },
   push_help_ios_3:         { en: "Open the app from your Home Screen, not Safari.", lt: "Atidaryk programėlę iš pagrindinio ekrano, ne iš „Safari“." },
   push_help_ios_4:         { en: "Come back here and turn on notifications.", lt: "Grįžk čia ir įjunk pranešimus." },
   push_help_android_title: { en: "On Android", lt: "„Android“" },
@@ -437,7 +437,7 @@ const S = {
   // Reworded desktop install steps for the install drawer (clearer
   // than the notifications-flow copy: tells the user EXACTLY where
   // the install icon hides instead of "address bar OR menu").
-  install_desktop_1:       { en: "Look at the right edge of the address bar for a small monitor icon (Chrome, Edge, Brave). Click it.", lt: "Adreso juostos dešiniajame krašte ieškok mažos monitoriaus ikonėlės („Chrome“, „Edge“, „Brave“). Spausk." },
+  install_desktop_1:       { en: "Look at the right edge of the address bar for a small monitor icon (Chrome, Edge, Brave). Click it.", lt: "Adreso juostos dešiniajame krašte ieškok mažos monitoriaus ikonėlės („Chrome“, „Edge“, „Brave“). Radai? Spausk!" },
   install_desktop_2:       { en: 'Confirm "Install" in the dialog that pops up.', lt: "Atsidariusiame dialoge spausk „Install“." },
   install_desktop_3:       { en: "Open the app from your dock or Start menu.", lt: "Atidaryk programėlę iš doko ar pradžios meniu." },
   push_help_other_title:   { en: "On this device", lt: "Šiame įrenginyje" },
@@ -448,10 +448,10 @@ const S = {
   push_help_blocked_3:     { en: "Refresh this page and try again.", lt: "Atnaujink puslapį ir bandyk dar kartą." },
 
   // Onboarding step inside the NameGate sheet.
-  notif_gate_title:        { en: "Stay in the loop", lt: "Niekur nepražiopsok" },
-  notif_gate_sub:          { en: "We'll only ping for replies, lines opening, and results landing.", lt: "Pinguosime tik kai kažkas tau atrašo, atsidaro balsavimas ar paskelbiami rezultatai." },
-  notif_gate_skip:         { en: "Maybe later", lt: "Galbūt vėliau" },
-  notif_gate_install_hint: { en: "Install the app first to receive notifications.", lt: "Įdiek aplikaciją, kad gautum pranešimus." },
+  notif_gate_title:        { en: "Stay in the loop", lt: "Nepražiopsok svarbiausių momentų!" },
+  notif_gate_sub:          { en: "We'll only ping for replies, lines opening, and results landing.", lt: "Nepraleisk, kai pasikeičia šalis, tau atrašo, atsidaro balsavimas ar paskelbiami rezultatai. Ko kito mes čia susirinkę?" },
+  notif_gate_skip:         { en: "Maybe later, like 2027?", lt: "Galbūt vėliau, 2027?" },
+  notif_gate_install_hint: { en: "Install the app first to receive notifications.", lt: "Įdiek aplikaciją, kad galėtum gauti pranešimus." },
 
   // ── Bonus bets, labels + descriptions. `{home}` / `{host}` get
   //    substituted with fmt(). ──────────────────────────────────────
@@ -467,10 +467,10 @@ const S = {
   bet_jury_winner_sub:   { en: "Country with the highest jury total.", lt: "Šalis, kuri surinks daugiausiai žiuri taškų." },
   bet_televote_winner:   { en: "Televote winner", lt: "Žiūrovų nugalėtojas" },
   bet_televote_winner_sub: { en: "Country with the highest public televote total.", lt: "Šalis, kuri surinks daugiausiai žiūrovų taškų." },
-  bet_nul:               { en: "Zero from televote", lt: "Nulis iš žiūrovų" },
-  bet_nul_sub:           { en: "Pick up to 5 countries you think get zero from the public, +4 for each right (capped at +12). Or 'No country' if you reckon everyone scores.", lt: "Pasirink iki 5 šalių, kurios, tavo manymu, gaus nulį iš žiūrovų, po +4 už kiekvieną teisingą (daugiausiai +12). Arba „Nė viena“, jei manai, kad visos ką nors uždirbs." },
-  bet_lt_total:          { en: "{home} total points", lt: "{home} surinks..." },
-  bet_lt_total_sub:      { en: "How many points (jury + public) does {home} end with? Closer guesses score more.", lt: "Kiek iš viso taškų (žiuri + žiūrovai) surinks {home}? Kuo arčiau, tuo daugiau." },
+  bet_nul:               { en: "Zero from televote", lt: "Nulis iš žiūrovų?" },
+  bet_nul_sub:           { en: "Pick up to 5 countries you think get zero from the public, +3 for each right (capped at +12). Or 'No country' if you reckon everyone scores.", lt: "Pasirink iki 5 šalių, kurios, tavo manymu, gaus nulį iš žiūrovų, po +3 už kiekvieną teisingą (daugiausiai +12). Arba „Nė viena“, jei manai, kad visos ką nors uždirbs." },
+  bet_lt_total:          { en: "{home} total points", lt: "{home} surinks" },
+  bet_lt_total_sub:      { en: "How many points (jury + public) does {home} end with? Closer guesses score more.", lt: "Kiek iš viso taškų (žiuri + žiūrovai) surinks {home}? Kuo arčiau atspėsi, tuo daugiau uždirbsi." },
   bet_host_top3:         { en: "{host} top 3?", lt: "Ar {host} bus TOP3?" },
   bet_host_top3_sub:     { en: "Will the host land in the top 3?", lt: "Ar šeimininkai pateks į geriausiųjų trejetuką" },
   bet_solo_winner:       { en: "Solo winner?", lt: "Vieniša pergalė?" },
@@ -485,7 +485,7 @@ const S = {
   no_matches:            { en: "No matches", lt: "Nieko nerasta" },
   finalists:             { en: "finalists", lt: "finalistai" },
   ballot_pick_for:       { en: (pts: number) => `${pts} ${pts === 1 ? "point" : "points"} go to…`, lt: (pts: number) => `${pts} ${ltPoints(pts)} keliauja` },
-  ballot_pick_hint:      { en: "Tap to assign, it'll auto-swap if the country is already in another slot.", lt: "Pasirink šalį, kad priskirtum taškus." },
+  ballot_pick_hint:      { en: "Tap to assign, it'll auto-swap if the country is already in another slot.", lt: "Pasirink šalį, kad skirtum jai taškus." },
   aria_drag_reorder:     { en: "Drag to reorder", lt: "Vilk perstumti" },
 
   // ── Leaderboard ──────────────────────────────────────────────────
@@ -495,7 +495,7 @@ const S = {
   bonuses_label:     { en: "bonuses", lt: "statymai" },
   breakdown_highlights: { en: "Chat highlights", lt: "Pokalbio akcentai" },
   breakdown_top_ten: { en: "TOP 10", lt: "TOP 10" },
-  breakdown_home:    { en: "Home pick", lt: "Sava šalis" },
+  breakdown_home:    { en: "Home pick", lt: "Tėviškėlės pasirodymas" },
   breakdown_bets_sum: { en: "Bonus bets", lt: "Bonus statymai" },
   breakdown_total:   { en: "Total", lt: "Iš viso" },
 
@@ -509,13 +509,13 @@ const S = {
   profile_stat_trivia:       { en: "trivia", lt: "viktorina" },
   profile_top_moment:        { en: "Top moment", lt: "Geriausia akimirka" },
   profile_top10_h:           { en: "TOP 10 ballot", lt: "TOP 10 balsas" },
-  profile_top10_hidden:      { en: "Hidden until the host reveals results.", lt: "Slepiama, kol šeimininkas paskelbs rezultatus." },
+  profile_top10_hidden:      { en: "Hidden until the host reveals results.", lt: "Nerodom, kol nepaskelbti rezultatai, kad nenusižiūrinėtum." },
   profile_top10_empty:       { en: "Hasn't voted yet.", lt: "Dar nebalsavo." },
   profile_top10_finished:    { en: (n: number) => `finished #${n}`, lt: (n: number) => `liko #${n}` },
   profile_top10_unranked:    { en: "out of top 10", lt: "už TOP 10" },
 
   // ── Trivia ───────────────────────────────────────────────────────
-  trivia_eyebrow:            { en: "Trivia", lt: "Smulkmenos" },
+  trivia_eyebrow:            { en: "Trivia", lt: "Viktorina" },
   trivia_breaking:           { en: "Quick question!", lt: "Greitas klausimas!" },
 
   // ── Reactions / honeycomb ────────────────────────────────────────
