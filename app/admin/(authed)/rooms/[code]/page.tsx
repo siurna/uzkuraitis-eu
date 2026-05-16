@@ -28,6 +28,7 @@ import {
   type AdminMessageRow,
 } from "@/components/admin-participant-messages";
 import { AdminRemoveParticipant } from "@/components/admin-remove-participant";
+import { AdminRecoveryLink } from "@/components/admin-recovery-link";
 import { Flag } from "@/components/flag";
 import { timeAgo } from "@/lib/utils";
 
@@ -414,6 +415,19 @@ export default async function AdminRoomDetailPage({
                             Recent messages
                           </p>
                           <AdminParticipantMessages code={room.code} messages={v.recent} />
+                        </div>
+                        {/* Recovery link — mint a private one-time URL
+                            to DM to a participant who lost their PWA /
+                            cleared storage. Opening the link rebuilds
+                            their session in place. */}
+                        <div className="px-3 pb-3 pt-1 flex items-center justify-between gap-3 border-t border-white/5">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-white/35 font-display shrink-0">
+                            Recovery
+                          </p>
+                          <AdminRecoveryLink
+                            code={room.code}
+                            sessionId={v.sessionId}
+                          />
                         </div>
                         {/* Nuclear option: remove the participant from
                             this room entirely + start a cooldown so the
