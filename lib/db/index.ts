@@ -39,16 +39,20 @@ function getConnection(): PostgresJsDatabase<typeof schema> {
     // this — prepared statements can't survive across pooled
     // connections.
     prepare: false,
-    // Per-Lambda socket cap. With Vercel running 50+ concurrent
-    // Lambdas during a busy watch party, max:8 blew past pgbouncer's
-    // 200-client ceiling and the room lookup started erroring with
-    // EMAXCONN. Drop to 2 so the same 200-client budget supports
-    // ~100 concurrent Lambdas — well above the climax fan-out — at
-    // the cost of serialising the rare 9-parallel-query handler.
-    max: 2,
-    // Release idle sockets fast so a quiet Lambda gives its slot
-    // back to the pool. Was 20s; cuts dead-weight by ~4×.
-    idle_timeout: 5,
+    // Per-Lambda socket cap. The 2026-05-16 live show surfaced that
+    // `max:2` (the previous "respect pgbouncer's 200-client ceiling"
+    // tune) was too aggressive in the other direction: every endpoint
+    // started hanging at HTTP 000 (15s timeouts) within ~30s of
+    // opening voting. Handlers doing Promise.all fan-outs (profile
+    // drawer, leaderboard, /admin/live) were serialising onto 2
+    // sockets and queuing forever behind concurrent room heartbeats.
+    // Restoring max:8 + idle:20s — pgbouncer is happy up to ~200
+    // backends and a typical 30-50 Lambda climax sits well under
+    // that. If EMAXCONN starts firing again, lift it on the
+    // pgbouncer side (Supabase dashboard → Database → Pool config)
+    // rather than choking each Lambda.
+    max: 8,
+    idle_timeout: 20,
     connect_timeout: 10,
   });
   cachedDb = drizzle(cachedSql, { schema });
