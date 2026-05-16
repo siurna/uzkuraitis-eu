@@ -6,6 +6,7 @@ import { Flame } from "lucide-react";
 import { useEventListener } from "@/lib/realtime";
 import { useRoomLive } from "@/components/room-shell";
 import { FluentEmoji } from "@/components/fluent-emoji";
+import { renderInline } from "@/components/chat-row";
 import { getAvatar } from "@/lib/avatars";
 import { getCountry, countryName } from "@/lib/countries";
 import { optimizedSrc } from "@/lib/img";
@@ -179,14 +180,14 @@ export function Highlights() {
               className="flex flex-col gap-3"
             >
               {topPreview && (
-                <p className="font-display text-2xl text-white leading-snug text-balance drop-shadow-sm line-clamp-3 pr-20">
+                <p className="text-base text-white leading-snug text-balance drop-shadow-sm line-clamp-3 pr-20">
                   {/* Locale-aware quotes: Lithuanian uses „low-9 + left
                       open“ (U+201E + U+201C), English uses the curly
                       pair “…” (U+201C + U+201D). The card's text body
                       is the user's own quote, but the punctuation
                       around it should follow the reader's language. */}
                   {lang === "lt" ? "„" : "“"}
-                  {topPreview}
+                  {renderInline(topPreview)}
                   {lang === "lt" ? "“" : "”"}
                 </p>
               )}
@@ -296,15 +297,15 @@ export function Highlights() {
                     className="rounded-xl ring-1 ring-white/10 max-h-64 w-full object-cover"
                   />
                 ) : h.kind === "bingo_strike" ? (
-                  <p className="font-display text-2xl text-white inline-flex items-center gap-2 leading-snug">
-                    <FluentEmoji glyph="🎯" size={24} />
+                  <p className="font-display text-lg text-white inline-flex items-center gap-2 leading-snug">
+                    <FluentEmoji glyph="🎯" size={20} />
                     {t(lang, "bingo_strike_label")}
                   </p>
                 ) : text ? (
-                  <p className="font-display text-2xl text-white leading-snug text-balance">
+                  <p className="text-base text-white/95 leading-snug text-balance">
                     {/* Locale-aware quotes — matches the hero card up top. */}
                     {lang === "lt" ? "„" : "“"}
-                    {text}
+                    {renderInline(text)}
                     {lang === "lt" ? "“" : "”"}
                   </p>
                 ) : null}

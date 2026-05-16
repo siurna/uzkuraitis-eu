@@ -210,7 +210,7 @@ export type Message = {
 const INLINE_RE =
   /\*\*([^*]+?)\*\*|\*([^*]+?)\*|__([^_]+?)__|(https?:\/\/[^\s<>"')\]]+|www\.[^\s<>"')\]]+)/g;
 
-function renderInline(s: string): React.ReactNode {
+export function renderInline(s: string): React.ReactNode {
   if (!s.includes("*") && !s.includes("__") && !/https?:\/\/|www\./.test(s)) {
     return s;
   }
