@@ -633,8 +633,9 @@ function ChatRowInner({
           initial={m.pending ? { opacity: 0, scale: 0.97 } : false}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-          className="my-5 px-1"
+          className="my-5 px-1 relative"
         >
+          {isModerator && <ModDeleteHandle onDelete={onDelete} />}
           <ChatTriviaCard
             countryCode={cc}
             snapshot={snapshot}

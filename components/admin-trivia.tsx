@@ -7,12 +7,21 @@ import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { HeartFlag } from "@/components/flag";
 import { AdminPageTitle } from "@/components/admin-page-title";
+import { countries } from "@/lib/countries";
 
 // Admin trivia surface. Lists every finalist country with its current
 // question (file default unless overridden in DB) + answer stats from
 // trivia_answers. Editing is JSON-only by design — the deck is small
 // enough that paste+save is faster than a 60-field form, and the
 // validation cycles in your text editor anyway.
+//
+// JSON shape (top-level array, no `deck` wrapper):
+//
+//   [{ country: { en, lt }, question: { en, lt },
+//      options: [{en, lt} × 4], correct: 0..3 }, …]
+//
+// The ISO country code is resolved by matching `country.en` against
+// the canonical EN name in lib/countries.ts.
 
 export type TriviaRow = {
   country: string;
@@ -26,99 +35,165 @@ export type TriviaRow = {
   stats: { total: number; correct: number };
 };
 
+// External (JSON file) shape — the one the admin pastes + the export
+// produces. Country is name-pair, options are option-pairs, correct
+// is a plain index.
 type ExportEntry = {
+  country: { en: string; lt: string };
+  question: { en: string; lt: string };
+  options: { en: string; lt: string }[];
+  correct: number;
+};
+
+// Server-bound shape — the one the API still consumes (flat per-
+// language blocks + ISO code). We map ExportEntry → ServerEntry at
+// save time so the server contract stays simple.
+type ServerEntry = {
   country: string;
   correctIndex: number;
   en: { question: string; choices: string[] };
   lt: { question: string; choices: string[] };
 };
 
+// Country name → ISO code lookup. Built once. Names mirror the
+// canonical EN spellings in lib/countries.ts (e.g. "Moldova", "United
+// Kingdom"). Case-insensitive match.
+const NAME_TO_CODE = new Map(
+  countries.map((c) => [c.name.toLowerCase(), c.code]),
+);
+
 function rowsToExport(rows: TriviaRow[]): ExportEntry[] {
   return rows
     .filter((r) => r.card)
-    .map((r) => ({
-      country: r.country,
-      correctIndex: r.card!.correctIndex,
-      en: r.card!.en,
-      lt: r.card!.lt,
-    }));
+    .map((r) => {
+      const c = countries.find((x) => x.code === r.country);
+      const enName = c?.name ?? r.country.toUpperCase();
+      // Reuse the EN name for LT when no override is set — the user
+      // can edit the LT field manually after export.
+      const ltName = enName;
+      return {
+        country: { en: enName, lt: ltName },
+        question: { en: r.card!.en.question, lt: r.card!.lt.question },
+        options: r.card!.en.choices.map((en, i) => ({
+          en,
+          lt: r.card!.lt.choices[i] ?? "",
+        })),
+        correct: r.card!.correctIndex,
+      };
+    });
+}
+
+// Convert the friendly JSON shape into the server's flat shape +
+// resolve the ISO code via name lookup.
+function toServerEntry(e: ExportEntry, where: string): ServerEntry | { error: string } {
+  const enName = e.country.en.trim();
+  const code = NAME_TO_CODE.get(enName.toLowerCase());
+  if (!code) {
+    return {
+      error: `${where}: unknown country "${enName}". Names must match the EN spelling in lib/countries.ts (e.g. "Moldova", "United Kingdom").`,
+    };
+  }
+  return {
+    country: code,
+    correctIndex: e.correct,
+    en: {
+      question: e.question.en,
+      choices: e.options.map((o) => o.en),
+    },
+    lt: {
+      question: e.question.lt,
+      choices: e.options.map((o) => o.lt),
+    },
+  };
 }
 
 // Pretty pre-validation of a pasted JSON string. Returns either the
-// parsed deck or a human-readable error string — same checks the
-// server does, just earlier so the save button can stay disabled.
-function validateInput(raw: string): { deck: ExportEntry[] } | { error: string } {
+// parsed deck (in server shape, ready to POST) or a human-readable
+// error string. Same shape checks the server runs, just earlier so
+// the Save button can stay disabled.
+function validateInput(raw: string): { deck: ServerEntry[] } | { error: string } {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch (e) {
     return { error: `Not valid JSON: ${(e as Error).message}` };
   }
-  if (!parsed || typeof parsed !== "object") {
-    return { error: "Expected an object with a `deck` array." };
-  }
-  const deck = (parsed as { deck?: unknown }).deck;
-  if (!Array.isArray(deck)) {
-    return { error: "Top level needs a `deck` array." };
+  if (!Array.isArray(parsed)) {
+    return { error: "Expected a top-level array of question entries." };
   }
   const seen = new Set<string>();
-  const out: ExportEntry[] = [];
-  for (let i = 0; i < deck.length; i++) {
-    const entry = deck[i] as Record<string, unknown> | null;
+  const out: ServerEntry[] = [];
+  for (let i = 0; i < parsed.length; i++) {
+    const entry = parsed[i] as Record<string, unknown> | null;
     const where = `entry #${i + 1}`;
     if (!entry || typeof entry !== "object") {
       return { error: `${where}: expected an object.` };
     }
-    const country = entry.country;
-    if (typeof country !== "string" || country.length !== 2) {
-      return { error: `${where}: \`country\` must be a 2-letter ISO code.` };
+    // country: { en, lt }
+    const country = entry.country as Record<string, unknown> | null;
+    if (!country || typeof country !== "object") {
+      return { error: `${where}: \`country\` must be an { en, lt } object.` };
     }
-    const cc = country.toLowerCase();
-    if (seen.has(cc)) {
-      return { error: `${where}: duplicate country "${cc}".` };
+    if (typeof country.en !== "string" || !country.en.trim()) {
+      return { error: `${where}: \`country.en\` required.` };
     }
-    seen.add(cc);
-    const correctIndex = entry.correctIndex;
+    if (typeof country.lt !== "string" || !country.lt.trim()) {
+      return { error: `${where}: \`country.lt\` required.` };
+    }
+    // question: { en, lt }
+    const question = entry.question as Record<string, unknown> | null;
+    if (!question || typeof question !== "object") {
+      return { error: `${where}: \`question\` must be an { en, lt } object.` };
+    }
+    if (typeof question.en !== "string" || !question.en.trim()) {
+      return { error: `${where}: \`question.en\` required.` };
+    }
+    if (typeof question.lt !== "string" || !question.lt.trim()) {
+      return { error: `${where}: \`question.lt\` required.` };
+    }
+    // options: [{en, lt} × 4]
+    const options = entry.options;
+    if (!Array.isArray(options) || options.length !== 4) {
+      return { error: `${where}: \`options\` must be an array of exactly 4 { en, lt } pairs.` };
+    }
+    for (let j = 0; j < 4; j++) {
+      const o = options[j] as Record<string, unknown> | null;
+      if (!o || typeof o !== "object") {
+        return { error: `${where}: \`options[${j}]\` must be an { en, lt } object.` };
+      }
+      if (typeof o.en !== "string" || !o.en.trim()) {
+        return { error: `${where}: \`options[${j}].en\` required.` };
+      }
+      if (typeof o.lt !== "string" || !o.lt.trim()) {
+        return { error: `${where}: \`options[${j}].lt\` required.` };
+      }
+    }
+    // correct: 0..3
+    const correct = entry.correct;
     if (
-      typeof correctIndex !== "number" ||
-      !Number.isInteger(correctIndex) ||
-      correctIndex < 0 ||
-      correctIndex > 3
+      typeof correct !== "number" ||
+      !Number.isInteger(correct) ||
+      correct < 0 ||
+      correct > 3
     ) {
-      return { error: `${where}: \`correctIndex\` must be an integer 0..3.` };
+      return { error: `${where}: \`correct\` must be an integer 0..3.` };
     }
-    for (const lang of ["en", "lt"] as const) {
-      const block = entry[lang] as Record<string, unknown> | undefined;
-      if (!block || typeof block !== "object") {
-        return { error: `${where}: \`${lang}\` block missing.` };
-      }
-      if (typeof block.question !== "string" || !block.question.trim()) {
-        return { error: `${where}: \`${lang}.question\` must be a non-empty string.` };
-      }
-      if (!Array.isArray(block.choices) || block.choices.length !== 4) {
-        return { error: `${where}: \`${lang}.choices\` must have exactly 4 items.` };
-      }
-      for (let j = 0; j < 4; j++) {
-        const c = block.choices[j];
-        if (typeof c !== "string" || !c.trim()) {
-          return {
-            error: `${where}: \`${lang}.choices[${j}]\` must be a non-empty string.`,
-          };
-        }
-      }
+    const friendly: ExportEntry = {
+      country: { en: country.en, lt: country.lt },
+      question: { en: question.en, lt: question.lt },
+      options: options.map((o) => ({
+        en: (o as { en: string }).en,
+        lt: (o as { lt: string }).lt,
+      })),
+      correct,
+    };
+    const server = toServerEntry(friendly, where);
+    if ("error" in server) return server;
+    if (seen.has(server.country)) {
+      return { error: `${where}: duplicate country "${friendly.country.en}".` };
     }
-    out.push({
-      country: cc,
-      correctIndex,
-      en: {
-        question: (entry.en as { question: string }).question,
-        choices: (entry.en as { choices: string[] }).choices,
-      },
-      lt: {
-        question: (entry.lt as { question: string }).question,
-        choices: (entry.lt as { choices: string[] }).choices,
-      },
-    });
+    seen.add(server.country);
+    out.push(server);
   }
   return { deck: out };
 }
@@ -140,7 +215,7 @@ export function AdminTrivia({ initial }: { initial: TriviaRow[] }) {
 
   const exportDeck = () => {
     const blob = new Blob(
-      [JSON.stringify({ deck: rowsToExport(rows) }, null, 2)],
+      [JSON.stringify(rowsToExport(rows), null, 2)],
       { type: "application/json" },
     );
     const url = URL.createObjectURL(blob);
@@ -153,7 +228,7 @@ export function AdminTrivia({ initial }: { initial: TriviaRow[] }) {
 
   const openEditor = () => {
     if (!draft) {
-      setDraft(JSON.stringify({ deck: rowsToExport(rows) }, null, 2));
+      setDraft(JSON.stringify(rowsToExport(rows), null, 2));
     }
     setOpen(true);
   };
@@ -303,11 +378,21 @@ export function AdminTrivia({ initial }: { initial: TriviaRow[] }) {
         }
       >
         <p className="text-xs text-white/55 leading-relaxed">
-          Schema:{" "}
-          <code className="text-white/70">
-            {`{ deck: [{ country, correctIndex (0-3), en: { question, choices[4] }, lt: { question, choices[4] } }] }`}
-          </code>
+          Schema (top-level array, no <code className="text-white/70">deck</code> wrapper):
         </p>
+        <pre className="font-mono text-[11px] leading-snug bg-black/30 ring-1 ring-white/8 rounded-lg p-3 text-white/70 overflow-x-auto">{`[
+  {
+    "country": { "en": "Moldova", "lt": "Moldova" },
+    "question": { "en": "…", "lt": "…" },
+    "options": [
+      { "en": "A", "lt": "A" },
+      { "en": "B", "lt": "B" },
+      { "en": "C", "lt": "C" },
+      { "en": "D", "lt": "D" }
+    ],
+    "correct": 0
+  }
+]`}</pre>
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

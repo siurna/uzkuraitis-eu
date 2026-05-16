@@ -131,72 +131,53 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
                            py-2 rounded-[22px]"
               >
                 {isActive && (
-                  <motion.span
-                    layoutId="tab-pill"
-                    className={`absolute inset-0 rounded-[22px] bg-gradient-to-br ${gradient} ${glow}`}
-                    transition={{ type: "spring", stiffness: 560, damping: 42 }}
-                  >
-                    {/* Chat tab specifically: when a country is on
-                        stage, layer a country-tinted wash over the
-                        default blue gradient. The dock picks up the
-                        show's palette without losing its identity
-                        (the base teal-blue gradient stays visible at
-                        the edges, the country wash dominates the
-                        interior). Each country swap re-keys the
-                        overlay so AnimatePresence cross-fades
-                        between palettes. The 60% mix with
-                        dark-blue-900 darkens bright flag colours
-                        (yellow, red, white) enough that the white
-                        icon + label still reads cleanly against
-                        them — no per-country contrast tuning
-                        required. */}
-                    {id === "chat" && (
-                      // Lens-pull transition: each new country wash
-                      // arrives as a tiny focal point at the centre,
-                      // briefly defocused (blur), then expands outward
-                      // to fill the pill while pulling sharp. Reads
-                      // as the colours being drawn through a lens
-                      // rather than a flat opacity crossfade. The
-                      // outgoing wash is sucked back into the lens
-                      // (clip closes + blur returns) so the swap
-                      // looks symmetric. `clip-path: circle()` is
-                      // animatable in WebKit/Blink/Gecko; the
-                      // `inset-0 rounded-[22px]` stays an outer
-                      // bound so the iris never overshoots the
-                      // pill's rounded corners.
-                      <AnimatePresence mode="wait">
-                        {nowPlayingCode && (
-                          <motion.span
-                            key={`chat-wash-${nowPlayingCode}`}
-                            initial={{
-                              clipPath: "circle(0% at 50% 50%)",
-                              filter: "blur(10px) saturate(1.4)",
-                              opacity: 0,
-                            }}
-                            animate={{
-                              clipPath: "circle(140% at 50% 50%)",
-                              filter: "blur(0px) saturate(1)",
-                              opacity: 1,
-                            }}
-                            exit={{
-                              clipPath: "circle(0% at 50% 50%)",
-                              filter: "blur(10px) saturate(1.4)",
-                              opacity: 0,
-                            }}
-                            transition={{
-                              clipPath: { duration: 0.65, ease: [0.22, 1, 0.36, 1] },
-                              filter: { duration: 0.5, ease: "easeOut" },
-                              opacity: { duration: 0.32 },
-                            }}
-                            className="absolute inset-0 rounded-[22px]"
-                            style={{
-                              background: `linear-gradient(135deg, color-mix(in oklch, ${countryColors(nowPlayingCode)[0]} 60%, var(--color-dark-blue-900)), color-mix(in oklch, ${countryColors(nowPlayingCode)[1]} 60%, var(--color-dark-blue-900)))`,
-                            }}
-                          />
-                        )}
-                      </AnimatePresence>
-                    )}
-                  </motion.span>
+                  (() => {
+                    // Chat tab specifically: when a country is on stage,
+                    // the base gradient itself animates from the brand
+                    // turquoise→blue→purple wash INTO the country's
+                    // flag-coloured wash (and the box-shadow tints to
+                    // match). No overlay layer — the pill's background
+                    // + boxShadow are inline style properties that
+                    // motion interpolates as the values change. The
+                    // 60% mix with dark-blue-900 keeps white text
+                    // legible against any flag colour without
+                    // per-country tuning. Other tabs keep their
+                    // static Tailwind class gradient.
+                    const isChatWashed = id === "chat" && !!nowPlayingCode;
+                    const [c1, c2] = isChatWashed
+                      ? countryColors(nowPlayingCode!)
+                      : ["", ""];
+                    const chatBackground = isChatWashed
+                      ? `linear-gradient(135deg, color-mix(in oklch, ${c1} 60%, var(--color-dark-blue-900)), color-mix(in oklch, ${c2} 60%, var(--color-dark-blue-900)))`
+                      // Default chat-tab gradient as inline style, so
+                      // the transition into the country wash is a
+                      // smooth animation between two gradients of the
+                      // same shape (browser can interpolate the
+                      // colour stops) rather than a class swap.
+                      : id === "chat"
+                        ? "linear-gradient(135deg, var(--color-turquoise), var(--color-blue), var(--color-purple))"
+                        : undefined;
+                    const chatShadow = isChatWashed
+                      ? `0 8px 22px -6px color-mix(in oklch, ${c1} 60%, var(--color-dark-blue-900))`
+                      : undefined;
+                    return (
+                      <motion.span
+                        layoutId="tab-pill"
+                        className={`absolute inset-0 rounded-[22px] ${chatBackground ? "transition-[background,box-shadow] duration-[650ms] ease-out" : `bg-gradient-to-br ${gradient}`} ${chatBackground ? "" : glow}`}
+                        style={
+                          chatBackground
+                            ? {
+                                background: chatBackground,
+                                boxShadow:
+                                  chatShadow ??
+                                  "0 8px 22px -6px oklch(78% 0.13 190 / 0.55)",
+                              }
+                            : undefined
+                        }
+                        transition={{ type: "spring", stiffness: 560, damping: 42 }}
+                      />
+                    );
+                  })()
                 )}
                 <div className="relative h-6 w-6">
                   <AnimatePresence mode="wait" initial={false}>

@@ -30,7 +30,15 @@ const DeckEntry = z.object({
   lt: QuestionBlock,
 });
 
-const Body = z.object({ deck: z.array(DeckEntry).max(60) });
+// Accept either a bare array OR the legacy `{ deck: [...] }` wrapper.
+// The admin page maps its friendly JSON shape (country: { en, lt },
+// options: [{en, lt}, …], correct) into this server shape before
+// POST-ing, so the wrapper is purely a backwards-compat path for any
+// older scripts still POST-ing the wrapped object directly.
+const Body = z.union([
+  z.array(DeckEntry).max(60),
+  z.object({ deck: z.array(DeckEntry).max(60) }),
+]);
 
 export async function GET() {
   if (!(await isAdminAuthed())) {
@@ -87,9 +95,11 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+  // Unwrap whichever shape we got — bare array or { deck } object.
+  const deck = Array.isArray(parsed.data) ? parsed.data : parsed.data.deck;
 
   const validCodes = new Set(countries.map((c) => c.code));
-  for (const entry of parsed.data.deck) {
+  for (const entry of deck) {
     if (!validCodes.has(entry.country)) {
       return NextResponse.json(
         { error: `Unknown country: ${entry.country}` },
@@ -103,9 +113,9 @@ export async function POST(req: Request) {
   // particular row to exist; getTriviaMerged falls back to the file
   // default if a row is missing).
   await db.delete(triviaQuestions);
-  if (parsed.data.deck.length > 0) {
+  if (deck.length > 0) {
     await db.insert(triviaQuestions).values(
-      parsed.data.deck.map((d) => ({
+      deck.map((d) => ({
         countryCode: d.country,
         correctIndex: d.correctIndex,
         enQuestion: d.en.question,
@@ -116,7 +126,7 @@ export async function POST(req: Request) {
     );
   }
   bumpDeckCache();
-  return NextResponse.json({ ok: true, count: parsed.data.deck.length });
+  return NextResponse.json({ ok: true, count: deck.length });
 }
 
 export const dynamic = "force-dynamic";

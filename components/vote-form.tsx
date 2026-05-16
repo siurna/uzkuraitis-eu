@@ -615,7 +615,7 @@ function RulesPanel({
             >
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] text-white/85 leading-snug">{b.label}</p>
-                <p className="text-[13px] text-white/45 leading-snug mt-0.5 text-pretty text-balance">{b.sub}</p>
+                <p className="text-[13px] text-white/45 leading-snug mt-0.5 text-pretty text-balance max-w-[80%]">{b.sub}</p>
               </div>
               <span
                 className={`shrink-0 mt-0.5 rounded-lg px-2 py-1 text-xs font-display tabular-nums leading-none ${

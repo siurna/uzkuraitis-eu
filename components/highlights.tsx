@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { Flame } from "lucide-react";
 import { useEventListener } from "@/lib/realtime";
 import { useRoomLive } from "@/components/room-shell";
@@ -68,6 +68,23 @@ export function Highlights() {
     }, 5_000);
   });
 
+  // Crossfade through the top 3 highlights every ~5.5s so the widget
+  // feels like a rotating "best of the night" reel instead of a static
+  // first-place pin. When there are fewer than 2 highlights, the
+  // timer is skipped — nothing to rotate to.
+  const rotation = items.slice(0, 3);
+  const [rotIdx, setRotIdx] = useState(0);
+  useEffect(() => {
+    if (rotation.length < 2) return;
+    const id = window.setInterval(() => {
+      setRotIdx((i) => (i + 1) % rotation.length);
+    }, 5500);
+    return () => window.clearInterval(id);
+  }, [rotation.length]);
+  // Clamp on length shrink (a highlight got deleted, say) so we don't
+  // index past the end of a shorter rotation array.
+  const safeIdx = rotIdx % Math.max(rotation.length, 1);
+
   if (items.length === 0) return null;
 
   // For text-y highlights only — `body?.trim()` for chat lines,
@@ -76,7 +93,7 @@ export function Highlights() {
   // sitting next to the actual image read as a duplicate label).
   const preview = (h: Highlight): string =>
     h.kind === "bingo_strike" ? "🎯 Bingo!" : h.body?.trim() ?? "";
-  const top = items[0];
+  const top = rotation[safeIdx] ?? items[0];
   const topPreview = preview(top);
   const topAvatar = top.avatarId ? getAvatar(top.avatarId) : null;
   const topNp = (top.meta as { nowPlaying?: string } | null)?.nowPlaying;
@@ -114,7 +131,20 @@ export function Highlights() {
           style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.20) 0%, transparent 70%)" }}
           aria-hidden
         />
-        <div className="relative flex flex-col gap-3 p-5">
+        {/* Whole content area is keyed by the active highlight's id so
+            the crossfade between rotation entries is a single opacity +
+            small-y motion — quote, GIF, reaction count, author all
+            change together as one beat. Eyebrow text reads as static
+            because its copy doesn't change between frames, even though
+            it remounts with each rotation. */}
+        <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={top.id}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className="relative flex flex-col gap-3 p-5">
           {/* Top row — eyebrow + reaction count badge on the same
               baseline. Icon switched to solid-tinted dark-amber so it
               reads against the orange-pink wash instead of bleeding
@@ -208,22 +238,22 @@ export function Highlights() {
               </span>
             )}
           </div>
-        </div>
+        </motion.div>
+        </AnimatePresence>
       </motion.button>
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title={t(lang, "highlights_title")}>
-        <ul className="flex flex-col">
-          {items.map((h, idx) => {
+        <ul className="flex flex-col gap-2.5">
+          {items.map((h) => {
             const avatar = h.avatarId ? getAvatar(h.avatarId) : null;
             const np = (h.meta as { nowPlaying?: string } | null)?.nowPlaying;
             const country = np ? getCountry(np) : null;
             const text = preview(h);
             const isMedia = (h.kind === "gif" || h.kind === "image") && !!h.gifUrl;
-            const rank = idx + 1;
             return (
               <li
                 key={h.id}
-                className="flex flex-col gap-2.5 py-4 first:pt-2"
+                className="flex flex-col gap-2.5 rounded-2xl glass-surface p-4"
               >
                 {/* Country eyebrow — lifted above the quote so the
                     "what was on stage at that moment" context lands
@@ -263,12 +293,12 @@ export function Highlights() {
                   </p>
                 ) : null}
 
-                {/* Author row — tiny photo (matches the reaction
-                    pill's h-6 height), name, reaction count. The
-                    small rank badge in the photo's top-right pins
-                    each row to its position in the night's ranking. */}
+                {/* Author row — tiny photo matches the reaction pill's
+                    h-6 height. Rank badge intentionally NOT shown
+                    here — the drawer is already ordered top-to-bottom,
+                    so labelling each row with a number was redundant. */}
                 <div className="flex items-center gap-2">
-                  <span className="relative h-6 w-6 shrink-0 rounded-md overflow-hidden ring-1 ring-white/12 bg-white/[0.06]">
+                  <span className="h-6 w-6 shrink-0 rounded-md overflow-hidden ring-1 ring-white/12 bg-white/[0.06]">
                     {avatar?.photo ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -282,14 +312,6 @@ export function Highlights() {
                         {h.name.charAt(0).toUpperCase()}
                       </span>
                     )}
-                    <span
-                      className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-[3px] rounded-full
-                                 bg-flamingo text-[9px] leading-none text-white grid place-items-center
-                                 font-display tabular-nums ring-1 ring-dark-blue-900"
-                      aria-label={`#${rank}`}
-                    >
-                      {rank}
-                    </span>
                   </span>
                   <p className="flex-1 min-w-0 text-xs text-white/85 truncate leading-tight">
                     <span className="font-display text-white/95">{h.name}</span>

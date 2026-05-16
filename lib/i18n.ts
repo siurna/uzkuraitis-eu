@@ -64,6 +64,19 @@ function ltGuests(n: number): string {
   return "svečių";
 }
 
+// "Guess" count agreement — same shape as the guests helper, swapped
+// nouns. spėjimas (1, 21…) / spėjimai (2-9, 22-29…) / spėjimų (0, 10-19,
+// 20, 30…). Used by the bonus-bet "you placed X side bets" badge in
+// chat broadcasts + home.
+function ltGuesses(n: number): string {
+  const last = n % 10;
+  const mod100 = n % 100;
+  const isTeen = mod100 >= 11 && mod100 <= 19;
+  if (last === 1 && !isTeen) return "spėjimas";
+  if (last >= 2 && last <= 9 && !isTeen) return "spėjimai";
+  return "spėjimų";
+}
+
 const S = {
   // ── Auto-translate to English (Settings) ─────────────────────────
   settings_translate_h:    { en: "Auto-translate Lithuanian to English", lt: "Auto-vertimas į anglų" },
@@ -198,7 +211,7 @@ const S = {
   home_vote_done:      { en: "Your vote's in, reorder it anytime", lt: "Tavo balsas užfiksuotas" },
   home_vote_done_eyebrow: { en: "Voted", lt: "Balsuota" },
   home_vote_done_sub:  { en: "Place bets or tweak your TOP 10.", lt: "Spėliok arba pakeisk TOP 10." },
-  home_bonus_placed:   { en: (n: number) => `${n} side ${n === 1 ? "bet" : "bets"} placed`, lt: (n: number) => `spėjimų: ${n}` },
+  home_bonus_placed:   { en: (n: number) => `${n} side ${n === 1 ? "bet" : "bets"} placed`, lt: (n: number) => `Tik ${n} ${ltGuesses(n)}` },
   home_bonus_none:     { en: "Place your side bets", lt: "Pabūk orakulu" },
   home_bonus_sub:      { en: "Wooden spoon, jury winner, nul points…", lt: "Paskutinė vieta, žiuri nugalėtojas, nulis taškų…" },
   home_vs_room:        { en: "You vs the room", lt: "Tu prieš kitus" },
@@ -268,7 +281,7 @@ const S = {
   sys_results_in:    { en: "🏆 Results are in, leaderboard's live!", lt: "🏆 Rezultatai jau čia, lyderių lentelė paskelbta!" },
   sys_cta_notifications: { en: "🔔 Turn on notifications so you don't miss a beat (tap your avatar).", lt: "🔔 Įsijunk pranešimus, kad nieko nepražiopsotum (bakstelėk savo avatarą)." },
   sys_cta_notifications_title: { en: "Notifications", lt: "Pranešimai" },
-  sys_cta_notifications_sub: { en: "Stay in the loop while the show runs.", lt: "Kol vyksta šou, nieko nepraleisk." },
+  sys_cta_notifications_sub: { en: "Don't miss the night's biggest moments!", lt: "Nepraleisk svarbiausių vakaro momentų!" },
   sys_cta_notifications_on:  { en: "On", lt: "Įjungta" },
   sys_cta_notifications_off: { en: "Off", lt: "Išjungta" },
   sys_cta_notifications_unsupported: { en: "Unsupported", lt: "Nepalaikoma" },

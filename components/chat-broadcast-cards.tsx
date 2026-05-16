@@ -151,6 +151,18 @@ function NotificationsCard({ lang }: { lang: Language }) {
     window.dispatchEvent(new Event("uzk:open-notifications-only"));
   };
 
+  // Per-state CTA copy / styling for the button below the text.
+  // "On" reads as a quiet confirmation chip; "Off" pops as the
+  // primary white CTA (this is THE thing the card is trying to get
+  // the viewer to do); "Unsupported" is a flat dim chip explaining
+  // the dead end.
+  const ctaLabel =
+    status === "on"
+      ? t(lang, "push_on")
+      : status === "unsupported"
+        ? t(lang, "sys_cta_notifications_unsupported")
+        : t(lang, "push_enable");
+
   return (
     <motion.button
       type="button"
@@ -163,8 +175,8 @@ function NotificationsCard({ lang }: { lang: Language }) {
       <div
         className="relative overflow-hidden rounded-[14px]
                    bg-gradient-to-br from-dark-blue-800/95 to-dark-blue-900/95
-                   px-5 pt-5 pb-5 min-h-[10.5rem]
-                   flex flex-col items-center justify-center gap-2 text-center"
+                   px-5 pt-5 pb-5 min-h-[11.5rem]
+                   flex flex-col items-center justify-center gap-3 text-center"
       >
         {/* Avatar matrix backdrop — same diagonal scroll the welcome
             gate's Step 3 uses behind the bell. The matrix's own
@@ -184,27 +196,6 @@ function NotificationsCard({ lang }: { lang: Language }) {
           style={{ background: "radial-gradient(60% 80% at 50% 60%, rgba(8,9,28,0.55), rgba(8,9,28,0.78))" }}
           aria-hidden
         />
-        {/* Status pill anchored top-right so the centred bell + title
-            don't share a baseline with it. Same colour scheme as
-            before — turquoise for ON, flamingo for OFF, dim for
-            unsupported — so a returning viewer's eye still locks
-            onto the same "where am I right now?" chip. */}
-        <span
-          className={`absolute top-3 right-3 inline-flex items-center gap-1 rounded-full px-2.5 h-7 text-[11px] font-display uppercase tracking-wider
-                      ${
-                        status === "on"
-                          ? "bg-turquoise/20 ring-1 ring-turquoise/45 text-turquoise"
-                          : status === "unsupported"
-                            ? "bg-white/[0.08] ring-1 ring-white/15 text-white/55"
-                            : "bg-flamingo/20 ring-1 ring-flamingo/45 text-flamingo"
-                      }`}
-        >
-          {status === "on"
-            ? t(lang, "sys_cta_notifications_on")
-            : status === "unsupported"
-              ? t(lang, "sys_cta_notifications_unsupported")
-              : t(lang, "sys_cta_notifications_off")}
-        </span>
         {/* Hero bell — Fluent 3D 🔔 with the same ringing-bell keyframe
             the welcome gate uses, scaled down to fit the card. */}
         <span className="relative ringing-bell drop-shadow-[0_8px_24px_rgba(0,0,0,0.45)]">
@@ -218,6 +209,23 @@ function NotificationsCard({ lang }: { lang: Language }) {
             {t(lang, "sys_cta_notifications_sub")}
           </p>
         </div>
+        {/* CTA chip below the text — pointer-events-none so the
+            whole card (motion.button above) still owns the tap; the
+            chip is just a visual affordance + status read-out. The
+            top-right status pill is gone because this chip carries
+            both jobs now. */}
+        <span
+          className={`relative pointer-events-none inline-flex items-center gap-1.5 rounded-xl px-3.5 h-9 text-sm font-display
+                      ${
+                        status === "on"
+                          ? "bg-turquoise/20 ring-1 ring-turquoise/45 text-turquoise"
+                          : status === "unsupported"
+                            ? "bg-white/[0.08] ring-1 ring-white/15 text-white/55"
+                            : "bg-white text-dark-blue shadow-[0_6px_18px_-6px_rgba(255,255,255,0.45)]"
+                      }`}
+        >
+          {ctaLabel}
+        </span>
       </div>
     </motion.button>
   );
