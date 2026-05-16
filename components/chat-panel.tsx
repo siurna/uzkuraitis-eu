@@ -1444,14 +1444,16 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     // subtree from focus + AX trees, so iOS skips it.
     <main
       inert={!active}
-      // bg-dark-blue-900 so the chat surface paints its own opaque
-      // backdrop instead of letting the page's html::before radial
-      // pink/violet bloom show through wherever the inner column
-      // doesn't reach (most visible during the loading skeleton + on
-      // a short messages list, where the bottom of the panel was
-      // a pink wash). Edge-to-edge bg also gives the area between
-      // messages and composer a consistent floor.
-      className={`fixed inset-x-0 z-10 flex justify-center bg-dark-blue-900 ${
+      // No solid bg here on purpose: the page's html::before paints
+      // the brand bloom (violet + pink radials + texture) behind every
+      // tab, and chat is no exception. An earlier dark-blue-900 fill
+      // on this <main> was suppressing it to avoid a pink wash at the
+      // panel bottom, but the visible-viewport-bound bloom (see
+      // globals.css) keeps the gradient inside the on-screen area,
+      // so the wash is no longer a concern. Individual message
+      // bubbles + the composer pill carry their own opacity so they
+      // stay readable on top of the bloom.
+      className={`fixed inset-x-0 z-10 flex justify-center ${
         dockHidden
           ? "pt-[env(safe-area-inset-top)]"
           : "pt-[calc(env(safe-area-inset-top)+3.5rem)]"

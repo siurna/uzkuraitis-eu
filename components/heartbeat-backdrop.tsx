@@ -43,8 +43,13 @@ export function HeartbeatBackdrop() {
           className="absolute inset-0 h-full w-full object-contain drop-shadow-[0_0_60px_rgba(255,46,222,0.35)]"
         />
       </motion.div>
-      {/* Inner glow + outer fade so it bleeds into the page background */}
-      <div className="absolute inset-0 bg-radial-fade" />
+      {/* (Earlier: an `absolute inset-0 bg-radial-fade` vignette behind
+          the heart that filled the entire viewport with a dark-blue-900
+          ring. It was covering html::before's bloom near the bottom of
+          the page on short layouts — the visible area read as a flat
+          dark band beneath the heart instead of the brand violet. The
+          heart's own drop-shadow already does the focus-pull job, so
+          the vignette was net-cost.) */}
     </div>
   );
 }

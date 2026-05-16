@@ -246,7 +246,19 @@
   html::before {
     content: "";
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    /* Lock the bloom's box to the *visible* viewport. `inset: 0` looks
+       equivalent but iOS PWA can anchor a fixed element to the layout
+       viewport, leaving the "ellipse at bottom" radial centred below
+       the on-screen keyboard — the visible area then loses the warm
+       pink half of the gradient and reads as a dark-blue gap.
+       `100dvh` follows the visible viewport, so both ellipses always
+       paint inside what the user can see. (The known iOS 16/18 dvh
+       overshoot is a frame-level value, invisible for a decorative
+       background.) */
+    height: 100dvh;
     z-index: -2;
     pointer-events: none;
     background:
