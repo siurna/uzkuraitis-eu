@@ -264,11 +264,25 @@
     z-index: -2;
     pointer-events: none;
     background:
-      radial-gradient(ellipse at top, oklch(70% 0.27 336 / 0.38), transparent 55%),
-      radial-gradient(ellipse at 50% 18%, oklch(45% 0.22 320 / 0.22), transparent 70%),
+      /* Two opposing soft washes at the top: a muted rose entering
+         from the upper-right, a deep amethyst from the upper-left.
+         They overlap centrally to read as ambient stage backlight
+         rather than the earlier single flamingo dome that was
+         landing as a neon-pink beacon. Both fade out by ~mid screen. */
+      radial-gradient(80% 55% at 80% -12%, oklch(58% 0.18 350 / 0.30), transparent 60%),
+      radial-gradient(85% 60% at 18% -8%, oklch(42% 0.18 295 / 0.32), transparent 65%),
+      /* Hard fade to pure navy across the bottom half so the area
+         behind the keyboard's accessory bar (`‹ › ✓`) and any
+         keyboard slide reads as the same colour as the html bg.
+         Without this layer, the participant-backdrop's soft-light
+         texture leaks through and the bar picks up a faint purple
+         tint that breaks the "page extends into the keyboard"
+         illusion. Pure `normal` blend, no soft-light interaction
+         with the texture below. */
+      linear-gradient(to bottom, transparent 0%, transparent 55%, #0c1428 85%),
       url("/images/participant-backdrop@2x.webp") center/cover no-repeat,
       #0c1428;
-    background-blend-mode: screen, screen, soft-light;
+    background-blend-mode: screen, screen, normal, soft-light;
   }
 
   h1, h2, h3, .font-display {

@@ -1051,15 +1051,36 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   }, []);
 
   // iOS keyboard fix: when the dock vanishes / reappears the panel
-  // changes height, but the list inside keeps its old scrollTop, so
-  // the newest message slides up out of view by the keyboard's
-  // first paint height. Pin scrollTop back to scrollHeight whenever
-  // the dock-hidden flag flips AND the user was parked at the bottom.
+  // changes height, the messages-list container grows or shrinks
+  // with it. Two things to handle:
+  //   1) the browser preserves scrollTop across the resize, so when
+  //      the keyboard goes DOWN (list grows) the old scrollTop is
+  //      now smaller than `scrollHeight - clientHeight` and the
+  //      list appears scrolled-up with empty space below;
+  //   2) reading scrollHeight synchronously in this effect can
+  //      catch the pre-resize value because iOS sometimes splits
+  //      the layout into two frames (especially during the keyboard
+  //      slide animation), so we'd reset scrollTop to a stale
+  //      target.
+  // Defer one frame so the new container metrics have committed,
+  // then pin to the new scrollHeight. Force atBottom regardless of
+  // the previous flag value on a true→false transition: the user
+  // just dismissed the keyboard, almost certainly to look at fresh
+  // messages, so snapping to bottom matches intent better than
+  // honouring a stale "user scrolled up before sending" read.
+  const prevDockHiddenRef = useRef(dockHidden);
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    if (!atBottomRef.current) return;
-    el.scrollTop = el.scrollHeight;
+    const keyboardJustClosed = prevDockHiddenRef.current && !dockHidden;
+    prevDockHiddenRef.current = dockHidden;
+    if (!keyboardJustClosed && !atBottomRef.current) return;
+    const raf = requestAnimationFrame(() => {
+      if (!listRef.current) return;
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+      atBottomRef.current = true;
+    });
+    return () => cancelAnimationFrame(raf);
   }, [dockHidden]);
 
   // Swipe / tap to reply: anchor the replied-to message in the middle
