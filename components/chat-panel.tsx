@@ -484,11 +484,27 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
 
   // Mirror the visual viewport — the panel is sized to *exactly* this
   // (top = offsetTop, height = height), so its bottom edge is the bottom
-  // of what's visible = the top of the on-screen keyboard. No "layout
-  // viewport minus keyboard" arithmetic, no iOS innerHeight quirks, no
-  // dead gap behind the keyboard or the form-accessory bar. The
-  // visualViewport resize event fires continuously during the keyboard
-  // slide, so it tracks smoothly.
+  // of what's visible = the top of the on-screen keyboard.
+  //
+  // IMPORTANT: iOS Safari is unreliable about firing
+  // `visualViewport.resize` after the keyboard Done dismissal. The
+  // `resize` events DO fire during the slide-up, but the FINAL resize
+  // back to full height can silently drop — leaving our local state
+  // pinned to the shrunk-keyboard value, the chat panel rendering at
+  // a stale short height, and a visible dead band between the panel
+  // bottom and the dock that only resolves once the user taps
+  // somewhere (which forces iOS to re-measure and emit a fresh
+  // event). Same drop happens with `scroll` events in some PWA
+  // states.
+  //
+  // The cure is a 200ms poll: on every tick, read
+  // `visualViewport.height + offsetTop` directly from the API and
+  // set state. React's setState shortcircuit means there's NO
+  // re-render unless the values actually changed — net cost per
+  // tick is one DOM read, invisible at scale. Catches the dropped
+  // events without changing the event-driven happy path at all.
+  // Only runs while the chat tab is active; other tabs skip the
+  // interval entirely.
   useEffect(() => {
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!vv) return;
@@ -496,11 +512,17 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     vv.addEventListener("resize", sync);
     vv.addEventListener("scroll", sync);
     sync();
+    // Poll while active to catch dropped visualViewport.resize events
+    // (the canonical iOS Safari "stuck height after Done" bug). 200ms
+    // is fast enough that the user never sees the stale state past
+    // one frame past the actual keyboard dismissal.
+    const iv = active ? window.setInterval(sync, 200) : 0;
     return () => {
       vv.removeEventListener("resize", sync);
       vv.removeEventListener("scroll", sync);
+      if (iv) window.clearInterval(iv);
     };
-  }, []);
+  }, [active]);
 
   const loadEarlier = async () => {
     if (loadingMore || messages.length === 0) return;
