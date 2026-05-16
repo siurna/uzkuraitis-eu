@@ -29,6 +29,8 @@ import {
 } from "@/components/admin-participant-messages";
 import { AdminRemoveParticipant } from "@/components/admin-remove-participant";
 import { AdminRecoveryLink } from "@/components/admin-recovery-link";
+import { AdminParticipantsTable } from "@/components/admin-participants-table";
+import { computeRoomLeaderboard } from "@/lib/leaderboard";
 import { Flag } from "@/components/flag";
 import { timeAgo } from "@/lib/utils";
 
@@ -177,6 +179,28 @@ export default async function AdminRoomDetailPage({
     }
   }
   const voterList = Array.from(voterMap.values());
+
+  // Per-session score lookup for the admin participants table.
+  // Only computed when the room's tally is on — without it the
+  // leaderboard endpoint returns an empty list (no per-voter
+  // scores leaked) so the Score column has nothing to render
+  // anyway. Reuses the same `computeRoomLeaderboard` helper that
+  // backs /api/rooms/[code]/leaderboard so admin + viewer see
+  // identical numbers.
+  let scoreBySession = new Map<string, number>();
+  if (room.tallyEnabled) {
+    const leaderboard = await computeRoomLeaderboard({
+      id: room.id,
+      homeCountryCode: room.homeCountryCode,
+      tallyEnabled: room.tallyEnabled,
+      highlightThreshold: room.highlightThreshold,
+    });
+    if (leaderboard.hasResults) {
+      scoreBySession = new Map(
+        leaderboard.leaderboard.map((r) => [r.sessionId, r.total]),
+      );
+    }
+  }
 
   // Reaction tallies per country, top first.
   const reactionRows = await db
@@ -331,122 +355,30 @@ export default async function AdminRoomDetailPage({
             {voterList.length === 0 ? (
               <p className="text-white/40 text-sm italic">Nobody's joined yet.</p>
             ) : (
-              // Table-style layout: a header row of column labels and one
-              // <details> per participant. The summary uses the same grid
-              // template as the header so cells line up cleanly. Expanded
-              // rows show the full ballot + recent messages strip.
-              <div className="rounded-lg bg-white/[0.03] border border-white/8 overflow-hidden backdrop-blur-md backdrop-saturate-150 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                {/* Column labels. Hidden on small screens — the row falls
-                    back to a single-line "name + 'tap for details'" view
-                    so the table doesn't get squished. */}
-                <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_72px_60px_88px_72px_76px_28px] gap-3 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-white/40 font-display bg-white/[0.03] border-b border-white/5">
-                  <span>Name</span>
-                  <span className="text-right">Ballot</span>
-                  <span className="text-right">Msgs</span>
-                  <span className="text-right">❤️ in/out</span>
-                  <span className="text-right">Trivia</span>
-                  <span className="text-right">Active</span>
-                  <span />
-                </div>
-                <ul className="divide-y divide-white/5">
-                  {voterList.map((v) => (
-                    <li key={v.id}>
-                      <details className="group">
-                        <summary className="grid grid-cols-[minmax(0,1fr)_28px] sm:grid-cols-[minmax(0,1fr)_72px_60px_88px_72px_76px_28px] items-center gap-3 px-3 py-2.5 cursor-pointer list-none hover:bg-white/[0.02] transition">
-                          <span className="font-display truncate">{v.name}</span>
-                          <span className="hidden sm:block text-right text-sm text-white/85 tabular-nums">
-                            {v.ballot.size}<span className="text-white/35">/10</span>
-                          </span>
-                          <span className="hidden sm:block text-right text-sm text-white/85 tabular-nums">
-                            {v.messages}
-                          </span>
-                          <span className="hidden sm:block text-right text-sm text-white/85 tabular-nums">
-                            {v.reactionsReceived}<span className="text-white/35">/{v.reactionsGiven}</span>
-                          </span>
-                          <span className="hidden sm:block text-right text-sm text-white/85 tabular-nums">
-                            {v.triviaTotal > 0 ? `${v.triviaCorrect}/${v.triviaTotal}` : "—"}
-                          </span>
-                          <span className="hidden sm:block text-right text-xs text-white/50 tabular-nums">
-                            {timeAgo(v.updatedAt)}
-                          </span>
-                          {/* Chevron — rotates open via group-open. */}
-                          <span className="justify-self-end text-white/40 transition-transform group-open:rotate-180">
-                            ▾
-                          </span>
-                        </summary>
-                        {/* Mobile-only quick stats row (the columns are
-                            hidden below sm, so surface the numbers here
-                            instead). */}
-                        <ul className="sm:hidden px-3 pt-1 pb-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/55 tabular-nums">
-                          <li>📋 {v.ballot.size}/10</li>
-                          <li>💬 {v.messages}</li>
-                          <li>❤️ {v.reactionsReceived}/{v.reactionsGiven}</li>
-                          {v.triviaTotal > 0 && <li>🧠 {v.triviaCorrect}/{v.triviaTotal}</li>}
-                          <li>{timeAgo(v.updatedAt)}</li>
-                        </ul>
-                        {/* Full ballot, 5 across. */}
-                        <div className="px-3 pb-3 grid grid-cols-2 sm:grid-cols-5 gap-1">
-                          {POINTS.map((p) => {
-                            const cc = v.ballot.get(p);
-                            const c = cc ? getCountry(cc) : null;
-                            return (
-                              <div
-                                key={p}
-                                className="flex items-center gap-1.5 px-2 py-1.5 rounded bg-black/30 text-xs"
-                              >
-                                <span className="w-5 text-flamingo font-display tabular-nums">{p}</span>
-                                {c ? (
-                                  <>
-                                    <Flag code={c.code} size="sm" />
-                                    <span className="truncate">{c.name}</span>
-                                  </>
-                                ) : (
-                                  <span className="text-white/30 italic">—</span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {/* Moderation strip — each row carries a delete
-                            that hits the admin DELETE endpoint and
-                            broadcasts. Capped at the most recent 10. */}
-                        <div className="px-3 pb-3 pt-1">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-display px-1 mb-1">
-                            Recent messages
-                          </p>
-                          <AdminParticipantMessages code={room.code} messages={v.recent} />
-                        </div>
-                        {/* Recovery link — mint a private one-time URL
-                            to DM to a participant who lost their PWA /
-                            cleared storage. Opening the link rebuilds
-                            their session in place. */}
-                        <div className="px-3 pb-3 pt-1 flex items-center justify-between gap-3 border-t border-white/5">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-white/35 font-display shrink-0">
-                            Recovery
-                          </p>
-                          <AdminRecoveryLink
-                            code={room.code}
-                            sessionId={v.sessionId}
-                          />
-                        </div>
-                        {/* Nuclear option: remove the participant from
-                            this room entirely + start a cooldown so the
-                            same session can't immediately re-engage. */}
-                        <div className="px-3 pb-3 pt-1 flex items-center justify-between gap-3 border-t border-white/5">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-white/35 font-display">
-                            Suspend
-                          </p>
-                          <AdminRemoveParticipant
-                            code={room.code}
-                            sessionId={v.sessionId}
-                            name={v.name}
-                          />
-                        </div>
-                      </details>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <AdminParticipantsTable
+                code={room.code}
+                tallyEnabled={room.tallyEnabled}
+                voters={voterList.map((v) => ({
+                  id: v.id,
+                  name: v.name,
+                  sessionId: v.sessionId,
+                  updatedAt: v.updatedAt.toISOString(),
+                  messages: v.messages,
+                  reactionsGiven: v.reactionsGiven,
+                  reactionsReceived: v.reactionsReceived,
+                  triviaCorrect: v.triviaCorrect,
+                  triviaTotal: v.triviaTotal,
+                  score: scoreBySession.get(v.sessionId) ?? null,
+                  ballot: Object.fromEntries(v.ballot),
+                  recent: v.recent.map((m) => ({
+                    id: m.id,
+                    kind: m.kind,
+                    body: m.body,
+                    gifUrl: m.gifUrl,
+                    createdAt: m.createdAt,
+                  })),
+                }))}
+              />
             )}
           </section>
         }
