@@ -14,7 +14,7 @@ import { WelcomeBanner } from "@/components/welcome-banner";
 // (now-playing / Standings) sits at the top.
 export function HomePanel() {
   return (
-    <div className="flex flex-col gap-4 pt-3 pb-2">
+    <div className="flex flex-col gap-4 pt-3 pb-8">
       <HomeBanners />
       <div id="standings" className="scroll-mt-16">
         <Standings />
