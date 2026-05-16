@@ -238,11 +238,14 @@
     -webkit-touch-callout: none;
   }
 
-  /* Body backdrop. The participant-backdrop is grey wavy stripes; if
-     we multiply it onto dark-blue we lose all the texture, then the
-     blooms wash out what's left. Soft-light keeps the curves visible
-     as subtle highlights/shadows over the brand bloom. Bloom alpha
-     dialled down so the texture isn't drowned. */
+  /* Body backdrop. Participant-backdrop is grey wavy stripes blended
+     soft-light over a near-black navy + a single flamingo radial
+     centred at the top of the viewport (fades to transparent by
+     ~60% down). The bottom of the visible page therefore reads as
+     just the navy `html` bg — and iOS PWA paints that same navy in
+     the strip behind a sliding keyboard, which makes the chat
+     surface appear to extend INTO the keyboard rather than
+     terminating against a colour seam. */
   html::before {
     content: "";
     position: fixed;
@@ -254,31 +257,18 @@
        switches to `100lvh`. The PWA branch matters because iOS PWA's
        `dvh` ships with a stale-frame bug on cold-start: it can report
        a value shorter than the real visible viewport for the first
-       paint or two, leaving a dark purple band along the bottom of
-       the loading screen until the user nudged the page and forced
-       a re-measure. `lvh` has no chrome to subtract in PWA mode, so
-       it just stays correct. The "ellipse at bottom" half of the
-       gradient does sit below the on-screen keyboard while one's up,
-       but the keyboard moment is brief + transient and worth the
-       trade for a stable loading screen. */
+       paint or two, leaving a dark band along the bottom of the
+       loading screen until the user nudged the page. `lvh` has no
+       chrome to subtract in PWA mode, so it just stays correct. */
     height: var(--uzk-vh-100);
     z-index: -2;
     pointer-events: none;
     background:
-      radial-gradient(ellipse at top, oklch(28% 0.12 290 / 0.32), transparent 65%),
-      radial-gradient(ellipse at bottom, oklch(40% 0.18 336 / 0.32), transparent 70%),
+      radial-gradient(ellipse at top, oklch(70% 0.27 336 / 0.38), transparent 55%),
+      radial-gradient(ellipse at 50% 18%, oklch(45% 0.22 320 / 0.22), transparent 70%),
       url("/images/participant-backdrop@2x.webp") center/cover no-repeat,
-      var(--color-dark-blue-900);
+      #0c1428;
     background-blend-mode: screen, screen, soft-light;
-    /* Was: a `linear-gradient(0deg, oklch(22% .13 320) 0%, … 22%)`
-       in this stack to "guarantee the home-indicator area reads as
-       the brand violet" on iOS PWA. But 22% of html-height on a
-       modern iPhone is ~200px — far past the ~34px home-indicator
-       inset — which painted a visible violet band across the bottom
-       of the entrance / any short page. Removed: the `html`
-       background-color (#1a1334, same brand violet) already covers
-       the home-indicator area + any rubber-band overscroll, no
-       gradient strip needed. */
   }
 
   h1, h2, h3, .font-display {

@@ -60,11 +60,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  // Tuned to sit inside the brand bloom (a deep violet that matches
-  // the top of the html::before backdrop after fade-in). The earlier
-  // #10142a was the manifest's flat splash colour, which left a hard
-  // dark band behind the iOS status bar fighting the purple page.
-  themeColor: "#1a1334",
+  // Same near-black navy that lives on `html { background-color }`
+  // and in the manifest's background_color / theme_color. The
+  // bottom of html::before's bloom fades to transparent into this
+  // colour, so iOS PWA's status-bar tint AND the strip iOS Safari
+  // paints behind a sliding-up keyboard both match the page's
+  // bottom edge — no colour seam where the keyboard meets the
+  // chat surface.
+  themeColor: "#0c1428",
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,

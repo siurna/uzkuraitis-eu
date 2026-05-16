@@ -17,13 +17,16 @@ export default function manifest(): MetadataRoute.Manifest {
       "Cast your votes and watch live with friends. United by music, Vienna 2026.",
     start_url: "/",
     display: "standalone",
-    // background_color is what iOS PWA paints under the home-indicator
-    // area + the cold-start splash; theme_color is what fills behind
-    // the status bar at the top. Both tuned to sit INSIDE the brand
-    // bloom so the iOS chrome zones don't read as a black slab
-    // against the purple page underneath.
-    background_color: "#1a1334",
-    theme_color: "#1a1334",
+    // background_color paints the home-indicator strip + cold-start
+    // splash; theme_color fills behind the status bar. Set to the
+    // same near-black navy the html `background-color` carries, so
+    // the iOS PWA chrome (status bar tint, home-indicator strip,
+    // and crucially the strip iOS Safari paints behind a sliding
+    // on-screen keyboard) all match the bottom of our gradient —
+    // the chat surface then reads as continuous into the keyboard
+    // instead of cutting against a brighter brand colour.
+    background_color: "#0c1428",
+    theme_color: "#0c1428",
     icons: [
       {
         src: `${ICON_BUCKET}/icon-192.png`,
