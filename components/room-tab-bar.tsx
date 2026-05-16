@@ -143,12 +143,23 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
                     // legible against any flag colour without
                     // per-country tuning. Other tabs keep their
                     // static Tailwind class gradient.
+                    //
+                    // Why `in oklab` and not `in oklch`: OKLCH
+                    // interpolates HUE along the colour wheel via the
+                    // shortest path. Yellow (#fae042, hue ~100°)
+                    // mixed 60/40 with dark-blue-900 (hue ~262°)
+                    // travels through GREEN (~164°) and lands looking
+                    // teal — Belgium's "yellow + red" pill came out
+                    // bright green. OKLAB interpolates the linear L/a/b
+                    // axes instead, no hue-wheel walk, so the mixed
+                    // colour keeps its source character (yellow stays
+                    // yellow-olive, red stays dark-red).
                     const isChatWashed = id === "chat" && !!nowPlayingCode;
                     const [c1, c2] = isChatWashed
                       ? countryColors(nowPlayingCode!)
                       : ["", ""];
                     const chatBackground = isChatWashed
-                      ? `linear-gradient(135deg, color-mix(in oklch, ${c1} 60%, var(--color-dark-blue-900)), color-mix(in oklch, ${c2} 60%, var(--color-dark-blue-900)))`
+                      ? `linear-gradient(135deg, color-mix(in oklab, ${c1} 60%, var(--color-dark-blue-900)), color-mix(in oklab, ${c2} 60%, var(--color-dark-blue-900)))`
                       // Default chat-tab gradient as inline style, so
                       // the transition into the country wash is a
                       // smooth animation between two gradients of the
@@ -158,7 +169,7 @@ export function RoomTabBar({ chatUnread = 0 }: { chatUnread?: number }) {
                         ? "linear-gradient(135deg, var(--color-turquoise), var(--color-blue), var(--color-purple))"
                         : undefined;
                     const chatShadow = isChatWashed
-                      ? `0 8px 22px -6px color-mix(in oklch, ${c1} 60%, var(--color-dark-blue-900))`
+                      ? `0 8px 22px -6px color-mix(in oklab, ${c1} 60%, var(--color-dark-blue-900))`
                       : undefined;
                     return (
                       <motion.span
