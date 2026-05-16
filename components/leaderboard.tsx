@@ -153,12 +153,20 @@ export function Leaderboard({ code }: { code: string }) {
 
                 <AnimatePresence initial={false}>
                   {isOpen && (
+                    // Opacity + small y-offset instead of a height
+                    // tween. The previous `height: 0 ↔ "auto"` +
+                    // `overflow-hidden` wrapper clipped the
+                    // ScoreBreakdown chips' `ring-1` outlines, which
+                    // live OUTSIDE the element's border box (rings
+                    // are outset box-shadows). Per CLAUDE.md, the
+                    // parent flex absorbs the natural height
+                    // immediately; the fade covers the visual jump.
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
                       transition={{ duration: 0.22, ease: "easeOut" }}
-                      className="overflow-hidden border-t border-white/5"
+                      className="border-t border-white/5"
                     >
                       <div className="px-4 py-3">
                         <ScoreBreakdown

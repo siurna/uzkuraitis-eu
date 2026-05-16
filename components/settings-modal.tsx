@@ -193,13 +193,20 @@ export function SettingsModal({
                 AnimatePresence with height + opacity easing. */}
             <AnimatePresence initial={false}>
               {lang === "en" && (
+                // Opacity + small y-offset only — NOT a height tween.
+                // The previous `height: 0 ↔ "auto"` + `overflow: hidden`
+                // combo was clipping the PrefRow's toggle ring on the
+                // right (rings live outside the box; the wrapper's
+                // clip-rect ate them). Per CLAUDE.md's "overflow:
+                // hidden on a motion.div clips outset rings" note,
+                // parent flex absorbs the natural height instantly
+                // and the ring shows cleanly through the fade.
                 <motion.div
                   key="auto-translate"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                  style={{ overflow: "hidden" }}
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <PrefRow
                     icon={<Languages className="h-5 w-5" />}

@@ -134,13 +134,16 @@ export function AdminLogin({ bootstrapped }: { bootstrapped: boolean }) {
               </button>
               <AnimatePresence initial={false}>
                 {showRecovery && (
+                  // Opacity + y instead of height to dodge the
+                  // overflow-hidden / ring-1 clipping issue (the
+                  // recovery form's input has a focus ring). Per
+                  // CLAUDE.md the parent absorbs the natural height.
                   <motion.form
                     key="recovery"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
                     transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
                     onSubmit={(e) => {
                       e.preventDefault();
                       if (!recoveryKey.trim()) return;
