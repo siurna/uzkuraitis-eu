@@ -171,7 +171,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   const listRef = useRef<HTMLDivElement | null>(null);
   // The composer is a contentEditable <div> (an experiment — dodges the
   // iOS keyboard accessory bar that <textarea>/<input> always get).
-  const taRef = useRef<HTMLInputElement | null>(null);
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const didInitialScroll = useRef(false);
   const atBottomRef = useRef(true);
@@ -1089,6 +1089,11 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     const optimistic = makeOptimistic({ kind: "text", body: text });
     setMessages((prev) => [...prev, optimistic]);
     setBody("");
+    // Collapse the textarea back to one-row height after send. value=""
+    // alone doesn't shrink it — the inline `height` we set on each
+    // keystroke is still pinned to the multi-line scrollHeight from
+    // before the send.
+    if (taRef.current) taRef.current.style.height = "auto";
     setReplyTo(null);
     clearTyping();
     requestAnimationFrame(() => scrollToBottom(false));
@@ -1327,6 +1332,16 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     setMenuFor(null);
     setEditing(m);
     setEditBody(m.body ?? "");
+    // Grow the textarea to fit the message body so the user sees the
+    // full thing at once. Defer to the next tick so React has applied
+    // the new `value` (and `scrollHeight` reflects it) before we
+    // measure.
+    requestAnimationFrame(() => {
+      const el = taRef.current;
+      if (!el) return;
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    });
   };
 
   const submitEdit = async () => {
@@ -1334,6 +1349,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     const text = editBody.trim();
     if (!text || text === editing.body) {
       setEditing(null);
+      if (taRef.current) taRef.current.style.height = "auto";
       return;
     }
     const session = mySession;
@@ -1345,6 +1361,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       ),
     );
     setEditing(null);
+    if (taRef.current) taRef.current.style.height = "auto";
     const res = await fetch(`/api/rooms/${code}/chat/${editing.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
@@ -1770,13 +1787,17 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                 </motion.div>
               )}
             </AnimatePresence>
-            {/* Composer pill. Real <form> + <input> so the keyboard's
-                "send" / "go" key (and a Bluetooth keyboard Return)
-                naturally submits, and iOS doesn't show the awkward
-                "‹ › Done" accessory bar that <textarea> triggers.
-                Single-line is fine because the chat is a quick chat:
-                the toolbar already shows GIF/photo/reply, the user
-                doesn't need Shift+Enter line breaks. */}
+            {/* Composer pill — Messenger-style multi-line. <textarea>
+                so Enter inserts a newline (browser default); the
+                visible send-arrow button on the right is the only
+                way to dispatch. Cmd/Ctrl+Enter is a desktop power-
+                user shortcut for send.
+                Height auto-grows up to ~6 lines (`max-h-[9rem]`),
+                scrolls beyond that. The iOS "‹ › Done" accessory bar
+                is a known trade-off for textarea — CLAUDE.md's
+                `inert` rule keeps OTHER hidden inputs from being
+                counted, so the bar only ever shows the active
+                chat's composer Done. */}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -1785,10 +1806,10 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
               }}
               className="flex items-end gap-1 rounded-2xl border border-white/15 bg-black/40 px-1.5 py-1.5 transition focus-within:border-white/30"
             >
-              <input
+              <textarea
                 ref={taRef}
-                type="text"
-                enterKeyHint="send"
+                rows={1}
+                enterKeyHint="enter"
                 autoCapitalize="sentences"
                 autoComplete="off"
                 autoCorrect="on"
@@ -1799,15 +1820,20 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                   const v = e.target.value;
                   if (editing) setEditBody(v.slice(0, 2000));
                   else onComposerChange(v);
+                  // Auto-grow: reset to auto so scrollHeight reflects
+                  // the current content, then pin to it. CSS max-h
+                  // caps at ~6 lines and lets the textarea scroll
+                  // inside once content exceeds.
+                  const el = e.target;
+                  el.style.height = "auto";
+                  el.style.height = `${el.scrollHeight}px`;
                 }}
-                // Belt-and-braces: iOS Safari only triggers an implicit
-                // form-submit on Enter when there's exactly one text
-                // input OR an explicit submit button. The hidden submit
-                // below handles that; this keydown handler covers
-                // bluetooth keyboards + the rare iOS Send key that
-                // dispatches keydown without an accompanying submit.
+                // Plain Enter inserts a newline. Cmd/Ctrl+Enter sends
+                // (Slack / Messenger-desktop muscle memory for
+                // bluetooth-keyboard users). iOS soft-keyboard return
+                // = newline, send button = send.
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     e.preventDefault();
                     if (editing) submitEdit();
                     else send();
@@ -1824,20 +1850,19 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                   chrome.setComposerActive(false);
                   if (!editing) clearTyping();
                   // Used to auto-send here when blur fired without a
-                  // relatedTarget (iOS keyboard "Done" tap) — but the
-                  // same signature fires on tab switch / app
-                  // backgrounding / programmatic blur too, which led
-                  // to messages being sent every time the input lost
-                  // focus for any reason. Now the user has to either
-                  // press the iOS keyboard's Send key (handled by
-                  // onKeyDown above) or tap the visible Send button
-                  // that appears in the toolbar when text is
-                  // non-empty. Dismissing the keyboard via Done
-                  // leaves the draft sitting in the composer.
+                  // relatedTarget (iOS keyboard "Done" tap) — same
+                  // signature fires on tab switch / app
+                  // backgrounding / programmatic blur, so dropping
+                  // it. The user has to tap the visible send button
+                  // (always available once text is non-empty) or use
+                  // Cmd/Ctrl+Enter on desktop. Dismissing the
+                  // keyboard via Done leaves the draft sitting in
+                  // the composer.
                 }}
                 placeholder={editing ? t(lang, "chat_edit_placeholder") : t(lang, "chat_placeholder")}
                 className="flex-1 min-w-0 bg-transparent px-1.5 py-2
-                           text-base leading-snug text-white focus:outline-none"
+                           text-base leading-snug text-white focus:outline-none
+                           resize-none max-h-[9rem] overflow-y-auto"
               />
               {/* Right-side toolbar. When the input is empty we show
                   GIF + Photo (composing media); when it has text we

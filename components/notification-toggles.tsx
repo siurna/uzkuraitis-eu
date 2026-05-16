@@ -265,26 +265,41 @@ function DisabledWithHelp({
       <button
         type="button"
         onClick={() => setHelpOpen(!helpOpen)}
-        className="w-full flex items-center justify-between rounded-2xl px-4 py-3
-                   bg-white/[0.04] ring-1 ring-white/10 hover:bg-white/[0.07] transition text-sm"
+        // Row layout: bell on the left, the install text takes the
+        // middle (flex-1, text-left) so it reads as a normal label
+        // anchored to the icon — not floating in the centre between
+        // two pushed-apart spans. The trailing "How" chip is only
+        // surfaced when the help is COLLAPSED; once expanded the
+        // chip is redundant (you can already see the steps and the
+        // whole row stays tappable to collapse).
+        className="w-full flex items-center gap-2 rounded-2xl px-4 py-3
+                   bg-white/[0.04] ring-1 ring-white/10 hover:bg-white/[0.07] transition text-sm text-left"
       >
-        <span className="flex items-center gap-2 text-white/70">
-          <BellOff className="h-4 w-4 text-dark-blue-200" />
+        <BellOff className="h-4 w-4 text-dark-blue-200 shrink-0" />
+        <span className="flex-1 min-w-0 text-white/70">
           {t(lang, "push_install_required")}
         </span>
-        <span className="flex items-center gap-1.5 text-xs text-flamingo">
-          <HelpCircle className="h-3.5 w-3.5" />
-          {t(lang, "push_how")}
-        </span>
+        {!helpOpen && (
+          <span className="shrink-0 flex items-center gap-1.5 text-xs text-flamingo">
+            <HelpCircle className="h-3.5 w-3.5" />
+            {t(lang, "push_how")}
+          </span>
+        )}
       </button>
+      {/* Animate opacity + a small y-offset instead of height, so the
+          flamingo `ring-1` doesn't get clipped by the wrapper's
+          `overflow: hidden` during the open / close tween (per
+          CLAUDE.md's "overflow: hidden on a motion.div clips outset
+          rings" note). Flex parent absorbs the natural height of the
+          help card immediately; the slight slide just sells the
+          appearance. */}
       <AnimatePresence>
         {helpOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.22 }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
           >
             <div className="rounded-2xl bg-flamingo/8 ring-1 ring-flamingo/20 px-4 py-3 text-sm text-white/85 leading-relaxed flex flex-col gap-2">
               <p className="font-display">{steps.title}</p>
