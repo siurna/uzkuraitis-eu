@@ -1,10 +1,11 @@
 import { ImageResponse } from "next/og";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { voters, votes } from "@/lib/db/schema";
 import { getCountry, countryName } from "@/lib/countries";
 import { countryColors } from "@/lib/country-colors";
 import { findRoomByCode } from "@/lib/rooms";
+import { readSignedSessionId } from "@/lib/server-session";
 import type { Language } from "@/lib/i18n";
 
 // Localised in-route (instead of importing `t` from "@/lib/i18n", which
@@ -55,12 +56,25 @@ export async function GET(req: Request, { params }: RouteCtx) {
     const room = await findRoomByCode(code);
     if (!room) return new Response("Not found", { status: 404 });
 
+    // CHEAT GUARD: cross-check the voter belongs to THIS room AND
+    // only release the ballot once the room has revealed results
+    // (or the requester is the voter themselves — they can preview
+    // their own card pre-tally to share-prep). Earlier the route
+    // resolved purely on voterId so anyone with a UUID could fetch
+    // any voter's TOP-10 PNG, bypassing the same guard wired into
+    // /leaderboard + /profile/[sessionId].
     const [voter] = await db
-      .select({ id: voters.id, name: voters.name })
+      .select({ id: voters.id, name: voters.name, sessionId: voters.sessionId })
       .from(voters)
-      .where(eq(voters.id, voterId))
+      .where(and(eq(voters.id, voterId), eq(voters.roomId, room.id)))
       .limit(1);
     if (!voter) return new Response("Not found", { status: 404 });
+    if (!room.tallyEnabled) {
+      const signed = await readSignedSessionId();
+      if (!signed || signed !== voter.sessionId) {
+        return new Response("Results not revealed", { status: 403 });
+      }
+    }
 
     const ballot = await db
       .select({ points: votes.points, countryCode: votes.countryCode })
