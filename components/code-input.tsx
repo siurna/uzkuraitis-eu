@@ -42,16 +42,25 @@ export function CodeInput({
   }, [autoFocus]);
 
   const setAt = (index: number, char: string) => {
-    const sanitized = char.toUpperCase().replace(/[^2-9ABCDEFGHJKMNOPQRSTUVWXYZ]/g, "").slice(0, 1);
+    const sanitized = char.toUpperCase().replace(/[^1-9ABCDEFGHJKMNOPQRSTUVWXYZ]/g, "").slice(0, 1);
     if (!sanitized) return;
+    // Clamp the write position to the first empty cell. If the user
+    // tapped (say) cell 3 on an empty code, iOS may dispatch the
+    // first keystroke to that cell BEFORE the onFocus bounce below
+    // shifts focus to cell 0, which would otherwise write "   A"
+    // with three leading spaces (and look like the character was
+    // "eaten" because the user types again to fix it). Always
+    // write into the first unfilled slot regardless of which cell
+    // received the input event.
+    const writeAt = Math.min(index, value.length);
     const next = (value + " ".repeat(LENGTH))
       .slice(0, LENGTH)
       .split("")
-      .map((c, i) => (i === index ? sanitized : c))
+      .map((c, i) => (i === writeAt ? sanitized : c))
       .join("")
       .replace(/\s+$/g, "");
     onChange(next);
-    if (index < LENGTH - 1) refs.current[index + 1]?.focus();
+    if (writeAt < LENGTH - 1) refs.current[writeAt + 1]?.focus();
     else if (next.length === LENGTH) onComplete?.(next);
   };
 
