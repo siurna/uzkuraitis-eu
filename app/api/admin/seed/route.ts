@@ -90,6 +90,20 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  // SHOW-DAY GUARD: this endpoint scrambles official_results /
+  // official_facts with random data and fans out leaderboard:updated
+  // to every connected viewer. Useful during dev to eyeball the UI
+  // against a populated installation, catastrophic if it lands during
+  // a live show (the leaderboard re-renders garbage in front of N
+  // viewers). Locked to non-production environments. Requires
+  // `ALLOW_SEED=1` to be set explicitly even in dev so a misclicked
+  // admin login can't trigger it.
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_SEED !== "1") {
+    return NextResponse.json(
+      { error: "Seed endpoint disabled in production." },
+      { status: 403 },
+    );
+  }
   if (!(await isAdminAuthed())) {
     return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   }

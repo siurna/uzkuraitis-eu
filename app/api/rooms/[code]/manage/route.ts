@@ -187,7 +187,12 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
       }),
     ).catch(() => {});
   }
-  if (parsed.data.tallyEnabled === true) {
+  // Only fire the "results are in" push on the actual false → true
+  // edge. Earlier rev fired any time `tallyEnabled: true` arrived in
+  // the PATCH body, so a host toggling off → on, or just tapping
+  // Reveal twice, re-pushed every subscriber. Mirrors the chat-card
+  // gate further down (`room.tallyEnabled !== true`).
+  if (parsed.data.tallyEnabled === true && room.tallyEnabled !== true) {
     pushToRoom(
       room.id,
       (prefs) => !!prefs.resultsTallied,

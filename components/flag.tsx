@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +34,22 @@ export function Flag({
   alt?: string;
 }) {
   const { px, cls } = SIZE_PX[size];
+  // Fall back to a dashed heart outline if the SVG is missing
+  // (a typo'd country code, a withdrawn-this-year code lingering
+  // in a stale ballot, etc). Without the fallback, the row renders
+  // the browser's broken-image glyph, which on a brand surface
+  // reads as a deploy bug. The shape still says "country slot" via
+  // the heart silhouette.
+  const [failed, setFailed] = useState(false);
+  if (failed || !code) {
+    return (
+      <HeartOutline
+        className={cn("text-white/30 shrink-0", cls, className)}
+        size={px}
+        dashed
+      />
+    );
+  }
   return (
     <Image
       src={`/flags/${code.toLowerCase()}.svg`}
@@ -40,6 +59,7 @@ export function Flag({
       className={cn("shrink-0 select-none", cls, className)}
       unoptimized
       draggable={false}
+      onError={() => setFailed(true)}
     />
   );
 }
