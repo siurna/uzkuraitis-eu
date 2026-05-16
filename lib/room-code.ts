@@ -4,14 +4,14 @@
 // that import drizzle + postgres-js, which Next refuses to bundle
 // for the browser.)
 //
-// Six-character codes from an unambiguous alphabet. The generator
-// (server-side, in lib/rooms.ts) uses [23456789A-HJ-NP-Z]; the
-// validator additionally allows `1`, `L`, and `O` so a host can
-// type a memorable custom code like "PARTY1", "HELLOX", or
-// "LOL123" without it being rejected. `0` and `I` stay out — `0`
-// is easy to confuse with `O` and `I` with `1` / lowercase `l`
-// in common UI fonts.
-export const ROOM_CODE_REGEX = /^[1-9ABCDEFGHJKLMNOPQRSTUVWXYZ]{6}$/;
+// Six-character codes from a permissive alphabet. The generator
+// (server-side, in lib/rooms.ts) sticks to [23456789A-HJ-NP-Z]
+// for the "unambiguous" random-mint path; the validator additionally
+// allows `1`, `I`, `L`, and `O` so a host can type a memorable
+// custom code like "PARTY1" / "MARIJA" / "LOL123" / "HELLOX" without
+// it being rejected. Only `0` stays out — too easy to confuse with
+// `O` in common UI fonts at small sizes.
+export const ROOM_CODE_REGEX = /^[1-9A-Z]{6}$/;
 
 export function isValidRoomCode(code: string): boolean {
   return ROOM_CODE_REGEX.test(code);

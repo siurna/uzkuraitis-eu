@@ -8,12 +8,12 @@ import {
 import { cn } from "@/lib/utils";
 
 const LENGTH = 6;
-// Same alphabet as lib/room-code.ts. Allows `1`, `L`, and `O` so
-// memorable custom codes like "PARTY1" / "HELLOX" / "LOL123" type
-// through. `0` and `I` stay out — `0` looks like `O`, `I` looks
-// like a lowercase `l` or a `1` on common UI fonts. Filter runs on
-// every change + paste.
-const ALPHABET_RE = /[^1-9ABCDEFGHJKLMNOPQRSTUVWXYZ]/g;
+// Same alphabet as lib/room-code.ts. Allows `1`, `I`, `L`, and `O`
+// so memorable custom codes like "PARTY1" / "MARIJA" / "LOL123" /
+// "HELLOX" type through. Only `0` stays out — too easy to confuse
+// with `O` in common UI fonts at small sizes. Filter runs on every
+// change + paste.
+const ALPHABET_RE = /[^1-9A-Z]/g;
 
 // Six-cell OTP-style input. Visually six cells with dashed dividers,
 // but the DOM has exactly ONE `<input>` element underneath — six
