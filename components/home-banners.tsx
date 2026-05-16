@@ -294,12 +294,35 @@ const PHYS_SLEEP_FRAMES = 10;
 // speed threshold.
 const PHYS_FORCE_SLEEP_AT_MS = 2600;
 // Longer + more sporadic. CYCLE_MS bumped 6.5s → 9s so the pile
-// gets to settle and breathe before the fade. FADE_MS doubled so
-// the crossfade between cycles is gentler. Stagger is now a min/max
+// gets to settle and breathe before the rollout. The drop sequence
+// is followed by a rollout phase (the side walls "break", every
+// ball gets kicked outward, gravity carries them off-screen) and a
+// short rest beat before the next batch falls. Stagger is a min/max
 // range — each ball picks a random delay in that window so the
 // drop sequence varies cycle-to-cycle instead of metronoming.
 const CYCLE_MS = 9000;
-const FADE_MS = 1400;
+// Rollout phase replaces the old fade-out. Walls + floor + sleep
+// pass all switch off; every awake ball gets a one-time outward
+// kick (left half left, right half right) plus a small upward
+// pop, then gravity + ball-ball collisions carry them out past
+// the container edges. The parent card's `overflow-hidden`
+// clips them as they leave the visible area, so it reads as
+// "the bowl tipped, the balls went everywhere."
+const ROLLOUT_MS = 1100;
+// Empty beat after the rollout. Container goes blank for a moment
+// before the next batch starts dropping in — the pause is what
+// sells the "ok, that round's done, here come the next ones"
+// rhythm. Without it the drop reads as a flicker reset, not a
+// fresh cycle.
+const REST_MS = 1500;
+// Speed of the outward kick. Tuned so a ball clears its half of
+// the container in ~400ms (PHYS_W/2 ÷ kick ≈ 96/320 ≈ 0.3s) — fast
+// enough that the rollout reads as a deliberate sweep, slow enough
+// that the eye tracks individual balls leaving instead of a blur.
+const ROLLOUT_KICK_VX = 320;
+// Small vertical pop on the kick — gives each ball a slight arc as
+// it exits rather than a flat horizontal slide. Negative = upward.
+const ROLLOUT_KICK_VY = -120;
 const STAGGER_MIN_MS = 80;
 const STAGGER_MAX_MS = 320;
 
@@ -322,6 +345,11 @@ function VoteBallsRain() {
   const containerRef = useRef<HTMLSpanElement | null>(null);
   const ballRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const stateRef = useRef<BallSim[]>([]);
+  // Set true the first frame we cross into the rollout phase. The
+  // outward kick is one-shot (every awake ball gets a single push,
+  // not a per-frame nudge), so we need a flag rather than re-checking
+  // the time window. Reset on each new cycle in the useEffect below.
+  const kickedRef = useRef(false);
   // Pause the rAF loop when the balls aren't on screen. The Home tab
   // keeps this component MOUNTED when the user switches to Chat /
   // Bingo / Vote (TabPane uses display:contents/none, not unmount),
@@ -389,43 +417,71 @@ function VoteBallsRain() {
 
     let raf = 0;
     let lastT = start;
-    const cycleEnd = start + CYCLE_MS;
+    // Three phases per cycle:
+    //   t < settleEnd          → drop + bounce + sleep, the existing pile
+    //   settleEnd ≤ t < rollEnd → walls/floor off, every ball flung
+    //                              outward, gravity carries them off
+    //   rollEnd ≤ t < endTime  → empty container, no physics, no render
+    const settleEnd = start + CYCLE_MS;
+    const rollEnd = settleEnd + ROLLOUT_MS;
+    const endTime = rollEnd + REST_MS;
+    kickedRef.current = false;
 
     const step = (t: number) => {
       const dt = Math.min((t - lastT) / 1000, 0.033);
       lastT = t;
 
       const balls = stateRef.current;
+      const inSettle = t < settleEnd;
+      const inRollout = !inSettle && t < rollEnd;
+      const inRest = !inSettle && !inRollout;
 
-      // Integrate each spawned ball, then resolve walls + floor.
-      // Asleep balls skip integration entirely — once latched, they
-      // don't accept new impulses. The cleanup pass below can wake
-      // them via overlap nudges if a fresh ball lands on top of an
-      // already-settled pile, but the steady-state pile holds.
+      // Crossing into rollout — wake every ball, kick the left half
+      // left and the right half right, with a small upward pop. One-
+      // shot: kickedRef stops it from re-firing every frame.
+      if (inRollout && !kickedRef.current) {
+        kickedRef.current = true;
+        for (const b of balls) {
+          if (t < b.spawnAt) continue;
+          b.asleep = false;
+          const fromLeft = b.x < PHYS_W / 2;
+          const dir = fromLeft ? -1 : 1;
+          // ±20% randomness on the kick + an asymmetric pop so the
+          // pile doesn't read as a synchronised launch.
+          b.vx = dir * (ROLLOUT_KICK_VX + Math.random() * 120);
+          b.vy = ROLLOUT_KICK_VY - Math.random() * 80;
+        }
+      }
+
+      // Integrate each spawned ball. Walls + floor + sleep all
+      // disabled in rollout — balls are supposed to leave the box.
       for (const b of balls) {
         if (t < b.spawnAt) continue;
-        if (b.asleep) continue;
+        if (inRest) continue; // frozen, the render pass hides them
+        if (b.asleep && inSettle) continue;
         b.vy += PHYS_GRAVITY * dt;
         b.x += b.vx * dt;
         b.y += b.vy * dt;
-        // Floor bounce — settle when bouncing is below threshold.
-        if (b.y + b.r > PHYS_FLOOR) {
-          b.y = PHYS_FLOOR - b.r;
-          if (Math.abs(b.vy) > PHYS_REST_THRESHOLD) {
-            b.vy = -b.vy * PHYS_RESTITUTION_WALL;
-          } else {
-            b.vy = 0;
+        if (inSettle) {
+          // Floor bounce — settle when bouncing is below threshold.
+          if (b.y + b.r > PHYS_FLOOR) {
+            b.y = PHYS_FLOOR - b.r;
+            if (Math.abs(b.vy) > PHYS_REST_THRESHOLD) {
+              b.vy = -b.vy * PHYS_RESTITUTION_WALL;
+            } else {
+              b.vy = 0;
+            }
+            b.vx *= PHYS_HORIZONTAL_FRICTION;
+            if (Math.abs(b.vx) < 4) b.vx = 0;
           }
-          b.vx *= PHYS_HORIZONTAL_FRICTION;
-          if (Math.abs(b.vx) < 4) b.vx = 0;
-        }
-        // Walls.
-        if (b.x - b.r < 0) {
-          b.x = b.r;
-          b.vx = -b.vx * PHYS_RESTITUTION_WALL;
-        } else if (b.x + b.r > PHYS_W) {
-          b.x = PHYS_W - b.r;
-          b.vx = -b.vx * PHYS_RESTITUTION_WALL;
+          // Walls.
+          if (b.x - b.r < 0) {
+            b.x = b.r;
+            b.vx = -b.vx * PHYS_RESTITUTION_WALL;
+          } else if (b.x + b.r > PHYS_W) {
+            b.x = PHYS_W - b.r;
+            b.vx = -b.vx * PHYS_RESTITUTION_WALL;
+          }
         }
       }
 
@@ -433,7 +489,10 @@ function VoteBallsRain() {
       // along the contact normal, then exchange the normal component
       // of velocity for a soft elastic-ish bounce. Three passes so a
       // ball wedged between two others doesn't poke through — and so
-      // a settling pile has enough time to converge.
+      // a settling pile has enough time to converge. Skipped during
+      // the rest beat (no movement to resolve) and during settle's
+      // asleep-on-asleep pairs.
+      if (!inRest)
       for (let pass = 0; pass < 3; pass++) {
         for (let i = 0; i < balls.length; i++) {
           const a = balls[i];
@@ -498,7 +557,11 @@ function VoteBallsRain() {
         }
       }
 
-      // Sleep pass — two paths to rest:
+      // Sleep pass only runs in the settle phase. During rollout
+      // every ball is awake by design (pinning would freeze the
+      // outward kick mid-flight); during rest there's nothing to
+      // sleep against.
+      //
       //   1. Natural settle: ball on the floor with speed under the
       //      sleep threshold for N consecutive frames. The decrement
       //      (slowFrames -= 2 on a fast frame) is gentler than a
@@ -511,49 +574,52 @@ function VoteBallsRain() {
       //      where two awake balls keep trading micro-impulses
       //      without either crossing the speed threshold.
       const elapsed = t - start;
-      const forceSleep = elapsed >= PHYS_FORCE_SLEEP_AT_MS;
-      for (const b of balls) {
-        if (t < b.spawnAt) continue;
-        if (b.asleep) continue;
-        if (forceSleep) {
-          b.asleep = true;
-          b.vx = 0;
-          b.vy = 0;
-          if (b.y + b.r > PHYS_FLOOR) b.y = PHYS_FLOOR - b.r;
-          continue;
-        }
-        const onFloor = b.y + b.r >= PHYS_FLOOR - 0.5;
-        const speed = Math.hypot(b.vx, b.vy);
-        if (onFloor && speed < PHYS_SLEEP_SPEED) {
-          b.slowFrames += 1;
-          if (b.slowFrames >= PHYS_SLEEP_FRAMES) {
+      if (inSettle) {
+        const forceSleep = elapsed >= PHYS_FORCE_SLEEP_AT_MS;
+        for (const b of balls) {
+          if (t < b.spawnAt) continue;
+          if (b.asleep) continue;
+          if (forceSleep) {
             b.asleep = true;
             b.vx = 0;
             b.vy = 0;
-            b.y = PHYS_FLOOR - b.r;
+            if (b.y + b.r > PHYS_FLOOR) b.y = PHYS_FLOOR - b.r;
+            continue;
           }
-        } else {
-          b.slowFrames = Math.max(0, b.slowFrames - 2);
+          const onFloor = b.y + b.r >= PHYS_FLOOR - 0.5;
+          const speed = Math.hypot(b.vx, b.vy);
+          if (onFloor && speed < PHYS_SLEEP_SPEED) {
+            b.slowFrames += 1;
+            if (b.slowFrames >= PHYS_SLEEP_FRAMES) {
+              b.asleep = true;
+              b.vx = 0;
+              b.vy = 0;
+              b.y = PHYS_FLOOR - b.r;
+            }
+          } else {
+            b.slowFrames = Math.max(0, b.slowFrames - 2);
+          }
         }
       }
 
       // Write to DOM directly — no React render per frame.
-      const timeUntilEnd = cycleEnd - t;
-      const fadeAlpha =
-        timeUntilEnd < FADE_MS ? Math.max(0, timeUntilEnd / FADE_MS) : 1;
+      // Rest beat: hide everything (the empty container is the whole
+      // point of the pause). Rollout + settle render at full opacity
+      // — the parent card's overflow-hidden handles the off-screen
+      // clipping for balls that have rolled past the bounds.
       for (let i = 0; i < balls.length; i++) {
         const el = ballRefs.current[i];
         if (!el) continue;
         const b = balls[i];
-        if (t < b.spawnAt) {
+        if (t < b.spawnAt || inRest) {
           el.style.opacity = "0";
         } else {
-          el.style.opacity = String(fadeAlpha);
+          el.style.opacity = "1";
           el.style.transform = `translate(${b.x - b.r}px, ${b.y - b.r}px)`;
         }
       }
 
-      if (t < cycleEnd) {
+      if (t < endTime) {
         raf = requestAnimationFrame(step);
       } else {
         setCycle((c) => c + 1);
