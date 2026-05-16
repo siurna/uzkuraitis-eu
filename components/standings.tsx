@@ -97,14 +97,16 @@ export function Standings() {
   if (!votingEnabled && !tallyEnabled) return null;
 
   return (
-    <main className="container mx-auto max-w-3xl px-4">
+    <main id="standings" className="container mx-auto max-w-3xl px-4 scroll-mt-16">
       {/* Widget surface — a calm dark wrapper instead of the loose-rows
           + rainbow-gradient title we had. The home page is rich with
           colour banners above (vote hero, bingo, vs-room, bonus); the
           TOP 5 sits between those and the quieter "akcentai / who's
           here" stack below, so it needs to dial back the saturation
           without disappearing. Single ring + a faint top gloss is
-          enough. */}
+          enough. The `#standings` anchor moved up from a wrapper in
+          home-panel.tsx so that anchor doesn't leave a phantom 16px
+          gap on rooms where the widget self-hides. */}
       <section
         className="relative overflow-hidden rounded-3xl ring-1 ring-white/10
                    bg-gradient-to-b from-dark-blue-900/85 to-dark-blue-900/65

@@ -16,9 +16,14 @@ export function HomePanel() {
   return (
     <div className="flex flex-col gap-4 pt-3 pb-8">
       <HomeBanners />
-      <div id="standings" className="scroll-mt-16">
-        <Standings />
-      </div>
+      {/* The Standings widget self-hides when there's nothing live to
+          show (no voting, no tally) — render it as a direct child of
+          the flex column so its `return null` collapses cleanly out
+          of the gap chain. An outer `<div id="standings">` here would
+          still occupy a 16px gap even when the inner returned null.
+          The `#standings` anchor + scroll margin now lives on the
+          widget's own root <section> inside components/standings.tsx. */}
+      <Standings />
       <Highlights />
       <NotificationsCta />
       <WhosHere />

@@ -62,6 +62,18 @@ export async function POST(request: Request, { params }: RouteCtx) {
       { status: 403 },
     );
   }
+  // CHEAT GUARD: once results have been revealed (tallyEnabled), no
+  // more ballot writes accepted. Without this, a voter who polled
+  // the public leaderboard after the host typed in placements but
+  // before flipping the reveal could rewrite their ballot + bets to
+  // match the truth and top the score. votingEnabled SHOULD flip in
+  // lockstep with tallyEnabled, but belt + braces.
+  if (room.tallyEnabled) {
+    return NextResponse.json(
+      { error: "Results are in — ballots are locked." },
+      { status: 403 },
+    );
+  }
 
   let body: unknown;
   try {
@@ -120,6 +132,43 @@ export async function POST(request: Request, { params }: RouteCtx) {
       );
     }
     used.add(code);
+  }
+
+  // Same guard for every side-bet country code. Earlier rev only
+  // validated the ballot, leaving the bet picker open to "save
+  // anything that fits z.string().min(2).max(4)". A client that
+  // skipped the picker UI could store `"zz"` (silently 0 at tally)
+  // or `"es"` for highestBig5 (Spain is out this year — would also
+  // silently 0). Anything that reaches scoring should be a real
+  // country code already, so blow up at the boundary instead.
+  const NULL_BET_TOKENS = new Set(["NONE"]); // sentinel for nul-points "no country" bet
+  const betCodeFields = [
+    ["woodenSpoon", bets.woodenSpoon] as const,
+    ["lt12To", bets.lt12To] as const,
+    ["highestBig5", bets.highestBig5] as const,
+    ["juryWinner", bets.juryWinner] as const,
+    ["televoteWinner", bets.televoteWinner] as const,
+  ];
+  for (const [field, code] of betCodeFields) {
+    if (!code) continue;
+    if (!validCodes.has(code)) {
+      return NextResponse.json(
+        { error: `Unknown country code on ${field}: ${code}` },
+        { status: 400 },
+      );
+    }
+  }
+  if (bets.nulTelevote) {
+    for (const code of bets.nulTelevote) {
+      if (!code) continue;
+      if (NULL_BET_TOKENS.has(code)) continue;
+      if (!validCodes.has(code)) {
+        return NextResponse.json(
+          { error: `Unknown country code on nulTelevote: ${code}` },
+          { status: 400 },
+        );
+      }
+    }
   }
 
   // Upsert voter on (room_id, session_id) AND derive "first cast" from

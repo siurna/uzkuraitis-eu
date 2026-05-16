@@ -5,9 +5,11 @@ import { chatMessages, chatReactions } from "@/lib/db/schema";
 import { findRoomByCode } from "@/lib/rooms";
 
 // "Highlights of the evening" — the chat messages that collected enough
-// reactions to be worth re-surfacing on the Home tab. Threshold + cap
-// are deliberately small; this isn't a feed.
-const THRESHOLD = 5;
+// reactions to be worth re-surfacing on the Home tab. Threshold is
+// per-room (rooms.highlightThreshold, configurable from /admin) with
+// a sensible 5-reaction default; the leaderboard + profile routes
+// already honour the same column, this rail was hard-coded.
+const DEFAULT_THRESHOLD = 5;
 const LIMIT = 12;
 
 type RouteCtx = { params: Promise<{ code: string }> };
@@ -16,6 +18,7 @@ export async function GET(_req: Request, { params }: RouteCtx) {
   const { code } = await params;
   const room = await findRoomByCode(code);
   if (!room) return NextResponse.json({ error: "Room not found" }, { status: 404 });
+  const threshold = room.highlightThreshold ?? DEFAULT_THRESHOLD;
 
   const reactionCount = sql<number>`count(${chatReactions.messageId})`;
   const rows = await db
@@ -34,7 +37,7 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     .leftJoin(chatReactions, eq(chatReactions.messageId, chatMessages.id))
     .where(eq(chatMessages.roomId, room.id))
     .groupBy(chatMessages.id)
-    .having(sql`count(${chatReactions.messageId}) >= ${THRESHOLD}`)
+    .having(sql`count(${chatReactions.messageId}) >= ${threshold}`)
     .orderBy(desc(reactionCount), desc(chatMessages.createdAt))
     .limit(LIMIT);
 

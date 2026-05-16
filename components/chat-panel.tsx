@@ -191,6 +191,15 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   // rows; otherwise the next live event would yank the paginated
   // history out from under the reader.
   const loadedHistoryRef = useRef(0);
+  // Pending `meta.firesAt` timers, keyed by message id. The server
+  // holds commentator/trivia messages off-screen until the now-
+  // playing takeover finishes (~5.5s); we schedule the append via
+  // setTimeout. Tracking the timeouts here lets us cancel them
+  // when the room unmounts (no setState on a dead tree) AND when
+  // a `chat:delete` for that id lands before the timer fires
+  // (otherwise the deleted message would still pop up later, with
+  // no way to remove it short of a refetch).
+  const firesAtTimers = useRef<Map<string, number>>(new Map());
   // Map of sessionId → { name, lastStart } for everyone currently
   // typing (driven by `typing:start` / `typing:stop` broadcasts).
   // A periodic sweep auto-clears entries older than TYPING_STALE_MS
@@ -485,6 +494,17 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
     };
   }, [messages, code]);
 
+  // Unmount: cancel every still-pending firesAt timer so deferred
+  // setMessages calls don't fire on a dead component (and so a room
+  // switch doesn't leak a 5s ghost message into the next room).
+  useEffect(() => {
+    const timers = firesAtTimers.current;
+    return () => {
+      for (const t of timers.values()) window.clearTimeout(t);
+      timers.clear();
+    };
+  }, []);
+
   // Track the visual viewport's height while the chat tab is
   // active. The keyboard-up branch of the panel (dockHidden) needs
   // EXACTLY the above-keyboard height — `100lvh` is the full layout
@@ -623,7 +643,17 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
       name?: string;
     };
     if (ev.type === "chat:delete") {
-      if (ev.id) setMessages((prev) => prev.filter((m) => m.id !== ev.id));
+      if (ev.id) {
+        // Cancel any pending `firesAt` timer for this id so a
+        // delete-before-fire doesn't get overruled by the setTimeout
+        // popping ~5s later.
+        const pending = firesAtTimers.current.get(ev.id);
+        if (pending) {
+          window.clearTimeout(pending);
+          firesAtTimers.current.delete(ev.id);
+        }
+        setMessages((prev) => prev.filter((m) => m.id !== ev.id));
+      }
       return;
     }
     if (ev.type === "chat:new") {
@@ -643,11 +673,10 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
         if (firesAt) {
           const delay = Date.parse(firesAt) - Date.now();
           if (delay > 0) {
-            window.setTimeout(() => {
-              // Re-dispatch as a synthetic chat:new at fires-at time.
-              // No coupling to the broadcast pipeline — we just want
-              // this branch to run again with the delay passed, so
-              // we open-code an append here mirroring the path below.
+            // Tracked timer so `chat:delete` + component unmount can
+            // cancel it (see firesAtTimers above).
+            const timer = window.setTimeout(() => {
+              firesAtTimers.current.delete(m.id);
               setMessages((prev) => {
                 if (prev.some((x) => x.id === m.id)) return prev;
                 const appended: Message = {
@@ -667,6 +696,7 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
                 return [...prev, appended].slice(-cap);
               });
             }, delay);
+            firesAtTimers.current.set(m.id, timer);
             return;
           }
         }
@@ -690,7 +720,16 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
             // texts in a row don't mis-pair. `pending=true` is the
             // hard gate; the temporal window is the tiebreaker.
             const arrived = Date.parse(m.createdAt);
-            const TEMPORAL_MATCH_MS = 1_500;
+            // 8s window. Earlier 1.5s tripped under climax load: a
+            // cold-start Vercel route + Supabase DB insert + Realtime
+            // fan-out could exceed 1.5s round-trip, in which case the
+            // broadcast echo didn't pair with the optimistic row and
+            // the author saw their message twice. Body equality (for
+            // text kind) is the real dedup signal; the window only
+            // disambiguates two identical texts typed back-to-back,
+            // and humans don't physically type the same message twice
+            // inside 8 seconds.
+            const TEMPORAL_MATCH_MS = 8_000;
             // Defensive: text-kind dedup REQUIRES both sides to
             // have a real body. Two null-body rows of any
             // unrelated origin (impossible today, but cheap to

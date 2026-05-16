@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { getAvatar } from "@/lib/avatars";
 import { optimizedSrc } from "@/lib/img";
@@ -72,7 +72,14 @@ export function WhosHere() {
   const lang = useLang();
   const { open: openProfile } = useProfile();
   const { code: roomCode } = useRoomLive();
-  const mySession = ensureSessionId();
+  // `ensureSessionId()` reads localStorage so calling it in render
+  // would tear: the server returns `""` (no localStorage on the
+  // server) while the client returns the real id, and the
+  // `isSelf` / `ring-flamingo` derivation on each bubble would
+  // flip on the very first paint. Pull it once in a post-mount
+  // effect so the first client render matches the server one.
+  const [mySession, setMySession] = useState("");
+  useEffect(() => setMySession(ensureSessionId()), []);
   // Participants from the REST poll (driven by every viewer's
   // heartbeat). Source of truth for who's here — replaced the
   // Supabase Realtime presence flow that kept getting rate-limited.

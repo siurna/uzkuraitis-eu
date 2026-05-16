@@ -20,19 +20,25 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     tallyEnabled: room.tallyEnabled,
     highlightThreshold: room.highlightThreshold,
   });
-  // `placements` always rides along, even on the pre-reveal shape:
-  // ThanksCard's winning-country heart pulls placement #1 the moment
-  // the admin enters results, regardless of whether tallyEnabled has
-  // been flipped yet. The leaderboard ROWS themselves still wait on
-  // hasResults downstream (empty list, no per-voter scores leak).
+  // CHEAT GUARD: pre-tally, every piece of result data is scrubbed
+  // from this public response. Earlier we rode `placements` + `facts`
+  // along on the unrevealed shape so the ThanksCard's winning-country
+  // heart could pulse the moment the admin saved a placement — but
+  // any anonymous poller could read placements + lt_total_points +
+  // jury_winner + etc the second they hit the admin's table, then
+  // overwrite their own ballot and side bets with the truth. Ballots
+  // remain editable until tallyEnabled flips (see votes/route.ts
+  // for the matching server-side block), so the leak was a real
+  // game-integrity bug. ThanksCard now fires post-tally only, which
+  // is the canonical "results are in" moment anyway.
   const body = !result.hasResults
     ? {
         hasResults: false as const,
         tallyEnabled: result.tallyEnabled,
         homeCountryCode: result.homeCountryCode,
-        homeCountryOfficialPlacement: result.homeCountryOfficialPlacement,
-        placements: result.placements,
-        facts: result.facts,
+        homeCountryOfficialPlacement: null,
+        placements: {},
+        facts: {},
         leaderboard: [],
       }
     : {

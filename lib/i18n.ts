@@ -497,7 +497,7 @@ const S = {
   bet_lt_12_to:          { en: "12 points from {home}", lt: "{home} 12 taškų skirs..." },
   bet_lt_12_to_sub:      { en: "Which country gets {home}'s 12 points?", lt: "Kuriai šaliai {home} skirs savo 12 taškų?" },
   bet_big5:              { en: "Best of the Big 5", lt: "Geriausias iš Big 5" },
-  bet_big5_sub:          { en: "UK, Germany, France, Italy or Spain, which finishes highest? Within two spots also scores.", lt: "Iš JK, Vokietijos, Prancūzijos, Italijos, Ispanijos (haha), kas finišuos aukščiausiai? Pataikius per 2 vietas, dalis taškų vis tiek." },
+  bet_big5_sub:          { en: "UK, Germany, France or Italy, which finishes highest? Within two spots also scores.", lt: "Iš JK, Vokietijos, Prancūzijos, Italijos, kas finišuos aukščiausiai? Pataikius per 2 vietas, dalis taškų vis tiek." },
   bet_jury_winner:       { en: "Jury winner", lt: "Žiuri nugalėtojas" },
   bet_jury_winner_sub:   { en: "Country with the highest jury total.", lt: "Šalis, kuri surinks daugiausiai žiuri taškų." },
   bet_televote_winner:   { en: "Televote winner", lt: "Žiūrovų nugalėtojas" },

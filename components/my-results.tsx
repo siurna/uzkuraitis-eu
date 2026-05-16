@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { useRoomLive, useRoomTab } from "@/components/room-shell";
 import { useLeaderboard } from "@/components/leaderboard-provider";
@@ -24,9 +25,16 @@ export function MyResults() {
   const lang = useLang();
   const { payload } = useLeaderboard();
 
+  // `ensureSessionId()` reads localStorage and returns "" on the
+  // server but a real id on the client. Reading it in render would
+  // tear the "is this me?" derivation between SSR and CSR. Pull
+  // it once in a post-mount effect; the row stays unhighlighted
+  // for a single client frame, which is invisible.
+  const [session, setSession] = useState("");
+  useEffect(() => setSession(ensureSessionId()), []);
+
   if (!tallyEnabled || !payload || payload.leaderboard.length === 0) return null;
   const rows = payload.leaderboard;
-  const session = ensureSessionId();
   const idx = rows.findIndex((r) => r.sessionId === session);
   const me = idx >= 0 ? rows[idx] : null;
   const rank = idx >= 0 ? idx + 1 : 0;

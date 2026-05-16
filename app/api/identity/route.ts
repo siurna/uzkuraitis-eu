@@ -6,6 +6,7 @@ import {
   RESERVED_SESSIONS,
 } from "@/lib/session-auth";
 import { SESSION_COOKIE_NAME } from "@/lib/server-session";
+import { checkAndIncrement } from "@/lib/rate-limit";
 
 // POST /api/identity
 //
@@ -44,6 +45,31 @@ export async function POST(req: Request) {
       { error: "Reserved session id" },
       { status: 400 },
     );
+  }
+
+  // SHOW-DAY GUARD: cap signed-session minting per IP. Without this,
+  // a hostile client rolling fresh sessionIds + posting one for each
+  // could bypass the per-session chat / vote / reaction rate limits
+  // entirely (the rate-limit bucket key is the sessionId, so each
+  // fresh one was a fresh bucket). 20 fresh sessions per IP per
+  // minute is generous for normal use (a phone + tablet + laptop
+  // and a few reloads) while making any practical flood pathway
+  // arithmetically uninteresting. Falls back open if the rate-limit
+  // table is unreachable rather than locking real users out.
+  try {
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
+    const rl = await checkAndIncrement(`identity:${ip}`, 20, 60_000);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Slow down — too many session refreshes." },
+        { status: 429 },
+      );
+    }
+  } catch {
+    /* table down, fail open */
   }
 
   const token = signSession(sessionId);

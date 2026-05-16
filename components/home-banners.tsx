@@ -12,6 +12,7 @@ import { buildBingoCard, FREE_SQUARE, tropeEmoji, tropeText } from "@/lib/bingo-
 import { HeartFlag } from "@/components/flag";
 import { FluentEmoji } from "@/components/fluent-emoji";
 import { MyResults } from "@/components/my-results";
+import { useLeaderboard } from "@/components/leaderboard-provider";
 import { t, type Language } from "@/lib/i18n";
 import { useLang } from "@/lib/i18n-client";
 
@@ -743,6 +744,14 @@ export function HomeBanners() {
   const { code, votingEnabled, tallyEnabled, nowPlayingCode, showStatus, runningOrderPos } = useRoomLive();
   const lang = useLang();
   const { setTab } = useRoomTab();
+  // Read the leaderboard payload here (not just inside MyResults) so
+  // we can gate the motion.div wrapper on whether MyResults will
+  // actually render content. Otherwise the wrapper renders an empty
+  // <div> that still occupies the parent's `flex-col gap-3` slot —
+  // a 12px phantom gap above the next banner.
+  const { payload: leaderboardPayload } = useLeaderboard();
+  const myResultsReady =
+    tallyEnabled && !!leaderboardPayload && leaderboardPayload.leaderboard.length > 0;
 
   const [voted, setVoted] = useState(false);
   const [betsCount, setBetsCount] = useState(0);
@@ -872,12 +881,14 @@ export function HomeBanners() {
         ) : null}
 
         {/* Results widget — first card UNDER the now-playing / vote
-            hero. Gated on `tallyEnabled` at THIS level instead of
-            inside <MyResults/> so the motion.div wrapper isn't
-            rendered as an empty box when results are off — an empty
-            <div> still counts toward the parent `flex-col gap-3`,
-            leaving a phantom 12px slot above the next banner. */}
-        {tallyEnabled && (
+            hero. Gated on `tallyEnabled` AND the live leaderboard
+            payload having actual rows: MyResults itself bails to
+            null while the payload is still in flight (fetch race
+            between tab open + first event), and the motion.div
+            wrapper was filling that window with a 12px phantom
+            gap above the next banner. Lifting both checks here
+            keeps the wrapper out of the DOM entirely. */}
+        {myResultsReady && (
           <motion.div key="my-results-inline" {...BANNER_MOTION}>
             <MyResults />
           </motion.div>
