@@ -235,9 +235,19 @@ export async function postResultsMessage(
       // No scoreable data yet — fall back to the plain announcement.
       return await postSystemMessage(roomCode, room.id, { key: "sys_results_in" });
     }
-    const podium = leaderboard.slice(0, 3).map((r) => ({ name: r.name, total: r.total }));
+    // Top 5 (was top 3) — broadcasted to the chat results card. We
+    // carry sessionId per entry so the client can highlight a "you"
+    // row by id (immune to duplicate names) without needing a live
+    // leaderboard lookup. The body fallback (used by screen readers
+    // and chat-row's no-meta path) still reads the top 3 to keep
+    // the spoken line short.
+    const podium = leaderboard.slice(0, 5).map((r) => ({
+      name: r.name,
+      total: r.total,
+      sessionId: r.sessionId,
+    }));
     const body =
-      "🏆 " + podium.map((p, i) => `${i + 1}. ${p.name} (${p.total})`).join(" · ");
+      "🏆 " + podium.slice(0, 3).map((p, i) => `${i + 1}. ${p.name} (${p.total})`).join(" · ");
     const [row] = await db
       .insert(chatMessages)
       .values({ roomId: room.id, sessionId: "system", name: "system", kind: "results", body, meta: { podium } })

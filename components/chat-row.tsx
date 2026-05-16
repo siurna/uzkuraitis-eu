@@ -13,6 +13,7 @@ import { HeartFlag } from "@/components/flag";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { ChatBroadcastCard } from "@/components/chat-broadcast-cards";
 import { useRoomTab } from "@/components/room-shell";
+import { useLeaderboard } from "@/components/leaderboard-provider";
 import { useCountryDeepDive } from "@/components/country-deep-dive";
 import { useProfile, prefetchProfile } from "@/components/profile-sheet";
 import { ensureSessionId } from "@/lib/use-identity";
@@ -482,6 +483,7 @@ function ChatRowInner({
   const profile = useProfile();
   const particles = useParticles();
   const roomTab = useRoomTab();
+  const leaderboard = useLeaderboard();
   const translateOn = useTranslateEnabled();
   const beginnerOn = useBeginnerEnabled();
   const lastTap = useRef(0); // for double-tap-a-text-bubble → ❤️
@@ -649,13 +651,41 @@ function ChatRowInner({
   }
 
   if (isResults) {
-    const podium = ((m.meta as { podium?: { name: string; total: number }[] } | null)?.podium ?? []).slice(0, 3);
-    const medals = ["🥇", "🥈", "🥉"];
+    // Scoreboard tape — top 5 of the room with bars sized to #1's
+    // score. Live leaderboard is preferred (it stays in sync with
+    // any post-tally facts-edit); the frozen `meta.podium` snapshot
+    // is the fallback when the leaderboard payload hasn't landed
+    // yet OR for legacy messages posted before we expanded the
+    // snapshot from top 3 to top 5.
+    const liveRows = leaderboard.payload?.leaderboard ?? [];
+    const liveTop = liveRows.slice(0, 5).map((r) => ({
+      name: r.name,
+      total: r.total,
+      sessionId: r.sessionId,
+    }));
+    const metaTop = (
+      (m.meta as {
+        podium?: { name: string; total: number; sessionId?: string }[];
+      } | null)?.podium ?? []
+    ).slice(0, 5);
+    const top = liveTop.length > 0 ? liveTop : metaTop;
+    const session = ensureSessionId();
+    // Me's actual row in the LIVE leaderboard — used for the "YOU"
+    // highlight + the outside-top-5 footer. We don't fall back to
+    // meta here: a snapshot would lie about your current rank if
+    // the host re-tallied after the card was posted.
+    const myIdx = liveRows.findIndex((r) => r.sessionId === session);
+    const myRank = myIdx >= 0 ? myIdx + 1 : 0;
+    const meRow = myIdx >= 0 ? liveRows[myIdx] : null;
+    const meInTop = myIdx >= 0 && myIdx < 5;
+
     // Bar widths scale relative to the #1's score so the eye can read
-    // "how close are 2nd/3rd to the leader" without doing math.
-    const top = podium[0]?.total ?? 1;
+    // "how close is everyone else to the leader" without doing math.
+    // Floor at 8% so even a 0-pt row leaves a visible sliver (the
+    // rank still matters when the score doesn't).
+    const topScore = Math.max(1, top[0]?.total ?? 1);
     const widthFor = (n: number) =>
-      `${Math.max(20, Math.min(100, (n / top) * 100))}%`;
+      `${Math.max(8, Math.min(100, (n / topScore) * 100))}%`;
     // "Your breakdown" makes no sense if you didn't cast a ballot;
     // disable it. Local-only check via the localStorage flag the vote
     // form sets.
@@ -692,46 +722,113 @@ function ChatRowInner({
               </p>
             </header>
 
-            {podium.length > 0 ? (
+            {top.length > 0 ? (
               <ol className="flex flex-col gap-2">
-                {podium.map((p, i) => (
-                  <li key={i} className="relative">
-                    <div className="flex items-center gap-2 mb-1">
-                      <FluentEmoji glyph={medals[i]} size={18} className="shrink-0" />
-                      {/* Bigger name as the user asked: text-base
-                          (was text-sm) + drop-shadow for legibility on
-                          the gradient bar that sits behind it. */}
-                      <span className="font-display text-base text-white truncate flex-1 drop-shadow-sm">
-                        {p.name}
-                      </span>
-                    </div>
-                    <div className="relative h-7 rounded-lg overflow-hidden bg-white/15">
-                      <motion.div
-                        className={`absolute inset-y-0 left-0 rounded-lg
-                                    ${
-                                      i === 0
-                                        ? "bg-gradient-to-r from-yellow to-orange shadow-[0_0_18px_rgba(245,163,2,0.5)]"
-                                        : i === 1
-                                          ? "bg-white/55"
-                                          : "bg-orange/60"
-                                    }`}
-                        initial={{ width: 0 }}
-                        animate={{ width: widthFor(p.total) }}
-                        transition={{ duration: 0.7, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
-                      />
-                      {/* Score lives ON the bar — embedded in the chip
-                          itself rather than floating to the right, so
-                          the bar's width carries the "how far ahead"
-                          signal cleanly. */}
-                      <span className="absolute inset-y-0 right-2 flex items-center font-display tabular-nums text-sm text-white drop-shadow-sm">
-                        {p.total}
-                      </span>
-                    </div>
-                  </li>
-                ))}
+                {top.map((p, i) => {
+                  const rank = i + 1;
+                  const medal =
+                    rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : null;
+                  const isMe =
+                    "sessionId" in p &&
+                    p.sessionId != null &&
+                    p.sessionId === session;
+                  // Bar palette per rank — gold for #1, silver-ish
+                  // #2, bronze-ish #3, then two quieter shades. The
+                  // "me" row swaps in a brighter white-tipped
+                  // gradient regardless of rank so the eye lands
+                  // there first.
+                  const barClass = isMe
+                    ? "bg-gradient-to-r from-white to-yellow shadow-[0_0_20px_rgba(255,255,255,0.55)]"
+                    : rank === 1
+                      ? "bg-gradient-to-r from-yellow to-orange shadow-[0_0_18px_rgba(245,163,2,0.5)]"
+                      : rank === 2
+                        ? "bg-white/55"
+                        : rank === 3
+                          ? "bg-orange/60"
+                          : rank === 4
+                            ? "bg-white/35"
+                            : "bg-white/25";
+                  return (
+                    <li key={i} className="relative">
+                      <div className="flex items-center gap-2 mb-1">
+                        {medal ? (
+                          <FluentEmoji
+                            glyph={medal}
+                            size={18}
+                            className="shrink-0"
+                          />
+                        ) : (
+                          // Ranks 4/5 don't have a Fluent medal —
+                          // a tabular numeral chip keeps the row
+                          // height + leading-edge alignment matching
+                          // the medal rows.
+                          <span className="shrink-0 grid place-items-center h-[18px] w-[18px] rounded-full bg-white/15 text-[10px] text-white/80 font-display tabular-nums">
+                            {rank}
+                          </span>
+                        )}
+                        <span
+                          className={`font-display text-base truncate flex-1 drop-shadow-sm ${
+                            isMe ? "text-white" : "text-white"
+                          }`}
+                        >
+                          {p.name}
+                          {isMe && (
+                            <span className="ml-1.5 text-[10px] uppercase tracking-[0.2em] text-white/70 font-display">
+                              · {t(lang, "results_you_label")}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div
+                        className={`relative h-7 rounded-lg overflow-hidden bg-white/15 ${
+                          isMe ? "ring-1 ring-white/55" : ""
+                        }`}
+                      >
+                        <motion.div
+                          className={`absolute inset-y-0 left-0 rounded-lg ${barClass}`}
+                          initial={{ width: 0 }}
+                          animate={{ width: widthFor(p.total) }}
+                          transition={{
+                            duration: 0.7,
+                            delay: i * 0.08,
+                            ease: [0.22, 1, 0.36, 1],
+                          }}
+                        />
+                        {/* Score embedded on the bar — width carries
+                            the "how far ahead" signal, the number
+                            spells it out. */}
+                        <span className="absolute inset-y-0 right-2 flex items-center font-display tabular-nums text-sm text-white drop-shadow-sm">
+                          {p.total}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
               </ol>
             ) : (
               <p className="text-sm text-white/85">{m.body}</p>
+            )}
+
+            {/* Outside-top-5 footer — only when the live leaderboard
+                actually loaded AND the viewer placed below 5th. Keeps
+                "where did I land?" inside the card so the moderator
+                doesn't have to tap through to the Results tab. */}
+            {!meInTop && meRow && (
+              <div className="flex items-center gap-2 rounded-xl bg-white/10 ring-1 ring-white/18 px-3 py-2">
+                <span className="text-[10px] uppercase tracking-[0.22em] text-white/70 font-display">
+                  {t(lang, "results_you_label")}
+                </span>
+                <span className="text-sm text-white font-display tabular-nums">
+                  #{myRank}
+                </span>
+                <span className="text-white/55">·</span>
+                <span className="flex-1 truncate text-sm text-white/85 font-display">
+                  {meRow.name}
+                </span>
+                <span className="shrink-0 text-sm text-white font-display tabular-nums">
+                  {meRow.total} {t(lang, "pts_short")}
+                </span>
+              </div>
             )}
 
             <div className="flex gap-2">
