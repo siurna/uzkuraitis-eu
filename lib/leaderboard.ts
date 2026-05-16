@@ -84,11 +84,58 @@ export type RoomLeaderboard = {
   leaderboard: LeaderboardRow[];
 };
 
+// SHOW-DAY HOTPATCH: in-memory per-Lambda cache of the computed
+// leaderboard. The endpoint was timing out (>60s) under climax load
+// — many viewers + admin retallies + the chat-message × reactions
+// JOIN aggregate (highlights) all hitting the same compute path.
+// Vercel's CDN dedups concurrent requests for the same URL but only
+// AFTER the first compute finishes; if the first compute hangs, all
+// the queued viewers timeout together. Warm Lambdas can now return
+// from RAM in <1ms for `LEADERBOARD_TTL_MS` after a successful
+// compute, which buys time even when the CDN cache is cold or
+// being revalidated. Cache is best-effort — the durable data
+// still lives in Postgres and the response shape is identical to
+// a fresh compute.
+const LEADERBOARD_TTL_MS = 30_000;
+const inflight = new Map<string, Promise<RoomLeaderboard>>();
+const memo = new Map<string, { result: RoomLeaderboard; expiresAt: number }>();
+
+export function bustRoomLeaderboardCache(roomId: string): void {
+  memo.delete(roomId);
+  inflight.delete(roomId);
+}
+
 export async function computeRoomLeaderboard(room: {
   id: string;
   homeCountryCode: string;
   tallyEnabled: boolean;
   /** Per-room override; falls back to global HIGHLIGHT_THRESHOLD. */
+  highlightThreshold?: number | null;
+}): Promise<RoomLeaderboard> {
+  const cached = memo.get(room.id);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.result;
+  }
+  // Single-flight: if a compute is already in flight for this room
+  // on this Lambda, wait for it instead of starting another one.
+  const pending = inflight.get(room.id);
+  if (pending) return pending;
+  const promise = computeRoomLeaderboardImpl(room).then((result) => {
+    memo.set(room.id, { result, expiresAt: Date.now() + LEADERBOARD_TTL_MS });
+    inflight.delete(room.id);
+    return result;
+  }, (err) => {
+    inflight.delete(room.id);
+    throw err;
+  });
+  inflight.set(room.id, promise);
+  return promise;
+}
+
+async function computeRoomLeaderboardImpl(room: {
+  id: string;
+  homeCountryCode: string;
+  tallyEnabled: boolean;
   highlightThreshold?: number | null;
 }): Promise<RoomLeaderboard> {
   const threshold = room.highlightThreshold ?? HIGHLIGHT_THRESHOLD;
