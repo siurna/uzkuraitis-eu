@@ -269,6 +269,75 @@ function RoomBody({ children }: { children: React.ReactNode }) {
     };
   }, [code]);
 
+  // Per-room identity restore. If `localStorage` is missing this
+  // user's name / avatar / "you voted" flag — typical after an iOS
+  // storage-tier eviction where the cookie survived but local
+  // didn't — pull the voter row's persisted copy from the server
+  // and re-hydrate. Without this, a cookie-restored viewer would
+  // bounce to the name-gate on every reload even though their
+  // voter row still names them on the backend.
+  useEffect(() => {
+    if (!code) return;
+    let name = "";
+    let avatarId = "";
+    try {
+      name = localStorage.getItem("uzk_name") ?? "";
+      avatarId = localStorage.getItem("uzk_avatar") ?? "";
+    } catch {
+      /* private mode — fall through to fetch anyway */
+    }
+    if (name && avatarId) return;
+    let aborted = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/rooms/${code}/my-identity`, {
+          cache: "no-store",
+        });
+        if (!res.ok || aborted) return;
+        const data = (await res.json().catch(() => null)) as
+          | {
+              name?: string | null;
+              avatarId?: string | null;
+              voted?: boolean;
+            }
+          | null;
+        if (!data || aborted) return;
+        let dirty = false;
+        try {
+          if (data.name && !name) {
+            localStorage.setItem("uzk_name", data.name);
+            dirty = true;
+          }
+          if (data.avatarId && !avatarId) {
+            localStorage.setItem("uzk_avatar", data.avatarId);
+            dirty = true;
+          }
+          if (data.voted) {
+            // Mirror the post-vote flag so the Vote tab CTA reads
+            // "you've voted" instead of "cast your TOP 10" without
+            // a refresh round-trip.
+            const had = localStorage.getItem(`uzk_voted_${code}`);
+            if (!had) {
+              localStorage.setItem(`uzk_voted_${code}`, "1");
+              dirty = true;
+            }
+          }
+        } catch {
+          /* private mode — cookie alone is enough server-side */
+        }
+        if (dirty) {
+          window.dispatchEvent(new Event("uzk:avatar-change"));
+        }
+      } catch {
+        /* network blip; the name gate will appear if local is empty,
+           which is the correct fallback */
+      }
+    })();
+    return () => {
+      aborted = true;
+    };
+  }, [code]);
+
   const [tab, setTabState] = useState<RoomTab>("home");
   const [visited, setVisited] = useState<ReadonlySet<RoomTab>>(
     () => new Set<RoomTab>(["home"]),

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { AppToaster } from "@/components/app-toaster";
 import { PageTransition } from "@/components/page-transition";
+import { IdentityProvider } from "@/components/identity-provider";
 
 // Icon bucket on Supabase Storage — the PNGs aren't checked in so the
 // repo stays light. Browsers (and the install-prompt sheet) fetch
@@ -93,8 +94,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           (URL bar collapsed), so `min-h-screen` leaves a strip of phantom
           scroll whenever the URL bar is showing. dvh follows it. */}
       <body className="min-h-dvh antialiased">
-        <PageTransition>{children}</PageTransition>
-        <AppToaster />
+        {/* IdentityProvider blocks all downstream render until the
+            cookie-first bootstrap resolves (one /api/identity GET,
+            capped at 3s). After that, every component that reads
+            `localStorage.uzk_session` sees the cookie's authoritative
+            sid — a viewer whose localStorage got evicted while their
+            cookie survived comes back to their own identity instead
+            of getting a fresh anonymous mint. See
+            lib/identity-bootstrap.ts for the full algorithm. */}
+        <IdentityProvider>
+          <PageTransition>{children}</PageTransition>
+          <AppToaster />
+        </IdentityProvider>
       </body>
     </html>
   );

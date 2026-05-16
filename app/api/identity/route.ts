@@ -5,19 +5,50 @@ import {
   signSession,
   RESERVED_SESSIONS,
 } from "@/lib/session-auth";
-import { SESSION_COOKIE_NAME } from "@/lib/server-session";
+import {
+  SESSION_COOKIE_NAME,
+  readSignedSessionId,
+} from "@/lib/server-session";
 import { checkAndIncrement } from "@/lib/rate-limit";
+
+// GET /api/identity
+//
+// Read-only: returns the sessionId already attested to by the signed
+// `uzk_sig` cookie. The client-side bootstrap (lib/identity-bootstrap.ts)
+// calls this on first mount so it can RESTORE a sessionId whose
+// localStorage cache was lost (iOS storage tier eviction, PWA
+// partition reset, etc) while the cookie survived.
+//
+// Single HMAC verify, no DB. `Cache-Control: no-store` so a service
+// worker or CDN never serves a stale identity to a different viewer.
+export async function GET() {
+  if (!isSessionAuthAvailable()) {
+    const res = NextResponse.json({ sessionId: null, signed: false });
+    res.headers.set("Cache-Control", "no-store");
+    return res;
+  }
+  const sessionId = await readSignedSessionId();
+  const res = NextResponse.json({ sessionId, signed: !!sessionId });
+  res.headers.set("Cache-Control", "no-store");
+  return res;
+}
 
 // POST /api/identity
 //
 // Body: { sessionId }
-// Idempotent: mints (or refreshes) the signed session cookie that binds
-// the browser's anonymous sessionId. RoomShell calls this on every
-// mount, so returning users without a cookie get one the next time
-// they open a room.
+// Mints (or refreshes) the signed session cookie that binds the
+// browser's anonymous sessionId. The bootstrap calls this whenever
+// it RESOLVES a sessionId that the cookie doesn't already attest to
+// — either a fresh mint or a cookie-evicted localStorage restore.
 //
-// When UZK_SESSION_SECRET isn't configured we return `signed: false` and
-// don't set a cookie — the server-side guard fails open in that mode.
+// Migration-safe: we trust the body's claim and overwrite the cookie
+// to match. Cookie-wins reconciliation can come later when 100% of
+// clients are running the new bootstrap and know how to read this
+// response. Today some clients still post-and-forget.
+//
+// When UZK_SESSION_SECRET isn't configured we return `signed: false`
+// and don't set a cookie — the server-side guard fails open in that
+// mode.
 
 const Body = z.object({
   sessionId: z
@@ -73,7 +104,7 @@ export async function POST(req: Request) {
   }
 
   const token = signSession(sessionId);
-  const res = NextResponse.json({ ok: true, signed: true });
+  const res = NextResponse.json({ ok: true, signed: true, sessionId });
   res.cookies.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
@@ -81,6 +112,7 @@ export async function POST(req: Request) {
     path: "/",
     maxAge: 60 * 60 * 24 * 30, // 30 days
   });
+  res.headers.set("Cache-Control", "no-store");
   return res;
 }
 

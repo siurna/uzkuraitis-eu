@@ -2,54 +2,64 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getAvatar, type Avatar } from "@/lib/avatars";
+import {
+  peekSessionId,
+  updateCachedIdentity,
+} from "@/lib/identity-bootstrap";
 
-// Single source of truth for "who am I" — name, avatar id, and the
-// anonymous session id — backed by localStorage. Everything that used
-// to read `localStorage.getItem("uzk_name" | "uzk_avatar" | "uzk_session")`
-// ad-hoc (chat, vote form, bingo, presence bar, settings…) should use
-// this hook instead.
+// Single source of truth for "who am I" — name + avatar + the anonymous
+// sessionId. The SESSION is resolved exclusively by the cookie-first
+// bootstrap in `lib/identity-bootstrap.ts` and cached in memory there;
+// `ensureSessionId()` is a thin read-through into that cache (with
+// localStorage as a fall-back read, never a write/mint).
 //
-// `name`/`avatarId` are reactive: they update on cross-tab `storage`
-// events and on the same-tab `uzk:avatar-change` event that `setName`/
-// `setAvatar` (and the name gate) dispatch. `sessionId()` is a stable
-// getter — it lazily mints + persists an id on first call.
+// Name + avatar are still localStorage-backed and reactive across tabs
+// (storage event) and in-tab (`uzk:avatar-change` event the name gate /
+// avatar picker dispatch via setName / setAvatar).
+//
+// Why the session can't mint here anymore: the legacy "mint on first
+// call" path was the source of every "anonymous logged out" incident.
+// If localStorage was empty for any reason — iOS storage-tier
+// eviction, PWA partition reset, a transient browser bug —
+// `ensureSessionId()` would lazily mint a NEW sessionId, orphaning
+// the user's voter row + chat + bets behind a cookie that the
+// running client no longer knew about. Minting now happens ONCE on
+// app boot inside the bootstrap, and never again.
 
 export const NAME_KEY = "uzk_name";
 export const AVATAR_KEY = "uzk_avatar";
 export const SESSION_KEY = "uzk_session";
 export const IDENTITY_EVENT = "uzk:avatar-change";
 
+// Read-only sessionId getter. Prefers the bootstrap's in-memory
+// cache; falls back to localStorage if (for whatever reason) the
+// bootstrap hasn't resolved yet on this caller's path. Returns ""
+// only when the bootstrap hasn't run AND localStorage was empty,
+// which should never happen below the IdentityProvider — we log a
+// warn so any regression is loud.
 export function ensureSessionId(): string {
   if (typeof window === "undefined") return "";
-  let s = window.localStorage.getItem(SESSION_KEY);
-  if (!s) {
-    s = `s_${Math.random().toString(36).slice(2, 14)}`;
-    window.localStorage.setItem(SESSION_KEY, s);
+  const cached = peekSessionId();
+  if (cached) return cached;
+  try {
+    const local = window.localStorage.getItem(SESSION_KEY);
+    if (local) return local;
+  } catch {
+    /* localStorage unavailable (private mode, quota) */
   }
-  return s;
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(
+      "[identity] ensureSessionId() called before bootstrap resolved — returning empty",
+    );
+  }
+  return "";
 }
 
-// Per-page-lifetime guard so we only hit /api/identity once even though
-// useIdentity is mounted in many places.
-let identityMinted = false;
-
-// Fire-and-forget: ask the server to mint a signed cookie for our
-// sessionId. Without this, every per-session write (chat, vote,
-// reaction, trivia) is rejected as 401. Cheap (single HMAC + Set-Cookie
-// on the server), idempotent, runs once per tab.
+// Legacy fire-and-forget cookie-mint helper. Kept as a no-op so any
+// stragglers that still import it don't break; the bootstrap is now
+// the only path that signs cookies.
 export function mintSignedSession(): void {
-  if (identityMinted || typeof window === "undefined") return;
-  identityMinted = true;
-  const sessionId = ensureSessionId();
-  if (!sessionId) return;
-  fetch("/api/identity", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ sessionId }),
-  }).catch(() => {
-    // Network blip — retry next time the hook mounts in a new tab.
-    identityMinted = false;
-  });
+  /* no-op — bootstrap handles cookie minting on first mount */
 }
 
 export type Identity = {
@@ -102,6 +112,13 @@ export function useIdentity(): Identity {
         else window.localStorage.setItem(AVATAR_KEY, next.avatarId);
         setAvatarIdState(next.avatarId);
       }
+      // Mirror to the bootstrap's in-memory cache so any module that
+      // reads name/avatar via the bootstrap getter sees the update
+      // without waiting for the storage / IDENTITY_EVENT round-trip.
+      updateCachedIdentity({
+        name: next.name,
+        avatarId: next.avatarId,
+      });
       window.dispatchEvent(new Event(IDENTITY_EVENT));
     },
     [],
