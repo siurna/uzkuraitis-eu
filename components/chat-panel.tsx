@@ -483,12 +483,10 @@ export function ChatPanel({ active = true }: { active?: boolean }) {
   // (Earlier iterations tracked the visual viewport in JS — a `resize`
   // listener plus a 200ms safety poll because iOS Safari occasionally
   // drops the final `visualViewport.resize` after a keyboard dismissal.
-  // Ripped out: the polling was causing measurable flicker as the
-  // predictive-text strip toggled during typing, and the underlying
-  // dvh bug is now sidestepped in CSS via `--uzk-vh-100`, which
-  // resolves to `100lvh` in PWA standalone. If iOS PWA users start
-  // seeing the dead band below the dock again, the listener + poll
-  // are easy enough to reinstate — but try the CSS path first.)
+  // Ripped out: the polling was the flicker source. The keyboard-up
+  // dock-hidden branch reads `100lvh` via the CSS token below; if
+  // the composer ends up below the keyboard for some viewer, we add
+  // the listener (NOT the poll) back.)
 
   const loadEarlier = async () => {
     if (loadingMore || messages.length === 0) return;

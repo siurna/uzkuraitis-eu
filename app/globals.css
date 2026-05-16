@@ -249,16 +249,19 @@
     top: 0;
     left: 0;
     right: 0;
-    /* Lock the bloom's box to the *visible* viewport. `inset: 0` looks
-       equivalent but iOS PWA can anchor a fixed element to the layout
-       viewport, leaving the "ellipse at bottom" radial centred below
-       the on-screen keyboard — the visible area then loses the warm
-       pink half of the gradient and reads as a dark-blue gap.
-       `100dvh` follows the visible viewport, so both ellipses always
-       paint inside what the user can see. (The known iOS 16/18 dvh
-       overshoot is a frame-level value, invisible for a decorative
-       background.) */
-    height: 100dvh;
+    /* Read the same viewport token chat-panel uses. In a normal
+       browser tab it resolves to `100dvh`; inside an installed PWA it
+       switches to `100lvh`. The PWA branch matters because iOS PWA's
+       `dvh` ships with a stale-frame bug on cold-start: it can report
+       a value shorter than the real visible viewport for the first
+       paint or two, leaving a dark purple band along the bottom of
+       the loading screen until the user nudged the page and forced
+       a re-measure. `lvh` has no chrome to subtract in PWA mode, so
+       it just stays correct. The "ellipse at bottom" half of the
+       gradient does sit below the on-screen keyboard while one's up,
+       but the keyboard moment is brief + transient and worth the
+       trade for a stable loading screen. */
+    height: var(--uzk-vh-100);
     z-index: -2;
     pointer-events: none;
     background:

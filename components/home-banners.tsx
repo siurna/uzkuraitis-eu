@@ -740,7 +740,7 @@ const BANNER_MOTION = {
 };
 
 export function HomeBanners() {
-  const { code, votingEnabled, nowPlayingCode, showStatus, runningOrderPos } = useRoomLive();
+  const { code, votingEnabled, tallyEnabled, nowPlayingCode, showStatus, runningOrderPos } = useRoomLive();
   const lang = useLang();
   const { setTab } = useRoomTab();
 
@@ -872,10 +872,16 @@ export function HomeBanners() {
         ) : null}
 
         {/* Results widget — first card UNDER the now-playing / vote
-            hero. Self-hides when tally isn't on. */}
-        <motion.div key="my-results-inline" {...BANNER_MOTION}>
-          <MyResults />
-        </motion.div>
+            hero. Gated on `tallyEnabled` at THIS level instead of
+            inside <MyResults/> so the motion.div wrapper isn't
+            rendered as an empty box when results are off — an empty
+            <div> still counts toward the parent `flex-col gap-3`,
+            leaving a phantom 12px slot above the next banner. */}
+        {tallyEnabled && (
+          <motion.div key="my-results-inline" {...BANNER_MOTION}>
+            <MyResults />
+          </motion.div>
+        )}
 
         {/* Vote — electric-blue → purple */}
         {showVoteBanner && (
