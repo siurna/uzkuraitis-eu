@@ -43,6 +43,21 @@ export function InstallPwaPrompt() {
     setMounted(true);
     setInstalled(isInstalledPwa());
     setDrawerLang(readLang());
+    // iOS sometimes reports `display-mode: standalone` as false on
+    // the very first paint of a freshly-launched PWA and flips it to
+    // true a tick or two later — the prompt would render briefly
+    // (the "purple bar" the user spotted) then never dismiss because
+    // we only checked once on mount. Subscribe to the media-query +
+    // visibilitychange so we catch the flip. Also re-runs on
+    // appinstalled below.
+    const mql = window.matchMedia("(display-mode: standalone)");
+    const recheck = () => setInstalled(isInstalledPwa());
+    mql.addEventListener("change", recheck);
+    document.addEventListener("visibilitychange", recheck);
+    return () => {
+      mql.removeEventListener("change", recheck);
+      document.removeEventListener("visibilitychange", recheck);
+    };
   }, []);
 
   // Capture Chromium's installability event so we can pop the native

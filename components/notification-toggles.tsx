@@ -66,7 +66,17 @@ export function detectPlatform(): "ios-safari" | "android" | "desktop" | "other"
 
 export function isInstalledPwa(): boolean {
   if (typeof window === "undefined") return false;
-  return window.matchMedia("(display-mode: standalone)").matches;
+  // Two checks because iOS Safari is inconsistent: the modern
+  // `(display-mode: standalone)` media query DOES match for
+  // home-screen PWAs on iOS 13+, but the legacy `navigator.standalone`
+  // boolean is older + still set, and on freshly-launched PWAs the
+  // matchMedia value can return `false` for the first paint or two
+  // before iOS finishes promoting the window. Returning true on
+  // EITHER signal kills the false-negative that was making the
+  // install prompt flash on launch.
+  if (window.matchMedia("(display-mode: standalone)").matches) return true;
+  const nav = window.navigator as Navigator & { standalone?: boolean };
+  return nav.standalone === true;
 }
 
 // Notification preferences for the current room. Master toggle + 5
