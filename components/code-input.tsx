@@ -8,11 +8,12 @@ import {
 import { cn } from "@/lib/utils";
 
 const LENGTH = 6;
-// Same alphabet as lib/room-code.ts so the validator (which accepts
-// `1` and `O` for memorable custom codes) and this input agree.
-// `0` and `I`/`L` stay out — easy to confuse with `O`/`1` on common
-// fonts. Used to filter on every change + paste.
-const ALPHABET_RE = /[^1-9ABCDEFGHJKMNOPQRSTUVWXYZ]/g;
+// Same alphabet as lib/room-code.ts. Allows `1`, `L`, and `O` so
+// memorable custom codes like "PARTY1" / "HELLOX" / "LOL123" type
+// through. `0` and `I` stay out — `0` looks like `O`, `I` looks
+// like a lowercase `l` or a `1` on common UI fonts. Filter runs on
+// every change + paste.
+const ALPHABET_RE = /[^1-9ABCDEFGHJKLMNOPQRSTUVWXYZ]/g;
 
 // Six-cell OTP-style input. Visually six cells with dashed dividers,
 // but the DOM has exactly ONE `<input>` element underneath — six
@@ -144,6 +145,12 @@ export function CodeInput({
             i > 0 && "border-l border-dashed border-white/10",
             "flex items-center justify-center",
             "font-display uppercase tabular-nums",
+            // `leading-none` tightens the text line-box to the font
+            // size so the flex centering centres the GLYPH, not the
+            // taller line-box that includes Singing Sans's default
+            // descender padding — which is what was leaving the
+            // letters floating visibly above the cell centre.
+            "leading-none",
             "text-3xl sm:text-4xl text-white",
             "select-none",
           )}
