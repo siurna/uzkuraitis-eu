@@ -181,16 +181,14 @@ export function NameGate({
           it. iOS Safari's form-input scanner walks the DOM looking
           for text inputs to populate the keyboard accessory bar's
           `‹ › ✓` arrows, and it doesn't reliably respect the
-          per-TabPane `display:none + inert` we already apply: a
-          returning user whose Vote tab was visited has the bonus-bet
-          number inputs sitting in a hidden TabPane, and the scanner
-          still picks them up, hangs them above the name field, and
-          breaks the focused single-input feel of the gate. The
-          `display:contents` wrapper leaves layout untouched; the
-          `inert` attribute propagates through the whole subtree so
-          every input behind us is hidden from focus + AX trees + (in
-          practice) iOS's scanner. */}
-      <div inert={open} style={{ display: "contents" }}>{children}</div>
+          per-TabPane `display:none + inert` we already apply.
+          IMPORTANT: NO `display: contents` on this wrapper — that
+          combo (inert + display:contents) is broken in iOS Safari
+          and pre-Chrome 120: the element becomes a non-box and the
+          inert attribute fails to propagate to descendants. Plain
+          `display: block` works. The extra DOM layer is harmless;
+          room shell's layout already fills the container. */}
+      <div inert={open}>{children}</div>
       <BottomSheet
         open={open}
         onClose={() => {
@@ -333,6 +331,16 @@ export function NameGate({
                            rounded-xl border border-white/15 bg-black/30
                            placeholder:text-white/30 placeholder:font-normal"
                 maxLength={40}
+                // Kill iOS's predictive-text bar (the "I / The / I'm"
+                // suggestion strip above the keyboard). It surfaces by
+                // default for any text input, but names aren't
+                // autocorrected and the strip just adds visual noise to
+                // the welcome moment. `autoComplete="off"` on top so
+                // Safari doesn't try to suggest a saved profile name.
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                autoCapitalize="words"
               />
               {nameTaken && (
                 <p className="text-xs text-flamingo/90 text-center text-balance leading-snug px-1">
