@@ -49,4 +49,17 @@ export const SEASON_2026: Season = {
   // qualifiers list shrinks to four. The closeness ladder + side-bet
   // picker operate on whoever actually competes.
   big5: ["gb", "de", "fr", "it"],
+  theme: {
+    // Near-black navy. Matches the bottom of the bloom so the iOS PWA
+    // keyboard slide reads as the page extending into the keyboard
+    // chrome instead of cutting against a brighter brand colour.
+    pageBg: "#0c1428",
+    bloom: {
+      // Muted rose entering from the upper-right.
+      warm: "58% 0.18 350 / 0.30",
+      // Deep amethyst from the upper-left.
+      cool: "42% 0.18 295 / 0.32",
+    },
+    themeColor: "#0c1428",
+  },
 };

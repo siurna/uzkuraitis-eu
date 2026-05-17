@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { CURRENT_SEASON } from "@/lib/seasons";
 
 // PWA manifest. Generated at build time by Next so /manifest.webmanifest
 // always reflects the current brand tokens.
@@ -18,15 +19,17 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     display: "standalone",
     // background_color paints the home-indicator strip + cold-start
-    // splash; theme_color fills behind the status bar. Set to the
-    // same near-black navy the html `background-color` carries, so
-    // the iOS PWA chrome (status bar tint, home-indicator strip,
-    // and crucially the strip iOS Safari paints behind a sliding
-    // on-screen keyboard) all match the bottom of our gradient —
-    // the chat surface then reads as continuous into the keyboard
-    // instead of cutting against a brighter brand colour.
-    background_color: "#0c1428",
-    theme_color: "#0c1428",
+    // splash; theme_color fills behind the status bar. Both sourced
+    // from CURRENT_SEASON's theme so iOS PWA chrome (status bar
+    // tint, home-indicator strip, and crucially the strip iOS Safari
+    // paints behind a sliding on-screen keyboard) match the bottom
+    // of html::before's bloom — the chat surface then reads as
+    // continuous into the keyboard instead of cutting against a
+    // brighter brand colour. NOTE: iOS PWA caches the manifest until
+    // reinstall, so existing installs keep the old colour after a
+    // season swap until they reinstall the app.
+    background_color: CURRENT_SEASON.theme.themeColor,
+    theme_color: CURRENT_SEASON.theme.themeColor,
     icons: [
       {
         src: `${ICON_BUCKET}/icon-192.png`,

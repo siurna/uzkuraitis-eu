@@ -11,6 +11,36 @@
 
 import type { Country } from "@/lib/countries";
 
+/** Visual identity that rotates with the contest year. Each
+ *  Eurovision rebrands subtly (stage colours, official palette);
+ *  these are the few literals that actually need to follow.
+ *
+ *  The abstract brand palette (fuchsia / flamingo / turquoise /
+ *  yellow / blue …) is shared across years — that's the APP's
+ *  identity, not the contest's annual graphics. Only the
+ *  year-anchored surfaces below get themed. */
+export type SeasonTheme = {
+  /** html background-color. Also the colour iOS PWA paints behind a
+   *  sliding-up keyboard, behind the home indicator, and in the
+   *  cold-start splash frame — keeping it close to the bottom of
+   *  the bloom keeps every system surface continuous with the page. */
+  pageBg: string;
+  /** Top-of-page radial blooms layered into html::before. Two
+   *  warm/cool washes, in CSS oklch syntax (no surrounding
+   *  `oklch(…)` — just the inner space-separated arguments + alpha
+   *  so the CSS can wrap them with `oklch(var(--season-bloom-…))`). */
+  bloom: {
+    /** Upper-right warm wash. */
+    warm: string;
+    /** Upper-left cool wash. */
+    cool: string;
+  };
+  /** Hex passed to manifest.theme_color + <meta name="theme-color">.
+   *  Drives iOS status bar tint and PWA chrome. Usually equal to
+   *  `pageBg`. */
+  themeColor: string;
+};
+
 export type Season = {
   /** Calendar year of the contest. Used as the primary key. */
   year: number;
@@ -24,4 +54,6 @@ export type Season = {
   /** Auto-qualifying "Big" set. 2026 dropped to 4 because Spain
    *  withdrew. Used by the highest-Big-5 bonus-bet ladder. */
   big5: readonly string[];
+  /** Visual identity for this season (palette + chrome). */
+  theme: SeasonTheme;
 };

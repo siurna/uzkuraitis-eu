@@ -161,16 +161,13 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    /* Root background-color is the colour iOS Safari paints during
-       overscroll-bounce + the cold-start frame before body / html
-       ::before hydrate. Was `--color-dark-blue-900` (dark navy)
-       which left a black flash at the bottom when the user scrolled
-       and the page bounced past its content edge. Bumped to the
-       brand violet (same hue as theme_color / manifest
-       background_color, all set to #1a1334) so overscroll + cold-
-       start + iOS chrome zones all paint inside the brand bloom
-       instead of flashing navy. */
-    background-color: #1a1334;
+    /* Page bottom + cold-start frame + iOS-overscroll-bounce + the
+       strip iOS PWA paints behind a sliding keyboard. All sourced
+       from `--season-page-bg`, which is overridden per-year by the
+       <html data-season=…> attribute (see :root + html[data-season]
+       blocks further down). For 2026 it's a near-black navy that
+       matches the bloom's bottom fade. */
+    background-color: var(--season-page-bg);
   }
 
   /* Tailwind v4 dropped the default cursor:pointer on buttons. */
@@ -264,24 +261,23 @@
     z-index: -2;
     pointer-events: none;
     background:
-      /* Two opposing soft washes at the top: a muted rose entering
-         from the upper-right, a deep amethyst from the upper-left.
-         They overlap centrally to read as ambient stage backlight
-         rather than the earlier single flamingo dome that was
-         landing as a neon-pink beacon. Both fade out by ~mid screen. */
-      radial-gradient(80% 55% at 80% -12%, oklch(58% 0.18 350 / 0.30), transparent 60%),
-      radial-gradient(85% 60% at 18% -8%, oklch(42% 0.18 295 / 0.32), transparent 65%),
-      /* Hard fade to pure navy across the bottom half so the area
-         behind the keyboard's accessory bar (`‹ › ✓`) and any
-         keyboard slide reads as the same colour as the html bg.
-         Without this layer, the participant-backdrop's soft-light
-         texture leaks through and the bar picks up a faint purple
-         tint that breaks the "page extends into the keyboard"
-         illusion. Pure `normal` blend, no soft-light interaction
-         with the texture below. */
-      linear-gradient(to bottom, transparent 0%, transparent 55%, #0c1428 85%),
+      /* Two opposing soft washes at the top, sourced from the
+         season's `theme.bloom`. 2026 is a muted rose from the
+         upper-right + deep amethyst from the upper-left. Next year
+         these `oklch(...)` arguments swap to whatever matches the
+         new stage. */
+      radial-gradient(80% 55% at 80% -12%, oklch(var(--season-bloom-warm)), transparent 60%),
+      radial-gradient(85% 60% at 18% -8%, oklch(var(--season-bloom-cool)), transparent 65%),
+      /* Hard fade to the season's page bg across the bottom half so
+         the area behind the keyboard's accessory bar (`‹ › ✓`) and
+         any keyboard slide reads as the same colour as the html bg.
+         Without this layer the participant-backdrop's soft-light
+         texture leaks through and the bar picks up a faint tint that
+         breaks the "page extends into the keyboard" illusion. Pure
+         `normal` blend, no soft-light interaction with the texture. */
+      linear-gradient(to bottom, transparent 0%, transparent 55%, var(--season-page-bg) 85%),
       url("/images/participant-backdrop@2x.webp") center/cover no-repeat,
-      #0c1428;
+      var(--season-page-bg);
     background-blend-mode: screen, screen, normal, soft-light;
   }
 
@@ -326,6 +322,22 @@
 :root {
   --uzk-vh-100: 100dvh;
 }
+
+/* Season palette. CSS variables driven by the `data-season` attribute
+   on <html>, which is set in `app/layout.tsx` from CURRENT_SEASON.
+   The defaults here are 2026 — if no override matches, every page
+   still gets the current-season look. Per-year overrides go below
+   in `html[data-season="<year>"]` blocks; adding 2027 is just one
+   stanza here + values in `lib/seasons/2027.ts`. */
+:root {
+  /* 2026 defaults — also the fallback if `data-season` is missing
+     (which shouldn't happen below the layout but defends against
+     mid-deploy state where the attribute hasn't propagated yet). */
+  --season-page-bg: #0c1428;
+  --season-bloom-warm: 58% 0.18 350 / 0.30;
+  --season-bloom-cool: 42% 0.18 295 / 0.32;
+}
+
 @media (display-mode: standalone) {
   :root {
     --uzk-vh-100: 100lvh;

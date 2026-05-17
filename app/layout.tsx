@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppToaster } from "@/components/app-toaster";
 import { PageTransition } from "@/components/page-transition";
 import { IdentityProvider } from "@/components/identity-provider";
+import { CURRENT_SEASON, CURRENT_SEASON_YEAR } from "@/lib/seasons";
 
 // Icon bucket on Supabase Storage — the PNGs aren't checked in so the
 // repo stays light. Browsers (and the install-prompt sheet) fetch
@@ -61,14 +62,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  // Same near-black navy that lives on `html { background-color }`
-  // and in the manifest's background_color / theme_color. The
-  // bottom of html::before's bloom fades to transparent into this
-  // colour, so iOS PWA's status-bar tint AND the strip iOS Safari
-  // paints behind a sliding-up keyboard both match the page's
-  // bottom edge — no colour seam where the keyboard meets the
-  // chat surface.
-  themeColor: "#0c1428",
+  // Sourced from the CURRENT season's `theme.themeColor` — drives
+  // iOS Safari status-bar tint AND the strip iOS PWA paints behind
+  // a sliding-up keyboard. Should equal the bottom of html::before's
+  // bloom so the chrome stays continuous with the page.
+  themeColor: CURRENT_SEASON.theme.themeColor,
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
@@ -80,7 +78,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" data-season={String(CURRENT_SEASON_YEAR)}>
       <head>
         {/* Pre-warm the TLS handshake to Cloudflare so the Turnstile
             script + challenge endpoint don't pay DNS/TCP/TLS on cold
