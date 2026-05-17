@@ -23,6 +23,11 @@ export const rooms = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     code: varchar("code", { length: 8 }).notNull().unique(),
     name: varchar("name", { length: 60 }).notNull(),
+    // Which contest year this room is for. Maps to a config bundle
+    // in `lib/seasons/<year>.ts` (country lineup, host, Big-5
+    // composition). Existing rooms default to 2026; new rooms pick
+    // from `ALL_SEASON_YEARS` via the admin "create room" form.
+    year: integer("year").notNull().default(2026),
     votingEnabled: boolean("voting_enabled").notNull().default(true),
     // When false, the leaderboard for this room stays hidden even after
     // results are entered. Lets a watch-along host delay scoring until

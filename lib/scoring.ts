@@ -16,13 +16,19 @@ export type Ballot = Record<string, string>;
 export type OfficialPlacements = Record<string, number>;
 export type OfficialFacts = Record<string, string>;
 
-// 2026 cycle: Spain withdrew, so the historical "Big 5" auto-
-// qualifiers list shrinks to four for this year's scoring + the
-// side-bet picker. The label "Big 5" stays everywhere user-facing
-// for broadcast-language continuity; the closeness ladder operates
-// on whoever actually competes. Re-add "es" the season they return.
-export const BIG_5 = ["gb", "de", "fr", "it"] as const;
-export const HOST_COUNTRY = "at"; // 2026 host
+// `BIG_5` + `HOST_COUNTRY` rotate annually — Big-5 composition
+// changes when a country withdraws or rejoins (2026 dropped Spain
+// to four), host follows the previous year's winner. Both are
+// sourced from the CURRENT season config (lib/seasons/<year>.ts);
+// scoring functions that operate on a SPECIFIC season's data (the
+// admin "view last year's results" path) should reach for
+// `getSeason(year).big5` / `getSeason(year).hostCountry` instead.
+// The label "Big 5" stays everywhere user-facing regardless of
+// the actual count — broadcast-language continuity.
+import { CURRENT_SEASON } from "@/lib/seasons";
+
+export const BIG_5: readonly string[] = CURRENT_SEASON.big5;
+export const HOST_COUNTRY = CURRENT_SEASON.hostCountry;
 export const NONE_TOKEN = "NONE";  // sentinel for nul-points "no country" bet
 
 // "Chat highlights" bonus: a small social kicker layered on top of the
