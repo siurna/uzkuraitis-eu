@@ -2,6 +2,7 @@ import { and, eq, notInArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { broadcastToRoom } from "@/lib/realtime-server";
 import {
+  rooms,
   officialResults,
   officialFacts,
   roomResults,
@@ -111,16 +112,15 @@ export function bustRoomLeaderboardCache(roomId: string): void {
 // call this instead of broadcasting `leaderboard:updated` directly:
 //   * busts THIS Lambda's memo so the admin's own subsequent reads
 //     are fresh
-//   * fires a background recompute (no await) so the memo is hot
-//     for the wave of client refetches that lands ~1-2s later via
-//     the broadcast
+//   * computes the leaderboard and PERSISTS it as a snapshot on
+//     the `rooms` row (jsonb column). GET /leaderboard reads
+//     this directly so viewers never run the heavy compute.
 //   * sends the `leaderboard:updated` broadcast for clients to act on
 //
-// Caveats: only this Lambda's memo is busted; other warm Lambdas
-// keep their (stale) memo for up to LEADERBOARD_TTL_MS. The edge
-// cache (s-maxage on the GET route) is also a separate layer with
-// its own TTL. For mid-show this is acceptable — admin reveals
-// settle within ~15s for all viewers.
+// Persistence is best-effort: if the column isn't in the DB yet
+// (deployed code ahead of the ALTER TABLE), we swallow the error
+// and fall back to the in-memory memo path. The GET handler is
+// symmetrically defensive on the read side.
 export async function broadcastLeaderboardUpdate(room: {
   id: string;
   code: string;
@@ -129,14 +129,64 @@ export async function broadcastLeaderboardUpdate(room: {
   highlightThreshold: number | null;
 }): Promise<void> {
   bustRoomLeaderboardCache(room.id);
-  // Fire-and-forget: kick off the recompute now so the Lambda memo
-  // is hot by the time clients refetch via the broadcast event.
-  // We don't await it — the broadcast must go out ASAP so clients
-  // see the "new results" signal immediately.
-  void computeRoomLeaderboard(room).catch(() => {
-    /* compute will be retried by the next client fetch */
-  });
+  // Compute SYNCHRONOUSLY here (admin side, low concurrency) so we
+  // can persist the snapshot before broadcasting. Clients receiving
+  // the broadcast hit a hot snapshot, not a fresh compute.
+  try {
+    const result = await computeRoomLeaderboard(room);
+    await persistLeaderboardSnapshot(room.id, result);
+  } catch (err) {
+    // Don't block the broadcast on snapshot failures; viewers will
+    // fall through to compute-on-demand which still works.
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[leaderboard] persist snapshot failed", err);
+    }
+  }
   await broadcastToRoom(room.code, { type: "leaderboard:updated" });
+}
+
+async function persistLeaderboardSnapshot(
+  roomId: string,
+  payload: RoomLeaderboard,
+): Promise<void> {
+  // Defensive: rooms.leaderboard_snapshot column was added in a
+  // later migration than the rest of the table. If the DB hasn't
+  // had the ALTER TABLE applied yet, this UPDATE throws; we catch
+  // upstream and let the compute path serve.
+  await db
+    .update(rooms)
+    .set({
+      leaderboardSnapshot: payload,
+      leaderboardSnapshotAt: new Date(),
+    })
+    .where(eq(rooms.id, roomId));
+}
+
+// Read a previously-persisted snapshot. Returns null if missing,
+// stale relative to the input cutoff (used by viewer-side reads
+// to avoid serving a snapshot older than e.g. 30 minutes), OR if
+// the column isn't in the DB. Always safe to call.
+export async function readLeaderboardSnapshot(
+  roomId: string,
+  maxAgeMs?: number,
+): Promise<RoomLeaderboard | null> {
+  try {
+    const [row] = await db
+      .select({
+        snapshot: rooms.leaderboardSnapshot,
+        snapshotAt: rooms.leaderboardSnapshotAt,
+      })
+      .from(rooms)
+      .where(eq(rooms.id, roomId))
+      .limit(1);
+    if (!row?.snapshot) return null;
+    if (maxAgeMs != null && row.snapshotAt) {
+      if (Date.now() - row.snapshotAt.getTime() > maxAgeMs) return null;
+    }
+    return row.snapshot as RoomLeaderboard;
+  } catch {
+    return null;
+  }
 }
 
 export async function computeRoomLeaderboard(room: {

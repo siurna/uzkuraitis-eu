@@ -1,12 +1,24 @@
 import { NextResponse } from "next/server";
 import { findRoomByCode } from "@/lib/rooms";
-import { computeRoomLeaderboard } from "@/lib/leaderboard";
+import {
+  computeRoomLeaderboard,
+  readLeaderboardSnapshot,
+} from "@/lib/leaderboard";
+import type { RoomLeaderboard } from "@/lib/leaderboard";
 
 type RouteCtx = { params: Promise<{ code: string }> };
 
 // Per-room betting leaderboard. Returns the "waiting" shape if no
 // official result has been entered yet (or the tally toggle is off) so
 // the UI doesn't need a second request.
+//
+// Snapshot-first: when admin acts on results / facts / tally, the
+// computed payload is persisted to `rooms.leaderboard_snapshot`. We
+// read that here (a single tiny SELECT) and skip the heavy multi-
+// table compute entirely. If the snapshot is missing — pre-tally,
+// or before the ALTER TABLE was applied — we fall through to
+// computeRoomLeaderboard which still has the Lambda memo + edge
+// cache on top.
 export async function GET(_req: Request, { params }: RouteCtx) {
   const { code } = await params;
   const room = await findRoomByCode(code);
@@ -14,12 +26,21 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
 
-  const result = await computeRoomLeaderboard({
-    id: room.id,
-    homeCountryCode: room.homeCountryCode,
-    tallyEnabled: room.tallyEnabled,
-    highlightThreshold: room.highlightThreshold,
-  });
+  let result: RoomLeaderboard | null = null;
+  if (room.tallyEnabled) {
+    // Try the snapshot first. Caps staleness at 1 hour so a snapshot
+    // forgotten on a long-dead room can't masquerade as fresh truth
+    // forever; admin actions always overwrite within that window.
+    result = await readLeaderboardSnapshot(room.id, 60 * 60 * 1_000);
+  }
+  if (!result) {
+    result = await computeRoomLeaderboard({
+      id: room.id,
+      homeCountryCode: room.homeCountryCode,
+      tallyEnabled: room.tallyEnabled,
+      highlightThreshold: room.highlightThreshold,
+    });
+  }
   // CHEAT GUARD: pre-tally, every piece of result data is scrubbed
   // from this public response. Earlier we rode `placements` + `facts`
   // along on the unrevealed shape so the ThanksCard's winning-country

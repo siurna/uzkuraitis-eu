@@ -69,6 +69,16 @@ export const rooms = pgTable(
     // default (5). The leaderboard + profile aggregations honour
     // whichever is set per-room.
     highlightThreshold: integer("highlight_threshold"),
+    // Pre-computed leaderboard snapshot — written by
+    // `broadcastLeaderboardUpdate` whenever admin acts on results /
+    // facts / tally toggle. GET /api/rooms/[code]/leaderboard reads
+    // this directly so viewers never trigger the heavy multi-table
+    // compute. Stays null pre-tally + on rooms that haven't reached
+    // results yet; null = fall back to compute-on-demand.
+    leaderboardSnapshot: jsonb("leaderboard_snapshot"),
+    leaderboardSnapshotAt: timestamp("leaderboard_snapshot_at", {
+      withTimezone: true,
+    }),
     // Beginner mode is a PER-USER preference (localStorage toggle,
     // same shape as translate mode), not a per-room setting. No
     // column lives on `rooms` for it. The shared `chat_helper_cache`
